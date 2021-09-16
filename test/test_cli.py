@@ -1,4 +1,4 @@
-from automata.materials import cli
+from automata.cli import cli
 
 import shutil
 import pathlib
@@ -30,7 +30,7 @@ def test_publish_cli_simple_example(make_input_directory, output_directory):
     input_directory = make_input_directory("example_1")
 
     # when
-    cli([str(input_directory), str(output_directory)])
+    cli(['build-materials', str(input_directory), str(output_directory)])
 
     # then
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -45,6 +45,7 @@ def test_publish_cli_with_example_depending_on_week_start_date(
     # when
     cli(
         [
+            'build-materials',
             str(input_directory),
             str(output_directory),
             "--start-of-week-one",
@@ -75,6 +76,7 @@ def test_publish_cli_with_example_using_template_vars(
     # when
     cli(
         [
+            'build-materials',
             str(input_directory),
             str(output_directory),
             "--start-of-week-one",
