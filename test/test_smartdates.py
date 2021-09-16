@@ -4,7 +4,7 @@ import datetime
 
 from pytest import raises
 
-import publish
+import automata.materials
 
 
 # there are several types of smart dates:
@@ -36,10 +36,10 @@ def test_direct_reference():
     smart_dates = {
         "released": "due",
     }
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15),})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15),})
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -52,12 +52,12 @@ def test_direct_reference_with_dotted_name():
     smart_dates = {
         "released": "previous.due",
     }
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.due": datetime.date(2020, 12, 15),}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -70,10 +70,10 @@ def test_direct_reference_with_time():
     smart_dates = {
         "released": "due at 13:13:13",
     }
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15),})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15),})
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -89,10 +89,10 @@ def test_direct_reference_variable_case_sensitive():
     smart_dates = {
         "released": "Due",
     }
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15),})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15),})
 
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_direct_reference_with_time_case_insensitive_except_for_variable_names():
@@ -101,10 +101,10 @@ def test_direct_reference_with_time_case_insensitive_except_for_variable_names()
     smart_dates = {
         "released": "due AT 13:13:13",
     }
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15),})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15),})
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -120,11 +120,11 @@ def test_direct_reference_raises_if_field_is_unknown():
     smart_dates = {
         "released": "badfield",
     }
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15),})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15),})
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_direct_reference_raises_if_time_is_bad():
@@ -132,11 +132,11 @@ def test_direct_reference_raises_if_time_is_bad():
     smart_dates = {
         "released": "badfield at 55:00:00",
     }
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15),})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15),})
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_direct_reference_raises_if_circular_reference():
@@ -145,11 +145,11 @@ def test_direct_reference_raises_if_circular_reference():
         "foo": "bar",
         "bar": "foo",
     }
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15),})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15),})
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_direct_reference_raises_if_self_reference():
@@ -157,11 +157,11 @@ def test_direct_reference_raises_if_self_reference():
     smart_dates = {
         "foo": "foo",
     }
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15),})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15),})
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 # delta reference
@@ -175,10 +175,10 @@ def test_delta_reference_before_days():
         "released": "7 days before due",
     }
 
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15)})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15)})
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -192,10 +192,10 @@ def test_delta_reference_after_days():
         "released": "7 days after due",
     }
 
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15)})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15)})
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -209,12 +209,12 @@ def test_delta_reference_before_hours():
         "released": "7 hours before due",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"due": datetime.datetime(2020, 12, 15, 23, 59, 0)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -228,12 +228,12 @@ def test_delta_reference_after_hours():
         "released": "7 hours after due",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"due": datetime.datetime(2020, 12, 15, 0, 59, 0)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -247,12 +247,12 @@ def test_delta_reference_with_dotted_name():
         "released": "7 days before previous.due",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.due": datetime.date(2020, 12, 15)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -266,10 +266,10 @@ def test_delta_reference_with_time():
         "released": "7 days before due at 13:13:13",
     }
 
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15)})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15)})
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -288,12 +288,12 @@ def test_delta_reference_dependency_chain_is_resolved():
         "b": "1 hour after a",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"due": datetime.datetime(2020, 12, 15, 0, 0, 0)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -315,11 +315,11 @@ def test_delta_reference_variables_case_sensitive():
         "released": "7 days before Due",
     }
 
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15)})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15)})
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_delta_reference_case_insensitive_apart_from_variables():
@@ -328,10 +328,10 @@ def test_delta_reference_case_insensitive_apart_from_variables():
         "released": "7 DAYS BeFoRe due",
     }
 
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15)})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15)})
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -351,8 +351,8 @@ def test_delta_reference_with_cycle_raises():
     }
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates)
 
 
 def test_delta_reference_missing_reference_raises():
@@ -361,11 +361,11 @@ def test_delta_reference_missing_reference_raises():
         "released": "7 days before badfield",
     }
 
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15)})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15)})
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_delta_reference_raises_if_hour_reference_used_with_date_and_not_datetime():
@@ -374,11 +374,11 @@ def test_delta_reference_raises_if_hour_reference_used_with_date_and_not_datetim
         "released": "3 hours before due",
     }
 
-    date_context = publish.DateContext(known={"due": datetime.date(2020, 12, 15)})
+    date_context = automata.materials.DateContext(known={"due": datetime.date(2020, 12, 15)})
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_delta_reference_raises_if_time_used_with_hour_delta():
@@ -387,13 +387,13 @@ def test_delta_reference_raises_if_time_used_with_hour_delta():
         "released": "3 hours before due at 23:00:00",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"due": datetime.datetime(2020, 12, 15, 0, 0, 0)}
     )
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 # first available reference
@@ -408,12 +408,12 @@ def test_first_available_after_single_day():
         "released": "first monday after previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 15)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -427,12 +427,12 @@ def test_first_available_before_single_day():
         "released": "first monday before previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 15)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -446,12 +446,12 @@ def test_first_available_after_single_day_excludes_current_day():
         "released": "first tuesday after previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 15)}  # this is a tuesday
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -465,12 +465,12 @@ def test_first_available_before_single_day_excludes_current_day():
         "released": "first tuesday before previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 15)}  # this is a tuesday
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -484,12 +484,12 @@ def test_first_available_after_multiple_days():
         "released": "first monday or wednesday after previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 16)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -503,12 +503,12 @@ def test_first_available_before_multiple_days():
         "released": "first monday or wednesday before previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 16)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -522,12 +522,12 @@ def test_first_available_before_multiple_days_with_commas():
         "released": "first monday, wednesday, or friday before previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 16)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -544,13 +544,13 @@ def test_first_available_variables_case_sensitive():
         "released": "first monday, wednesday, or friday before Previous.Released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 16)}
     )
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_first_available_case_insensitive_apart_from_variables():
@@ -559,12 +559,12 @@ def test_first_available_case_insensitive_apart_from_variables():
         "released": "first Monday, Wednesday, or Friday BEFORE previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 16)}
     )
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -581,13 +581,13 @@ def test_first_available_raises_if_unknown_reference():
         "released": "first monday, wednesday, or friday before badfield",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 16)}
     )
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_first_available_raises_if_unknown_day_of_week():
@@ -596,13 +596,13 @@ def test_first_available_raises_if_unknown_day_of_week():
         "released": "first monday, wednesday, or ferday before previous.released",
     }
 
-    date_context = publish.DateContext(
+    date_context = automata.materials.DateContext(
         known={"previous.released": datetime.date(2020, 12, 16)}
     )
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 # day of given week
@@ -616,10 +616,10 @@ def test_day_of_given_week():
         "released": "tuesday of week 02",
     }
 
-    date_context = publish.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
+    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -633,10 +633,10 @@ def test_day_of_given_week_works_without_zero_padding():
         "released": "tuesday of week 2",
     }
 
-    date_context = publish.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
+    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -650,10 +650,10 @@ def test_day_of_given_week_with_time():
         "released": "tuesday of week 02 at 23:00:00",
     }
 
-    date_context = publish.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
+    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -670,10 +670,10 @@ def test_day_of_given_week_case_insensitive():
         "released": "TueSday oF Week 2 AT 23:00:00",
     }
 
-    date_context = publish.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
+    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
 
     # when
-    resolved = publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    resolved = automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
     # then
     assert resolved == {
@@ -688,30 +688,30 @@ def test_day_of_given_week_case_raises_if_start_is_not_provided():
     # given
     smart_dates = {"released": "tersday of week 02"}
 
-    date_context = publish.DateContext()
+    date_context = automata.materials.DateContext()
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_day_of_given_week_case_raises_if_invalid_day_of_week():
     # given
     smart_dates = {"released": "tersday of week 02"}
 
-    date_context = publish.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
+    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)
 
 
 def test_day_of_given_week_case_raises_if_multiple_days_given():
     # given
     smart_dates = {"released": "tuesday or thursday of week 02"}
 
-    date_context = publish.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
+    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2020, 12, 10))
 
     # when
-    with raises(publish.ValidationError):
-        publish.resolve_smart_dates(smart_dates, date_context=date_context)
+    with raises(automata.materials.ValidationError):
+        automata.materials.resolve_smart_dates(smart_dates, date_context=date_context)

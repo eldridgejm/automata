@@ -1,5 +1,5 @@
 {
-  description = "Python package for streamlining end-of-quarter grading.";
+  description = "Python package for automating the publication of course materials.";
 
   inputs.nixpkgs.url = github:NixOS/nixpkgs/20.03;
 
@@ -9,11 +9,11 @@
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
     in
       {
-        publish = forAllSystems (system:
+        automata = forAllSystems (system:
           with import nixpkgs { system = "${system}"; };
 
             python3Packages.buildPythonPackage {
-              name = "publish";
+              name = "automata";
               src = ./.;
               propagatedBuildInputs = with python3Packages; [ pyyaml cerberus jinja2 ];
               nativeBuildInputs = with python3Packages; [ pytest black ipython sphinx sphinx_rtd_theme ];
@@ -22,7 +22,7 @@
           );
 
         defaultPackage = forAllSystems (system:
-            self.publish.${system}
+            self.automata.${system}
           );
       };
 

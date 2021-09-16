@@ -3,7 +3,7 @@ import shutil
 
 from pytest import fixture
 
-import publish
+import automata.materials
 
 EXAMPLE_1_DIRECTORY = pathlib.Path(__file__).parent / "example_1"
 
@@ -24,11 +24,11 @@ def outdir(tmpdir):
 
 def test_publish(example_1, outdir):
     # given
-    discovered = publish.discover(example_1)
-    builts = publish.build(discovered)
+    discovered = automata.materials.discover(example_1)
+    builts = automata.materials.build(discovered)
 
     # when
-    published = publish.publish(builts, outdir)
+    published = automata.materials.publish(builts, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -42,12 +42,12 @@ def test_publish(example_1, outdir):
 
 def test_artifact_not_included_if_not_released(example_1, outdir):
     # given
-    discovered = publish.discover(example_1)
-    built = publish.build(discovered)
+    discovered = automata.materials.discover(example_1)
+    built = automata.materials.build(discovered)
     publication = built.collections["homeworks"].publications["02-python"]
 
     # when
-    published = publish.publish(built, outdir)
+    published = automata.materials.publish(built, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()

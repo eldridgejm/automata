@@ -2,29 +2,29 @@ import json
 import datetime
 import pathlib
 
-import publish
+import automata.materials
 
 
 def test_serialize_deserialize_universe_roundtrip():
     # given
-    collection = publish.Collection(
-        schema=publish.Schema(required_artifacts=["foo", "bar"]), publications={}
+    collection = automata.materials.Collection(
+        schema=automata.materials.Schema(required_artifacts=["foo", "bar"]), publications={}
     )
 
-    collection.publications["01-intro"] = publish.Publication(
+    collection.publications["01-intro"] = automata.materials.Publication(
         metadata={
             "name": "testing",
             "due": datetime.datetime(2020, 2, 28, 23, 59, 0),
             "released": datetime.date(2020, 2, 28),
         },
-        artifacts={"homework": publish.PublishedArtifact("foo/bar")},
+        artifacts={"homework": automata.materials.PublishedArtifact("foo/bar")},
     )
 
-    original = publish.Universe({"homeworks": collection})
+    original = automata.materials.Universe({"homeworks": collection})
 
     # when
-    s = publish.serialize(original)
-    result = publish.deserialize(s)
+    s = automata.materials.serialize(original)
+    result = automata.materials.deserialize(s)
 
     # then
     assert original == result
@@ -32,18 +32,18 @@ def test_serialize_deserialize_universe_roundtrip():
 
 def test_serialize_deserialize_built_publication_roundtrip():
     # given
-    publication = publish.Publication(
+    publication = automata.materials.Publication(
         metadata={
             "name": "testing",
             "due": datetime.datetime(2020, 2, 28, 23, 59, 0),
             "released": datetime.date(2020, 2, 28),
         },
-        artifacts={"homework": publish.BuiltArtifact(workdir=None, file="foo/bar")},
+        artifacts={"homework": automata.materials.BuiltArtifact(workdir=None, file="foo/bar")},
     )
 
     # when
-    s = publish.serialize(publication)
-    result = publish.deserialize(s)
+    s = automata.materials.serialize(publication)
+    result = automata.materials.deserialize(s)
 
     # then
     assert publication == result
@@ -55,14 +55,14 @@ def test_serialize_deserialize_built_publication_roundtrip():
 
 def test_collection_as_dict():
     # given
-    collection = publish.Collection(
-        schema=publish.Schema(required_artifacts=["foo", "bar"]), publications={}
+    collection = automata.materials.Collection(
+        schema=automata.materials.Schema(required_artifacts=["foo", "bar"]), publications={}
     )
 
-    collection.publications["01-intro"] = publish.Publication(
+    collection.publications["01-intro"] = automata.materials.Publication(
         metadata={"name": "testing"},
         artifacts={
-            "homework": publish.UnbuiltArtifact(
+            "homework": automata.materials.UnbuiltArtifact(
                 workdir=None, file="homework.pdf", recipe="make", release_time=None
             ),
         },

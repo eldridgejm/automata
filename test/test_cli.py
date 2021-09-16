@@ -1,4 +1,4 @@
-from publish import cli
+from automata.materials import cli
 
 import shutil
 import pathlib
