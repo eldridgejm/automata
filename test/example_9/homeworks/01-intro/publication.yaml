@@ -1,0 +1,10 @@
+metadata:
+    name: "{{ course.name }}"
+    due: {{ course.start_date }}
+    released: 2020-09-01
+
+artifacts:
+    homework.pdf:
+        recipe: touch homework.pdf
+    solution.pdf:
+        recipe: touch solution.pdf

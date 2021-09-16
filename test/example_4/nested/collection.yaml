@@ -1,0 +1,8 @@
+schema:
+    required_artifacts: []
+
+    metadata_schema:
+        name:
+            type: string
+        author:
+            type: string

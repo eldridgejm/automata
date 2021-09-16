@@ -1,0 +1,2 @@
+schema:
+    required_artifacts: [ foo ]
