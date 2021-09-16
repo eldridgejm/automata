@@ -223,6 +223,7 @@ from ._build import *
 from ._publish import *
 from ._filter import *
 from ._serialize import *
+from . import api
 from ._smartdates import resolve_smart_dates
 
 __version__ = (0, 2, 1)
