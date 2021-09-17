@@ -51,6 +51,53 @@ def _collection_file_base_schema():
             }
         }
 
+
+def _collection_file_base_schema():
+    return {
+        'type': 'dict',
+        'required_keys': {
+            'schema': {
+                'value_schema': {
+                    'type': 'dict',
+                    'required_keys': {
+                        'required_artifacts': {
+                            'value_schema': {
+                                'type': 'list',
+                                'element_schema': {'type': 'string'},
+                                }
+                            }
+                        },
+                    'optional_keys': {
+                        'optional_artifacts': {
+                            'value_schema': {
+                                'type': 'list',
+                                'element_schema': {'type': 'string'},
+                                },
+                            'default': []
+                            },
+                        'metadata_schema': {
+                            'value_schema': {
+                                'type': 'dict',
+                                'extra_keys_schema': {'type': 'any'},
+                                'nullable': True,
+                                },
+                            'default': None
+                            },
+                        'allow_unspecified_artifacts': {
+                            'value_schema': {'type': 'boolean'},
+                            'default': False
+                            },
+                        'is_ordered': {
+                            'value_schema': {'type': 'boolean'},
+                            'default': False
+                            },
+                        }
+                    }
+                }
+            }
+        }
+
+
 def read_collection_file(path, external_variables=None):
     """Read a :class:`Collection` from a yaml file.
 
@@ -95,29 +142,12 @@ def read_collection_file(path, external_variables=None):
     with path.open() as fileobj:
         raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
 
-    resolved = _resolve_collection_file(raw_contents, external_variables, path)
+    try:
+        resolved = _resolve_collection_file(raw_contents, external_variables, path)
+    except dictconfig.exceptions.ResolutionError as exc:
+        raise DiscoveryError(str(exc), path)
 
-    # define the structure of the collections file. we require only the
-    # 'required_artifacts' field.
-    validator = cerberus.Validator(
-        _collection_file_base_schema(),
-        require_all=True,
-    )
-
-    # validate and normalize
-    validated_contents = validator.validated(resolved)
-
-    if validated_contents is None:
-        raise DiscoveryError(str(validator.errors), path)
-
-    # make sure that the metadata schema is valid
-    if validated_contents["schema"]["metadata_schema"] is not None:
-        try:
-            _PublicationValidator(validated_contents["schema"]["metadata_schema"])
-        except Exception as exc:
-            raise DiscoveryError("Invalid metadata schema.", path)
-
-    schema = Schema(**validated_contents["schema"])
+    schema = Schema(**resolved['schema'])
     return Collection(schema=schema, publications={})
 
 
@@ -140,12 +170,7 @@ def _resolve_collection_file(raw_contents, external_variables, path):
         The resolved dictionary.
 
     """
-    base_schema = _collection_file_base_schema()
-    base_schema['schema']['schema']['metadata_schema']['valuesrules'] = {'type': 'any'}
-    schema = {
-        'type': 'dict',
-        'schema': base_schema
-    }
+    schema = _collection_file_base_schema()
 
     try:
         return dictconfig.resolve(raw_contents, schema, external_variables=external_variables)

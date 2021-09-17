@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1631849463,
-        "narHash": "sha256-RXmCobS9JfneLB/h/nWNZqIWNiK7oK8BGAkcnkBwAhM=",
+        "lastModified": 1631920550,
+        "narHash": "sha256-BQvsIHVlU2+3zdwgUHmEWHnSBwLHdGrgor8J2mrXBSg=",
         "owner": "eldridgejm",
         "repo": "dictconfig",
-        "rev": "eda995266376f7f6a43d72e588db110dff61fdb5",
+        "rev": "3d3016f920bef12798601f373432311916b49cfe",
         "type": "github"
       },
       "original": {
