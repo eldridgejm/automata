@@ -478,7 +478,7 @@ def test_read_publication_with_relative_release_time(write_file):
                 due: 2020-09-04 23:59:00
                 released: 2020-09-01
 
-            release_time: 1 day after metadata.due
+            release_time: 1 day after ${self.metadata.due}
 
             artifacts:
                 homework:
@@ -487,7 +487,7 @@ def test_read_publication_with_relative_release_time(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: metadata.due
+                    release_time: ${self.metadata.due}
             """
         ),
     )
@@ -518,7 +518,7 @@ def test_read_artifact_with_relative_release_time(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: metadata.due
+                    release_time: ${self.metadata.due}
             """
         ),
     )
@@ -578,7 +578,7 @@ def test_read_artifact_with_relative_release_time_after(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: 1 day after metadata.due
+                    release_time: 1 day after ${self.metadata.due}
             """
         ),
     )
@@ -609,7 +609,7 @@ def test_read_artifact_with_relative_release_time_after_hours(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 hours after metadata.due
+                    release_time: 3 hours after ${self.metadata.due}
             """
         ),
     )
@@ -640,7 +640,7 @@ def test_read_artifact_with_relative_release_time_after_large(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: 11 days after metadata.due
+                    release_time: 11 days after ${self.metadata.due}
             """
         ),
     )
@@ -671,7 +671,7 @@ def test_read_artifact_with_relative_release_time_after_large_hours(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: 1000 hours after metadata.due
+                    release_time: 1000 hours after ${self.metadata.due}
             """
         ),
     )
@@ -702,7 +702,7 @@ def test_read_artifact_with_relative_release_date_before(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 days before metadata.due
+                    release_time: 3 days before ${self.metadata.due}
             """
         ),
     )
@@ -733,7 +733,7 @@ def test_read_artifact_with_relative_release_date_before_hours(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 hours before metadata.due
+                    release_time: 3 hours before ${self.metadata.due}
             """
         ),
     )
@@ -764,7 +764,7 @@ def test_read_artifact_with_relative_release_time_multiple_days(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 days after metadata.due
+                    release_time: 3 days after ${self.metadata.due}
             """
         ),
     )
@@ -795,7 +795,7 @@ def test_read_artifact_with_invalid_relative_date_raises(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: -1 days after metadata.due
+                    release_time: -1 days after ${self.metadata.due}
             """
         ),
     )
@@ -825,7 +825,7 @@ def test_read_artifact_with_invalid_relative_date_variable_reference_raises(
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: 1 days after metadata.foo
+                    release_time: 1 days after ${self.metadata.foo}
             """
         ),
     )
@@ -879,7 +879,7 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
             metadata:
                 name: Homework 01
                 due: 2020-09-10 23:59:00
-                released: 7 days before due
+                released: 7 days before ${self.metadata.due}
 
             artifacts:
                 homework:
@@ -908,45 +908,6 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
     # then
     expected = datetime.datetime(2020, 9, 3, 23, 59, 0)
     assert publication.metadata["released"] == expected
-
-
-def test_read_publication_with_relative_dates_in_metadata_checks_type(write_file):
-    # given
-    # released should be a datetime, but it's going to be a date since its relative
-    # to due, which is a date
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-10
-                released: 7 days before ${ self.metadata.due }
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 2020-01-02 23:59:00
-            """
-        ),
-    )
-
-    schema = automata.materials.Schema(
-        required_artifacts=["homework", "solution"],
-        metadata_schema={
-            "name": {"type": "string"},
-            "due": {"type": "date"},
-            "released": {"type": "datetime"},
-        },
-    )
-
-    # when
-    with raises(automata.materials.DiscoveryError):
-        automata.materials.read_publication_file(path, schema=schema)
 
 
 def test_read_publication_with_relative_dates_in_metadata_without_offset(write_file):
@@ -990,93 +951,6 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
     expected = datetime.date(2020, 9, 10)
     assert publication.metadata["released"] == expected
 
-
-def test_read_publication_with_date_relative_to_week(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: wednesday of week 01
-                released: 7 days before due
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 2020-01-02 23:59:00
-            """
-        ),
-    )
-
-    schema = automata.materials.Schema(
-        required_artifacts=["homework", "solution"],
-        metadata_schema={
-            "name": {"type": "string"},
-            "due": {"type": "date"},
-            "released": {"type": "date"},
-        },
-    )
-
-    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2021, 1, 11))
-
-    # when
-    publication = automata.materials.read_publication_file(
-        path, schema=schema, date_context=date_context
-    )
-
-    # then
-    assert publication.metadata["due"] == datetime.date(2021, 1, 13)
-    assert publication.metadata["released"] == datetime.date(2021, 1, 6)
-
-
-def test_read_publication_with_datetime_relative_to_week(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: wednesday of week 01 at 23:59:00
-                released: 7 days before due
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 2020-01-02 23:59:00
-            """
-        ),
-    )
-
-    schema = automata.materials.Schema(
-        required_artifacts=["homework", "solution"],
-        metadata_schema={
-            "name": {"type": "string"},
-            "due": {"type": "date"},
-            "released": {"type": "date"},
-        },
-    )
-
-    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2021, 1, 11))
-
-    # when
-    publication = automata.materials.read_publication_file(
-        path, schema=schema, date_context=date_context
-    )
-
-    # then
-    assert publication.metadata["due"] == datetime.datetime(2021, 1, 13, 23, 59, 00)
-    assert publication.metadata["released"] == datetime.datetime(2021, 1, 6, 23, 59, 00)
 
 
 def test_read_publication_with_unknown_relative_field_raises(write_file):

@@ -5,4 +5,4 @@ metadata:
 artifacts:
     template.zip:
         recipe: touch template.zip
-        release_time: metadata.date
+        release_time: ${self.metadata.date}

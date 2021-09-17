@@ -175,7 +175,7 @@ def _publication_file_base_schema():
     return {
         "ready": {"type": "boolean", "default": True, "nullable": True},
         "release_time": {
-            "type": ["datetime", "string"],
+            "type": "datetime",
             "default": None,
             "nullable": True,
         },
@@ -201,7 +201,7 @@ def _publication_file_base_schema():
 
 
 
-def read_publication_file(path, schema=None, template_vars=None, date_context=None):
+def read_publication_file(path, schema=None, template_vars=None):
     """Read a :class:`Publication` from a yaml file.
 
     Parameters
@@ -658,26 +658,18 @@ def _make_collections(collection_paths, input_directory, callbacks):
     return collections
 
 
-def _add_previous_keys(date_context, collection):
-    copy = date_context._replace()
-
+def _add_previous_keys(template_vars, collection):
+    """Add the resolved previous publication file to the template_vars."""
     if not collection.schema.is_ordered:
-        return copy
+        return
 
     # the previous publication was just the last one added to collection.publications
     try:
         previous_key = list(collection.publications)[-1]
     except IndexError:
-        return copy
+        return
 
-    prev_meta = collection.publications[previous_key].metadata
-
-    known = {} if date_context.known is None else date_context.known.copy()
-    for key, value in prev_meta.items():
-        if isinstance(value, datetime.date):
-            known[f"previous.metadata.{key}"] = value
-
-    return date_context._replace(known=known)
+    template_vars['previous'] = collection.publications[previous_key]._deep_asdict()
 
 
 def _make_publications(
@@ -707,6 +699,9 @@ def _make_publications(
         A date context used to evaluate smart dates.
 
     """
+    if template_vars is None:
+        template_vars = {}
+
     for path, collection_path in publication_paths.items():
         if collection_path is None:
             collection_key = "default"
@@ -717,13 +712,12 @@ def _make_publications(
 
         collection = collections[collection_key]
 
-        publication_date_context = _add_previous_keys(date_context, collection)
+        _add_previous_keys(template_vars, collection)
 
         file_path = path / constants.PUBLICATION_FILE
         publication = read_publication_file(
             file_path,
             schema=collection.schema,
-            date_context=publication_date_context,
             template_vars=template_vars,
         )
 

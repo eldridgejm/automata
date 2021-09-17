@@ -1,7 +1,7 @@
 {
   description = "Python package for automating the publication of course materials.";
 
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/20.03;
+  inputs.nixpkgs.url = github:NixOS/nixpkgs/21.05;
 
   inputs.dictconfig.url = github:eldridgejm/dictconfig/master;
   inputs.dictconfig.inputs.nixpkgs.follows = "nixpkgs";
@@ -15,16 +15,16 @@
         automata = forAllSystems (system:
           with import nixpkgs { system = "${system}"; };
 
-            python3Packages.buildPythonPackage {
+            python38Packages.buildPythonPackage {
               name = "automata";
               src = ./.;
-              propagatedBuildInputs = with python3Packages; [ 
+              propagatedBuildInputs = with python38Packages; [ 
                 pyyaml
                 cerberus
                 jinja2
                 dictconfig.outputs.defaultPackage.${system}
               ];
-              nativeBuildInputs = with python3Packages; [ pytest black ipython sphinx sphinx_rtd_theme ];
+              nativeBuildInputs = with python38Packages; [ pytest black ipython sphinx sphinx_rtd_theme ];
             }
 
           );
