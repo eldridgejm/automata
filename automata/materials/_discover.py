@@ -1,13 +1,9 @@
-import typing
-import datetime
 import pathlib
-import re
-from collections import namedtuple, deque, OrderedDict
+from collections import deque, OrderedDict
 
 import cerberus
 import dictconfig
 import yaml
-import jinja2
 
 from .types import (
     UnbuiltArtifact,
@@ -16,8 +12,8 @@ from .types import (
     Universe,
     Schema,
 )
-from .exceptions import ValidationError, DiscoveryError
-from ._validate import validate, _PublicationValidator
+from .exceptions import DiscoveryError
+from ._validate import _PublicationValidator
 from . import constants
 
 
@@ -25,46 +21,10 @@ from . import constants
 # --------------------------------------------------------------------------------------
 
 
-def read_collection_file(path):
-    """Read a :class:`Collection` from a yaml file.
-
-    Parameters
-    ----------
-    path : pathlib.Path
-        Path to the collection file.
-
-    Returns
-    -------
-    Collection
-        The collection object with no attached publications.
-
-    Notes
-    -----
-    The file should have one key, "schema", whose value is a dictionary with
-    the following keys/values:
-
-    - required_artifacts
-        A list of artifacts names that are required
-    - optional_artifacts [optional]
-        A list of artifacts that are optional. If not provided, the default value of []
-        (empty list) will be used.
-    - metadata_schema [optional]
-        A dictionary describing a schema for validating publication metadata.  The
-        dictionary should deserialize to something recognized by the cerberus package.
-        If not provided, the default value of None will be used.
-    - allow_unspecified_artifacts [optional]
-        Whether or not to allow unspecified artifacts in the publications.
-        Default: False.
-
-    """
-    with path.open() as fileobj:
-        contents = yaml.load(fileobj, Loader=yaml.Loader)
-
-    # define the structure of the collections file. we require only the
-    # 'required_artifacts' field.
-    validator = cerberus.Validator(
-        {
+def _collection_file_base_schema():
+    return {
             "schema": {
+                "type": "dict",
                 "schema": {
                     "required_artifacts": {
                         "type": "list",
@@ -89,12 +49,63 @@ def read_collection_file(path):
                     "is_ordered": {"type": "boolean", "default": False,},
                 },
             }
-        },
+        }
+
+def read_collection_file(path, external_variables=None):
+    """Read a :class:`Collection` from a yaml file.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to the collection file.
+    external_variables : dict
+        A dictionary of external variables available during interpolation.
+
+    Returns
+    -------
+    Collection
+        The collection object with no attached publications.
+
+    Notes
+    -----
+    The file should have one key, "schema", whose value is a dictionary with
+    the following keys/values:
+
+    - required_artifacts
+        A list of artifacts names that are required
+    - optional_artifacts [optional]
+        A list of artifacts that are optional. If not provided, the default value of []
+        (empty list) will be used.
+    - metadata_schema [optional]
+        A dictionary describing a schema for validating publication metadata.  The
+        dictionary should deserialize to something recognized by the cerberus package.
+        If not provided, the default value of None will be used.
+    - allow_unspecified_artifacts [optional]
+        Whether or not to allow unspecified artifacts in the publications.
+        Default: False.
+    - is_ordered [optional]
+        Is the collection enumerable? If so, set this to True. Defaults to False.
+        This must be True in order to use information from previous publications
+        in publication.yaml files.
+
+    """
+    if external_variables is None:
+        external_variables = {}
+
+    with path.open() as fileobj:
+        raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
+
+    resolved = _resolve_collection_file(raw_contents, external_variables, path)
+
+    # define the structure of the collections file. we require only the
+    # 'required_artifacts' field.
+    validator = cerberus.Validator(
+        _collection_file_base_schema(),
         require_all=True,
     )
 
     # validate and normalize
-    validated_contents = validator.validated(contents)
+    validated_contents = validator.validated(resolved)
 
     if validated_contents is None:
         raise DiscoveryError(str(validator.errors), path)
@@ -108,6 +119,39 @@ def read_collection_file(path):
 
     schema = Schema(**validated_contents["schema"])
     return Collection(schema=schema, publications={})
+
+
+def _resolve_collection_file(raw_contents, external_variables, path):
+    """Resolves (interpolates and parses) the raw collection file contents.
+
+    Parameters
+    ----------
+    raw_contents : dict
+        The raw dictionary loaded from the publication file.
+    external_variables : Optional[dict]
+        A dictionary of external_variables passed to dictconfig and used during
+        interpolation.
+    path : pathlib.Path
+        The path to the collection file being read. Used to format error messages.
+
+    Returns
+    -------
+    dict
+        The resolved dictionary.
+
+    """
+    base_schema = _collection_file_base_schema()
+    base_schema['schema']['schema']['metadata_schema']['valuesrules'] = {'type': 'any'}
+    schema = {
+        'type': 'dict',
+        'schema': base_schema
+    }
+
+    try:
+        return dictconfig.resolve(raw_contents, schema, external_variables=external_variables)
+    except dictconfig.exceptions.ResolutionError as exc:
+        raise DiscoveryError(str(exc), path)
+
 
 
 # read_publication_file

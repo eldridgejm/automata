@@ -279,6 +279,42 @@ def test_read_collection_example(write_file):
     assert collection.schema.metadata_schema["name"]["type"] == "string"
 
 
+def test_read_collection_file_resolves(write_file):
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            schema:
+                required_artifacts:
+                    - homework
+                    - solution
+                    - ${self.schema.optional_artifacts.0}
+
+                optional_artifacts:
+                    - ${external.optional}
+
+                metadata_schema:
+                    name:
+                        type: string
+                    due:
+                        type: date
+            """
+        ),
+    )
+
+    # when
+    collection = automata.materials.read_collection_file(path, {
+        'external': {
+            'optional': 'template'
+            }
+        })
+
+    # then
+    assert collection.schema.required_artifacts == ["homework", "solution", "template"]
+    assert collection.schema.optional_artifacts == ["template"]
+    assert collection.schema.metadata_schema["name"]["type"] == "string"
+
 def test_read_collection_validates_fields(write_file):
     path = write_file(
         "collection.yaml",
