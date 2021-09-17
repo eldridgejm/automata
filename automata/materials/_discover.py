@@ -19,7 +19,6 @@ from .types import (
 )
 from .exceptions import ValidationError, DiscoveryError
 from ._validate import validate, _PublicationValidator
-from ._smartdates import resolve_smart_dates
 from . import constants
 
 
@@ -114,62 +113,6 @@ def read_collection_file(path):
 
 # read_publication_file
 # --------------------------------------------------------------------------------------
-
-
-def _resolve_smart_dates_in_metadata(metadata, metadata_schema, path, date_context):
-    def _is_smart_date(k):
-        try:
-            return metadata_schema[k]["type"] in {"smartdate", "smartdatetime"}
-        except Exception:
-            return False
-
-    smart_dates = {k: v for k, v in metadata.items() if _is_smart_date(k)}
-
-    known = {} if date_context.known is None else date_context.known.copy()
-    for k, v in metadata.items():
-        if not _is_smart_date(k):
-            known[k] = v
-
-    date_context = date_context._replace(known=known)
-
-    try:
-        resolved = resolve_smart_dates(smart_dates, date_context)
-    except ValidationError as exc:
-        raise DiscoveryError(str(exc), path)
-
-    result = metadata.copy()
-    for key, value in resolved.items():
-        result[key] = value
-
-    return result
-
-
-def _resolve_smart_dates_in_release_time(release_time, metadata, path, date_context):
-    # the release time can be None, or a datetime object
-    if not isinstance(release_time, str):
-        return release_time
-
-    smart_dates = {"release_time": release_time}
-    # we prepend "metadata." to every key, because the release_time has to reference
-    # things in metadata this way
-
-    known = {} if date_context.known is None else date_context.known.copy()
-    for k, v in metadata.items():
-        known["metadata." + k] = v
-
-    date_context = date_context._replace(known=known)
-
-    try:
-        resolved = resolve_smart_dates(smart_dates, date_context)["release_time"]
-    except ValidationError as exc:
-        raise DiscoveryError(str(exc), path)
-
-    if not isinstance(resolved, datetime.datetime):
-        raise DiscoveryError("release_time is not a datetime.", path)
-
-    return resolved
-
-
 
 def _publication_file_base_schema():
     return {
