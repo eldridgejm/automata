@@ -991,11 +991,8 @@ def test_read_publication_with_unknown_relative_field_raises(write_file):
 
 
 def test_discover_with_dates_relating_to_previous():
-    # given
-    date_context = automata.materials.DateContext(start_of_week_one=datetime.date(2021, 1, 4))
-
     # when
-    universe = automata.materials.discover(EXAMPLE_8_DIRECTORY, date_context=date_context)
+    universe = automata.materials.discover(EXAMPLE_8_DIRECTORY)
 
     # then
     publications = universe.collections["lectures"].publications

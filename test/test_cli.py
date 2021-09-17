@@ -36,27 +36,6 @@ def test_publish_cli_simple_example(make_input_directory, output_directory):
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
 
 
-def test_publish_cli_with_example_depending_on_week_start_date(
-    make_input_directory, output_directory
-):
-    # given
-    input_directory = make_input_directory("example_8")
-
-    # when
-    cli(
-        [
-            'build-materials',
-            str(input_directory),
-            str(output_directory),
-            "--start-of-week-one",
-            "2020-01-04",
-            "--ignore-release-time",
-        ]
-    )
-
-    # then
-    assert (output_directory / "lectures" / "01-intro").exists()
-
 
 def test_publish_cli_with_example_using_template_vars(
     make_input_directory, output_directory
@@ -79,8 +58,6 @@ def test_publish_cli_with_example_using_template_vars(
             'build-materials',
             str(input_directory),
             str(output_directory),
-            "--start-of-week-one",
-            "2020-01-04",
             "--ignore-release-time",
             "--vars",
             f"course:{input_directory}/myvars.yaml",

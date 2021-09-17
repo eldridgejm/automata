@@ -11,7 +11,7 @@ from ._build import BuildCallbacks, build
 from ._filter import FilterCallbacks, filter_nodes
 from ._publish import PublishCallbacks, publish
 from ._serialize import serialize
-from .types import UnbuiltArtifact, DateContext
+from .types import UnbuiltArtifact
 
 
 # cli
@@ -31,10 +31,6 @@ def build_materials(args):
 
         def now():
             return _now
-
-    date_context = DateContext()
-    if args.start_of_week_one is not None:
-        date_context = date_context._replace(start_of_week_one=args.start_of_week_one)
 
     if args.vars is None:
         template_vars = None
@@ -146,7 +142,6 @@ def build_materials(args):
     discovered = discover(
         args.input_directory,
         skip_directories=args.skip_directories,
-        date_context=date_context,
         template_vars=template_vars,
         callbacks=CLIDiscoverCallbacks(),
     )

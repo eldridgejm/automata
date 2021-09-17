@@ -83,12 +83,6 @@ def _register_build_materials_parser(parser):
         help="let stdout and stderr through when building artifacts",
     )
     parser.add_argument(
-        "--start-of-week-one",
-        type=datetime.date.fromisoformat,
-        default=None,
-        help="the start of week one. used for smart dates in publication files.",
-    )
-    parser.add_argument(
         "--now", default=None, help="run as if this is the current time"
     )
     parser.add_argument(

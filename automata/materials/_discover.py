@@ -15,7 +15,6 @@ from .types import (
     Collection,
     Universe,
     Schema,
-    DateContext,
 )
 from .exceptions import ValidationError, DiscoveryError
 from ._validate import validate, _PublicationValidator
@@ -307,144 +306,6 @@ def _construct_publication_file_schema(schema, raw_contents):
         },
     }
 
-def read_publication_file_old(path, schema=None, date_context=None, template_vars=None):
-    """Read a :class:`Publication` from a yaml file.
-
-    Parameters
-    ----------
-    path : pathlib.Path
-        Path to the collection file.
-    schema : Optional[Schema]
-        A schema for validating the publication. Default: None, in which case the
-        publication's metadata are not validated.
-    date_context : Optional[DateContext]
-        A context used to evaluate smart dates. If None, no context is provided.
-
-    Returns
-    -------
-    Publication
-        The publication.
-
-    Raises
-    ------
-    DiscoveryError
-        If the publication file's contents are invalid.
-
-    Notes
-    -----
-
-    The file should have a "metadata" key whose value is a dictionary
-    of metadata. It should also have an "artifacts" key whose value is a
-    dictionary mapping artifact names to artifact definitions.
-
-    Optionally, the file can have a "release_time" key providing a time at
-    which the publication should be considered released. It may also have
-    a "ready" key; if this is False, the publication will not be considered
-    released.
-
-    If the ``schema`` argument is not provided, only very basic validation is
-    performed by this function. Namely, the metadata schema and
-    required/optional artifacts are not enforced. See the :func:`validate`
-    function for validating these aspects of the publication. If the schema is
-    provided, :func:`validate` is called as a convenience.
-
-
-    """
-    if date_context is None:
-        date_context = DateContext({})
-
-    if template_vars is None:
-        template_vars = {}
-
-    with path.open() as fileobj:
-        raw_contents = fileobj.read()
-
-    # interpolation on the publication file using template_vars
-    contents = yaml.load(raw_contents, Loader=yaml.Loader)
-
-    # we'll just do a quick check of the file structure first. validating the metadata
-    # schema and checking that the right artifacts are provided will be done later
-    quick_schema = {
-        "ready": {"type": "boolean", "default": True, "nullable": True},
-        "release_time": {
-            "type": ["datetime", "string"],
-            "default": None,
-            "nullable": True,
-        },
-        "metadata": {"type": "dict", "required": False, "default": {}},
-        "artifacts": {
-            "type": "dict",
-            "required": True,
-            "schema": {}
-        },
-    }
-
-    artifact_schema = {
-            'type': 'dict',
-            'schema': {
-            "file": {"type": "string", "default": None, "nullable": True},
-            "recipe": {"type": "string", "default": None, "nullable": True},
-            "ready": {"type": "boolean", "default": True, "nullable": True},
-            "missing_ok": {"type": "boolean", "default": False},
-            "release_time": {
-                "type": "datetime",
-                "default": None,
-                "nullable": True,
-                }
-            }
-        }
-
-    for artifact_name in contents['artifacts']:
-        quick_schema['artifacts']['schema'][artifact_name] = artifact_schema
-
-    # validate and normalize the contents
-    validator = _PublicationValidator(quick_schema, require_all=True)
-    validated = validator.validated(contents)
-
-    if validated is None:
-        raise DiscoveryError(str(validator.errors), path)
-
-    sch = quick_schema.copy()
-    sch['metadata'] = {'type': 'dict', 'schema': schema.metadata_schema}
-
-    validated = dictconfig.resolve(validated, {'type': 'dict', 'schema': sch},
-            external_variables=template_vars)
-    metadata = validated['metadata']
-
-    # convert each artifact to an Artifact object
-    artifacts = {}
-    for key, definition in validated["artifacts"].items():
-        # handle relative release times
-        definition["release_time"] = _resolve_smart_dates_in_release_time(
-            definition["release_time"], metadata, path, date_context
-        )
-
-        # if no file is provided, use the key
-        if definition["file"] is None:
-            definition["file"] = key
-
-        artifacts[key] = UnbuiltArtifact(workdir=path.parent.absolute(), **definition)
-
-    # handle publication release time
-    release_time = _resolve_smart_dates_in_release_time(
-        validated["release_time"], metadata, path, date_context
-    )
-
-    publication = Publication(
-        metadata=metadata,
-        artifacts=artifacts,
-        ready=validated["ready"],
-        release_time=release_time,
-    )
-
-    if schema is not None:
-        try:
-            validate(publication, against=schema)
-        except ValidationError as exc:
-            raise DiscoveryError(str(exc), path)
-
-    return publication
-
 
 # discovery: discover()
 # --------------------------------------------------------------------------------------
@@ -621,7 +482,6 @@ def _make_publications(
     collections,
     *,
     callbacks,
-    date_context,
     template_vars,
 ):
     """Make the Publication objects.
@@ -638,8 +498,8 @@ def _make_publications(
         Publication objects will be added to these Collection objects in-place.
     callbacks : DiscoverCallbacks
         The callbacks to be invoked when interesting things happen.
-    date_context : DateContext
-        A date context used to evaluate smart dates.
+    template_vars : Optional[dict]
+        A dictionary of extra variables to be used during interpolation.
 
     """
     if template_vars is None:
@@ -680,7 +540,6 @@ def discover(
     input_directory,
     skip_directories=None,
     callbacks=None,
-    date_context=None,
     template_vars=None,
 ):
     """Discover the collections and publications in the filesystem.
@@ -696,9 +555,8 @@ def discover(
         Callbacks to be invoked during the discovery. If omitted, no callbacks
         are executed. See :class:`DiscoverCallbacks` for the possible callbacks
         and their arguments.
-    date_context : Optional[DateContext]
-        A date context used to evaluate smart dates. If ``None``, an empty context is
-        used.
+    template_vars : Optional[dict]
+        A dictionary of extra variables to be available during interpolation.
 
     Returns
     -------
@@ -708,9 +566,6 @@ def discover(
     """
     if callbacks is None:
         callbacks = DiscoverCallbacks()
-
-    if date_context is None:
-        date_context = DateContext()
 
     collection_paths, publication_paths = _search_for_collections_and_publications(
         input_directory, skip_directories=skip_directories, callbacks=callbacks
@@ -723,7 +578,6 @@ def discover(
         publication_paths,
         input_directory,
         collections,
-        date_context=date_context,
         callbacks=callbacks,
         template_vars=template_vars,
     )
