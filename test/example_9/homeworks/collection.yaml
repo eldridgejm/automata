@@ -11,7 +11,7 @@ schema:
             type: string
         due:
             type: date
-        released: 
+        released:
             type: date
 
     is_ordered: true

@@ -10,7 +10,7 @@ schema:
         name:
             type: string
         due:
-            type: date
+            type: datetime
         released: 
             type: date
 

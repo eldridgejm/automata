@@ -5,6 +5,7 @@ import re
 from collections import namedtuple, deque, OrderedDict
 
 import cerberus
+import dictconfig
 import yaml
 import jinja2
 
@@ -169,7 +170,201 @@ def _resolve_smart_dates_in_release_time(release_time, metadata, path, date_cont
     return resolved
 
 
-def read_publication_file(path, schema=None, date_context=None, template_vars=None):
+
+def _publication_file_base_schema():
+    return {
+        "ready": {"type": "boolean", "default": True, "nullable": True},
+        "release_time": {
+            "type": ["datetime", "string"],
+            "default": None,
+            "nullable": True,
+        },
+        "artifacts": {
+            "required": True,
+            "type": "dict",
+            "valuesrules": {
+                "type": "dict",
+                "schema": {
+                    "file": {"type": "string", "default": None, "nullable": True},
+                    "recipe": {"type": "string", "default": None, "nullable": True},
+                    "ready": {"type": "boolean", "default": True, "nullable": True},
+                    "missing_ok": {"type": "boolean", "default": False},
+                    "release_time": {
+                        "type": "datetime",
+                        "default": None,
+                        "nullable": True,
+                    },
+                }
+            },
+        },
+    }
+
+
+
+def read_publication_file(path, schema=None, template_vars=None, date_context=None):
+    """Read a :class:`Publication` from a yaml file.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to the collection file.
+    schema : Optional[Schema]
+        A schema for validating the publication. Default: None, in which case the
+        publication's metadata are not validated.
+    template_vars : dict
+        A dictionary of external variables that will be available during interpolation
+        of the publication file.
+
+    Returns
+    -------
+    Publication
+        The publication.
+
+    Raises
+    ------
+    DiscoveryError
+        If the publication file's contents are invalid.
+
+    Notes
+    -----
+
+    The file should have a "metadata" key whose value is a dictionary
+    of metadata. It should also have an "artifacts" key whose value is a
+    dictionary mapping artifact names to artifact definitions.
+
+    Optionally, the file can have a "release_time" key providing a time at
+    which the publication should be considered released. It may also have
+    a "ready" key; if this is False, the publication will not be considered
+    released.
+
+    If the ``schema`` argument is not provided, only very basic validation is
+    performed by this function. Namely, the metadata schema and
+    required/optional artifacts are not enforced. See the :func:`validate`
+    function for validating these aspects of the publication. If the schema is
+    provided, :func:`validate` is called as a convenience.
+
+    """
+    with path.open() as fileobj:
+        raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
+
+    metadata_schema = None if schema is None else schema.metadata_schema
+
+    resolved = _resolve_publication_file(raw_contents, metadata_schema, template_vars, path)
+    validated = _validate_publication_file(resolved, schema, path)
+
+    # convert each artifact to an Artifact object
+    artifacts = {}
+    for key, definition in validated["artifacts"].items():
+        # if no file is provided, use the key
+        if definition["file"] is None:
+            definition["file"] = key
+
+        artifacts[key] = UnbuiltArtifact(workdir=path.parent.absolute(), **definition)
+
+    publication = Publication(
+        metadata=validated['metadata'],
+        artifacts=artifacts,
+        ready=validated["ready"],
+        release_time=validated['release_time'],
+    )
+
+    return publication
+
+
+def _resolve_publication_file(raw_contents, metadata_schema, external_variables, path):
+    """Resolves (interpolates and parses) the raw publication file contents.
+
+    Parameters
+    ----------
+    raw_contents : dict
+        The raw dictionary loaded from the publication file.
+    metadata_schema : Optional[dict]
+        A dictconfig schema for the "metadata" field of `raw_contents`. If this is
+        None, the schema passed to dictconfig will not have a "metadata" field,
+        and so it will not be interpolated/parsed (all leafs will be left as-is).
+    external_variables : Optional[dict]
+        A dictionary of external_variables passed to dictconfig and used during
+        interpolation.
+
+    Returns
+    -------
+    dict
+        The resolved dictionary.
+
+    """
+    schema = {
+        'type': 'dict',
+        'schema': _publication_file_base_schema()
+    }
+
+    if metadata_schema is not None:
+        schema['schema']['metadata'] = {'type': 'dict', 'schema': metadata_schema}
+
+    try:
+        return dictconfig.resolve(raw_contents, schema, external_variables=external_variables)
+    except dictconfig.exceptions.ResolutionError as exc:
+        raise DiscoveryError(str(exc), path)
+
+
+def _validate_publication_file(resolved, schema, path):
+    full_schema = _publication_file_base_schema()
+
+    full_schema["metadata"] = {"type": "dict", "required": False, "default":
+            {}}
+
+    if schema is not None and schema.metadata_schema is not None:
+        full_schema['metadata']['schema'] = schema.metadata_schema
+
+    # validate and normalize the contents
+    validator = _PublicationValidator(full_schema, require_all=True)
+    validated = validator.validated(resolved)
+
+    if validated is None:
+        raise DiscoveryError(str(validator.errors), path)
+
+    return validated
+
+
+def _construct_publication_file_schema(schema, raw_contents):
+    """Constructs a schema for validating and resolving the publication file.
+
+    We could in principle directly construct a static Cerberus schema for validating a
+    publication file, however, it would use features that are not supported by the simple
+    schema grammar expected by dictconfig. For example, we do not know what artifacts
+    will be supplied by the publication file, so we might use the "valuesrules"
+    rule in a Cerberus schema to provide a schema for dict values without listing the keys.
+    But dictconfig doesn't understand this 
+
+    """
+
+
+    quick_schema = {
+        "ready": {"type": "boolean", "default": True, "nullable": True},
+        "release_time": {
+            "type": ["datetime", "string"],
+            "default": None,
+            "nullable": True,
+        },
+        "metadata": {"type": "dict", "required": False, "default": {}},
+        "artifacts": {
+            "required": True,
+            "naluesrules": {
+                "schema": {
+                    "file": {"type": "string", "default": None, "nullable": True},
+                    "recipe": {"type": "string", "default": None, "nullable": True},
+                    "ready": {"type": "boolean", "default": True, "nullable": True},
+                    "missing_ok": {"type": "boolean", "default": False},
+                    "release_time": {
+                        "type": "datetime",
+                        "default": None,
+                        "nullable": True,
+                    },
+                }
+            },
+        },
+    }
+
+def read_publication_file_old(path, schema=None, date_context=None, template_vars=None):
     """Read a :class:`Publication` from a yaml file.
 
     Parameters
@@ -222,10 +417,7 @@ def read_publication_file(path, schema=None, date_context=None, template_vars=No
         raw_contents = fileobj.read()
 
     # interpolation on the publication file using template_vars
-    template = jinja2.Template(raw_contents, undefined=jinja2.StrictUndefined)
-    interpolated = template.render(**template_vars)
-
-    contents = yaml.load(interpolated, Loader=yaml.Loader)
+    contents = yaml.load(raw_contents, Loader=yaml.Loader)
 
     # we'll just do a quick check of the file structure first. validating the metadata
     # schema and checking that the right artifacts are provided will be done later
@@ -238,22 +430,29 @@ def read_publication_file(path, schema=None, date_context=None, template_vars=No
         },
         "metadata": {"type": "dict", "required": False, "default": {}},
         "artifacts": {
+            "type": "dict",
             "required": True,
-            "valuesrules": {
-                "schema": {
-                    "file": {"type": "string", "default": None, "nullable": True},
-                    "recipe": {"type": "string", "default": None, "nullable": True},
-                    "ready": {"type": "boolean", "default": True, "nullable": True},
-                    "missing_ok": {"type": "boolean", "default": False},
-                    "release_time": {
-                        "type": "smartdatetime",
-                        "default": None,
-                        "nullable": True,
-                    },
-                }
-            },
+            "schema": {}
         },
     }
+
+    artifact_schema = {
+            'type': 'dict',
+            'schema': {
+            "file": {"type": "string", "default": None, "nullable": True},
+            "recipe": {"type": "string", "default": None, "nullable": True},
+            "ready": {"type": "boolean", "default": True, "nullable": True},
+            "missing_ok": {"type": "boolean", "default": False},
+            "release_time": {
+                "type": "datetime",
+                "default": None,
+                "nullable": True,
+                }
+            }
+        }
+
+    for artifact_name in contents['artifacts']:
+        quick_schema['artifacts']['schema'][artifact_name] = artifact_schema
 
     # validate and normalize the contents
     validator = _PublicationValidator(quick_schema, require_all=True)
@@ -262,12 +461,12 @@ def read_publication_file(path, schema=None, date_context=None, template_vars=No
     if validated is None:
         raise DiscoveryError(str(validator.errors), path)
 
-    metadata = validated["metadata"]
+    sch = quick_schema.copy()
+    sch['metadata'] = {'type': 'dict', 'schema': schema.metadata_schema}
 
-    if hasattr(schema, "metadata_schema"):
-        metadata = _resolve_smart_dates_in_metadata(
-            metadata, schema.metadata_schema, path, date_context
-        )
+    validated = dictconfig.resolve(validated, {'type': 'dict', 'schema': sch},
+            external_variables=template_vars)
+    metadata = validated['metadata']
 
     # convert each artifact to an Artifact object
     artifacts = {}

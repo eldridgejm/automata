@@ -455,7 +455,7 @@ def test_read_publication_without_release_time(write_file):
                 solution:
                     file: ./solution.pdf
                     recipe: make solution
-                    release_time: metadata.due
+                    release_time: ${self.metadata.due}
             """
         ),
     )
@@ -898,7 +898,7 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
         metadata_schema={
             "name": {"type": "string"},
             "due": {"type": "datetime"},
-            "released": {"type": "smartdatetime"},
+            "released": {"type": "datetime"},
         },
     )
 
@@ -921,7 +921,7 @@ def test_read_publication_with_relative_dates_in_metadata_checks_type(write_file
             metadata:
                 name: Homework 01
                 due: 2020-09-10
-                released: 7 days before due
+                released: 7 days before ${ self.metadata.due }
 
             artifacts:
                 homework:
@@ -940,7 +940,7 @@ def test_read_publication_with_relative_dates_in_metadata_checks_type(write_file
         metadata_schema={
             "name": {"type": "string"},
             "due": {"type": "date"},
-            "released": {"type": "smartdatetime"},
+            "released": {"type": "datetime"},
         },
     )
 
@@ -960,7 +960,7 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
             metadata:
                 name: Homework 01
                 due: 2020-09-10
-                released: due
+                released: ${ self.metadata.due }
 
             artifacts:
                 homework:
@@ -979,7 +979,7 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
         metadata_schema={
             "name": {"type": "string"},
             "due": {"type": "date"},
-            "released": {"type": "smartdate"},
+            "released": {"type": "date"},
         },
     )
 
@@ -1018,8 +1018,8 @@ def test_read_publication_with_date_relative_to_week(write_file):
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "name": {"type": "string"},
-            "due": {"type": "smartdate"},
-            "released": {"type": "smartdate"},
+            "due": {"type": "date"},
+            "released": {"type": "date"},
         },
     )
 
@@ -1062,8 +1062,8 @@ def test_read_publication_with_datetime_relative_to_week(write_file):
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "name": {"type": "string"},
-            "due": {"type": "smartdate"},
-            "released": {"type": "smartdate"},
+            "due": {"type": "date"},
+            "released": {"type": "date"},
         },
     )
 
@@ -1107,7 +1107,7 @@ def test_read_publication_with_unknown_relative_field_raises(write_file):
         metadata_schema={
             "name": {"type": "string"},
             "due": {"type": "date"},
-            "released": {"type": "smartdate"},
+            "released": {"type": "date"},
         },
     )
 
