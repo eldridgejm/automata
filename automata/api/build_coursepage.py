@@ -10,32 +10,8 @@ from . import _coursepage
 PageError = _coursepage.PageError
 
 
-def build_coursepage(args):
-    context = {}
-    if args.context is not None:
-        with args.context.open() as fileobj:
-            context[args.context.stem] = yaml.load(fileobj, Loader=yaml.Loader)
 
-    if args.now is None:
-        now = datetime.datetime.now
-    else:
-        try:
-            n_days = int(args.now)
-            _now = datetime.datetime.now() + datetime.timedelta(days=n_days)
-        except ValueError:
-            _now = datetime.datetime.fromisoformat(args.now)
-
-        def now():
-            return _now
-
-        print(f"Running as if it is currently {_now}")
-
-    abstract(
-        args.input_path, args.output_path, args.materials, context=context, now=now
-    )
-
-
-def abstract(
+def build_coursepage(
     input_path,
     output_path,
     published_path=None,

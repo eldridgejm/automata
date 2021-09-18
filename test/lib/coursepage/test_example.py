@@ -4,7 +4,7 @@ import datetime
 import lxml.html
 
 import automata
-from automata.api import abstract, PageError
+from automata.api import build_coursepage, PageError
 
 from pytest import fixture, mark
 
@@ -95,7 +95,7 @@ def test_second_homework_visible(publish_on_oct_15):
     # when
     path = publish_on_oct_15
     clean_build(path / "website" / "_build")
-    abstract(
+    build_coursepage(
         path / "website/",
         path / "website/_build",
         path / "website/_build/published",
@@ -127,7 +127,7 @@ def test_third_homework_visible_on_16th(publish_on_oct_16):
     # when
     path = publish_on_oct_16
     clean_build(path / "website" / "_build")
-    abstract(
+    build_coursepage(
         path / "website/",
         path / "website/_build",
         path / "website/_build/published",
@@ -159,7 +159,7 @@ def test_third_homework_solutions_not_posted_on_16th(publish_on_oct_16):
     # when
     path = publish_on_oct_16
     clean_build(path / "website" / "_build")
-    abstract(
+    build_coursepage(
         path / "website/",
         path / "website/_build",
         path / "website/_build/published",
@@ -187,7 +187,7 @@ def test_homework_2_solutions_posted_on_16th(publish_on_oct_16):
     # when
     path = publish_on_oct_16
     clean_build(path / "website" / "_build")
-    abstract(
+    build_coursepage(
         path / "website/",
         path / "website/_build",
         path / "website/_build/published",
@@ -215,7 +215,7 @@ def test_homework_2_solutions_not_posted_on_15th(publish_on_oct_16):
     # when
     path = publish_on_oct_16
     clean_build(path / "website" / "_build")
-    abstract(
+    build_coursepage(
         path / "website/",
         path / "website/_build",
         path / "website/_build/published",
@@ -235,7 +235,7 @@ def test_artifact_text_if_missing(publish_on_oct_16):
     # when
     path = publish_on_oct_16
     clean_build(path / "website" / "_build")
-    abstract(
+    build_coursepage(
         path / "website/",
         path / "website/_build",
         path / "website/_build/published",
@@ -262,7 +262,7 @@ def test_requires_metadata(publish_on_oct_16):
     # when
     path = publish_on_oct_16
     clean_build(path / "website" / "_build")
-    abstract(
+    build_coursepage(
         path / "website/",
         path / "website/_build",
         path / "website/_build/published",

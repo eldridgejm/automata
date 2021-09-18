@@ -2,8 +2,9 @@ import argparse
 import datetime
 import pathlib
 
-from automata.api.publish_materials import publish_materials
-from automata.api.build_coursepage import build_coursepage
+import yaml
+
+from automata.api import publish_materials, build_coursepage
 
 
 def _arg_directory(s):
@@ -60,7 +61,19 @@ def _register_publish_materials(parser):
         allows you to inject a fixed, known time.
 
     """
-    parser.set_defaults(cmd=publish_materials)
+
+    def _publish_materials(args):
+        return publish_materials(args.input_directory,
+                args.output_directory,
+                ignore_release_time=args.ignore_release_time,
+                artifact_filter=args.artifact_filter,
+                vars=args.vars,
+                skip_directories=args.skip_directories,
+                verbose=args.verbose,
+                now=args.now
+                )
+
+    parser.set_defaults(cmd=_publish_materials)
     parser.add_argument("input_directory", type=_arg_directory)
     parser.add_argument("output_directory", type=_arg_output_directory)
     parser.add_argument(
@@ -103,4 +116,30 @@ def _register_build_coursepage_parser(parser):
     parser.add_argument("--materials")
     parser.add_argument("--now")
     parser.add_argument("--context", type=pathlib.Path)
-    parser.set_defaults(cmd=build_coursepage)
+    parser.set_defaults(cmd=_build_coursepage_cli)
+
+
+def _build_coursepage_cli(args):
+    context = {}
+    if args.context is not None:
+        with args.context.open() as fileobj:
+            context[args.context.stem] = yaml.load(fileobj, Loader=yaml.Loader)
+
+    if args.now is None:
+        now = datetime.datetime.now
+    else:
+        try:
+            n_days = int(args.now)
+            _now = datetime.datetime.now() + datetime.timedelta(days=n_days)
+        except ValueError:
+            _now = datetime.datetime.fromisoformat(args.now)
+
+        def now():
+            return _now
+
+        print(f"Running as if it is currently {_now}")
+
+    build_coursepage(
+        args.input_path, args.output_path, args.materials, context=context, now=now
+    )
+

@@ -18,23 +18,26 @@ from automata.lib.materials.types import UnbuiltArtifact
 # --------------------------------------------------------------------------------------
 
 
-def publish_materials(args):
-    if args.now is None:
+def publish_materials(input_directory, output_directory, ignore_release_time=False,
+        artifact_filter=None, vars=None, skip_directories=None, verbose=False,
+        now=None):
+
+    if now is None:
         now = datetime.datetime.now
     else:
         try:
-            n_days = int(args.now)
+            n_days = int(now)
             _now = datetime.datetime.now() + datetime.timedelta(days=n_days)
         except ValueError:
-            _now = datetime.datetime.fromisoformat(args.now)
+            _now = datetime.datetime.fromisoformat(now)
 
         def now():
             return _now
 
-    if args.vars is None:
+    if vars is None:
         external_variables = None
     else:
-        name, path = args.vars
+        name, path = vars
         with open(path) as fileobj:
             values = yaml.load(fileobj, Loader=yaml.Loader)
         external_variables = {name: values}
@@ -68,14 +71,14 @@ def publish_materials(args):
             print(f"{_normal(publication_name)}")
 
         def on_skip(self, path):
-            relpath = path.relative_to(args.input_directory)
+            relpath = path.relative_to(input_directory)
             print(_warning(f"Skipping directory {relpath}"))
 
     class CLIBuildCallbacks(BuildCallbacks):
         def on_build(self, key, node):
             if isinstance(node, UnbuiltArtifact):
                 relative_workdir = node.workdir.relative_to(
-                    args.input_directory.absolute()
+                    input_directory.absolute()
                 )
                 path = relative_workdir / key
                 msg = _normal(str(path))
@@ -92,7 +95,7 @@ def publish_materials(args):
             else:
                 for key, artifact in node.artifacts.items():
                     relative_workdir = artifact.workdir.relative_to(
-                        args.input_directory.absolute()
+                        input_directory.absolute()
                     )
                     path = relative_workdir / key
                     print(str(path) + " " + _warning(msg))
@@ -109,7 +112,7 @@ def publish_materials(args):
             else:
                 for key, artifact in node.artifacts.items():
                     relative_workdir = artifact.workdir.relative_to(
-                        args.input_directory.absolute()
+                        input_directory.absolute()
                     )
                     path = relative_workdir / key
                     print(str(path) + " " + _warning(msg))
@@ -128,8 +131,8 @@ def publish_materials(args):
 
     class CLIPublishCallbacks(PublishCallbacks):
         def on_copy(self, src, dst):
-            src = src.relative_to(args.input_directory.absolute())
-            dst = dst.relative_to(args.output_directory)
+            src = src.relative_to(input_directory.absolute())
+            dst = dst.relative_to(output_directory)
             msg = f"<input_directory>/{src} to <output_directory>/{dst}."
             print(_normal(msg))
 
@@ -139,20 +142,20 @@ def publish_materials(args):
     print(_header("Discovered publications:"))
 
     discovered = discover(
-        args.input_directory,
-        skip_directories=args.skip_directories,
+        input_directory,
+        skip_directories=skip_directories,
         external_variables=external_variables,
         callbacks=CLIDiscoverCallbacks(),
     )
 
-    if args.artifact_filter is not None:
+    if artifact_filter is not None:
         # filter out artifacts whose keys do not match this string
 
         def keep(k, v):
             if not isinstance(v, UnbuiltArtifact):
                 return True
             else:
-                return k == args.artifact_filter
+                return k == artifact_filter
 
         discovered = filter_nodes(
             discovered, keep, remove_empty_nodes=True, callbacks=CLIFilterCallbacks()
@@ -164,15 +167,15 @@ def publish_materials(args):
     built = build(
         discovered,
         callbacks=CLIBuildCallbacks(),
-        ignore_release_time=args.ignore_release_time,
-        verbose=args.verbose,
+        ignore_release_time=ignore_release_time,
+        verbose=verbose,
         now=now,
     )
 
     print()
     print(_header("Copying:"))
-    published = publish(built, args.output_directory, callbacks=CLIPublishCallbacks())
+    published = publish(built, output_directory, callbacks=CLIPublishCallbacks())
 
     # serialize the results
-    with (args.output_directory / "materials.json").open("w") as fileobj:
+    with (output_directory / "materials.json").open("w") as fileobj:
         fileobj.write(serialize(published))
