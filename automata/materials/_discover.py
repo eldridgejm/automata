@@ -18,6 +18,7 @@ from . import constants
 # read_collection_file
 # --------------------------------------------------------------------------------------
 
+
 def read_collection_file(path, external_variables=None):
     """Read a :class:`Collection` from a yaml file.
 
@@ -94,7 +95,7 @@ def _collection_file_schema():
                         "type": "dict",
                         "extra_keys_schema": {"type": "any"},
                         "default": None,
-                        "nullable": True
+                        "nullable": True,
                     },
                     "allow_unspecified_artifacts": {
                         "type": "boolean",
@@ -105,6 +106,7 @@ def _collection_file_schema():
             }
         },
     }
+
 
 def _resolve_collection_file(raw_contents, external_variables, path):
     """Resolves (interpolates and parses) the raw collection file contents.
@@ -220,8 +222,6 @@ def read_publication_file(path, publication_schema=None, external_variables=None
         release_time=resolved["release_time"],
     )
 
-    
-
     return publication
 
 
@@ -231,32 +231,32 @@ def _make_publication_file_schema(publication_schema):
         publication_schema = PublicationSchema([], allow_unspecified_artifacts=True)
 
     artifact_schema = {
-            "type": "dict",
-            "optional_keys": {
-                "file": {"type": "string", "nullable": True, "default": None},
-                "recipe": {"type": "string", "nullable": True, "default": None},
-                "ready": {"type": "boolean", "default": True},
-                "missing_ok": {"type": "boolean", "default": False},
-                "release_time": {"type": "datetime", "nullable": True, "default": None},
-            },
-        }
+        "type": "dict",
+        "optional_keys": {
+            "file": {"type": "string", "nullable": True, "default": None},
+            "recipe": {"type": "string", "nullable": True, "default": None},
+            "ready": {"type": "boolean", "default": True},
+            "missing_ok": {"type": "boolean", "default": False},
+            "release_time": {"type": "datetime", "nullable": True, "default": None},
+        },
+    }
 
     artifacts_schema = {
-            'type': 'dict',
-            'required_keys': {},
-            'optional_keys': {},
+        "type": "dict",
+        "required_keys": {},
+        "optional_keys": {},
     }
 
     if publication_schema.required_artifacts is not None:
         for artifact in publication_schema.required_artifacts:
-            artifacts_schema['required_keys'][artifact] = artifact_schema
+            artifacts_schema["required_keys"][artifact] = artifact_schema
 
     if publication_schema.optional_artifacts is not None:
         for artifact in publication_schema.optional_artifacts:
-            artifacts_schema['optional_keys'][artifact] = artifact_schema
+            artifacts_schema["optional_keys"][artifact] = artifact_schema
 
     if publication_schema.allow_unspecified_artifacts:
-        artifacts_schema['extra_keys_schema'] = artifact_schema
+        artifacts_schema["extra_keys_schema"] = artifact_schema
 
     schema = {
         "type": "dict",
@@ -268,13 +268,19 @@ def _make_publication_file_schema(publication_schema):
     }
 
     if publication_schema.metadata_schema is not None:
-        schema["optional_keys"]["metadata"] = {"type": "dict", **publication_schema.metadata_schema}
+        schema["optional_keys"]["metadata"] = {
+            "type": "dict",
+            **publication_schema.metadata_schema,
+        }
     else:
         schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
 
     return schema
 
-def _resolve_publication_file(raw_contents, publication_schema, external_variables, path):
+
+def _resolve_publication_file(
+    raw_contents, publication_schema, external_variables, path
+):
     """Resolves (interpolates and parses) the raw publication file contents.
 
     Parameters
@@ -511,7 +517,9 @@ def _add_previous_keys(external_variables, collection):
     except IndexError:
         return
 
-    external_variables["previous"] = collection.publications[previous_key]._deep_asdict()
+    external_variables["previous"] = collection.publications[
+        previous_key
+    ]._deep_asdict()
 
 
 def _make_publications(

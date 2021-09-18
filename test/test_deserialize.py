@@ -8,7 +8,9 @@ import automata.materials
 def test_serialize_deserialize_universe_roundtrip():
     # given
     collection = automata.materials.Collection(
-        publication_schema=automata.materials.PublicationSchema(required_artifacts=["foo", "bar"]),
+        publication_schema=automata.materials.PublicationSchema(
+            required_artifacts=["foo", "bar"]
+        ),
         publications={},
     )
 
@@ -59,7 +61,9 @@ def test_serialize_deserialize_built_publication_roundtrip():
 def test_collection_as_dict():
     # given
     collection = automata.materials.Collection(
-        publication_schema=automata.materials.PublicationSchema(required_artifacts=["foo", "bar"]),
+        publication_schema=automata.materials.PublicationSchema(
+            required_artifacts=["foo", "bar"]
+        ),
         publications={},
     )
 

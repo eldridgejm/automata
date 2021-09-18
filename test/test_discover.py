@@ -280,7 +280,8 @@ def test_read_collection_example(write_file):
     assert collection.publication_schema.required_artifacts == ["homework", "solution"]
     assert collection.publication_schema.optional_artifacts == ["template"]
     assert (
-        collection.publication_schema.metadata_schema["required_keys"]["name"]["type"] == "string"
+        collection.publication_schema.metadata_schema["required_keys"]["name"]["type"]
+        == "string"
     )
 
 
@@ -315,10 +316,15 @@ def test_read_collection_file_resolves(write_file):
     )
 
     # then
-    assert collection.publication_schema.required_artifacts == ["homework", "solution", "template"]
+    assert collection.publication_schema.required_artifacts == [
+        "homework",
+        "solution",
+        "template",
+    ]
     assert collection.publication_schema.optional_artifacts == ["template"]
     assert (
-        collection.publication_schema.metadata_schema["required_keys"]["name"]["type"] == "string"
+        collection.publication_schema.metadata_schema["required_keys"]["name"]["type"]
+        == "string"
     )
 
 
@@ -518,7 +524,9 @@ def test_read_publication_raises_if_required_artifact_is_not_provided(write_file
         automata.materials.read_publication_file(path, publication_schema=schema)
 
 
-def test_read_publication_raises_if_extra_artifact_provided_without_allow_unspecified(write_file):
+def test_read_publication_raises_if_extra_artifact_provided_without_allow_unspecified(
+    write_file,
+):
     # given
     path = write_file(
         "publication.yaml",
@@ -555,7 +563,9 @@ def test_read_publication_raises_if_extra_artifact_provided_without_allow_unspec
         automata.materials.read_publication_file(path, publication_schema=schema)
 
 
-def test_read_publication_allows_extra_artifact_when_allow_unspecified_given(write_file):
+def test_read_publication_allows_extra_artifact_when_allow_unspecified_given(
+    write_file,
+):
     # given
     path = write_file(
         "publication.yaml",
@@ -585,13 +595,13 @@ def test_read_publication_allows_extra_artifact_when_allow_unspecified_given(wri
                 "released": {"type": "date"},
             }
         },
-        allow_unspecified_artifacts=True
+        allow_unspecified_artifacts=True,
     )
 
     # when
     pub = automata.materials.read_publication_file(path, publication_schema=schema)
 
-    assert 'woo' in pub.artifacts
+    assert "woo" in pub.artifacts
 
 
 def test_read_publication_without_release_time(write_file):
@@ -1062,7 +1072,9 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path, publication_schema=schema)
+    publication = automata.materials.read_publication_file(
+        path, publication_schema=schema
+    )
 
     # then
     expected = datetime.datetime(2020, 9, 3, 23, 59, 0)
@@ -1106,7 +1118,9 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
     )
 
     # when
-    publication = automata.materials.read_publication_file(path, publication_schema=schema)
+    publication = automata.materials.read_publication_file(
+        path, publication_schema=schema
+    )
 
     # then
     expected = datetime.date(2020, 9, 10)
@@ -1149,7 +1163,9 @@ def test_read_publication_with_unknown_relative_field_raises(write_file):
 
     # when
     with raises(automata.materials.DiscoveryError):
-        publication = automata.materials.read_publication_file(path, publication_schema=schema)
+        publication = automata.materials.read_publication_file(
+            path, publication_schema=schema
+        )
 
 
 def test_discover_with_dates_relating_to_previous():
