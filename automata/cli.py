@@ -3,6 +3,7 @@ import datetime
 import pathlib
 
 from automata.api.build_materials import build_materials
+from automata.api.build_coursepage import build_coursepage
 
 
 def _arg_directory(s):
@@ -38,6 +39,9 @@ def cli(argv=None):
 
     build_materials_parser = subparsers.add_parser("build-materials")
     _register_build_materials_parser(build_materials_parser)
+
+    build_coursepage_parser = subparsers.add_parser("build-coursepage")
+    _register_build_coursepage_parser(build_coursepage_parser)
 
     args = parser.parse_args(argv)
     args.cmd(args)
@@ -91,3 +95,11 @@ def _register_build_materials_parser(parser):
         default=None,
         help="A yaml file whose contents will be available in discovery as template variables.",
     )
+
+
+def _register_build_coursepage_parser(parser):
+    parser.add_argument("output_path")
+    parser.add_argument("--published")
+    parser.add_argument("--now")
+    parser.add_argument("--context", type=pathlib.Path)
+    parser.set_defaults(cmd=build_coursepage)

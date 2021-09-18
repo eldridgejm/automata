@@ -324,35 +324,3 @@ def abstract(
     # copy static files
     shutil.copytree(input_path / "theme" / "style", output_path / "style")
     shutil.copytree(input_path / "static", output_path / "static")
-
-
-def cli():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("output_path")
-    parser.add_argument("--published")
-    parser.add_argument("--now")
-    parser.add_argument("--context", type=pathlib.Path)
-    args = parser.parse_args()
-
-    context = {}
-    if args.context is not None:
-        with args.context.open() as fileobj:
-            context[args.context.stem] = yaml.load(fileobj, Loader=yaml.Loader)
-
-    if args.now is None:
-        now = datetime.datetime.now
-    else:
-        try:
-            n_days = int(args.now)
-            _now = datetime.datetime.now() + datetime.timedelta(days=n_days)
-        except ValueError:
-            _now = datetime.datetime.fromisoformat(args.now)
-
-        def now():
-            return _now
-
-        print(f"Running as if it is currently {_now}")
-
-    abstract(
-        pathlib.Path.cwd(), args.output_path, args.published, context=context, now=now
-    )
