@@ -4,7 +4,7 @@ from textwrap import dedent
 
 from pytest import raises, fixture, mark
 
-import automata.lib.materials
+from automata.lib.materials import discover, UnbuiltArtifact, DiscoveryError
 
 
 # good example; simple
@@ -37,17 +37,17 @@ EXAMPLE_8_DIRECTORY = EXAMPLES_ROOT / "example_8"
 EXAMPLE_9_DIRECTORY = EXAMPLES_ROOT / "example_9"
 
 
-def test_discover_finds_collections():
+def test_finds_collections():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert universe.collections.keys() == {"homeworks", "default"}
 
 
-def test_discover_finds_publications():
+def test_finds_publications():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert universe.collections["homeworks"].publications.keys() == {
@@ -58,9 +58,10 @@ def test_discover_finds_publications():
     }
 
 
-def test_discover_finds_singletons_and_places_them_in_default_collection():
+def test_finds_singleton_publications_and_places_them_in_default_collection():
+    # a "singleton" is a publication that does not exist in a collection
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert universe.collections["default"].publications.keys() == {
@@ -68,9 +69,9 @@ def test_discover_finds_singletons_and_places_them_in_default_collection():
     }
 
 
-def test_discover_reads_publication_metadata():
+def test_reads_publication_metadata():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert (
@@ -79,9 +80,9 @@ def test_discover_reads_publication_metadata():
     )
 
 
-def test_discover_loads_artifacts():
+def test_loads_artifacts():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert (
@@ -93,9 +94,9 @@ def test_discover_loads_artifacts():
     )
 
 
-def test_discover_loads_dates_as_dates():
+def test_loads_dates_as_dates():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert isinstance(
@@ -109,9 +110,9 @@ def test_discover_loads_dates_as_dates():
     )
 
 
-def test_discover_reads_ready():
+def test_reads_ready():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert (
@@ -122,49 +123,47 @@ def test_discover_reads_ready():
     )
 
 
-def test_discover_validates_collection_schema():
+def test_validates_collection_schema():
     # when run on a malformed collection.yaml
-    with raises(automata.lib.materials.DiscoveryError):
-        automata.lib.materials.discover(EXAMPLE_2_DIRECTORY)
+    with raises(DiscoveryError):
+        discover(EXAMPLE_2_DIRECTORY)
 
 
-def test_discover_validates_publication_schema():
-    with raises(automata.lib.materials.DiscoveryError):
-        automata.lib.materials.discover(EXAMPLE_3_DIRECTORY)
+def test_validates_publication_schema():
+    with raises(DiscoveryError):
+        discover(EXAMPLE_3_DIRECTORY)
 
 
-def test_discover_validates_publication_metadata_schema():
-    with raises(automata.lib.materials.DiscoveryError):
-        automata.lib.materials.discover(EXAMPLE_6_DIRECTORY)
+def test_validates_publication_metadata_schema():
+    with raises(DiscoveryError):
+        discover(EXAMPLE_6_DIRECTORY)
 
 
-def test_discover_raises_when_nested_collections_discovered():
-    with raises(automata.lib.materials.DiscoveryError):
-        automata.lib.materials.discover(EXAMPLE_4_DIRECTORY)
+def test_raises_when_nested_collections_discovered():
+    with raises(DiscoveryError):
+        discover(EXAMPLE_4_DIRECTORY)
 
 
-def test_discover_uses_relative_paths_as_keys():
+def test_uses_relative_paths_as_keys():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_5_DIRECTORY)
+    universe = discover(EXAMPLE_5_DIRECTORY)
 
     # then
     assert "foo/bar" in universe.collections
     assert "baz/bazinga" in universe.collections["foo/bar"].publications
 
 
-def test_discover_skip_directories():
+def test_skip_directories():
     # when
-    universe = automata.lib.materials.discover(
-        EXAMPLE_1_DIRECTORY, skip_directories={"textbook"}
-    )
+    universe = discover(EXAMPLE_1_DIRECTORY, skip_directories={"textbook"})
 
     # then
     assert "textbook" not in universe.collections["default"].publications
 
 
-def test_discover_without_file_uses_key():
+def test_key_used_for_file_if_file_not_provided():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert (
@@ -176,9 +175,9 @@ def test_discover_without_file_uses_key():
     )
 
 
-def test_discover_sorts_publications_lexicographically_if_collection_is_ordered():
+def test_sorts_publications_lexicographically_if_collection_is_ordered():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_7_DIRECTORY)
+    universe = discover(EXAMPLE_7_DIRECTORY)
 
     # then
     assert list(universe.collections["homeworks"].publications) == [
@@ -191,989 +190,9 @@ def test_discover_sorts_publications_lexicographically_if_collection_is_ordered(
     ]
 
 
-def test_filter_artifacts():
+def test_with_dates_relating_to_previous():
     # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
-
-    def keep(k, v):
-        if not isinstance(v, automata.lib.materials.UnbuiltArtifact):
-            return True
-
-        return k == "solution.pdf"
-
-    universe = automata.lib.materials.filter_nodes(universe, keep)
-
-    # then
-    assert (
-        "homework.pdf"
-        not in universe.collections["homeworks"].publications["01-intro"].artifacts
-    )
-    assert (
-        "solution.pdf"
-        in universe.collections["homeworks"].publications["01-intro"].artifacts
-    )
-
-
-def test_filter_artifacts_removes_nodes_without_children():
-    # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
-
-    def keep(k, v):
-        if not isinstance(v, automata.lib.materials.UnbuiltArtifact):
-            return True
-
-        return k not in {"solution.pdf", "homework.pdf"}
-
-    universe = automata.lib.materials.filter_nodes(
-        universe, keep, remove_empty_nodes=True
-    )
-
-    # then
-    assert "homeworks" not in universe.collections
-
-
-def test_filter_artifacts_preserves_nodes_without_children_by_default():
-    # when
-    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
-
-    def keep(k, v):
-        if not isinstance(v, automata.lib.materials.UnbuiltArtifact):
-            return True
-
-        return k not in {"solution.pdf", "homework.pdf"}
-
-    universe = automata.lib.materials.filter_nodes(universe, keep)
-
-    # then
-    assert "homeworks" in universe.collections
-
-
-# read_collection_file
-# -----------------------------------------------------------------------------
-
-
-def test_read_collection_example(write_file):
-    # given
-    path = write_file(
-        "collection.yaml",
-        contents=dedent(
-            """
-            publication_schema:
-                required_artifacts:
-                    - homework
-                    - solution
-
-                optional_artifacts:
-                    - template
-
-                metadata_schema:
-                    required_keys:
-                        name:
-                            type: string
-                        due:
-                            type: date
-            """
-        ),
-    )
-
-    # when
-    collection = automata.lib.materials.read_collection_file(path)
-
-    # then
-    assert collection.publication_schema.required_artifacts == ["homework", "solution"]
-    assert collection.publication_schema.optional_artifacts == ["template"]
-    assert (
-        collection.publication_schema.metadata_schema["required_keys"]["name"]["type"]
-        == "string"
-    )
-
-
-def test_read_collection_file_resolves(write_file):
-    # given
-    path = write_file(
-        "collection.yaml",
-        contents=dedent(
-            """
-            publication_schema:
-                required_artifacts:
-                    - homework
-                    - solution
-                    - ${self.publication_schema.optional_artifacts.0}
-
-                optional_artifacts:
-                    - ${external.optional}
-
-                metadata_schema:
-                    required_keys:
-                        name:
-                            type: string
-                        due:
-                            type: date
-            """
-        ),
-    )
-
-    # when
-    collection = automata.lib.materials.read_collection_file(
-        path, {"external": {"optional": "template"}}
-    )
-
-    # then
-    assert collection.publication_schema.required_artifacts == [
-        "homework",
-        "solution",
-        "template",
-    ]
-    assert collection.publication_schema.optional_artifacts == ["template"]
-    assert (
-        collection.publication_schema.metadata_schema["required_keys"]["name"]["type"]
-        == "string"
-    )
-
-
-def test_read_collection_validates_fields(write_file):
-    path = write_file(
-        "collection.yaml",
-        contents=dedent(
-            """
-            publication_schema:
-                # this ain't right..., should be a list of str
-                required_artifacts: 42
-
-                optional_artifacts:
-                    - template
-
-                metadata_schema:
-                    required_keys:
-                        name:
-                            type: string
-                        due:
-                            type: date
-            """
-        ),
-    )
-
-    # then
-    with raises(automata.lib.materials.DiscoveryError):
-        collection = automata.lib.materials.read_collection_file(path)
-
-
-def test_read_collection_requires_required_artifacts(write_file):
-    path = write_file(
-        "collection.yaml",
-        contents=dedent(
-            """
-            publication_schema:
-                # this ain't right..., should have required_artifacts...
-
-                optional_artifacts:
-                    - template
-
-                metadata_schema:
-                    required_keys:
-                        name:
-                            type: string
-                        due:
-                            type: date
-            """
-        ),
-    )
-
-    # then
-    with raises(automata.lib.materials.DiscoveryError):
-        collection = automata.lib.materials.read_collection_file(path)
-
-
-def test_read_collection_doesnt_require_optional_artifacts(write_file):
-    # given
-    path = write_file(
-        "collection.yaml",
-        contents=dedent(
-            """
-            publication_schema:
-                required_artifacts:
-                    - foo
-                    - bar
-
-                metadata_schema:
-                    required_keys:
-                        name:
-                            type: string
-                        due:
-                            type: date
-            """
-        ),
-    )
-
-    # when
-    collection = automata.lib.materials.read_collection_file(path)
-
-    # then
-    assert collection.publication_schema.optional_artifacts == []
-
-
-def test_read_collection_doesnt_require_metadata_schema(write_file):
-    # given
-    path = write_file(
-        "collection.yaml",
-        contents=dedent(
-            """
-            publication_schema:
-                required_artifacts:
-                    - foo
-                    - bar
-            """
-        ),
-    )
-
-    # when
-    collection = automata.lib.materials.read_collection_file(path)
-
-    # then
-    assert collection.publication_schema.metadata_schema is None
-
-
-def test_read_collection_raises_on_invalid_metadata_schema(write_file):
-    # given
-    path = write_file(
-        "collection.yaml",
-        contents=dedent(
-            """
-            publication_schema:
-                required_artifacts:
-                    - foo
-                    - bar
-
-                metadata_schema:
-                    foo: 1
-                    bar: 2
-            """
-        ),
-    )
-
-    # when then
-    with raises(automata.lib.materials.DiscoveryError):
-        collection = automata.lib.materials.read_collection_file(path)
-
-
-# read_publication_file
-# -----------------------------------------------------------------------------
-
-
-def test_read_publication_example(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    assert publication.metadata["name"] == "Homework 01"
-    assert isinstance(publication.metadata["due"], datetime.datetime)
-    assert isinstance(publication.metadata["released"], datetime.date)
-    assert publication.artifacts["homework"].recipe == "make homework"
-
-
-def test_read_publication_raises_if_required_artifact_is_not_provided(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-10
-                released: ${ self.metadata.due }
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-            """
-        ),
-    )
-
-    schema = automata.lib.materials.PublicationSchema(
-        required_artifacts=["homework", "solution"],
-        metadata_schema={
-            "required_keys": {
-                "name": {"type": "string"},
-                "due": {"type": "date"},
-                "released": {"type": "date"},
-            }
-        },
-    )
-
-    # when
-    with raises(automata.lib.materials.DiscoveryError):
-        automata.lib.materials.read_publication_file(path, publication_schema=schema)
-
-
-def test_read_publication_raises_if_extra_artifact_provided_without_allow_unspecified(
-    write_file,
-):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-10
-                released: ${ self.metadata.due }
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                woo:
-                    file: ./something.pdf
-            """
-        ),
-    )
-
-    schema = automata.lib.materials.PublicationSchema(
-        required_artifacts=["homework"],
-        metadata_schema={
-            "required_keys": {
-                "name": {"type": "string"},
-                "due": {"type": "date"},
-                "released": {"type": "date"},
-            }
-        },
-    )
-
-    # when
-    with raises(automata.lib.materials.DiscoveryError):
-        automata.lib.materials.read_publication_file(path, publication_schema=schema)
-
-
-def test_read_publication_allows_extra_artifact_when_allow_unspecified_given(
-    write_file,
-):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-10
-                released: ${ self.metadata.due }
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                woo:
-                    file: ./something.pdf
-            """
-        ),
-    )
-
-    schema = automata.lib.materials.PublicationSchema(
-        required_artifacts=["homework"],
-        metadata_schema={
-            "required_keys": {
-                "name": {"type": "string"},
-                "due": {"type": "date"},
-                "released": {"type": "date"},
-            }
-        },
-        allow_unspecified_artifacts=True,
-    )
-
-    # when
-    pub = automata.lib.materials.read_publication_file(path, publication_schema=schema)
-
-    assert "woo" in pub.artifacts
-
-
-def test_read_publication_without_release_time(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    assert publication.release_time is None
-
-
-def test_read_publication_with_relative_release_time(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            release_time: 1 day after ${self.metadata.due}
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] + datetime.timedelta(days=1)
-    assert publication.release_time == expected
-
-
-def test_read_artifact_with_relative_release_time(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"]
-    assert publication.artifacts["solution"].release_time == expected
-
-
-def test_read_artifact_with_relative_release_date_but_no_time_raises(write_file):
-    # given
-    # release_time must be a datetime, but it's a date here
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: metadata.released
-            """
-        ),
-    )
-
-    # then
-    with raises(automata.lib.materials.DiscoveryError):
-        publication = automata.lib.materials.read_publication_file(path)
-
-
-def test_read_artifact_with_relative_release_time_after(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 1 day after ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] + datetime.timedelta(days=1)
-    assert publication.artifacts["solution"].release_time == expected
-
-
-def test_read_artifact_with_relative_release_time_after_hours(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 3 hours after ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] + datetime.timedelta(hours=3)
-    assert publication.artifacts["solution"].release_time == expected
-
-
-def test_read_artifact_with_relative_release_time_after_large(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 11 days after ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] + datetime.timedelta(days=11)
-    assert publication.artifacts["solution"].release_time == expected
-
-
-def test_read_artifact_with_relative_release_time_after_large_hours(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 1000 hours after ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] + datetime.timedelta(hours=1000)
-    assert publication.artifacts["solution"].release_time == expected
-
-
-def test_read_artifact_with_relative_release_date_before(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 3 days before ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] - datetime.timedelta(days=3)
-    assert publication.artifacts["solution"].release_time == expected
-
-
-def test_read_artifact_with_relative_release_date_before_hours(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 3 hours before ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] - datetime.timedelta(hours=3)
-    assert publication.artifacts["solution"].release_time == expected
-
-
-def test_read_artifact_with_relative_release_time_multiple_days(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 3 days after ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] + datetime.timedelta(days=3)
-    assert publication.artifacts["solution"].release_time == expected
-
-
-def test_read_artifact_with_invalid_relative_date_raises(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: -1 days after ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    with raises(automata.lib.materials.DiscoveryError):
-        publication = automata.lib.materials.read_publication_file(path)
-
-
-def test_read_artifact_with_invalid_relative_date_variable_reference_raises(
-    write_file,
-):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 1 days after ${self.metadata.foo}
-            """
-        ),
-    )
-
-    # when
-    with raises(automata.lib.materials.DiscoveryError):
-        publication = automata.lib.materials.read_publication_file(path)
-
-
-def test_read_artifact_with_absolute_release_time(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 2020-01-02 23:59:00
-            """
-        ),
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(path)
-
-    # then
-    expected = datetime.datetime(2020, 1, 2, 23, 59, 0)
-    assert publication.artifacts["solution"].release_time == expected
-
-
-# relative metadata
-# --------------------------------------------------------------------------------------
-
-
-def test_read_publication_with_relative_dates_in_metadata(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-10 23:59:00
-                released: 7 days before ${self.metadata.due}
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 2020-01-02 23:59:00
-            """
-        ),
-    )
-
-    schema = automata.lib.materials.PublicationSchema(
-        required_artifacts=["homework", "solution"],
-        metadata_schema={
-            "required_keys": {
-                "name": {"type": "string"},
-                "due": {"type": "datetime"},
-                "released": {"type": "datetime"},
-            }
-        },
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(
-        path, publication_schema=schema
-    )
-
-    # then
-    expected = datetime.datetime(2020, 9, 3, 23, 59, 0)
-    assert publication.metadata["released"] == expected
-
-
-def test_read_publication_with_relative_dates_in_metadata_without_offset(write_file):
-    # given
-    # released should be a datetime, but it's going to be a date since its relative
-    # to due, which is a date
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-10
-                released: ${ self.metadata.due }
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 2020-01-02 23:59:00
-            """
-        ),
-    )
-
-    schema = automata.lib.materials.PublicationSchema(
-        required_artifacts=["homework", "solution"],
-        metadata_schema={
-            "required_keys": {
-                "name": {"type": "string"},
-                "due": {"type": "date"},
-                "released": {"type": "date"},
-            }
-        },
-    )
-
-    # when
-    publication = automata.lib.materials.read_publication_file(
-        path, publication_schema=schema
-    )
-
-    # then
-    expected = datetime.date(2020, 9, 10)
-    assert publication.metadata["released"] == expected
-
-
-def test_read_publication_with_unknown_relative_field_raises(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-12-01
-                released: 7 days before duedate # <---- this field doesn't exist
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: 2020-01-02 23:59:00
-            """
-        ),
-    )
-
-    schema = automata.lib.materials.PublicationSchema(
-        required_artifacts=["homework", "solution"],
-        metadata_schema={
-            "required_keys": {
-                "name": {"type": "string"},
-                "due": {"type": "date"},
-                "released": {"type": "date"},
-            }
-        },
-    )
-
-    # when
-    with raises(automata.lib.materials.DiscoveryError):
-        publication = automata.lib.materials.read_publication_file(
-            path, publication_schema=schema
-        )
-
-
-def test_discover_with_dates_relating_to_previous():
-    # when
-    universe = automata.lib.materials.discover(EXAMPLE_8_DIRECTORY)
+    universe = discover(EXAMPLE_8_DIRECTORY)
 
     # then
     publications = universe.collections["lectures"].publications
@@ -1196,10 +215,7 @@ def test_discover_with_dates_relating_to_previous():
     )
 
 
-# interpolation
-
-
-def test_discover_with_external_variables():
+def test_interpolates_external_variables():
     # given
     external_variables = {
         "course": {
@@ -1209,9 +225,7 @@ def test_discover_with_external_variables():
     }
 
     # when
-    universe = automata.lib.materials.discover(
-        EXAMPLE_9_DIRECTORY, external_variables=external_variables
-    )
+    universe = discover(EXAMPLE_9_DIRECTORY, external_variables=external_variables)
 
     # then
     assert (

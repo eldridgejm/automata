@@ -78,7 +78,7 @@ def test_build_materials_then_build_coursepage_with_example(
         [
             "build-materials",
             str(input_directory),
-            str(output_directory / 'materials'),
+            str(output_directory / "materials"),
             "--skip-directories",
             "template",
         ]
@@ -87,7 +87,7 @@ def test_build_materials_then_build_coursepage_with_example(
         [
             "build-coursepage",
             "--published",
-            str(output_directory / 'materials'),
+            str(output_directory / "materials"),
             str(input_directory / "website"),
             str(output_directory),
             "--context",
@@ -96,5 +96,4 @@ def test_build_materials_then_build_coursepage_with_example(
     )
 
     # then
-    assert (output_directory / 'index.html').exists()
-
+    assert (output_directory / "index.html").exists()

@@ -48,10 +48,10 @@ RESOURCES_SCHEMA = {
 SCHEMA = {
     "week_topics": {"type": "list", "schema": {"type": "string"}},
     "week_order": {
-            "type": "string",
-            "allowed": ["this_week_first", "this_week_last"],
-            "required": False
-        },
+        "type": "string",
+        "allowed": ["this_week_first", "this_week_last"],
+        "required": False,
+    },
     "exams": {
         "type": "dict",
         "keysrules": {"type": "string"},
@@ -173,14 +173,14 @@ def order_this_week_last(weeks, today):
 
 
 def order_weeks(element_config, weeks, today):
-    if 'week_order' not in element_config:
-        week_order = 'this_week_first'
+    if "week_order" not in element_config:
+        week_order = "this_week_first"
     else:
-        week_order = element_config['week_order']
+        week_order = element_config["week_order"]
 
     return {
-            'this_week_first': order_this_week_first,
-            'this_week_last': order_this_week_last
+        "this_week_first": order_this_week_first,
+        "this_week_last": order_this_week_last,
     }[week_order](weeks, today)
 
 

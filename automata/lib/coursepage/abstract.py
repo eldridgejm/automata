@@ -85,7 +85,7 @@ def load_config(path, context=None):
     to be split into several files. For instance:
 
     .. code-block:: yaml
-        
+
         # config.yaml
         theme:
             page_title: My Website
@@ -188,7 +188,7 @@ def _convert_markdown_to_html(contents):
         The HTML.
 
     """
-    return markdown.markdown(contents, extensions=['toc'])
+    return markdown.markdown(contents, extensions=["toc"])
 
 
 def _all_pages(input_path, output_path):
