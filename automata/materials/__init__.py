@@ -218,7 +218,6 @@ will be missing from the JSON representation entirely.
 from .types import *
 from .exceptions import *
 from ._discover import *
-from ._validate import *
 from ._build import *
 from ._publish import *
 from ._filter import *

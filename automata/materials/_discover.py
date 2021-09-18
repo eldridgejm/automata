@@ -311,44 +311,6 @@ def _resolve_publication_file(
         raise DiscoveryError(str(exc), path)
 
 
-def _validate_publication(publication: Publication, against: PublicationSchema):
-    """Make sure that a publication satisfies the schema.
-
-    Verifies that all required artifacts are provided, and that no unknown
-    artifacts are given (unless ``schema.allow_unspecified_artifacts == True``).
-
-    Parameters
-    ----------
-    publication : Publication
-        A fully-specified publication.
-    against : PublicationSchema
-        A schema for validating the publication.
-
-    Raises
-    ------
-    ValidationError
-        If the publication does not satisfy the schema's constraints.
-
-    """
-    schema = against
-
-    # make an iterable default for optional artifacts
-    if schema.optional_artifacts is None:
-        schema = schema._replace(optional_artifacts={})
-
-    # ensure that all required artifacts are present
-    required = set(schema.required_artifacts)
-    optional = set(schema.optional_artifacts)
-    provided = set(publication.artifacts)
-    extra = provided - (required | optional)
-
-    if required - provided:
-        raise ValidationError(f"Required artifacts omitted: {required - provided}.")
-
-    if extra and not schema.allow_unspecified_artifacts:
-        raise ValidationError(f"Unknown artifacts provided: {provided - optional}.")
-
-
 # discovery: discover()
 # --------------------------------------------------------------------------------------
 
@@ -506,7 +468,7 @@ def _make_collections(collection_paths, input_directory, callbacks):
     return collections
 
 
-def _add_previous_keys(external_variables, collection):
+def _add_previous_publications(external_variables, collection):
     """Add the resolved previous publication file to the external_variables."""
     if not collection.publication_schema.is_ordered:
         return
@@ -561,7 +523,7 @@ def _make_publications(
 
         collection = collections[collection_key]
 
-        _add_previous_keys(external_variables, collection)
+        _add_previous_publications(external_variables, collection)
 
         file_path = path / constants.PUBLICATION_FILE
         publication = read_publication_file(
