@@ -88,7 +88,7 @@ def publish_before_quarter(tmp_path_factory):
 def test_fixture(publish_on_oct_15):
     path = publish_on_oct_15
     assert (path / "website" / "theme").exists()
-    assert (path / "website" / "_build" / "published" / "published.json").exists()
+    assert (path / "website" / "_build" / "published" / "materials.json").exists()
 
 
 def test_second_homework_visible(publish_on_oct_15):
