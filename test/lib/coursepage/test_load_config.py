@@ -3,7 +3,7 @@ import pathlib
 
 from pytest import fixture
 
-import automata.lib.coursepage
+from automata.api._coursepage import load_config
 
 
 @fixture
@@ -49,7 +49,7 @@ def test_load_config(write_file):
     write_file("bar.yaml", bar_yaml)
 
     # when
-    config = automata.lib.coursepage.load_config(path)
+    config = load_config(path)
 
     # then
     assert config["foo"]["x"] == 1

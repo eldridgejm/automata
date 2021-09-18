@@ -117,10 +117,10 @@ def load_config(path, context=None):
     return yaml.load(rendered_yaml, Loader=IncludingLoader)
 
 
-class _Elements:
+class Elements:
     """A class to create closures for page elements.
 
-    Used in abstract(). We instantiate _Elements with a universe and a
+    Used in abstract(). We instantiate Elements with a universe and a
     template loader. When an attribute of the instance is accessed, the element
     with that name will be pulled in from the elements module and its
     "templates" and "published" arguments will be closed over. The result is a
@@ -142,7 +142,7 @@ class _Elements:
         )
 
 
-def _render_page(path, variables):
+def render_page(path, variables):
     """Given page path and dict of variables, perform Jinja2 interpolation.
 
     Parameters
@@ -174,7 +174,7 @@ def _render_page(path, variables):
         raise exceptions.PageError(f'Problem rendering "{path}": {exc}')
 
 
-def _convert_markdown_to_html(contents):
+def convert_markdown_to_html(contents):
     """Convert markdown to HTML.
 
     Parameters
@@ -191,7 +191,7 @@ def _convert_markdown_to_html(contents):
     return markdown.markdown(contents, extensions=["toc"])
 
 
-def _all_pages(input_path, output_path):
+def all_pages(input_path, output_path):
     """Generate all page contents and their output paths.
 
     Parameters
@@ -215,13 +215,13 @@ def _all_pages(input_path, output_path):
         yield page_path, new_path
 
 
-def _render_base(base_environment, body_html, config):
+def render_base(base_environment, body_html, config):
     return base_environment.get_template("page.html").render(
         body=body_html, config=config
     )
 
 
-def _validate_theme_schema(input_path, config):
+def validate_theme_schema(input_path, config):
     """Validate a config against the theme's schema."""
     with (input_path / "theme" / "schema.yaml").open() as fileobj:
         theme_schema = yaml.load(fileobj, Loader=yaml.Loader)
@@ -232,7 +232,7 @@ def _validate_theme_schema(input_path, config):
         raise RuntimeError(f"Invalid theme config: {validator.errors}")
 
 
-def _create_element_environment(input_path):
+def create_element_environment(input_path):
     """Create the element environment and its custom filters."""
     element_environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader(input_path / "theme" / "elements"),
@@ -257,70 +257,14 @@ def _create_element_environment(input_path):
             )
 
     element_environment.filters["evaluate"] = evaluate
-    element_environment.filters["markdown_to_html"] = _convert_markdown_to_html
+    element_environment.filters["markdown_to_html"] = convert_markdown_to_html
 
     return element_environment
 
 
-def _create_base_template_environment(input_path):
+def create_base_template_environment(input_path):
     """Create the base template environment."""
     return jinja2.Environment(
         loader=jinja2.FileSystemLoader(input_path / "theme" / "base_templates"),
         undefined=jinja2.StrictUndefined,
     )
-
-
-def abstract(
-    input_path,
-    output_path,
-    published_path=None,
-    context=None,
-    now=datetime.datetime.now,
-):
-    if context is None:
-        context = {}
-
-    input_path = pathlib.Path(input_path)
-    output_path = pathlib.Path(output_path)
-    if published_path is not None:
-        published_path = pathlib.Path(published_path)
-
-    # create the output path, if it doesn't already exist
-    output_path.mkdir(exist_ok=True)
-
-    # load the publications and update their paths
-    if published_path is not None:
-        published = load_published(published_path, output_path)
-    else:
-        published = None
-
-    # load the configuration file
-    config = load_config(input_path / "config.yaml", context=context)
-
-    # validate the config against the theme's schema
-    _validate_theme_schema(input_path, config)
-
-    # create environments for evaluation of base templates and element templates
-    element_environment = _create_element_environment(input_path)
-    base_environment = _create_base_template_environment(input_path)
-
-    # construct the variables used during page rendering
-    variables = {
-        "context": context,
-        "elements": _Elements(environment=element_environment, now=now),
-        "config": config,
-        "published": published,
-    }
-
-    # convert user pages
-    for old_path, new_path in _all_pages(input_path, output_path):
-        interpolated = _render_page(old_path, variables)
-        body_html = _convert_markdown_to_html(interpolated)
-        html = _render_base(base_environment, body_html, config)
-
-        with new_path.open("w") as fileobj:
-            fileobj.write(html)
-
-    # copy static files
-    shutil.copytree(input_path / "theme" / "style", output_path / "style")
-    shutil.copytree(input_path / "static", output_path / "static")
