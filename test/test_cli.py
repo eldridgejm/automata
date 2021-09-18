@@ -1,6 +1,7 @@
 from automata.cli import cli
 
 import shutil
+import json
 import pathlib
 from textwrap import dedent
 
@@ -65,6 +66,23 @@ def test_build_materials_with_example_using_external_variables(
 
     # then
     assert (output_directory / "homeworks" / "01-intro").exists()
+
+
+def test_build_materials_creates_materials_json(
+    make_input_directory, output_directory
+):
+    input_directory = make_input_directory("example_1")
+
+    # when
+    cli(["build-materials", str(input_directory), str(output_directory)])
+
+    # then
+    assert (output_directory / "materials.json").exists()
+    released = json.load((output_directory / "materials.json").open())
+
+    # assert that an unreleased artifact is still present in materials.json
+    assert 'homework.pdf' in released['collections']['homeworks']['publications']['02-python']['artifacts']
+
 
 
 def test_build_materials_then_build_coursepage_with_example(

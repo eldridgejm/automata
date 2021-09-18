@@ -112,6 +112,13 @@ following:
   previous publications in the order. The default is false.
 
 
+.. note::
+
+    Publications which are not under a directory containing a `collection.yaml`
+    are placed into a `default` collection with no schema. They may contain any
+    number of artifacts and metadata keys.
+
+
 Defining a publication with `publication.yaml`
 ----------------------------------------------
 
@@ -156,6 +163,195 @@ schema described by the `collection.yaml` from before.
         homework.pdf:
             recipe: make homework
             ready: true
+            release_time: 2021-10-10 23:59:00
+
+        solution.pdf:
+            recipe: make solution
+            ready: false
+            release_time: 2021-10-16 23:59:00
+
+        template.zip:
+            recipe: make template
+            missing_ok: true
+            release_time: 2021-10-10 23:59:00
+
+In general, `publication.yaml` must have two top-level keys: `metadata` and
+`artifacts`. The value of the `metadata` key must be a dictionary adhering to
+the metadata schema provided in `collection.yaml`. If no metadata schema was
+provided (or it was null), the metadata is not checked against any schema.
+
+The value of the `artifacts` key is more constrained. It must be a dictionary,
+they keys of which are the artifact names. The values of this dictionary
+describe the artifacts. The following keys are all optional:
+
+- :code:`recipe`: A string containing the command to run in order to build the
+  artifact. If null, no command will be executed. Default: null.
+
+- :code:`file`: Path to the artifact's file. If this is null, the path is
+  inferred from the artifact's name. For example, if the artifact is named
+  `homework.pdf`, the file is assumed to be `homework.pdf`. Default: null.
+
+- :code:`release_time`: A datetime before which the artifact should be
+  considered unpublished. For the artifact to be published, its release time
+  must have passed and the `ready` field must be `true`. If this is null, there
+  is no release time -- alternatively, the release time was in the infinite
+  past. Default: null.
+
+- :code:`ready`: A boolean denoting whether the artifact is ready to be
+  published. In order to be publish it is also necessary for the the release
+  time to be in the past. Default: true.
+
+- :code:`missing_ok`: A boolean denoting whether or not it is OK for the
+  artifact's file to be missing. If false, an exception is raised if the file
+  is looked for and not found. If set to `true`, no error is raised. This can
+  be useful when the artifact file is manually placed in the directory and it
+  is undesirable to repeatedly edit `publication.yaml` to add the artifact.
+  Default: false.
+
+Variables
+~~~~~~~~~
+
+Fields within `publication.yaml` can refer to other fields within the same or
+previous publications. The values of the other fields will be interpolated.
+
+To refer to another field within the **same** publication, use the syntax
+:code:`${self.path.to.key}`. Here, self refers to the top level of the
+dictionary in `publication.yaml`. For example, the below will set the `name`
+field of the metadata to "Homework 1".
+
+.. code:: yaml
+
+    metadata:
+        name: Homework ${self.metadata.number}
+        number: 1
+
+If the collection is ordered (determined by the `is_ordered` field in
+`collections.yaml`), then fields within the **previous** publication can
+be referred to using the syntax :code:`${previous.path.to.key}`.
+For example, suppose `homeworks/01-intro/publication.yaml` contains:
+
+
+.. code:: yaml
+
+    metadata:
+        name: First Homework
+
+Suppose that `homeworks/02-quantum_mechanics/publication.yaml` contains:
+
+
+.. code:: yaml
+
+    metadata:
+        name: The one after the ${previous.metadata.name}
+
+Upon loading this publication file, the `name` field will contain "The one
+after the First Homework".
+
+Lastly, a dictionary of external variables may be supplied to `automata` when
+it is invoked. These variables may also be referred to within `publication.yaml`.
+For example, suppose `automata` is given the dictionary:
+
+.. code:: python
+
+    {
+        "foo": {
+            "bar": 42,
+            "baz": 10
+        },
+        "testing": true
+    }
+
+Then the following will resolve so that the value of the `number` key will be 42.
+
+.. code:: yaml
+
+    metadata:
+        number: ${foo.bar}
+
+
+Arithmetic
+~~~~~~~~~~
+
+Fields expected to have integer or float type are parsed for arithmetic expressions.
+For example, consider:
+
+.. code:: yaml
+
+    metadata:
+        number: 1 + (4 / 2 + 3)
+
+If the type of the `number` field was set in the metadata schema to "integer", then
+the string will be parsed into the integer value of 6.
+
+This is very useful when paired with variable references as described above. For example,
+to set the number of a publication to be one more than the previous publication:
+
+.. code:: yaml
+
+    metadata:
+        number: ${previous.metadata.number} + 1
+
+Boolean arithmetic is also supported using standard Python operators. The value
+of `z` in the following example will be `True`.
+
+.. code:: yaml
+    metadata:
+        x: true
+        y: false
+        z: ${self.metadata.x} or ${self.metadata.y}
+
+
+Relative dates
+~~~~~~~~~~~~~~
+
+Fields whose expected type is either `date` or `datetime` are parsed as well. The simplest
+string form that parses to a date is a date in ISO format:
+
+.. code:: yaml
+
+    metadata:
+        due: 2021-10-01 23:59:00
+
+Relative dates are supported in two formats. First, a number of days or hours before or after a date
+can be specified:
+
+.. code:: yaml
+
+    metadata:
+        due: 7 days before 2021-10-01 23:59:00
+        released: 24 hours before ${self.metadata.due}
+
+Second, a day of the week can be specified:
+
+
+.. code:: yaml
+
+    metadata:
+        due: first monday, wednesday after 2021-10-01
+
+This will resolve to the date of either the first Monday or Wednesday after
+October 1, 2021; whichever comes first.
+
+Advanced example
+~~~~~~~~~~~~~~~~
+
+In combination, the above advanced features can be used to write
+`publication.yaml` files that do not need to be changed much (if at all) from
+iteration to iteration of a course. For example, the file below sets the
+publication's due date relative to the previous publication's due date, and
+sets all other dates relative to this.
+
+.. code:: yaml
+
+    metadata:
+        name: Homework ${self.metadata.number}
+        number: ${previous.metadata.number} + 1
+        due: first friday after ${previous.metadata.due}
+
+    artifacts:
+        homework.pdf:
+            recipe: make homework
+            ready: true
             release_time: 7 days before ${self.metadata.due}
 
         solution.pdf:
@@ -169,8 +365,54 @@ schema described by the `collection.yaml` from before.
             release_time: ${self.artifacts."homework.pdf".release_time}
 
 
+Discovering, building, and releasing artifacts
+----------------------------------------------
 
+One of `automata`'s main functions is to discover, build, and release all of
+the course materials that are ready and whose release time has been reached.
+This is often performed as part of a script, but it can also be done by
+invoking :code:`automata build-materials` at the command line.
 
+In the **discovery** step, the **input directory** is recursively searched for
+collections, publications, and artifacts. As described above, collections and
+publications are defined by `collection.yaml` and `publication.yaml` files,
+respectively.
 
-Using the command line interface
---------------------------------
+Once all collections, publications, and artifacts have been discovered, the
+**build** phase is entered. Artifacts are built by running the command given in
+the artifact's `recipe` field within the directory containing the artifact's
+``publication.yaml`` file. Different artifacts should have "orthogonal" build
+processes so that the order in which the artifacts are built is
+inconsequential.
+
+If an error occurs during any build the entire process is halted and the
+program returns without continuing on to the next phase. An error is
+considered to occur if the build process returns a nonzero error code, or if
+the artifact file is missing after the recipe is run.
+
+In the **release** phase, all published artifacts -- that is, those which are
+ready and whose release date has passed -- are copied to an **output
+directory**. Additionally, a JSON file containing information about the
+collection -> publication -> artifact hierarchy is placed at the root of the
+output directory.
+
+Artifacts are copied to a location within the output directory according to the
+following "formula":
+
+.. code-block:: text
+
+    <output_directory>/<collection_key>/<publication_key>/<artifact_key>
+
+For instance, an artifact keyed ``homework.pdf`` in the ``01-intro``
+publication of the ``homeworks`` collection will be copied to::
+
+    <output_directory>/homeworks/01-intro/homework.pdf
+
+An artifact which has not been released will not be copied, even if the
+artifact file exists.
+
+*publish* will create a JSON file named ``<output_directory>/materials.json``.
+This file contains nested dictionaries describing the structure of the
+collection → publication → artifact hierarchy. *All* artifacts, regardless
+of whether they are released or not, will appear in `materials.json` -- but only
+artifacts that have been released will be copied to the output directory.

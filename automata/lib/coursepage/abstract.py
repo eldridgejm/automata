@@ -17,10 +17,10 @@ from . import exceptions
 
 
 def load_published(published_path, output_path):
-    """Load artifacts from ``published.json`` and update their paths.
+    """Load artifacts from ``materials.json`` and update their paths.
 
-    The artifacts in ``published.json`` have a ``path`` attribute that gives
-    their path relative to ``published.json``. But we need the path to the
+    The artifacts in ``materials.json`` have a ``path`` attribute that gives
+    their path relative to ``materials.json``. But we need the path to the
     artifact from the website root: the ``output_path``. This function loads the
     artifacts and performs the update.
 
@@ -30,7 +30,7 @@ def load_published(published_path, output_path):
     Parameters
     ----------
     published_path : pathlib.Path
-        Path to the directory containing ``published.json``.
+        Path to the directory containing ``materials.json``.
     output_path : pathlib.Path
         Path to the output directory. This should be a directory under the
         output path.
@@ -44,7 +44,7 @@ def load_published(published_path, output_path):
     """
 
     # read the universe
-    with (published_path / "published.json").open() as fileobj:
+    with (published_path / "materials.json").open() as fileobj:
         published = automata.lib.materials.deserialize(fileobj.read())
 
     # we need to update their paths to be relative to output directory; this function

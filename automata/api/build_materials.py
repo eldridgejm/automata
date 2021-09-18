@@ -174,5 +174,5 @@ def build_materials(args):
     published = publish(built, args.output_directory, callbacks=CLIPublishCallbacks())
 
     # serialize the results
-    with (args.output_directory / "published.json").open("w") as fileobj:
+    with (args.output_directory / "materials.json").open("w") as fileobj:
         fileobj.write(serialize(published))

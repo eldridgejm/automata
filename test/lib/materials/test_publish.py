@@ -41,7 +41,7 @@ def test_publish(example_1, outdir):
     )
 
 
-def test_artifact_not_included_if_not_released(example_1, outdir):
+def test_artifact_not_copied_if_not_released(example_1, outdir):
     # given
     discovered = automata.lib.materials.discover(example_1)
     built = automata.lib.materials.build(discovered)
