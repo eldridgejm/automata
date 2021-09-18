@@ -68,7 +68,7 @@ def read_collection_file(path, external_variables=None):
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    publication_schema = PublicationSchema(**resolved["schema"])
+    publication_schema = PublicationSchema(**resolved["publication_schema"])
     return Collection(publication_schema=publication_schema, publications={})
 
 
@@ -77,7 +77,7 @@ def _collection_file_schema():
     return {
         "type": "dict",
         "required_keys": {
-            "schema": {
+            "publication_schema": {
                 "type": "dict",
                 "required_keys": {
                     "required_artifacts": {
@@ -135,7 +135,7 @@ def _resolve_collection_file(raw_contents, external_variables, path):
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    _validate_metadata_schema(resolved["schema"]["metadata_schema"], path)
+    _validate_metadata_schema(resolved["publication_schema"]["metadata_schema"], path)
 
     return resolved
 

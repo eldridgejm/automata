@@ -1,2 +1,2 @@
-schema:
+publication_schema:
     required_artifacts: [ foo ]

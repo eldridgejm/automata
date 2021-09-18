@@ -255,7 +255,7 @@ def test_read_collection_example(write_file):
         "collection.yaml",
         contents=dedent(
             """
-            schema:
+            publication_schema:
                 required_artifacts:
                     - homework
                     - solution
@@ -290,11 +290,11 @@ def test_read_collection_file_resolves(write_file):
         "collection.yaml",
         contents=dedent(
             """
-            schema:
+            publication_schema:
                 required_artifacts:
                     - homework
                     - solution
-                    - ${self.schema.optional_artifacts.0}
+                    - ${self.publication_schema.optional_artifacts.0}
 
                 optional_artifacts:
                     - ${external.optional}
@@ -327,7 +327,7 @@ def test_read_collection_validates_fields(write_file):
         "collection.yaml",
         contents=dedent(
             """
-            schema:
+            publication_schema:
                 # this ain't right..., should be a list of str
                 required_artifacts: 42
 
@@ -354,7 +354,7 @@ def test_read_collection_requires_required_artifacts(write_file):
         "collection.yaml",
         contents=dedent(
             """
-            schema:
+            publication_schema:
                 # this ain't right..., should have required_artifacts...
 
                 optional_artifacts:
@@ -381,7 +381,7 @@ def test_read_collection_doesnt_require_optional_artifacts(write_file):
         "collection.yaml",
         contents=dedent(
             """
-            schema:
+            publication_schema:
                 required_artifacts:
                     - foo
                     - bar
@@ -409,7 +409,7 @@ def test_read_collection_doesnt_require_metadata_schema(write_file):
         "collection.yaml",
         contents=dedent(
             """
-            schema:
+            publication_schema:
                 required_artifacts:
                     - foo
                     - bar
@@ -430,7 +430,7 @@ def test_read_collection_raises_on_invalid_metadata_schema(write_file):
         "collection.yaml",
         contents=dedent(
             """
-            schema:
+            publication_schema:
                 required_artifacts:
                     - foo
                     - bar
