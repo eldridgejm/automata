@@ -483,6 +483,41 @@ def test_read_publication_example(write_file):
     assert publication.artifacts["homework"].recipe == "make homework"
 
 
+def test_read_publication_raises_if_required_artifact_is_not_provided(write_file):
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Homework 01
+                due: 2020-09-10
+                released: ${ self.metadata.due }
+
+            artifacts:
+                homework:
+                    file: ./homework.pdf
+                    recipe: make homework
+            """
+        ),
+    )
+
+    schema = automata.materials.PublicationSchema(
+        required_artifacts=["homework", "solution"],
+        metadata_schema={
+            "required_keys": {
+                "name": {"type": "string"},
+                "due": {"type": "date"},
+                "released": {"type": "date"},
+            }
+        },
+    )
+
+    # when
+    with raises(automata.materials.DiscoveryError):
+        automata.materials.read_publication_file(path, publication_schema=schema)
+
+
 def test_read_publication_without_release_time(write_file):
     # given
     path = write_file(

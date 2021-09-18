@@ -8,20 +8,6 @@ from .exceptions import ValidationError
 # --------------------------------------------------------------------------------------
 
 
-class _PublicationValidator(cerberus.Validator):
-    """A subclassed cerberus Validator with special "smart date" data types."""
-
-    types_mapping = cerberus.Validator.types_mapping.copy()
-
-    types_mapping["smartdate"] = cerberus.TypeDefinition(
-        "smartdate", (str, datetime.date), ()
-    )
-
-    types_mapping["smartdatetime"] = cerberus.TypeDefinition(
-        "smartdate", (str, datetime.datetime), ()
-    )
-
-
 def validate(publication: Publication, against: PublicationSchema):
     """Make sure that a publication satisfies the schema.
 

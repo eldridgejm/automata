@@ -12,7 +12,6 @@ from .types import (
     PublicationSchema,
 )
 from .exceptions import DiscoveryError
-from ._validate import _PublicationValidator
 from . import constants
 
 
@@ -201,10 +200,8 @@ def read_publication_file(path, publication_schema=None, external_variables=None
     with path.open() as fileobj:
         raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
 
-    metadata_schema = None if publication_schema is None else publication_schema.metadata_schema
-
     resolved = _resolve_publication_file(
-        raw_contents, metadata_schema, external_variables, path
+        raw_contents, publication_schema, external_variables, path
     )
 
     # convert each artifact to an Artifact object
@@ -223,14 +220,17 @@ def read_publication_file(path, publication_schema=None, external_variables=None
         release_time=resolved["release_time"],
     )
 
+    
+
     return publication
 
 
-def _publication_file_base_schema():
+def _make_publication_file_schema(publication_schema):
 
-    artifacts_schema = {
-        "type": "dict",
-        "extra_keys_schema": {
+    if publication_schema is None:
+        publication_schema = PublicationSchema([], allow_unspecified_artifacts=True)
+
+    artifact_schema = {
             "type": "dict",
             "optional_keys": {
                 "file": {"type": "string", "nullable": True, "default": None},
@@ -239,9 +239,26 @@ def _publication_file_base_schema():
                 "missing_ok": {"type": "boolean", "default": False},
                 "release_time": {"type": "datetime", "nullable": True, "default": None},
             },
-        },
+        }
+
+    artifacts_schema = {
+            'type': 'dict',
+            'required_keys': {},
+            'optional_keys': {},
     }
-    return {
+
+    if publication_schema.required_artifacts is not None:
+        for artifact in publication_schema.required_artifacts:
+            artifacts_schema['required_keys'][artifact] = artifact_schema
+
+    if publication_schema.optional_artifacts is not None:
+        for artifact in publication_schema.optional_artifacts:
+            artifacts_schema['optional_keys'][artifact] = artifact_schema
+
+    if publication_schema.allow_unspecified_artifacts:
+        artifacts_schema['extra_keys_schema'] = artifact_schema
+
+    schema = {
         "type": "dict",
         "required_keys": {"artifacts": artifacts_schema},
         "optional_keys": {
@@ -250,7 +267,14 @@ def _publication_file_base_schema():
         },
     }
 
-def _resolve_publication_file(raw_contents, metadata_schema, external_variables, path):
+    if publication_schema.metadata_schema is not None:
+        schema["optional_keys"]["metadata"] = {"type": "dict", **publication_schema.metadata_schema}
+    else:
+        schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
+
+    return schema
+
+def _resolve_publication_file(raw_contents, publication_schema, external_variables, path):
     """Resolves (interpolates and parses) the raw publication file contents.
 
     Parameters
@@ -271,12 +295,7 @@ def _resolve_publication_file(raw_contents, metadata_schema, external_variables,
         The resolved dictionary.
 
     """
-    schema = _publication_file_base_schema()
-
-    if metadata_schema is not None:
-        schema["optional_keys"]["metadata"] = {"type": "dict", **metadata_schema}
-    else:
-        schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
+    schema = _make_publication_file_schema(publication_schema)
 
     try:
         return dictconfig.resolve(
@@ -286,61 +305,42 @@ def _resolve_publication_file(raw_contents, metadata_schema, external_variables,
         raise DiscoveryError(str(exc), path)
 
 
-def _validate_publication_file(resolved, schema, path):
-    full_schema = _publication_file_base_schema()
+def _validate_publication(publication: Publication, against: PublicationSchema):
+    """Make sure that a publication satisfies the schema.
 
-    full_schema["metadata"] = {"type": "dict", "required": False, "default": {}}
+    Verifies that all required artifacts are provided, and that no unknown
+    artifacts are given (unless ``schema.allow_unspecified_artifacts == True``).
 
-    if schema is not None and schema.metadata_schema is not None:
-        full_schema["metadata"]["schema"] = schema.metadata_schema
+    Parameters
+    ----------
+    publication : Publication
+        A fully-specified publication.
+    against : PublicationSchema
+        A schema for validating the publication.
 
-    # validate and normalize the contents
-    validator = _PublicationValidator(full_schema, require_all=True)
-    validated = validator.validated(resolved)
-
-    if validated is None:
-        raise DiscoveryError(str(validator.errors), path)
-
-    return validated
-
-
-def _construct_publication_file_schema(schema, raw_contents):
-    """Constructs a schema for validating and resolving the publication file.
-
-    We could in principle directly construct a static Cerberus schema for validating a
-    publication file, however, it would use features that are not supported by the simple
-    schema grammar expected by dictconfig. For example, we do not know what artifacts
-    will be supplied by the publication file, so we might use the "valuesrules"
-    rule in a Cerberus schema to provide a schema for dict values without listing the keys.
-    But dictconfig doesn't understand this
+    Raises
+    ------
+    ValidationError
+        If the publication does not satisfy the schema's constraints.
 
     """
+    schema = against
 
-    quick_schema = {
-        "ready": {"type": "boolean", "default": True, "nullable": True},
-        "release_time": {
-            "type": ["datetime", "string"],
-            "default": None,
-            "nullable": True,
-        },
-        "metadata": {"type": "dict", "required": False, "default": {}},
-        "artifacts": {
-            "required": True,
-            "naluesrules": {
-                "schema": {
-                    "file": {"type": "string", "default": None, "nullable": True},
-                    "recipe": {"type": "string", "default": None, "nullable": True},
-                    "ready": {"type": "boolean", "default": True, "nullable": True},
-                    "missing_ok": {"type": "boolean", "default": False},
-                    "release_time": {
-                        "type": "datetime",
-                        "default": None,
-                        "nullable": True,
-                    },
-                }
-            },
-        },
-    }
+    # make an iterable default for optional artifacts
+    if schema.optional_artifacts is None:
+        schema = schema._replace(optional_artifacts={})
+
+    # ensure that all required artifacts are present
+    required = set(schema.required_artifacts)
+    optional = set(schema.optional_artifacts)
+    provided = set(publication.artifacts)
+    extra = provided - (required | optional)
+
+    if required - provided:
+        raise ValidationError(f"Required artifacts omitted: {required - provided}.")
+
+    if extra and not schema.allow_unspecified_artifacts:
+        raise ValidationError(f"Unknown artifacts provided: {provided - optional}.")
 
 
 # discovery: discover()
