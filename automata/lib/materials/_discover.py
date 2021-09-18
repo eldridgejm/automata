@@ -206,8 +206,6 @@ def read_publication_file(path, publication_schema=None, external_variables=None
     publication = Publication(
         metadata=resolved["metadata"],
         artifacts=artifacts,
-        ready=resolved["ready"],
-        release_time=resolved["release_time"],
     )
 
     return publication
@@ -250,10 +248,7 @@ def _make_publication_file_schema(publication_schema):
     schema = {
         "type": "dict",
         "required_keys": {"artifacts": artifacts_schema},
-        "optional_keys": {
-            "ready": {"default": True, "type": "boolean"},
-            "release_time": {"default": None, "type": "datetime", "nullable": True},
-        },
+        "optional_keys": {},
     }
 
     if publication_schema.metadata_schema is not None:

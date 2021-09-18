@@ -104,17 +104,11 @@ class Publication(typing.NamedTuple):
         The artifacts contained in the publication.
     metadata: Dict[str, Any]
         The metadata dictionary.
-    ready: Optional[bool]
-        If False, this publication is not ready and will not be published.
-    release_time: Optional[datetime.datetime]
-        The time before which this publication will not be released.
 
     """
 
     metadata: typing.Mapping[str, typing.Any]
     artifacts: typing.Mapping[str, Artifact]
-    ready: bool = True
-    release_time: datetime.datetime = None
 
     def _deep_asdict(self):
         """A dictionary representation of the publication and its children."""

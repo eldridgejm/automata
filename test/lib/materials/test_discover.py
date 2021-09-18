@@ -54,7 +54,7 @@ def test_finds_publications():
         "01-intro",
         "02-python",
         "03-not_ready",
-        "04-publication_not_released",
+        "04-normal_publication",
     }
 
 
@@ -184,7 +184,7 @@ def test_sorts_publications_lexicographically_if_collection_is_ordered():
         "01-intro",
         "02-python",
         "03-not_ready",
-        "04-publication_not_released",
+        "04-normal_publication",
         "10-late_homework",
         "11-later_homework",
     ]

@@ -157,69 +157,6 @@ def test_allows_extra_artifact_when_allow_unspecified_given(
     assert "woo" in pub.artifacts
 
 
-def test_without_release_time(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = read_publication_file(path)
-
-    # then
-    assert publication.release_time is None
-
-
-def test_with_relative_release_time(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 01
-                due: 2020-09-04 23:59:00
-                released: 2020-09-01
-
-            release_time: 1 day after ${self.metadata.due}
-
-            artifacts:
-                homework:
-                    file: ./homework.pdf
-                    recipe: make homework
-                solution:
-                    file: ./solution.pdf
-                    recipe: make solution
-                    release_time: ${self.metadata.due}
-            """
-        ),
-    )
-
-    # when
-    publication = read_publication_file(path)
-
-    # then
-    expected = publication.metadata["due"] + datetime.timedelta(days=1)
-    assert publication.release_time == expected
-
-
 def test_with_relative_release_time(write_file):
     # given
     path = write_file(

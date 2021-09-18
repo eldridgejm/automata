@@ -83,61 +83,6 @@ def test_build_artifact_when_not_ready():
     assert not run.called
 
 
-def test_build_publications_when_not_ready():
-    # given
-    artifact = automata.lib.materials.UnbuiltArtifact(
-        workdir=pathlib.Path.cwd(),
-        file="foo.pdf",
-        recipe="echo hi",
-        ready=True,
-    )
-
-    publication = automata.lib.materials.Publication(
-        metadata={}, artifacts={"homework.pdf": artifact}, ready=False
-    )
-
-    proc = Mock()
-    proc.returncode = 0
-    run = Mock(return_value=proc)
-    now = Mock(return_value=datetime.datetime(2020, 3, 1, 0, 0, 0))
-
-    # when
-    result = automata.lib.materials.build(publication, run=run, now=now)
-
-    # then
-    assert result is None
-    assert not run.called
-
-
-def test_build_publication_when_release_time_in_future():
-    # given
-    artifact = automata.lib.materials.UnbuiltArtifact(
-        workdir=pathlib.Path.cwd(),
-        file="foo.pdf",
-        recipe="echo hi",
-        ready=True,
-    )
-
-    publication = automata.lib.materials.Publication(
-        metadata={},
-        artifacts={"homework.pdf": artifact},
-        ready=True,
-        release_time=datetime.datetime(2020, 4, 1, 0, 0, 0),
-    )
-
-    proc = Mock()
-    proc.returncode = 0
-    run = Mock(return_value=proc)
-    now = Mock(return_value=datetime.datetime(2020, 3, 1, 0, 0, 0))
-
-    # when
-    result = automata.lib.materials.build(publication, run=run, now=now)
-
-    # then
-    assert result is None
-    assert not run.called
-
-
 def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
     # given
     artifact = automata.lib.materials.UnbuiltArtifact(

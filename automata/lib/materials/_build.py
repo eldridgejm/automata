@@ -173,19 +173,6 @@ def build(
     if isinstance(parent, UnbuiltArtifact):
         return _build_artifact(parent, **kwargs)
 
-    if isinstance(parent, Publication):
-        if not parent.ready:
-            callbacks.on_not_ready(parent)
-            return None
-
-        if (
-            not ignore_release_time
-            and parent.release_time is not None
-            and parent.release_time > now()
-        ):
-            callbacks.on_too_soon(parent)
-            return None
-
     # recursively build the children
     new_children = {}
     for child_key, child in parent._children.items():

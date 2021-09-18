@@ -147,8 +147,6 @@ schema described by the `collection.yaml` from before.
 
 .. code:: yaml
 
-    ready: true
-
     metadata:
         name: Homework 01
         number: 1
