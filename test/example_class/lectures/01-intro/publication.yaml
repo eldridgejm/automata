@@ -1,0 +1,19 @@
+metadata:
+    topic: Introduction
+    date: 2020-10-01
+    number: 1
+
+    videos:
+        - title: Introduction
+          url: http://youtube.com
+        - title: Another Video
+          url: http://youtube.com
+        - title: A third video is what this is
+          url: http://uscd.edu
+        - title: This is the fourth video and it has a long name
+          url: http://dsc10.com
+
+
+artifacts:
+    lecture.ipynb:
+        recipe: touch lecture.ipynb

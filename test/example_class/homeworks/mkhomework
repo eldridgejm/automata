@@ -1,0 +1,2 @@
+#! /bin/sh
+instantiate template $1 --numbering 2 --context ../course.yaml

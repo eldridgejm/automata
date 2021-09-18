@@ -1,0 +1,15 @@
+<div class="button-bar list-group list-group-horizontal-md h-30" style="text-align: center">
+
+{% for button in config %}
+    <a href="{{ button.url }}" class="list-group-item list-group-item-action">
+    <i class="em {{ button.icon }}" aria-role="presentation"></i>
+    &nbsp;
+    {{ button.text }}
+    <br>
+    <small class="text-muted">
+        {{ button.subtext }}
+    </small>
+  </a>
+{% endfor %}
+
+</div>

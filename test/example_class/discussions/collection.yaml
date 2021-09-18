@@ -1,0 +1,15 @@
+publication_schema:
+    required_artifacts:
+        - discussion.ipynb
+
+    metadata_schema:
+        required_keys:
+            topic:
+                type: string
+            date:
+                type: date
+            number:
+                type: integer
+        optional_keys:
+            recording:
+                type: string

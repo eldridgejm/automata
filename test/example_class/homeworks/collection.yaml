@@ -1,0 +1,13 @@
+publication_schema:
+    required_artifacts:
+        - homework.txt
+        - solution.txt
+
+    metadata_schema:
+        required_keys:
+            due:
+                type: datetime
+            released:
+                type: datetime
+            number:
+                type: integer

@@ -1,0 +1,6 @@
+theme:
+    type: dict
+    allow_unknown: false
+    schema:
+        page_title:
+            type: string

@@ -1,0 +1,80 @@
+{
+    "collections": {
+        "default": {
+            "publication_schema": {
+                "required_artifacts": [],
+                "optional_artifacts": null,
+                "metadata_schema": null,
+                "allow_unspecified_artifacts": true
+            },
+            "publications": {
+                "textbook": {
+                    "metadata": {
+                        "name": "Textbook",
+                        "author": "Justin Eldridge"
+                    },
+                    "artifacts": {
+                        "textbook.pdf": {
+                            "path": "default/textbook/textbook.pdf"
+                        }
+                    }
+                }
+            }
+        },
+        "homeworks": {
+            "publication_schema": {
+                "required_artifacts": [
+                    "homework.pdf",
+                    "solution.pdf"
+                ],
+                "optional_artifacts": [
+                    "template.zip"
+                ],
+                "metadata_schema": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "due": {
+                        "type": "date"
+                    },
+                    "released": {
+                        "type": "date"
+                    }
+                },
+                "allow_unspecified_artifacts": false
+            },
+            "publications": {
+                "02-python": {
+                    "metadata": {
+                        "name": "Homework 02",
+                        "due": "2020-09-10 23:59:00",
+                        "released": "2020-11-01"
+                    },
+                    "artifacts": {
+                        "homework.pdf": {
+                            "path": "homeworks/02-python/homework.pdf"
+                        },
+                        "solution.pdf": {
+                            "path": "homeworks/02-python/solution.pdf"
+                        }
+                    }
+                },
+                "01-intro": {
+                    "metadata": {
+                        "name": "Homework 01",
+                        "due": "2020-09-10 23:59:00",
+                        "released": "2020-09-01"
+                    },
+                    "artifacts": {
+                        "homework.pdf": {
+                            "path": "homeworks/01-intro/homework.pdf"
+                        },
+                        "solution.pdf": {
+                            "path": "homeworks/01-intro/solution.pdf"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

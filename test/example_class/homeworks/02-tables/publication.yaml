@@ -1,0 +1,19 @@
+# the display name solution the homework
+metadata:
+    # when the hw is due in YYYY-MM-DDTHH:MM:SS format
+    due: 2020-10-14T23:59:00
+
+    number: 2
+
+    # the date that the homework was released; used to place the homework in a
+    # particular week
+    released: 2020-10-7 23:59:00
+
+artifacts:
+    homework.txt:
+        recipe: touch "homework.txt"
+        release_time: ${self.metadata.released}
+
+    solution.txt:
+        recipe: touch "solution.txt"
+        release_time: 1 day after ${self.metadata.due}

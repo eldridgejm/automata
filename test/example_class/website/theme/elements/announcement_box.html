@@ -1,0 +1,11 @@
+{% if element_config['urgent'] %}
+    {% set class = "alert-danger" %}
+{% else %}
+    {% set class = "alert-primary" %}
+{% endif %}
+
+{% if element_config['content'] is not none %}
+<div class="jumbotron">
+    <p class="lead">{{ element_config['content'] | evaluate | markdown_to_html }}</p>
+</div>
+{% endif %}
