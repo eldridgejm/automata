@@ -1069,9 +1069,9 @@ def test_discover_with_dates_relating_to_previous():
 # interpolation
 
 
-def test_discover_with_template_vars():
+def test_discover_with_external_variables():
     # given
-    template_vars = {
+    external_variables = {
         "course": {
             "name": "my favorite homework",
             "start_date": datetime.date(2020, 1, 1),
@@ -1080,7 +1080,7 @@ def test_discover_with_template_vars():
 
     # when
     universe = automata.materials.discover(
-        EXAMPLE_9_DIRECTORY, template_vars=template_vars
+        EXAMPLE_9_DIRECTORY, external_variables=external_variables
     )
 
     # then

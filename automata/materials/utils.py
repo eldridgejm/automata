@@ -120,7 +120,7 @@ def _days_between(date_x, date_y):
 
 def release_schedule(args):
     universe = discover(
-        args.path, skip_directories=args.skip_directories, template_vars=args.vars
+        args.path, skip_directories=args.skip_directories, external_variables=args.vars
     )
 
     # get the release info for every artifact

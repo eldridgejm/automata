@@ -36,7 +36,7 @@ def test_publish_cli_simple_example(make_input_directory, output_directory):
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
 
 
-def test_publish_cli_with_example_using_template_vars(
+def test_publish_cli_with_example_using_external_variables(
     make_input_directory, output_directory
 ):
     # given

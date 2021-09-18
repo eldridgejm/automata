@@ -32,12 +32,12 @@ def build_materials(args):
             return _now
 
     if args.vars is None:
-        template_vars = None
+        external_variables = None
     else:
         name, path = args.vars
         with open(path) as fileobj:
             values = yaml.load(fileobj, Loader=yaml.Loader)
-        template_vars = {name: values}
+        external_variables = {name: values}
 
     # construct callbacks for printing information to the screen. start with
     # helper functions for formatting terminal output
@@ -141,7 +141,7 @@ def build_materials(args):
     discovered = discover(
         args.input_directory,
         skip_directories=args.skip_directories,
-        template_vars=template_vars,
+        external_variables=external_variables,
         callbacks=CLIDiscoverCallbacks(),
     )
 

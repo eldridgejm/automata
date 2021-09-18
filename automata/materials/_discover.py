@@ -154,32 +154,7 @@ def _validate_metadata_schema(metadata_schema, path):
 # --------------------------------------------------------------------------------------
 
 
-def _publication_file_base_schema():
-
-    artifacts_schema = {
-        "type": "dict",
-        "extra_keys_schema": {
-            "type": "dict",
-            "optional_keys": {
-                "file": {"type": "string", "nullable": True, "default": None},
-                "recipe": {"type": "string", "nullable": True, "default": None},
-                "ready": {"type": "boolean", "default": True},
-                "missing_ok": {"type": "boolean", "default": False},
-                "release_time": {"type": "datetime", "nullable": True, "default": None},
-            },
-        },
-    }
-    return {
-        "type": "dict",
-        "required_keys": {"artifacts": artifacts_schema},
-        "optional_keys": {
-            "ready": {"default": True, "type": "boolean"},
-            "release_time": {"default": None, "type": "datetime", "nullable": True},
-        },
-    }
-
-
-def read_publication_file(path, publication_schema=None, template_vars=None):
+def read_publication_file(path, publication_schema=None, external_variables=None):
     """Read a :class:`Publication` from a yaml file.
 
     Parameters
@@ -187,9 +162,10 @@ def read_publication_file(path, publication_schema=None, template_vars=None):
     path : pathlib.Path
         Path to the collection file.
     publication_schema : Optional[PublicationSchema]
-        A schema for validating the publication. Default: None, in which case the
-        publication's metadata are not validated.
-    template_vars : dict
+        A schema that described the necessary artifacts of the publication and
+        what metadata it should have. If `None`, only very basic validation is
+        done (see below). Default: None.
+    external_variables : dict
         A dictionary of external variables that will be available during interpolation
         of the publication file.
 
@@ -228,7 +204,7 @@ def read_publication_file(path, publication_schema=None, template_vars=None):
     metadata_schema = None if publication_schema is None else publication_schema.metadata_schema
 
     resolved = _resolve_publication_file(
-        raw_contents, metadata_schema, template_vars, path
+        raw_contents, metadata_schema, external_variables, path
     )
 
     # convert each artifact to an Artifact object
@@ -249,6 +225,30 @@ def read_publication_file(path, publication_schema=None, template_vars=None):
 
     return publication
 
+
+def _publication_file_base_schema():
+
+    artifacts_schema = {
+        "type": "dict",
+        "extra_keys_schema": {
+            "type": "dict",
+            "optional_keys": {
+                "file": {"type": "string", "nullable": True, "default": None},
+                "recipe": {"type": "string", "nullable": True, "default": None},
+                "ready": {"type": "boolean", "default": True},
+                "missing_ok": {"type": "boolean", "default": False},
+                "release_time": {"type": "datetime", "nullable": True, "default": None},
+            },
+        },
+    }
+    return {
+        "type": "dict",
+        "required_keys": {"artifacts": artifacts_schema},
+        "optional_keys": {
+            "ready": {"default": True, "type": "boolean"},
+            "release_time": {"default": None, "type": "datetime", "nullable": True},
+        },
+    }
 
 def _resolve_publication_file(raw_contents, metadata_schema, external_variables, path):
     """Resolves (interpolates and parses) the raw publication file contents.
@@ -500,8 +500,8 @@ def _make_collections(collection_paths, input_directory, callbacks):
     return collections
 
 
-def _add_previous_keys(template_vars, collection):
-    """Add the resolved previous publication file to the template_vars."""
+def _add_previous_keys(external_variables, collection):
+    """Add the resolved previous publication file to the external_variables."""
     if not collection.publication_schema.is_ordered:
         return
 
@@ -511,7 +511,7 @@ def _add_previous_keys(template_vars, collection):
     except IndexError:
         return
 
-    template_vars["previous"] = collection.publications[previous_key]._deep_asdict()
+    external_variables["previous"] = collection.publications[previous_key]._deep_asdict()
 
 
 def _make_publications(
@@ -520,7 +520,7 @@ def _make_publications(
     collections,
     *,
     callbacks,
-    template_vars,
+    external_variables,
 ):
     """Make the Publication objects.
 
@@ -536,12 +536,12 @@ def _make_publications(
         Publication objects will be added to these Collection objects in-place.
     callbacks : DiscoverCallbacks
         The callbacks to be invoked when interesting things happen.
-    template_vars : Optional[dict]
+    external_variables : Optional[dict]
         A dictionary of extra variables to be used during interpolation.
 
     """
-    if template_vars is None:
-        template_vars = {}
+    if external_variables is None:
+        external_variables = {}
 
     for path, collection_path in publication_paths.items():
         if collection_path is None:
@@ -553,13 +553,13 @@ def _make_publications(
 
         collection = collections[collection_key]
 
-        _add_previous_keys(template_vars, collection)
+        _add_previous_keys(external_variables, collection)
 
         file_path = path / constants.PUBLICATION_FILE
         publication = read_publication_file(
             file_path,
             publication_schema=collection.publication_schema,
-            template_vars=template_vars,
+            external_variables=external_variables,
         )
 
         collection.publications[publication_key] = publication
@@ -578,7 +578,7 @@ def discover(
     input_directory,
     skip_directories=None,
     callbacks=None,
-    template_vars=None,
+    external_variables=None,
 ):
     """Discover the collections and publications in the filesystem.
 
@@ -593,7 +593,7 @@ def discover(
         Callbacks to be invoked during the discovery. If omitted, no callbacks
         are executed. See :class:`DiscoverCallbacks` for the possible callbacks
         and their arguments.
-    template_vars : Optional[dict]
+    external_variables : Optional[dict]
         A dictionary of extra variables to be available during interpolation.
 
     Returns
@@ -617,7 +617,7 @@ def discover(
         input_directory,
         collections,
         callbacks=callbacks,
-        template_vars=template_vars,
+        external_variables=external_variables,
     )
 
     return Universe(collections)
