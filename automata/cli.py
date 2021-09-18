@@ -100,7 +100,7 @@ def _register_publish_materials(parser):
 def _register_build_coursepage_parser(parser):
     parser.add_argument("input_path")
     parser.add_argument("output_path")
-    parser.add_argument("--published")
+    parser.add_argument("--materials")
     parser.add_argument("--now")
     parser.add_argument("--context", type=pathlib.Path)
     parser.set_defaults(cmd=build_coursepage)

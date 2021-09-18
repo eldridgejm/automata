@@ -27,5 +27,5 @@ def build_coursepage(args):
         print(f"Running as if it is currently {_now}")
 
     automata.lib.coursepage.abstract(
-        args.input_path, args.output_path, args.published, context=context, now=now
+        args.input_path, args.output_path, args.materials, context=context, now=now
     )

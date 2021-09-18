@@ -104,7 +104,7 @@ def test_publish_materials_then_build_coursepage_with_example(
     cli(
         [
             "build-coursepage",
-            "--published",
+            "--materials",
             str(output_directory / "materials"),
             str(input_directory / "website"),
             str(output_directory),
