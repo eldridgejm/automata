@@ -222,6 +222,5 @@ from ._build import *
 from ._publish import *
 from ._filter import *
 from ._serialize import *
-from . import api
 
 __version__ = (0, 2, 1)

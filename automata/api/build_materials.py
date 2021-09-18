@@ -6,12 +6,12 @@ import textwrap
 import yaml
 
 
-from ._discover import DiscoverCallbacks, discover
-from ._build import BuildCallbacks, build
-from ._filter import FilterCallbacks, filter_nodes
-from ._publish import PublishCallbacks, publish
-from ._serialize import serialize
-from .types import UnbuiltArtifact
+from automata.lib.materials._discover import DiscoverCallbacks, discover
+from automata.lib.materials._build import BuildCallbacks, build
+from automata.lib.materials._filter import FilterCallbacks, filter_nodes
+from automata.lib.materials._publish import PublishCallbacks, publish
+from automata.lib.materials._serialize import serialize
+from automata.lib.materials.types import UnbuiltArtifact
 
 
 # cli
