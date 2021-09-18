@@ -145,20 +145,20 @@ class Collection(typing.NamedTuple):
 
     Attributes
     ----------
-    schema : PublicationSchema
+    publication_schema : PublicationSchema
         The schema used to validate the publications within the collection.
     publications : Mapping[str, Publication]
         The publications contained in the collection.
 
     """
 
-    schema: "PublicationSchema"
+    publication_schema: "PublicationSchema"
     publications: typing.Mapping[str, Publication]
 
     def _deep_asdict(self):
         """A dictionary representation of the collection and its children."""
         return {
-            "schema": self.schema._asdict(),
+            "publication_schema": self.publication_schema._asdict(),
             "publications": {
                 k: p._deep_asdict() for (k, p) in self.publications.items()
             },
@@ -167,7 +167,7 @@ class Collection(typing.NamedTuple):
     @classmethod
     def _deep_fromdict(cls, dct):
         return cls(
-            schema=PublicationSchema(**dct["schema"]),
+            publication_schema=PublicationSchema(**dct["publication_schema"]),
             publications={
                 k: Publication._deep_fromdict(d)
                 for (k, d) in dct["publications"].items()

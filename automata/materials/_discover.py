@@ -68,8 +68,8 @@ def read_collection_file(path, external_variables=None):
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    schema = PublicationSchema(**resolved["schema"])
-    return Collection(schema=schema, publications={})
+    publication_schema = PublicationSchema(**resolved["schema"])
+    return Collection(publication_schema=publication_schema, publications={})
 
 
 def _collection_file_schema():
@@ -179,14 +179,14 @@ def _publication_file_base_schema():
     }
 
 
-def read_publication_file(path, schema=None, template_vars=None):
+def read_publication_file(path, publication_schema=None, template_vars=None):
     """Read a :class:`Publication` from a yaml file.
 
     Parameters
     ----------
     path : pathlib.Path
         Path to the collection file.
-    schema : Optional[PublicationSchema]
+    publication_schema : Optional[PublicationSchema]
         A schema for validating the publication. Default: None, in which case the
         publication's metadata are not validated.
     template_vars : dict
@@ -215,8 +215,8 @@ def read_publication_file(path, schema=None, template_vars=None):
     a "ready" key; if this is False, the publication will not be considered
     released.
 
-    If the ``schema`` argument is not provided, only very basic validation is
-    performed by this function. Namely, the metadata schema and
+    If the ``publication_schema`` argument is not provided, only very basic
+    validation is performed by this function. Namely, the metadata schema and
     required/optional artifacts are not enforced. See the :func:`validate`
     function for validating these aspects of the publication. If the schema is
     provided, :func:`validate` is called as a convenience.
@@ -225,7 +225,7 @@ def read_publication_file(path, schema=None, template_vars=None):
     with path.open() as fileobj:
         raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
 
-    metadata_schema = None if schema is None else schema.metadata_schema
+    metadata_schema = None if publication_schema is None else publication_schema.metadata_schema
 
     resolved = _resolve_publication_file(
         raw_contents, metadata_schema, template_vars, path
@@ -463,7 +463,7 @@ def _make_default_collection():
         metadata_schema=None,
         allow_unspecified_artifacts=True,
     )
-    return Collection(schema=default_schema, publications={})
+    return Collection(publication_schema=default_schema, publications={})
 
 
 def _make_collections(collection_paths, input_directory, callbacks):
@@ -502,7 +502,7 @@ def _make_collections(collection_paths, input_directory, callbacks):
 
 def _add_previous_keys(template_vars, collection):
     """Add the resolved previous publication file to the template_vars."""
-    if not collection.schema.is_ordered:
+    if not collection.publication_schema.is_ordered:
         return
 
     # the previous publication was just the last one added to collection.publications
@@ -558,7 +558,7 @@ def _make_publications(
         file_path = path / constants.PUBLICATION_FILE
         publication = read_publication_file(
             file_path,
-            schema=collection.schema,
+            publication_schema=collection.publication_schema,
             template_vars=template_vars,
         )
 

@@ -8,7 +8,7 @@ import automata.materials
 def test_serialize_deserialize_universe_roundtrip():
     # given
     collection = automata.materials.Collection(
-        schema=automata.materials.PublicationSchema(required_artifacts=["foo", "bar"]),
+        publication_schema=automata.materials.PublicationSchema(required_artifacts=["foo", "bar"]),
         publications={},
     )
 
@@ -59,7 +59,7 @@ def test_serialize_deserialize_built_publication_roundtrip():
 def test_collection_as_dict():
     # given
     collection = automata.materials.Collection(
-        schema=automata.materials.PublicationSchema(required_artifacts=["foo", "bar"]),
+        publication_schema=automata.materials.PublicationSchema(required_artifacts=["foo", "bar"]),
         publications={},
     )
 
@@ -76,7 +76,7 @@ def test_collection_as_dict():
     d = collection._deep_asdict()
 
     # then
-    assert d["schema"]["required_artifacts"] == ["foo", "bar"]
+    assert d["publication_schema"]["required_artifacts"] == ["foo", "bar"]
     assert (
         d["publications"]["01-intro"]["artifacts"]["homework"]["file"] == "homework.pdf"
     )

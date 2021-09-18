@@ -277,10 +277,10 @@ def test_read_collection_example(write_file):
     collection = automata.materials.read_collection_file(path)
 
     # then
-    assert collection.schema.required_artifacts == ["homework", "solution"]
-    assert collection.schema.optional_artifacts == ["template"]
+    assert collection.publication_schema.required_artifacts == ["homework", "solution"]
+    assert collection.publication_schema.optional_artifacts == ["template"]
     assert (
-        collection.schema.metadata_schema["required_keys"]["name"]["type"] == "string"
+        collection.publication_schema.metadata_schema["required_keys"]["name"]["type"] == "string"
     )
 
 
@@ -315,10 +315,10 @@ def test_read_collection_file_resolves(write_file):
     )
 
     # then
-    assert collection.schema.required_artifacts == ["homework", "solution", "template"]
-    assert collection.schema.optional_artifacts == ["template"]
+    assert collection.publication_schema.required_artifacts == ["homework", "solution", "template"]
+    assert collection.publication_schema.optional_artifacts == ["template"]
     assert (
-        collection.schema.metadata_schema["required_keys"]["name"]["type"] == "string"
+        collection.publication_schema.metadata_schema["required_keys"]["name"]["type"] == "string"
     )
 
 
@@ -400,7 +400,7 @@ def test_read_collection_doesnt_require_optional_artifacts(write_file):
     collection = automata.materials.read_collection_file(path)
 
     # then
-    assert collection.schema.optional_artifacts == []
+    assert collection.publication_schema.optional_artifacts == []
 
 
 def test_read_collection_doesnt_require_metadata_schema(write_file):
@@ -421,7 +421,7 @@ def test_read_collection_doesnt_require_metadata_schema(write_file):
     collection = automata.materials.read_collection_file(path)
 
     # then
-    assert collection.schema.metadata_schema is None
+    assert collection.publication_schema.metadata_schema is None
 
 
 def test_read_collection_raises_on_invalid_metadata_schema(write_file):
@@ -951,7 +951,7 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path, schema=schema)
+    publication = automata.materials.read_publication_file(path, publication_schema=schema)
 
     # then
     expected = datetime.datetime(2020, 9, 3, 23, 59, 0)
@@ -995,7 +995,7 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
     )
 
     # when
-    publication = automata.materials.read_publication_file(path, schema=schema)
+    publication = automata.materials.read_publication_file(path, publication_schema=schema)
 
     # then
     expected = datetime.date(2020, 9, 10)
@@ -1038,7 +1038,7 @@ def test_read_publication_with_unknown_relative_field_raises(write_file):
 
     # when
     with raises(automata.materials.DiscoveryError):
-        publication = automata.materials.read_publication_file(path, schema=schema)
+        publication = automata.materials.read_publication_file(path, publication_schema=schema)
 
 
 def test_discover_with_dates_relating_to_previous():
