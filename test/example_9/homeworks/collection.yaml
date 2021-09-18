@@ -7,11 +7,15 @@ schema:
         - template.zip
 
     metadata_schema:
-        name:
-            type: string
-        due:
-            type: date
-        released:
-            type: date
+        required_keys:
+            name:
+                value_schema:
+                    type: string
+            due:
+                value_schema:
+                    type: date
+            released:
+                value_schema:
+                    type: date
 
     is_ordered: true

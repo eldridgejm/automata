@@ -7,9 +7,13 @@ schema:
         - template
 
     metadata_schema:
-        name:
-            type: string
-        due:
-            type: datetime
-        released: 
-            type: date
+        required_keys:
+            name:
+                value_schema:
+                    type: string
+            due:
+                value_schema:
+                    type: datetime
+            released:
+                value_schema:
+                    type: date

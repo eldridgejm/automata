@@ -1,7 +1,6 @@
 import pathlib
 from collections import deque, OrderedDict
 
-import cerberus
 import dictconfig
 import yaml
 
@@ -19,37 +18,6 @@ from . import constants
 
 # read_collection_file
 # --------------------------------------------------------------------------------------
-
-
-def _collection_file_base_schema():
-    return {
-            "schema": {
-                "type": "dict",
-                "schema": {
-                    "required_artifacts": {
-                        "type": "list",
-                        "schema": {"type": "string"},
-                        "required": True,
-                    },
-                    "optional_artifacts": {
-                        "type": "list",
-                        "schema": {"type": "string"},
-                        "default": [],
-                    },
-                    "metadata_schema": {
-                        "type": "dict",
-                        "required": False,
-                        "nullable": True,
-                        "default": None,
-                    },
-                    "allow_unspecified_artifacts": {
-                        "type": "boolean",
-                        "default": False,
-                    },
-                    "is_ordered": {"type": "boolean", "default": False,},
-                },
-            }
-        }
 
 
 def _collection_file_base_schema():
@@ -173,44 +141,78 @@ def _resolve_collection_file(raw_contents, external_variables, path):
     schema = _collection_file_base_schema()
 
     try:
-        return dictconfig.resolve(raw_contents, schema, external_variables=external_variables)
+        resolved = dictconfig.resolve(raw_contents, schema, external_variables=external_variables)
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
+    _validate_metadata_schema(resolved['schema']['metadata_schema'])
+
+    return resolved
+
+
+def _validate_metadata_schema(metadata_schema):
+    if metadata_schema is None:
+        return
+
+    try:
+        dictconfig.validate_schema({
+            'type': 'dict',
+            **metadata_schema
+        })
+    except dictconfig.exceptions.SchemaError as exc:
+        raise DiscoveryError(exc, "")
 
 
 # read_publication_file
 # --------------------------------------------------------------------------------------
 
+
 def _publication_file_base_schema():
-    return {
-        "ready": {"type": "boolean", "default": True, "nullable": True},
-        "release_time": {
-            "type": "datetime",
-            "default": None,
-            "nullable": True,
-        },
-        "artifacts": {
-            "required": True,
-            "type": "dict",
-            "valuesrules": {
-                "type": "dict",
-                "schema": {
-                    "file": {"type": "string", "default": None, "nullable": True},
-                    "recipe": {"type": "string", "default": None, "nullable": True},
-                    "ready": {"type": "boolean", "default": True, "nullable": True},
-                    "missing_ok": {"type": "boolean", "default": False},
-                    "release_time": {
-                        "type": "datetime",
-                        "default": None,
-                        "nullable": True,
-                    },
-                }
-            },
-        },
+
+    artifacts_schema = {
+        'type': 'dict',
+        'extra_keys_schema': {
+            'type': 'dict',
+            'optional_keys': {
+                'file': {
+                    'value_schema': {'type': 'string', 'nullable': True},
+                    'default': None
+                },
+                'recipe': {
+                    'value_schema': {'type': 'string', 'nullable': True},
+                    'default': None
+                },
+                'ready': {
+                    'value_schema': {'type': 'boolean'},
+                    'default': True
+                },
+                'missing_ok': {
+                    'value_schema': {'type': 'boolean'},
+                    'default': False
+                },
+                'release_time': {
+                    'value_schema': {'type': 'datetime', 'nullable': True},
+                    'default': None
+                },
+            }
+        }
     }
-
-
+    return {
+        'type': 'dict',
+        'required_keys': {
+            'artifacts': {'value_schema': artifacts_schema}
+        },
+        'optional_keys': {
+            'ready': {
+                'default': True,
+                'value_schema': {'type': 'boolean'}
+            },
+            'release_time': {
+                'default': None,
+                'value_schema': {'type': 'datetime', 'nullable': True}
+            },
+        }
+    }
 
 def read_publication_file(path, schema=None, template_vars=None):
     """Read a :class:`Publication` from a yaml file.
@@ -261,11 +263,10 @@ def read_publication_file(path, schema=None, template_vars=None):
     metadata_schema = None if schema is None else schema.metadata_schema
 
     resolved = _resolve_publication_file(raw_contents, metadata_schema, template_vars, path)
-    validated = _validate_publication_file(resolved, schema, path)
 
     # convert each artifact to an Artifact object
     artifacts = {}
-    for key, definition in validated["artifacts"].items():
+    for key, definition in resolved["artifacts"].items():
         # if no file is provided, use the key
         if definition["file"] is None:
             definition["file"] = key
@@ -273,10 +274,10 @@ def read_publication_file(path, schema=None, template_vars=None):
         artifacts[key] = UnbuiltArtifact(workdir=path.parent.absolute(), **definition)
 
     publication = Publication(
-        metadata=validated['metadata'],
+        metadata=resolved['metadata'],
         artifacts=artifacts,
-        ready=validated["ready"],
-        release_time=validated['release_time'],
+        ready=resolved["ready"],
+        release_time=resolved['release_time'],
     )
 
     return publication
@@ -303,13 +304,20 @@ def _resolve_publication_file(raw_contents, metadata_schema, external_variables,
         The resolved dictionary.
 
     """
-    schema = {
-        'type': 'dict',
-        'schema': _publication_file_base_schema()
-    }
+    schema = _publication_file_base_schema()
 
     if metadata_schema is not None:
-        schema['schema']['metadata'] = {'type': 'dict', 'schema': metadata_schema}
+        schema['optional_keys']['metadata'] = {
+            'value_schema': {
+                'type': 'dict',
+                **metadata_schema
+            }
+        }
+    else:
+        schema['optional_keys']['metadata'] = {
+            'value_schema': {'type': 'any'},
+            'default': {}
+        }
 
     try:
         return dictconfig.resolve(raw_contents, schema, external_variables=external_variables)

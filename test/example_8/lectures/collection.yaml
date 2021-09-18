@@ -5,9 +5,12 @@ schema:
         - template.zip
 
     metadata_schema:
-        name:
-            type: string
-        date: 
-            type: datetime
+        required_keys:
+          name:
+              value_schema:
+                  type: string
+          date:
+              value_schema:
+                  type: datetime
 
     is_ordered: true
