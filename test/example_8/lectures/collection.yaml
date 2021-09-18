@@ -7,10 +7,8 @@ schema:
     metadata_schema:
         required_keys:
           name:
-              value_schema:
-                  type: string
+              type: string
           date:
-              value_schema:
-                  type: datetime
+              type: datetime
 
     is_ordered: true

@@ -9,5 +9,4 @@ schema:
     metadata_schema:
         required_keys:
             name:
-                value_schema:
-                    type: string
+                type: string

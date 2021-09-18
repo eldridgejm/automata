@@ -9,11 +9,8 @@ schema:
     metadata_schema:
         required_keys:
             name:
-                value_schema:
-                    type: string
+                type: string
             due:
-                value_schema:
-                    type: datetime
+                type: datetime
             released:
-                value_schema:
-                    type: date
+                type: date

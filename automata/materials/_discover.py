@@ -25,42 +25,34 @@ def _collection_file_base_schema():
         'type': 'dict',
         'required_keys': {
             'schema': {
-                'value_schema': {
                     'type': 'dict',
                     'required_keys': {
                         'required_artifacts': {
-                            'value_schema': {
                                 'type': 'list',
                                 'element_schema': {'type': 'string'},
-                                }
                             }
                         },
                     'optional_keys': {
                         'optional_artifacts': {
-                            'value_schema': {
                                 'type': 'list',
                                 'element_schema': {'type': 'string'},
-                                },
                             'default': []
                             },
                         'metadata_schema': {
-                            'value_schema': {
                                 'type': 'dict',
                                 'extra_keys_schema': {'type': 'any'},
                                 'nullable': True,
-                                },
                             'default': None
                             },
                         'allow_unspecified_artifacts': {
-                            'value_schema': {'type': 'boolean'},
+                            'type': 'boolean',
                             'default': False
                             },
                         'is_ordered': {
-                            'value_schema': {'type': 'boolean'},
+                            'type': 'boolean',
                             'default': False
                             },
                         }
-                    }
                 }
             }
         }
@@ -145,12 +137,12 @@ def _resolve_collection_file(raw_contents, external_variables, path):
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    _validate_metadata_schema(resolved['schema']['metadata_schema'])
+    _validate_metadata_schema(resolved['schema']['metadata_schema'], path)
 
     return resolved
 
 
-def _validate_metadata_schema(metadata_schema):
+def _validate_metadata_schema(metadata_schema, path):
     if metadata_schema is None:
         return
 
@@ -160,7 +152,7 @@ def _validate_metadata_schema(metadata_schema):
             **metadata_schema
         })
     except dictconfig.exceptions.SchemaError as exc:
-        raise DiscoveryError(exc, "")
+        raise DiscoveryError(exc, path)
 
 
 # read_publication_file
@@ -175,23 +167,23 @@ def _publication_file_base_schema():
             'type': 'dict',
             'optional_keys': {
                 'file': {
-                    'value_schema': {'type': 'string', 'nullable': True},
+                    'type': 'string', 'nullable': True,
                     'default': None
                 },
                 'recipe': {
-                    'value_schema': {'type': 'string', 'nullable': True},
+                    'type': 'string', 'nullable': True,
                     'default': None
                 },
                 'ready': {
-                    'value_schema': {'type': 'boolean'},
+                    'type': 'boolean',
                     'default': True
                 },
                 'missing_ok': {
-                    'value_schema': {'type': 'boolean'},
+                    'type': 'boolean',
                     'default': False
                 },
                 'release_time': {
-                    'value_schema': {'type': 'datetime', 'nullable': True},
+                    'type': 'datetime', 'nullable': True,
                     'default': None
                 },
             }
@@ -200,16 +192,16 @@ def _publication_file_base_schema():
     return {
         'type': 'dict',
         'required_keys': {
-            'artifacts': {'value_schema': artifacts_schema}
+            'artifacts': artifacts_schema
         },
         'optional_keys': {
             'ready': {
                 'default': True,
-                'value_schema': {'type': 'boolean'}
+                'type': 'boolean'
             },
             'release_time': {
                 'default': None,
-                'value_schema': {'type': 'datetime', 'nullable': True}
+                'type': 'datetime', 'nullable': True
             },
         }
     }
@@ -308,14 +300,12 @@ def _resolve_publication_file(raw_contents, metadata_schema, external_variables,
 
     if metadata_schema is not None:
         schema['optional_keys']['metadata'] = {
-            'value_schema': {
-                'type': 'dict',
-                **metadata_schema
-            }
+            'type': 'dict',
+            **metadata_schema
         }
     else:
         schema['optional_keys']['metadata'] = {
-            'value_schema': {'type': 'any'},
+            'type': 'any',
             'default': {}
         }
 

@@ -9,13 +9,10 @@ schema:
     metadata_schema:
         required_keys:
           name:
-              value_schema:
-                  type: string
+              type: string
           due:
-              value_schema:
-                  type: date
+              type: date
           released:
-              value_schema:
-                  type: date
+              type: date
 
     is_ordered: true

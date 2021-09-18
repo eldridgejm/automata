@@ -264,11 +264,9 @@ def test_read_collection_example(write_file):
                 metadata_schema:
                     required_keys:
                         name:
-                            value_schema:
-                                type: string
+                            type: string
                         due:
-                            value_schema:
-                                type: date
+                            type: date
             """
         ),
     )
@@ -279,7 +277,7 @@ def test_read_collection_example(write_file):
     # then
     assert collection.schema.required_artifacts == ["homework", "solution"]
     assert collection.schema.optional_artifacts == ["template"]
-    assert collection.schema.metadata_schema['required_keys']["name"]['value_schema']["type"] == "string"
+    assert collection.schema.metadata_schema['required_keys']["name"]["type"] == "string"
 
 
 def test_read_collection_file_resolves(write_file):
@@ -300,11 +298,9 @@ def test_read_collection_file_resolves(write_file):
                 metadata_schema:
                     required_keys:
                         name:
-                            value_schema:
-                                type: string
+                            type: string
                         due:
-                            value_schema:
-                                type: date
+                            type: date
             """
         ),
     )
@@ -319,7 +315,7 @@ def test_read_collection_file_resolves(write_file):
     # then
     assert collection.schema.required_artifacts == ["homework", "solution", "template"]
     assert collection.schema.optional_artifacts == ["template"]
-    assert collection.schema.metadata_schema['required_keys']["name"]['value_schema']["type"] == "string"
+    assert collection.schema.metadata_schema['required_keys']["name"]["type"] == "string"
 
 def test_read_collection_validates_fields(write_file):
     path = write_file(
@@ -336,11 +332,9 @@ def test_read_collection_validates_fields(write_file):
                 metadata_schema:
                     required_keys:
                         name:
-                            value_schema:
-                                type: string
+                            type: string
                         due:
-                            value_schema:
-                                type: date
+                            type: date
             """
         ),
     )
@@ -364,11 +358,9 @@ def test_read_collection_requires_required_artifacts(write_file):
                 metadata_schema:
                     required_keys:
                         name:
-                            value_schema:
-                                type: string
+                            type: string
                         due:
-                            value_schema:
-                                type: date
+                            type: date
             """
         ),
     )
@@ -392,11 +384,9 @@ def test_read_collection_doesnt_require_optional_artifacts(write_file):
                 metadata_schema:
                     required_keys:
                         name:
-                            value_schema:
-                                type: string
+                            type: string
                         due:
-                            value_schema:
-                                type: date
+                            type: date
             """
         ),
     )
@@ -948,9 +938,9 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
-                "name": {"value_schema": {"type": "string"}},
-                "due": {"value_schema": {"type": "datetime"}},
-                "released": {"value_schema": {"type": "datetime"}},
+                "name": {"type": "string"},
+                "due": {"type": "datetime"},
+                "released": {"type": "datetime"},
             }
         },
     )
@@ -992,9 +982,9 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
-                "name": {"value_schema": {"type": "string"}},
-                "due": {"value_schema": {"type": "date"}},
-                "released": {"value_schema": {"type": "date"}},
+                "name": {"type": "string"},
+                "due": {"type": "date"},
+                "released": {"type": "date"},
             }
         },
     )
@@ -1035,9 +1025,9 @@ def test_read_publication_with_unknown_relative_field_raises(write_file):
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
-                "name": {"value_schema": {"type": "string"}},
-                "due": {"value_schema": {"type": "date"}},
-                "released": {"value_schema": {"type": "date"}},
+                "name": {"type": "string"},
+                "due": {"type": "date"},
+                "released": {"type": "date"},
             }
         },
     )
