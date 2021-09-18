@@ -98,6 +98,7 @@ def _register_build_materials_parser(parser):
 
 
 def _register_build_coursepage_parser(parser):
+    parser.add_argument("input_path")
     parser.add_argument("output_path")
     parser.add_argument("--published")
     parser.add_argument("--now")

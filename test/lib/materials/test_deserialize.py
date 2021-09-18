@@ -42,7 +42,9 @@ def test_serialize_deserialize_built_publication_roundtrip():
             "released": datetime.date(2020, 2, 28),
         },
         artifacts={
-            "homework": automata.lib.materials.BuiltArtifact(workdir=None, file="foo/bar")
+            "homework": automata.lib.materials.BuiltArtifact(
+                workdir=None, file="foo/bar"
+            )
         },
     )
 

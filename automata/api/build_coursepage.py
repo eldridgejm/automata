@@ -1,6 +1,8 @@
 import datetime
 import pathlib
 
+import yaml
+
 import automata.lib.coursepage
 
 
@@ -25,5 +27,5 @@ def build_coursepage(args):
         print(f"Running as if it is currently {_now}")
 
     automata.lib.coursepage.abstract(
-        pathlib.Path.cwd(), args.output_path, args.published, context=context, now=now
+        args.input_path, args.output_path, args.published, context=context, now=now
     )

@@ -224,7 +224,9 @@ def test_filter_artifacts_removes_nodes_without_children():
 
         return k not in {"solution.pdf", "homework.pdf"}
 
-    universe = automata.lib.materials.filter_nodes(universe, keep, remove_empty_nodes=True)
+    universe = automata.lib.materials.filter_nodes(
+        universe, keep, remove_empty_nodes=True
+    )
 
     # then
     assert "homeworks" not in universe.collections

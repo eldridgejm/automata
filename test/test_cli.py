@@ -25,7 +25,7 @@ def output_directory(tmpdir):
     return output_path
 
 
-def test_publish_cli_simple_example(make_input_directory, output_directory):
+def test_build_materials_simple_example(make_input_directory, output_directory):
     # given
     input_directory = make_input_directory("example_1")
 
@@ -36,7 +36,7 @@ def test_publish_cli_simple_example(make_input_directory, output_directory):
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
 
 
-def test_publish_cli_with_example_using_external_variables(
+def test_build_materials_with_example_using_external_variables(
     make_input_directory, output_directory
 ):
     # given
@@ -65,3 +65,36 @@ def test_publish_cli_with_example_using_external_variables(
 
     # then
     assert (output_directory / "homeworks" / "01-intro").exists()
+
+
+def test_build_materials_then_build_coursepage_with_example(
+    make_input_directory, output_directory
+):
+    # given
+    input_directory = make_input_directory("example_class")
+
+    # when
+    cli(
+        [
+            "build-materials",
+            str(input_directory),
+            str(output_directory / 'materials'),
+            "--skip-directories",
+            "template",
+        ]
+    )
+    cli(
+        [
+            "build-coursepage",
+            "--published",
+            str(output_directory / 'materials'),
+            str(input_directory / "website"),
+            str(output_directory),
+            "--context",
+            str(input_directory / "course.yaml"),
+        ]
+    )
+
+    # then
+    assert (output_directory / 'index.html').exists()
+

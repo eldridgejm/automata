@@ -74,7 +74,9 @@ def test_converts_pages_from_markdown_to_html(demo):
     automata.lib.coursepage.abstract(demo.path, demo.builddir)
 
     # then
-    assert "<h1 id=\"this-is-a-header\">This is a header</h1>" in demo.get_output("one.html")
+    assert '<h1 id="this-is-a-header">This is a header</h1>' in demo.get_output(
+        "one.html"
+    )
 
 
 def test_pages_have_access_to_published_artifacts(demo):
@@ -174,7 +176,9 @@ def test_accepts_context(demo):
     demo.make_page("test.md", "{{ context.foo }}")
 
     # when
-    automata.lib.coursepage.abstract(demo.path, demo.builddir, context={"foo": "barbaz"})
+    automata.lib.coursepage.abstract(
+        demo.path, demo.builddir, context={"foo": "barbaz"}
+    )
 
     # then
     assert "barbaz" in demo.get_output("test.html")
@@ -193,7 +197,9 @@ def test_context_available_in_config_file(demo):
     demo.make_page("one.md", "{{ elements.announcement_box(config['announcement']) }}")
 
     # when
-    automata.lib.coursepage.abstract(demo.path, demo.builddir, context={"name": "Zaphod Beeblebrox"})
+    automata.lib.coursepage.abstract(
+        demo.path, demo.builddir, context={"name": "Zaphod Beeblebrox"}
+    )
 
     # then
     assert "Zaphod Beeblebrox" in demo.get_output("one.html")

@@ -200,7 +200,10 @@ def read_publication_file(path, publication_schema=None, external_variables=None
 
     """
     with path.open() as fileobj:
-        raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
+        try:
+            raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
+        except yaml.YAMLError as exc:
+            raise DiscoveryError(str(exc), path)
 
     resolved = _resolve_publication_file(
         raw_contents, publication_schema, external_variables, path
