@@ -151,7 +151,7 @@ def _validate_metadata_schema(metadata_schema, path):
             'type': 'dict',
             **metadata_schema
         })
-    except dictconfig.exceptions.SchemaError as exc:
+    except dictconfig.exceptions.InvalidSchemaError as exc:
         raise DiscoveryError(exc, path)
 
 
