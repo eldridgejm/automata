@@ -22,6 +22,8 @@ from . import constants
 def read_collection_file(path, external_variables=None):
     """Read a :class:`Collection` from a yaml file.
 
+    See the documentation for a description of the format of the file.
+
     Parameters
     ----------
     path : pathlib.Path
@@ -33,28 +35,6 @@ def read_collection_file(path, external_variables=None):
     -------
     Collection
         The collection object with no attached publications.
-
-    Notes
-    -----
-    The file should have one key, "schema", whose value is a dictionary with
-    the following keys/values:
-
-    - required_artifacts
-        A list of artifact names. Each publication will need to have all of these.
-    - optional_artifacts [optional]
-        A list of artifacts that are optional. If not provided, the default value of []
-        (empty list) will be used.
-    - metadata_schema [optional]
-        A dictionary describing a schema for validating publication metadata.  The
-        dictionary should deserialize to something recognized by the dictconfig package.
-        If not provided, the default value of None will be used.
-    - allow_unspecified_artifacts [optional]
-        Whether or not to allow unspecified artifacts in the publications.
-        Default: False.
-    - is_ordered [optional]
-        Is the collection enumerable? If so, set this to True. Defaults to False.
-        This must be True in order to use information from previous publications
-        in publication.yaml files.
 
     """
     if external_variables is None:
@@ -125,6 +105,11 @@ def _resolve_collection_file(raw_contents, external_variables, path):
     -------
     dict
         The resolved dictionary.
+
+    Raises
+    ------
+    DiscoveryError
+        If the collection file is invalid.
 
     """
     schema = _collection_file_schema()
@@ -229,6 +214,7 @@ def read_publication_file(path, publication_schema=None, external_variables=None
 
 
 def _make_publication_file_schema(publication_schema):
+    """Construct a dictconfig schema for validating and resolving the publication file."""
 
     if publication_schema is None:
         publication_schema = PublicationSchema([], allow_unspecified_artifacts=True)
