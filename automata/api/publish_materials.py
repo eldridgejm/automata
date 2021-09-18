@@ -18,7 +18,7 @@ from automata.lib.materials.types import UnbuiltArtifact
 # --------------------------------------------------------------------------------------
 
 
-def build_materials(args):
+def publish_materials(args):
     if args.now is None:
         now = datetime.datetime.now
     else:

@@ -38,7 +38,7 @@ def example_class(tempdir, date):
 
     automata.cli(
         [
-            "build-materials",
+            "publish-materials",
             str(destination),
             str(destination / "website/_build/published"),
             "--skip-directories",

@@ -26,18 +26,18 @@ def output_directory(tmpdir):
     return output_path
 
 
-def test_build_materials_simple_example(make_input_directory, output_directory):
+def test_publish_materials_simple_example(make_input_directory, output_directory):
     # given
     input_directory = make_input_directory("example_1")
 
     # when
-    cli(["build-materials", str(input_directory), str(output_directory)])
+    cli(["publish-materials", str(input_directory), str(output_directory)])
 
     # then
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
 
 
-def test_build_materials_with_example_using_external_variables(
+def test_publish_materials_with_example_using_external_variables(
     make_input_directory, output_directory
 ):
     # given
@@ -55,7 +55,7 @@ def test_build_materials_with_example_using_external_variables(
     # when
     cli(
         [
-            "build-materials",
+            "publish-materials",
             str(input_directory),
             str(output_directory),
             "--ignore-release-time",
@@ -68,13 +68,13 @@ def test_build_materials_with_example_using_external_variables(
     assert (output_directory / "homeworks" / "01-intro").exists()
 
 
-def test_build_materials_creates_materials_json(
+def test_publish_materials_creates_materials_json(
     make_input_directory, output_directory
 ):
     input_directory = make_input_directory("example_1")
 
     # when
-    cli(["build-materials", str(input_directory), str(output_directory)])
+    cli(["publish-materials", str(input_directory), str(output_directory)])
 
     # then
     assert (output_directory / "materials.json").exists()
@@ -85,7 +85,7 @@ def test_build_materials_creates_materials_json(
 
 
 
-def test_build_materials_then_build_coursepage_with_example(
+def test_publish_materials_then_build_coursepage_with_example(
     make_input_directory, output_directory
 ):
     # given
@@ -94,7 +94,7 @@ def test_build_materials_then_build_coursepage_with_example(
     # when
     cli(
         [
-            "build-materials",
+            "publish-materials",
             str(input_directory),
             str(output_directory / "materials"),
             "--skip-directories",

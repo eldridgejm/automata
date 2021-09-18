@@ -365,13 +365,13 @@ sets all other dates relative to this.
             release_time: ${self.artifacts."homework.pdf".release_time}
 
 
-Discovering, building, and releasing artifacts
-----------------------------------------------
+Discovering, building, and publishing artifacts
+-----------------------------------------------
 
 One of `automata`'s main functions is to discover, build, and release all of
 the course materials that are ready and whose release time has been reached.
 This is often performed as part of a script, but it can also be done by
-invoking :code:`automata build-materials` at the command line.
+invoking :code:`automata publish-materials` at the command line.
 
 In the **discovery** step, the **input directory** is recursively searched for
 collections, publications, and artifacts. As described above, collections and
@@ -390,7 +390,7 @@ program returns without continuing on to the next phase. An error is
 considered to occur if the build process returns a nonzero error code, or if
 the artifact file is missing after the recipe is run.
 
-In the **release** phase, all published artifacts -- that is, those which are
+In the **publish** phase, all published artifacts -- that is, those which are
 ready and whose release date has passed -- are copied to an **output
 directory**. Additionally, a JSON file containing information about the
 collection -> publication -> artifact hierarchy is placed at the root of the

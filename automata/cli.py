@@ -2,7 +2,7 @@ import argparse
 import datetime
 import pathlib
 
-from automata.api.build_materials import build_materials
+from automata.api.publish_materials import publish_materials
 from automata.api.build_coursepage import build_coursepage
 
 
@@ -37,8 +37,8 @@ def cli(argv=None):
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
-    build_materials_parser = subparsers.add_parser("build-materials")
-    _register_build_materials_parser(build_materials_parser)
+    publish_materials = subparsers.add_parser("publish-materials")
+    _register_publish_materials(publish_materials)
 
     build_coursepage_parser = subparsers.add_parser("build-coursepage")
     _register_build_coursepage_parser(build_coursepage_parser)
@@ -47,7 +47,7 @@ def cli(argv=None):
     args.cmd(args)
 
 
-def _register_build_materials_parser(parser):
+def _register_publish_materials(parser):
     """The command line interface.
 
     Parameters
@@ -60,7 +60,7 @@ def _register_build_materials_parser(parser):
         allows you to inject a fixed, known time.
 
     """
-    parser.set_defaults(cmd=build_materials)
+    parser.set_defaults(cmd=publish_materials)
     parser.add_argument("input_directory", type=_arg_directory)
     parser.add_argument("output_directory", type=_arg_output_directory)
     parser.add_argument(
