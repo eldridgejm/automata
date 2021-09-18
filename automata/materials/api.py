@@ -18,7 +18,6 @@ from .types import UnbuiltArtifact
 # --------------------------------------------------------------------------------------
 
 
-
 def build_materials(args):
     if args.now is None:
         now = datetime.datetime.now

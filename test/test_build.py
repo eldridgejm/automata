@@ -85,7 +85,10 @@ def test_build_artifact_when_not_ready():
 def test_build_publications_when_not_ready():
     # given
     artifact = automata.materials.UnbuiltArtifact(
-        workdir=pathlib.Path.cwd(), file="foo.pdf", recipe="echo hi", ready=True,
+        workdir=pathlib.Path.cwd(),
+        file="foo.pdf",
+        recipe="echo hi",
+        ready=True,
     )
 
     publication = automata.materials.Publication(
@@ -108,7 +111,10 @@ def test_build_publications_when_not_ready():
 def test_build_publication_when_release_time_in_future():
     # given
     artifact = automata.materials.UnbuiltArtifact(
-        workdir=pathlib.Path.cwd(), file="foo.pdf", recipe="echo hi", ready=True,
+        workdir=pathlib.Path.cwd(),
+        file="foo.pdf",
+        recipe="echo hi",
+        ready=True,
     )
 
     publication = automata.materials.Publication(

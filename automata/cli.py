@@ -36,7 +36,7 @@ def cli(argv=None):
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
-    build_materials_parser = subparsers.add_parser('build-materials')
+    build_materials_parser = subparsers.add_parser("build-materials")
     _register_build_materials_parser(build_materials_parser)
 
     args = parser.parse_args(argv)

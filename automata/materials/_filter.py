@@ -26,7 +26,7 @@ def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
     remove_empty_nodes : bool
         Whether nodes without children should be removed (True) or preserved
         (False). Default: False.
-    
+
     Returns
     -------
     type(parent)

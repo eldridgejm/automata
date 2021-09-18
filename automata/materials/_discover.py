@@ -9,7 +9,7 @@ from .types import (
     Publication,
     Collection,
     Universe,
-    Schema,
+    PublicationSchema,
 )
 from .exceptions import DiscoveryError
 from ._validate import _PublicationValidator
@@ -19,45 +19,6 @@ from . import constants
 # read_collection_file
 # --------------------------------------------------------------------------------------
 
-
-def _collection_file_base_schema():
-    return {
-        'type': 'dict',
-        'required_keys': {
-            'schema': {
-                    'type': 'dict',
-                    'required_keys': {
-                        'required_artifacts': {
-                                'type': 'list',
-                                'element_schema': {'type': 'string'},
-                            }
-                        },
-                    'optional_keys': {
-                        'optional_artifacts': {
-                                'type': 'list',
-                                'element_schema': {'type': 'string'},
-                            'default': []
-                            },
-                        'metadata_schema': {
-                                'type': 'dict',
-                                'extra_keys_schema': {'type': 'any'},
-                                'nullable': True,
-                            'default': None
-                            },
-                        'allow_unspecified_artifacts': {
-                            'type': 'boolean',
-                            'default': False
-                            },
-                        'is_ordered': {
-                            'type': 'boolean',
-                            'default': False
-                            },
-                        }
-                }
-            }
-        }
-
-
 def read_collection_file(path, external_variables=None):
     """Read a :class:`Collection` from a yaml file.
 
@@ -65,7 +26,7 @@ def read_collection_file(path, external_variables=None):
     ----------
     path : pathlib.Path
         Path to the collection file.
-    external_variables : dict
+    external_variables : Optional[dict]
         A dictionary of external variables available during interpolation.
 
     Returns
@@ -79,13 +40,13 @@ def read_collection_file(path, external_variables=None):
     the following keys/values:
 
     - required_artifacts
-        A list of artifacts names that are required
+        A list of artifact names. Each publication will need to have all of these.
     - optional_artifacts [optional]
         A list of artifacts that are optional. If not provided, the default value of []
         (empty list) will be used.
     - metadata_schema [optional]
         A dictionary describing a schema for validating publication metadata.  The
-        dictionary should deserialize to something recognized by the cerberus package.
+        dictionary should deserialize to something recognized by the dictconfig package.
         If not provided, the default value of None will be used.
     - allow_unspecified_artifacts [optional]
         Whether or not to allow unspecified artifacts in the publications.
@@ -107,9 +68,44 @@ def read_collection_file(path, external_variables=None):
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    schema = Schema(**resolved['schema'])
+    schema = PublicationSchema(**resolved["schema"])
     return Collection(schema=schema, publications={})
 
+
+def _collection_file_schema():
+    """The dictconfig schema describing a valid collection file."""
+    return {
+        "type": "dict",
+        "required_keys": {
+            "schema": {
+                "type": "dict",
+                "required_keys": {
+                    "required_artifacts": {
+                        "type": "list",
+                        "element_schema": {"type": "string"},
+                    }
+                },
+                "optional_keys": {
+                    "optional_artifacts": {
+                        "type": "list",
+                        "element_schema": {"type": "string"},
+                        "default": [],
+                    },
+                    "metadata_schema": {
+                        "type": "dict",
+                        "extra_keys_schema": {"type": "any"},
+                        "default": None,
+                        "nullable": True
+                    },
+                    "allow_unspecified_artifacts": {
+                        "type": "boolean",
+                        "default": False,
+                    },
+                    "is_ordered": {"type": "boolean", "default": False},
+                },
+            }
+        },
+    }
 
 def _resolve_collection_file(raw_contents, external_variables, path):
     """Resolves (interpolates and parses) the raw collection file contents.
@@ -130,14 +126,16 @@ def _resolve_collection_file(raw_contents, external_variables, path):
         The resolved dictionary.
 
     """
-    schema = _collection_file_base_schema()
+    schema = _collection_file_schema()
 
     try:
-        resolved = dictconfig.resolve(raw_contents, schema, external_variables=external_variables)
+        resolved = dictconfig.resolve(
+            raw_contents, schema, external_variables=external_variables
+        )
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    _validate_metadata_schema(resolved['schema']['metadata_schema'], path)
+    _validate_metadata_schema(resolved["schema"]["metadata_schema"], path)
 
     return resolved
 
@@ -147,10 +145,7 @@ def _validate_metadata_schema(metadata_schema, path):
         return
 
     try:
-        dictconfig.validate_schema({
-            'type': 'dict',
-            **metadata_schema
-        })
+        dictconfig.validate_schema({"type": "dict", **metadata_schema})
     except dictconfig.exceptions.InvalidSchemaError as exc:
         raise DiscoveryError(exc, path)
 
@@ -162,49 +157,27 @@ def _validate_metadata_schema(metadata_schema, path):
 def _publication_file_base_schema():
 
     artifacts_schema = {
-        'type': 'dict',
-        'extra_keys_schema': {
-            'type': 'dict',
-            'optional_keys': {
-                'file': {
-                    'type': 'string', 'nullable': True,
-                    'default': None
-                },
-                'recipe': {
-                    'type': 'string', 'nullable': True,
-                    'default': None
-                },
-                'ready': {
-                    'type': 'boolean',
-                    'default': True
-                },
-                'missing_ok': {
-                    'type': 'boolean',
-                    'default': False
-                },
-                'release_time': {
-                    'type': 'datetime', 'nullable': True,
-                    'default': None
-                },
-            }
-        }
+        "type": "dict",
+        "extra_keys_schema": {
+            "type": "dict",
+            "optional_keys": {
+                "file": {"type": "string", "nullable": True, "default": None},
+                "recipe": {"type": "string", "nullable": True, "default": None},
+                "ready": {"type": "boolean", "default": True},
+                "missing_ok": {"type": "boolean", "default": False},
+                "release_time": {"type": "datetime", "nullable": True, "default": None},
+            },
+        },
     }
     return {
-        'type': 'dict',
-        'required_keys': {
-            'artifacts': artifacts_schema
+        "type": "dict",
+        "required_keys": {"artifacts": artifacts_schema},
+        "optional_keys": {
+            "ready": {"default": True, "type": "boolean"},
+            "release_time": {"default": None, "type": "datetime", "nullable": True},
         },
-        'optional_keys': {
-            'ready': {
-                'default': True,
-                'type': 'boolean'
-            },
-            'release_time': {
-                'default': None,
-                'type': 'datetime', 'nullable': True
-            },
-        }
     }
+
 
 def read_publication_file(path, schema=None, template_vars=None):
     """Read a :class:`Publication` from a yaml file.
@@ -213,7 +186,7 @@ def read_publication_file(path, schema=None, template_vars=None):
     ----------
     path : pathlib.Path
         Path to the collection file.
-    schema : Optional[Schema]
+    schema : Optional[PublicationSchema]
         A schema for validating the publication. Default: None, in which case the
         publication's metadata are not validated.
     template_vars : dict
@@ -254,7 +227,9 @@ def read_publication_file(path, schema=None, template_vars=None):
 
     metadata_schema = None if schema is None else schema.metadata_schema
 
-    resolved = _resolve_publication_file(raw_contents, metadata_schema, template_vars, path)
+    resolved = _resolve_publication_file(
+        raw_contents, metadata_schema, template_vars, path
+    )
 
     # convert each artifact to an Artifact object
     artifacts = {}
@@ -266,10 +241,10 @@ def read_publication_file(path, schema=None, template_vars=None):
         artifacts[key] = UnbuiltArtifact(workdir=path.parent.absolute(), **definition)
 
     publication = Publication(
-        metadata=resolved['metadata'],
+        metadata=resolved["metadata"],
         artifacts=artifacts,
         ready=resolved["ready"],
-        release_time=resolved['release_time'],
+        release_time=resolved["release_time"],
     )
 
     return publication
@@ -299,18 +274,14 @@ def _resolve_publication_file(raw_contents, metadata_schema, external_variables,
     schema = _publication_file_base_schema()
 
     if metadata_schema is not None:
-        schema['optional_keys']['metadata'] = {
-            'type': 'dict',
-            **metadata_schema
-        }
+        schema["optional_keys"]["metadata"] = {"type": "dict", **metadata_schema}
     else:
-        schema['optional_keys']['metadata'] = {
-            'type': 'any',
-            'default': {}
-        }
+        schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
 
     try:
-        return dictconfig.resolve(raw_contents, schema, external_variables=external_variables)
+        return dictconfig.resolve(
+            raw_contents, schema, external_variables=external_variables
+        )
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
@@ -318,11 +289,10 @@ def _resolve_publication_file(raw_contents, metadata_schema, external_variables,
 def _validate_publication_file(resolved, schema, path):
     full_schema = _publication_file_base_schema()
 
-    full_schema["metadata"] = {"type": "dict", "required": False, "default":
-            {}}
+    full_schema["metadata"] = {"type": "dict", "required": False, "default": {}}
 
     if schema is not None and schema.metadata_schema is not None:
-        full_schema['metadata']['schema'] = schema.metadata_schema
+        full_schema["metadata"]["schema"] = schema.metadata_schema
 
     # validate and normalize the contents
     validator = _PublicationValidator(full_schema, require_all=True)
@@ -342,10 +312,9 @@ def _construct_publication_file_schema(schema, raw_contents):
     schema grammar expected by dictconfig. For example, we do not know what artifacts
     will be supplied by the publication file, so we might use the "valuesrules"
     rule in a Cerberus schema to provide a schema for dict values without listing the keys.
-    But dictconfig doesn't understand this 
+    But dictconfig doesn't understand this
 
     """
-
 
     quick_schema = {
         "ready": {"type": "boolean", "default": True, "nullable": True},
@@ -489,14 +458,16 @@ def _search_for_collections_and_publications(
 
 def _make_default_collection():
     """Create a default collection."""
-    default_schema = Schema(
-        required_artifacts=[], metadata_schema=None, allow_unspecified_artifacts=True,
+    default_schema = PublicationSchema(
+        required_artifacts=[],
+        metadata_schema=None,
+        allow_unspecified_artifacts=True,
     )
     return Collection(schema=default_schema, publications={})
 
 
 def _make_collections(collection_paths, input_directory, callbacks):
-    """Make the Collection objects. 
+    """Make the Collection objects.
 
     Parameters
     ----------
@@ -540,7 +511,7 @@ def _add_previous_keys(template_vars, collection):
     except IndexError:
         return
 
-    template_vars['previous'] = collection.publications[previous_key]._deep_asdict()
+    template_vars["previous"] = collection.publications[previous_key]._deep_asdict()
 
 
 def _make_publications(
@@ -561,7 +532,7 @@ def _make_publications(
     input_directory : Path
         Path to the root of the search.
     collections : Mapping[str, Collection]
-        A mapping from collection keys to Collection objects. The newly-created 
+        A mapping from collection keys to Collection objects. The newly-created
         Publication objects will be added to these Collection objects in-place.
     callbacks : DiscoverCallbacks
         The callbacks to be invoked when interesting things happen.

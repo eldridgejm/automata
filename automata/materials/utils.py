@@ -169,21 +169,21 @@ def release_schedule(args):
 
         for loc, (ert, ready) in by_date[date_cursor]:
 
-            suffix = ''
+            suffix = ""
             missing = not (loc.artifact.workdir / loc.artifact.file).exists()
 
             if not ready:
                 color = _error
-                suffix = '(not ready)'
+                suffix = "(not ready)"
             elif missing:
-                suffix = '(missing)'
+                suffix = "(missing)"
                 color = _purple
             elif ert > datetime.datetime.now():
                 color = _warning
-                suffix = '(waiting)'
+                suffix = "(waiting)"
             else:
                 color = _success
-                suffix = '(released)'
+                suffix = "(released)"
 
             if ert.date() == date_cursor:
                 print(21 * " ", end="")
@@ -233,10 +233,14 @@ def _configure_release_schedule_cli(subparsers):
         help="directories that will be ignored during discovery",
     )
     release_parser.add_argument(
-        "--show-not-ready", action="store_true", default=False,
+        "--show-not-ready",
+        action="store_true",
+        default=False,
     )
     release_parser.add_argument(
-        "--skip-empty-days", action="store_true", default=False,
+        "--skip-empty-days",
+        action="store_true",
+        default=False,
     )
     release_parser.add_argument(
         "--vars",

@@ -153,7 +153,9 @@ def test_discover_uses_relative_paths_as_keys():
 
 def test_discover_skip_directories():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY, skip_directories={"textbook"})
+    universe = automata.materials.discover(
+        EXAMPLE_1_DIRECTORY, skip_directories={"textbook"}
+    )
 
     # then
     assert "textbook" not in universe.collections["default"].publications
@@ -277,7 +279,9 @@ def test_read_collection_example(write_file):
     # then
     assert collection.schema.required_artifacts == ["homework", "solution"]
     assert collection.schema.optional_artifacts == ["template"]
-    assert collection.schema.metadata_schema['required_keys']["name"]["type"] == "string"
+    assert (
+        collection.schema.metadata_schema["required_keys"]["name"]["type"] == "string"
+    )
 
 
 def test_read_collection_file_resolves(write_file):
@@ -306,16 +310,17 @@ def test_read_collection_file_resolves(write_file):
     )
 
     # when
-    collection = automata.materials.read_collection_file(path, {
-        'external': {
-            'optional': 'template'
-            }
-        })
+    collection = automata.materials.read_collection_file(
+        path, {"external": {"optional": "template"}}
+    )
 
     # then
     assert collection.schema.required_artifacts == ["homework", "solution", "template"]
     assert collection.schema.optional_artifacts == ["template"]
-    assert collection.schema.metadata_schema['required_keys']["name"]["type"] == "string"
+    assert (
+        collection.schema.metadata_schema["required_keys"]["name"]["type"] == "string"
+    )
+
 
 def test_read_collection_validates_fields(write_file):
     path = write_file(
@@ -934,7 +939,7 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
         ),
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -978,7 +983,7 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
         ),
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -995,7 +1000,6 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
     # then
     expected = datetime.date(2020, 9, 10)
     assert publication.metadata["released"] == expected
-
 
 
 def test_read_publication_with_unknown_relative_field_raises(write_file):
@@ -1021,7 +1025,7 @@ def test_read_publication_with_unknown_relative_field_raises(write_file):
         ),
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -1075,7 +1079,9 @@ def test_discover_with_template_vars():
     }
 
     # when
-    universe = automata.materials.discover(EXAMPLE_9_DIRECTORY, template_vars=template_vars)
+    universe = automata.materials.discover(
+        EXAMPLE_9_DIRECTORY, template_vars=template_vars
+    )
 
     # then
     assert (

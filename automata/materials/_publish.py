@@ -54,11 +54,11 @@ def publish(parent, outdir, prefix="", callbacks=None):
         :class:`PublishedArtifact` instances. Artifacts which have not yet
         been released are still converted to PublishedArtifact, but their ``path``
         is set to ``None``.
-    
+
     Notes
     -----
     The prefix is build up recursively, so that calling this function on a
-    universe will publish each artifact to 
+    universe will publish each artifact to
     ``<prefix><collection_key>/<publication_key>/<artifact_key>``
 
     """

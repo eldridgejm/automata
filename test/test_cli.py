@@ -30,11 +30,10 @@ def test_publish_cli_simple_example(make_input_directory, output_directory):
     input_directory = make_input_directory("example_1")
 
     # when
-    cli(['build-materials', str(input_directory), str(output_directory)])
+    cli(["build-materials", str(input_directory), str(output_directory)])
 
     # then
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
-
 
 
 def test_publish_cli_with_example_using_template_vars(
@@ -55,7 +54,7 @@ def test_publish_cli_with_example_using_template_vars(
     # when
     cli(
         [
-            'build-materials',
+            "build-materials",
             str(input_directory),
             str(output_directory),
             "--ignore-release-time",

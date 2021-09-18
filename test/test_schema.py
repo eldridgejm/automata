@@ -30,7 +30,7 @@ def test_validate_publication_checks_required_artifacts():
         },
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         optional_artifacts=[],
         allow_unspecified_artifacts=False,
@@ -73,7 +73,7 @@ def test_validate_publication_does_not_allow_extra_artifacts(write_file):
         },
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         optional_artifacts=[],
         allow_unspecified_artifacts=False,
@@ -116,7 +116,7 @@ def test_validate_publication_allow_unspecified_artifacts(write_file):
         },
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=[],
         optional_artifacts=[],
         allow_unspecified_artifacts=True,
@@ -153,7 +153,7 @@ def test_validate_publication_validates_metadata(write_file):
         },
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         optional_artifacts=[],
         allow_unspecified_artifacts=True,
@@ -187,7 +187,7 @@ def test_validate_publication_requires_metadata_if_schema_provided(write_file):
         },
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         optional_artifacts=[],
         allow_unspecified_artifacts=True,
@@ -223,7 +223,7 @@ def test_validate_publication_doesnt_require_metadata_if_schema_not_provided(
         },
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         optional_artifacts=[],
         allow_unspecified_artifacts=True,
@@ -252,7 +252,7 @@ def test_validate_publication_accepts_metadata_if_schema_not_provided(write_file
         },
     )
 
-    schema = automata.materials.Schema(
+    schema = automata.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         optional_artifacts=[],
         allow_unspecified_artifacts=True,

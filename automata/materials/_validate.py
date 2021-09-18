@@ -1,7 +1,7 @@
 import cerberus
 import datetime
 
-from .types import Publication, Schema
+from .types import Publication, PublicationSchema
 from .exceptions import ValidationError
 
 # validation
@@ -22,7 +22,7 @@ class _PublicationValidator(cerberus.Validator):
     )
 
 
-def validate(publication: Publication, against: Schema):
+def validate(publication: Publication, against: PublicationSchema):
     """Make sure that a publication satisfies the schema.
 
     This checks the publication's metadata dictionary against
@@ -34,7 +34,7 @@ def validate(publication: Publication, against: Schema):
     ----------
     publication : Publication
         A fully-specified publication.
-    against : Schema
+    against : PublicationSchema
         A schema for validating the publication.
 
     Raises
