@@ -2,7 +2,7 @@ import argparse
 import datetime
 import pathlib
 
-from automata.materials.api import build_materials
+from automata.lib.materials.api import build_materials
 
 
 def _arg_directory(s):

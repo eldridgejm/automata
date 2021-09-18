@@ -4,41 +4,42 @@ from textwrap import dedent
 
 from pytest import raises, fixture, mark
 
-import automata.materials
-import automata.materials._discover
+import automata.lib.materials
 
 
 # good example; simple
-EXAMPLE_1_DIRECTORY = pathlib.Path(__file__).parent / "example_1"
+EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent.parent
+
+EXAMPLE_1_DIRECTORY = EXAMPLES_ROOT / "example_1"
 
 # bad: bad collection file
-EXAMPLE_2_DIRECTORY = pathlib.Path(__file__).parent / "example_2"
+EXAMPLE_2_DIRECTORY = EXAMPLES_ROOT / "example_2"
 
 # bad: mismatched publication metadata
-EXAMPLE_3_DIRECTORY = pathlib.Path(__file__).parent / "example_3"
+EXAMPLE_3_DIRECTORY = EXAMPLES_ROOT / "example_3"
 
 # bad: nested collections
-EXAMPLE_4_DIRECTORY = pathlib.Path(__file__).parent / "example_4"
+EXAMPLE_4_DIRECTORY = EXAMPLES_ROOT / "example_4"
 
 # good: relative paths as keys
-EXAMPLE_5_DIRECTORY = pathlib.Path(__file__).parent / "example_5"
+EXAMPLE_5_DIRECTORY = EXAMPLES_ROOT / "example_5"
 
 # bad: publication metadata doesn't match schema
-EXAMPLE_6_DIRECTORY = pathlib.Path(__file__).parent / "example_6"
+EXAMPLE_6_DIRECTORY = EXAMPLES_ROOT / "example_6"
 
 # good: ordered collection
-EXAMPLE_7_DIRECTORY = pathlib.Path(__file__).parent / "example_7"
+EXAMPLE_7_DIRECTORY = EXAMPLES_ROOT / "example_7"
 
 # good: ordered collection with dates relating to previous
-EXAMPLE_8_DIRECTORY = pathlib.Path(__file__).parent / "example_8"
+EXAMPLE_8_DIRECTORY = EXAMPLES_ROOT / "example_8"
 
 # good: collection with context variables
-EXAMPLE_9_DIRECTORY = pathlib.Path(__file__).parent / "example_9"
+EXAMPLE_9_DIRECTORY = EXAMPLES_ROOT / "example_9"
 
 
 def test_discover_finds_collections():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert universe.collections.keys() == {"homeworks", "default"}
@@ -46,7 +47,7 @@ def test_discover_finds_collections():
 
 def test_discover_finds_publications():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert universe.collections["homeworks"].publications.keys() == {
@@ -59,7 +60,7 @@ def test_discover_finds_publications():
 
 def test_discover_finds_singletons_and_places_them_in_default_collection():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert universe.collections["default"].publications.keys() == {
@@ -69,7 +70,7 @@ def test_discover_finds_singletons_and_places_them_in_default_collection():
 
 def test_discover_reads_publication_metadata():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert (
@@ -80,7 +81,7 @@ def test_discover_reads_publication_metadata():
 
 def test_discover_loads_artifacts():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert (
@@ -94,7 +95,7 @@ def test_discover_loads_artifacts():
 
 def test_discover_loads_dates_as_dates():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert isinstance(
@@ -110,7 +111,7 @@ def test_discover_loads_dates_as_dates():
 
 def test_discover_reads_ready():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert (
@@ -123,28 +124,28 @@ def test_discover_reads_ready():
 
 def test_discover_validates_collection_schema():
     # when run on a malformed collection.yaml
-    with raises(automata.materials.DiscoveryError):
-        automata.materials.discover(EXAMPLE_2_DIRECTORY)
+    with raises(automata.lib.materials.DiscoveryError):
+        automata.lib.materials.discover(EXAMPLE_2_DIRECTORY)
 
 
 def test_discover_validates_publication_schema():
-    with raises(automata.materials.DiscoveryError):
-        automata.materials.discover(EXAMPLE_3_DIRECTORY)
+    with raises(automata.lib.materials.DiscoveryError):
+        automata.lib.materials.discover(EXAMPLE_3_DIRECTORY)
 
 
 def test_discover_validates_publication_metadata_schema():
-    with raises(automata.materials.DiscoveryError):
-        automata.materials.discover(EXAMPLE_6_DIRECTORY)
+    with raises(automata.lib.materials.DiscoveryError):
+        automata.lib.materials.discover(EXAMPLE_6_DIRECTORY)
 
 
 def test_discover_raises_when_nested_collections_discovered():
-    with raises(automata.materials.DiscoveryError):
-        automata.materials.discover(EXAMPLE_4_DIRECTORY)
+    with raises(automata.lib.materials.DiscoveryError):
+        automata.lib.materials.discover(EXAMPLE_4_DIRECTORY)
 
 
 def test_discover_uses_relative_paths_as_keys():
     # when
-    universe = automata.materials.discover(EXAMPLE_5_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_5_DIRECTORY)
 
     # then
     assert "foo/bar" in universe.collections
@@ -153,7 +154,7 @@ def test_discover_uses_relative_paths_as_keys():
 
 def test_discover_skip_directories():
     # when
-    universe = automata.materials.discover(
+    universe = automata.lib.materials.discover(
         EXAMPLE_1_DIRECTORY, skip_directories={"textbook"}
     )
 
@@ -163,7 +164,7 @@ def test_discover_skip_directories():
 
 def test_discover_without_file_uses_key():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     # then
     assert (
@@ -177,7 +178,7 @@ def test_discover_without_file_uses_key():
 
 def test_discover_sorts_publications_lexicographically_if_collection_is_ordered():
     # when
-    universe = automata.materials.discover(EXAMPLE_7_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_7_DIRECTORY)
 
     # then
     assert list(universe.collections["homeworks"].publications) == [
@@ -192,15 +193,15 @@ def test_discover_sorts_publications_lexicographically_if_collection_is_ordered(
 
 def test_filter_artifacts():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     def keep(k, v):
-        if not isinstance(v, automata.materials.UnbuiltArtifact):
+        if not isinstance(v, automata.lib.materials.UnbuiltArtifact):
             return True
 
         return k == "solution.pdf"
 
-    universe = automata.materials.filter_nodes(universe, keep)
+    universe = automata.lib.materials.filter_nodes(universe, keep)
 
     # then
     assert (
@@ -215,15 +216,15 @@ def test_filter_artifacts():
 
 def test_filter_artifacts_removes_nodes_without_children():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     def keep(k, v):
-        if not isinstance(v, automata.materials.UnbuiltArtifact):
+        if not isinstance(v, automata.lib.materials.UnbuiltArtifact):
             return True
 
         return k not in {"solution.pdf", "homework.pdf"}
 
-    universe = automata.materials.filter_nodes(universe, keep, remove_empty_nodes=True)
+    universe = automata.lib.materials.filter_nodes(universe, keep, remove_empty_nodes=True)
 
     # then
     assert "homeworks" not in universe.collections
@@ -231,15 +232,15 @@ def test_filter_artifacts_removes_nodes_without_children():
 
 def test_filter_artifacts_preserves_nodes_without_children_by_default():
     # when
-    universe = automata.materials.discover(EXAMPLE_1_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_1_DIRECTORY)
 
     def keep(k, v):
-        if not isinstance(v, automata.materials.UnbuiltArtifact):
+        if not isinstance(v, automata.lib.materials.UnbuiltArtifact):
             return True
 
         return k not in {"solution.pdf", "homework.pdf"}
 
-    universe = automata.materials.filter_nodes(universe, keep)
+    universe = automata.lib.materials.filter_nodes(universe, keep)
 
     # then
     assert "homeworks" in universe.collections
@@ -274,7 +275,7 @@ def test_read_collection_example(write_file):
     )
 
     # when
-    collection = automata.materials.read_collection_file(path)
+    collection = automata.lib.materials.read_collection_file(path)
 
     # then
     assert collection.publication_schema.required_artifacts == ["homework", "solution"]
@@ -311,7 +312,7 @@ def test_read_collection_file_resolves(write_file):
     )
 
     # when
-    collection = automata.materials.read_collection_file(
+    collection = automata.lib.materials.read_collection_file(
         path, {"external": {"optional": "template"}}
     )
 
@@ -351,8 +352,8 @@ def test_read_collection_validates_fields(write_file):
     )
 
     # then
-    with raises(automata.materials.DiscoveryError):
-        collection = automata.materials.read_collection_file(path)
+    with raises(automata.lib.materials.DiscoveryError):
+        collection = automata.lib.materials.read_collection_file(path)
 
 
 def test_read_collection_requires_required_artifacts(write_file):
@@ -377,8 +378,8 @@ def test_read_collection_requires_required_artifacts(write_file):
     )
 
     # then
-    with raises(automata.materials.DiscoveryError):
-        collection = automata.materials.read_collection_file(path)
+    with raises(automata.lib.materials.DiscoveryError):
+        collection = automata.lib.materials.read_collection_file(path)
 
 
 def test_read_collection_doesnt_require_optional_artifacts(write_file):
@@ -403,7 +404,7 @@ def test_read_collection_doesnt_require_optional_artifacts(write_file):
     )
 
     # when
-    collection = automata.materials.read_collection_file(path)
+    collection = automata.lib.materials.read_collection_file(path)
 
     # then
     assert collection.publication_schema.optional_artifacts == []
@@ -424,7 +425,7 @@ def test_read_collection_doesnt_require_metadata_schema(write_file):
     )
 
     # when
-    collection = automata.materials.read_collection_file(path)
+    collection = automata.lib.materials.read_collection_file(path)
 
     # then
     assert collection.publication_schema.metadata_schema is None
@@ -449,8 +450,8 @@ def test_read_collection_raises_on_invalid_metadata_schema(write_file):
     )
 
     # when then
-    with raises(automata.materials.DiscoveryError):
-        collection = automata.materials.read_collection_file(path)
+    with raises(automata.lib.materials.DiscoveryError):
+        collection = automata.lib.materials.read_collection_file(path)
 
 
 # read_publication_file
@@ -480,7 +481,7 @@ def test_read_publication_example(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     assert publication.metadata["name"] == "Homework 01"
@@ -508,7 +509,7 @@ def test_read_publication_raises_if_required_artifact_is_not_provided(write_file
         ),
     )
 
-    schema = automata.materials.PublicationSchema(
+    schema = automata.lib.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -520,8 +521,8 @@ def test_read_publication_raises_if_required_artifact_is_not_provided(write_file
     )
 
     # when
-    with raises(automata.materials.DiscoveryError):
-        automata.materials.read_publication_file(path, publication_schema=schema)
+    with raises(automata.lib.materials.DiscoveryError):
+        automata.lib.materials.read_publication_file(path, publication_schema=schema)
 
 
 def test_read_publication_raises_if_extra_artifact_provided_without_allow_unspecified(
@@ -547,7 +548,7 @@ def test_read_publication_raises_if_extra_artifact_provided_without_allow_unspec
         ),
     )
 
-    schema = automata.materials.PublicationSchema(
+    schema = automata.lib.materials.PublicationSchema(
         required_artifacts=["homework"],
         metadata_schema={
             "required_keys": {
@@ -559,8 +560,8 @@ def test_read_publication_raises_if_extra_artifact_provided_without_allow_unspec
     )
 
     # when
-    with raises(automata.materials.DiscoveryError):
-        automata.materials.read_publication_file(path, publication_schema=schema)
+    with raises(automata.lib.materials.DiscoveryError):
+        automata.lib.materials.read_publication_file(path, publication_schema=schema)
 
 
 def test_read_publication_allows_extra_artifact_when_allow_unspecified_given(
@@ -586,7 +587,7 @@ def test_read_publication_allows_extra_artifact_when_allow_unspecified_given(
         ),
     )
 
-    schema = automata.materials.PublicationSchema(
+    schema = automata.lib.materials.PublicationSchema(
         required_artifacts=["homework"],
         metadata_schema={
             "required_keys": {
@@ -599,7 +600,7 @@ def test_read_publication_allows_extra_artifact_when_allow_unspecified_given(
     )
 
     # when
-    pub = automata.materials.read_publication_file(path, publication_schema=schema)
+    pub = automata.lib.materials.read_publication_file(path, publication_schema=schema)
 
     assert "woo" in pub.artifacts
 
@@ -628,7 +629,7 @@ def test_read_publication_without_release_time(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     assert publication.release_time is None
@@ -660,7 +661,7 @@ def test_read_publication_with_relative_release_time(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(days=1)
@@ -691,7 +692,7 @@ def test_read_artifact_with_relative_release_time(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"]
@@ -723,8 +724,8 @@ def test_read_artifact_with_relative_release_date_but_no_time_raises(write_file)
     )
 
     # then
-    with raises(automata.materials.DiscoveryError):
-        publication = automata.materials.read_publication_file(path)
+    with raises(automata.lib.materials.DiscoveryError):
+        publication = automata.lib.materials.read_publication_file(path)
 
 
 def test_read_artifact_with_relative_release_time_after(write_file):
@@ -751,7 +752,7 @@ def test_read_artifact_with_relative_release_time_after(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(days=1)
@@ -782,7 +783,7 @@ def test_read_artifact_with_relative_release_time_after_hours(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(hours=3)
@@ -813,7 +814,7 @@ def test_read_artifact_with_relative_release_time_after_large(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(days=11)
@@ -844,7 +845,7 @@ def test_read_artifact_with_relative_release_time_after_large_hours(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(hours=1000)
@@ -875,7 +876,7 @@ def test_read_artifact_with_relative_release_date_before(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"] - datetime.timedelta(days=3)
@@ -906,7 +907,7 @@ def test_read_artifact_with_relative_release_date_before_hours(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"] - datetime.timedelta(hours=3)
@@ -937,7 +938,7 @@ def test_read_artifact_with_relative_release_time_multiple_days(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(days=3)
@@ -968,8 +969,8 @@ def test_read_artifact_with_invalid_relative_date_raises(write_file):
     )
 
     # when
-    with raises(automata.materials.DiscoveryError):
-        publication = automata.materials.read_publication_file(path)
+    with raises(automata.lib.materials.DiscoveryError):
+        publication = automata.lib.materials.read_publication_file(path)
 
 
 def test_read_artifact_with_invalid_relative_date_variable_reference_raises(
@@ -998,8 +999,8 @@ def test_read_artifact_with_invalid_relative_date_variable_reference_raises(
     )
 
     # when
-    with raises(automata.materials.DiscoveryError):
-        publication = automata.materials.read_publication_file(path)
+    with raises(automata.lib.materials.DiscoveryError):
+        publication = automata.lib.materials.read_publication_file(path)
 
 
 def test_read_artifact_with_absolute_release_time(write_file):
@@ -1026,7 +1027,7 @@ def test_read_artifact_with_absolute_release_time(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(path)
+    publication = automata.lib.materials.read_publication_file(path)
 
     # then
     expected = datetime.datetime(2020, 1, 2, 23, 59, 0)
@@ -1060,7 +1061,7 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
         ),
     )
 
-    schema = automata.materials.PublicationSchema(
+    schema = automata.lib.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -1072,7 +1073,7 @@ def test_read_publication_with_relative_dates_in_metadata(write_file):
     )
 
     # when
-    publication = automata.materials.read_publication_file(
+    publication = automata.lib.materials.read_publication_file(
         path, publication_schema=schema
     )
 
@@ -1106,7 +1107,7 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
         ),
     )
 
-    schema = automata.materials.PublicationSchema(
+    schema = automata.lib.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -1118,7 +1119,7 @@ def test_read_publication_with_relative_dates_in_metadata_without_offset(write_f
     )
 
     # when
-    publication = automata.materials.read_publication_file(
+    publication = automata.lib.materials.read_publication_file(
         path, publication_schema=schema
     )
 
@@ -1150,7 +1151,7 @@ def test_read_publication_with_unknown_relative_field_raises(write_file):
         ),
     )
 
-    schema = automata.materials.PublicationSchema(
+    schema = automata.lib.materials.PublicationSchema(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -1162,15 +1163,15 @@ def test_read_publication_with_unknown_relative_field_raises(write_file):
     )
 
     # when
-    with raises(automata.materials.DiscoveryError):
-        publication = automata.materials.read_publication_file(
+    with raises(automata.lib.materials.DiscoveryError):
+        publication = automata.lib.materials.read_publication_file(
             path, publication_schema=schema
         )
 
 
 def test_discover_with_dates_relating_to_previous():
     # when
-    universe = automata.materials.discover(EXAMPLE_8_DIRECTORY)
+    universe = automata.lib.materials.discover(EXAMPLE_8_DIRECTORY)
 
     # then
     publications = universe.collections["lectures"].publications
@@ -1206,7 +1207,7 @@ def test_discover_with_external_variables():
     }
 
     # when
-    universe = automata.materials.discover(
+    universe = automata.lib.materials.discover(
         EXAMPLE_9_DIRECTORY, external_variables=external_variables
     )
 
