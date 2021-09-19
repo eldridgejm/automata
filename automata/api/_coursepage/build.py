@@ -258,3 +258,53 @@ def create_base_template_environment(input_path):
         loader=jinja2.FileSystemLoader(input_path / "theme" / "base_templates"),
         undefined=jinja2.StrictUndefined,
     )
+
+# new stuff --------------------------------------------
+
+def _find_input_pages(input_path):
+    """Generate all page contents and their output paths.
+
+    Parameters
+    ----------
+    input_path : pathlib.Path
+        The path to the directory containing the pages.
+
+    Yields
+    ------
+    (str, pathlib.Path)
+        The contents of the input page, along with the path to the page relative
+        to the input path.
+
+    """
+    for page_path in input_path.iterdir():
+        with page_path.open() as fileobj:
+            contents = fileobj.read()
+
+        relpath = page_path.relative_to(input_path)
+
+        yield contents, relpath
+
+
+def _interpolate(s, template_vars):
+    return s
+
+
+def _to_html(x):
+    return x
+
+
+def render_pages(input_path, output_path, template, elements, context):
+    """Render each file in the input path into an HTML file in the output path."""
+    for input_page_abspath in input_path.iterdir():
+        with input_page_abspath.open() as fileobj:
+            input_page_contents = fileobj.read()
+
+        input_page_relpath = input_page_abspath.relative_to(input_path)
+
+        body_interpolated = _interpolate(input_page_contents, {'elements': elements, **context})
+        body_html = _to_html(body_interpolated)
+        page_html = _interpolate(template, {'body': body_html, **context})
+
+        output_page_abspath = output_path / input_page_relpath
+        with output_page_abspath.open('w') as fileobj:
+            fileobj.write(page_html)

@@ -68,10 +68,10 @@ def build_coursepage(
     ])
 
     elements = Elements(
-            announcement_box=partial(_coursepage.elements.announcement_box, context),
-            button_bar=partial(_coursepage.elements.button_bar, context),
-            schedule=partial(_coursepage.elements.schedule, context),
-            listing=partial(_coursepage.elements.listing, context),
+        announcement_box=partial(_coursepage.elements.announcement_box, context),
+        button_bar=partial(_coursepage.elements.button_bar, context),
+        schedule=partial(_coursepage.elements.schedule, context),
+        listing=partial(_coursepage.elements.listing, context),
     )
 
     # construct the variables used during page rendering
@@ -81,6 +81,8 @@ def build_coursepage(
         "config": config,
         "published": published,
     }
+
+    # _coursepage.render_pages(input_path, output_path, elements, context)
 
     # convert user pages
     for old_path, new_path in _coursepage.all_pages(input_path, output_path):
