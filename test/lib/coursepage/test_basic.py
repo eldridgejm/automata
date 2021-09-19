@@ -82,7 +82,7 @@ def test_pages_have_access_to_published_artifacts(demo):
     # given
     contents = dedent(
         """
-        {{ published.collections.homeworks.publications["01-intro"].artifacts["homework.pdf"].path }}
+        {{ materials.collections.homeworks.publications["01-intro"].artifacts["homework.pdf"].path }}
         """
     )
     demo.make_page("one.md", contents)

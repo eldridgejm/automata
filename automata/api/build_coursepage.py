@@ -82,16 +82,8 @@ def build_coursepage(
         "published": published,
     }
 
-    # _coursepage.render_pages(input_path, output_path, elements, context)
-
     # convert user pages
-    for old_path, new_path in _coursepage.all_pages(input_path, output_path):
-        interpolated = _coursepage.render_page(old_path, variables)
-        body_html = _coursepage.convert_markdown_to_html(interpolated)
-        html = _coursepage.render_base(base_environment, body_html, config)
-
-        with new_path.open("w") as fileobj:
-            fileobj.write(html)
+    _coursepage.render_pages(input_path / 'pages', output_path, input_path / 'theme', elements, context)
 
     # copy static files
     shutil.copytree(input_path / "theme" / "style", output_path / "style")

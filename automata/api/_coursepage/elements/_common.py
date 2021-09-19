@@ -10,16 +10,9 @@ def create_element_environment(input_path):
     )
 
     def evaluate(s, **kwargs):
-        _DELIMITER_KWARGS = dict(
-            variable_start_string="${",
-            variable_end_string="}",
-            block_start_string="${%",
-            block_end_string="%}",
-        )
-
         try:
             return jinja2.Template(
-                s, **_DELIMITER_KWARGS, undefined=jinja2.StrictUndefined
+                s, undefined=jinja2.StrictUndefined
             ).render(**kwargs)
         except jinja2.UndefinedError as exc:
             raise exceptions.ElementError(

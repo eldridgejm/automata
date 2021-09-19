@@ -285,26 +285,32 @@ def _find_input_pages(input_path):
         yield contents, relpath
 
 
-def _interpolate(s, template_vars):
-    return s
+def _interpolate(contents, variables, path=None):
+    template = jinja2.Template(contents, undefined=jinja2.StrictUndefined)
+    try:
+        return template.render(**variables)
+    except jinja2.UndefinedError as exc:
+        raise exceptions.PageError(f'Problem rendering {path}: {exc}')
+
+def _to_html(contents):
+    return markdown.markdown(contents, extensions=["toc"])
 
 
-def _to_html(x):
-    return x
-
-
-def render_pages(input_path, output_path, template, elements, context):
+def render_pages(input_path, output_path, template_path, elements, context):
     """Render each file in the input path into an HTML file in the output path."""
+    with (template_path / 'base.html').open() as fileobj:
+        template = fileobj.read()
+
     for input_page_abspath in input_path.iterdir():
         with input_page_abspath.open() as fileobj:
             input_page_contents = fileobj.read()
 
         input_page_relpath = input_page_abspath.relative_to(input_path)
 
-        body_interpolated = _interpolate(input_page_contents, {'elements': elements, **context})
+        body_interpolated = _interpolate(input_page_contents, {'elements': elements, **context._asdict()}, path=input_page_abspath)
         body_html = _to_html(body_interpolated)
-        page_html = _interpolate(template, {'body': body_html, **context})
+        page_html = _interpolate(template, {'body': body_html, **context._asdict()})
 
-        output_page_abspath = output_path / input_page_relpath
+        output_page_abspath = (output_path / input_page_relpath).with_suffix('.html')
         with output_page_abspath.open('w') as fileobj:
             fileobj.write(page_html)
