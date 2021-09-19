@@ -17,9 +17,12 @@ SCHEMA = {
 }
 
 
-def button_bar(templates, published, config, now):
+def button_bar(context, element_config):
+    templates = context.environment
+    now = context.now
+
     validator = cerberus.Validator(SCHEMA)
-    config_as_dict = {"*": config}
+    config_as_dict = {"*": element_config}
     config = validator.validated(config_as_dict)
 
     if config is None:

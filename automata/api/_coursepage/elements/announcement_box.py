@@ -7,7 +7,10 @@ SCHEMA = {
 }
 
 
-def announcement_box(environment, context, element_config, now):
+def announcement_box(context, element_config):
+    environment = context.environment
+    now = context.now
+
     validator = cerberus.Validator(SCHEMA)
     element_config = validator.validated(element_config)
 
@@ -17,7 +20,7 @@ def announcement_box(environment, context, element_config, now):
     template = environment.get_template("announcement_box.html")
     return template.render(
         element_config=element_config,
-        config=context["config"],
-        published=context["published"],
+        config=context.config,
+        published=context.materials
     )
 

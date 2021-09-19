@@ -17,14 +17,17 @@ from . import elements
 from . import exceptions
 
 
-class Context(typing.NamedTuple):
-    """Information that might be useful during the rending of pages."""
+class RenderContext(typing.NamedTuple):
+    """Information that might be useful during the rendering of pages."""
     input_path: pathlib.Path
     output_path: pathlib.Path
     theme_path: pathlib.Path
     materials_path: typing.Optional[pathlib.Path]
+    materials: typing.Optional[automata.lib.materials.Universe]
+    config: dict
     vars: typing.Optional[dict]
     now: datetime.datetime
+    environment: None
 
 
 def load_published(published_path, output_path):
@@ -128,29 +131,6 @@ def load_config(path, vars=None):
     return yaml.load(rendered_yaml, Loader=IncludingLoader)
 
 
-class Elements:
-    """A class to create closures for page elements.
-
-    Used in abstract(). We instantiate Elements with a universe and a
-    template loader. When an attribute of the instance is accessed, the element
-    with that name will be pulled in from the elements module and its
-    "templates" and "published" arguments will be closed over. The result is a
-    function of one argument: the configuration.
-
-    """
-
-    def __init__(self, environment, now):
-        self.environment = environment
-        self.now = now
-
-    def __getattr__(self, attr):
-        try:
-            func = getattr(elements, attr)
-        except AttributeError:
-            raise RuntimeError(f'There is no element named "{attr}".')
-        return jinja2.contextfunction(
-            functools.partial(func, self.environment, now=self.now)
-        )
 
 def render_page(path, variables):
     """Given page path and dict of variables, perform Jinja2 interpolation.

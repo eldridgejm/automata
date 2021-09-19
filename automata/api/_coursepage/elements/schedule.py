@@ -184,14 +184,16 @@ def order_weeks(element_config, weeks, today):
     }[week_order](weeks, today)
 
 
-def schedule(environment, context, element_config, now):
+def schedule( context, element_config):
+    environment = context.environment
+    now = context.now
     validator = cerberus.Validator(SCHEMA, require_all=True)
     element_config = validator.validated(element_config)
 
     if element_config is None:
         raise RuntimeError(f"Invalid config: {validator.errors}")
 
-    weeks = generate_weeks(element_config, context["published"])
+    weeks = generate_weeks(element_config, context.materials)
     weeks = order_weeks(element_config, weeks, now().date())
 
     try:
@@ -202,7 +204,7 @@ def schedule(environment, context, element_config, now):
     template = environment.get_template("schedule.html")
     return template.render(
         element_config=element_config,
-        published=context["published"],
+        published=context.materials,
         weeks=weeks,
         this_week=this_week,
         now=now(),

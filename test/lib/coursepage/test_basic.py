@@ -90,7 +90,7 @@ def test_pages_have_access_to_published_artifacts(demo):
 
     # when
     build_coursepage(
-        demo.path, demo.builddir, published_path=demo.builddir / "published"
+        demo.path, demo.builddir, materials_path=demo.builddir / "published"
     )
 
     # then

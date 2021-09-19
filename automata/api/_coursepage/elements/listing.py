@@ -46,7 +46,10 @@ SCHEMA = {
 }
 
 
-def listing(environment, context, element_config, now):
+def listing(context, element_config):
+    environment = context.environment
+    now = context.now
+
     validator = cerberus.Validator(SCHEMA, require_all=True)
     element_config = validator.validated(element_config)
 
@@ -54,7 +57,7 @@ def listing(environment, context, element_config, now):
         raise RuntimeError(f"Invalid config: {validator.errors}")
 
     # sort the publications by key
-    collections = context["published"].collections
+    collections = context.materials.collections
     collection = collections[element_config["collection"]]
     publications_and_keys = sorted(collection.publications.items())
     publications = [v for (j, v) in publications_and_keys]
