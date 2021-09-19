@@ -53,10 +53,10 @@
 {% endmacro %}
 
 
-{% macro display_assignment(published, week, assignment_config) %}
+{% macro display_assignment(materials, week, assignment_config) %}
 
     {% set week_assignments = week.filter(
-            published.collections[assignment_config['collection']],
+            materials.collections[assignment_config['collection']],
             assignment_config['metadata_key_for_released']
         ) 
     %}
@@ -88,10 +88,10 @@
 {% endmacro %}
 
 
-{% macro display_discussion(published, week, discussion_config) %}
+{% macro display_discussion(materials, week, discussion_config) %}
 
     {% set week_discussions = week.filter(
-            published.collections[discussion_config['collection']], 
+            materials.collections[discussion_config['collection']], 
             discussion_config['metadata_key_for_released']
         ) 
     %}
@@ -179,7 +179,7 @@
         <div class="row">
             <div class="col-md-7">
                 {% set week_lectures = week.filter(
-                        published.collections[lecture_config['collection']], 
+                        materials.collections[lecture_config['collection']], 
                         lecture_config['metadata_key_for_released']
                     ) 
                 %}
@@ -191,11 +191,11 @@
             <div class="col-md-5">
                 <div class="list-group">
                     {% for assignment_config in assignment_configs %}
-                        {{ display_assignment(published, week, assignment_config) }}
+                        {{ display_assignment(materials, week, assignment_config) }}
                     {% endfor %}
 
                     {% for discussion_config in discussion_configs %}
-                        {{ display_discussion(published, week, discussion_config) }}
+                        {{ display_discussion(materials, week, discussion_config) }}
                     {% endfor %}
                 </div>
             </div>

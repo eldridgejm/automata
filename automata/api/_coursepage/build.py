@@ -10,6 +10,7 @@ import cerberus
 import jinja2
 import markdown
 import yaml
+import dictconfig
 
 import automata.lib.materials
 
@@ -27,7 +28,6 @@ class RenderContext(typing.NamedTuple):
     config: dict
     vars: typing.Optional[dict]
     now: datetime.datetime
-    environment: None
 
 
 def load_published(published_path, output_path):
@@ -113,11 +113,8 @@ def load_config(path, vars=None):
 
     variables = {"vars": vars}
 
-    # perform template interpolation
     with path.open() as fileobj:
-        template = jinja2.Template(fileobj.read(), undefined=jinja2.StrictUndefined)
-
-    rendered_yaml = template.render(**variables)
+        raw_yaml = fileobj.read()
 
     # we'll subclass yaml.Loader and add a constructor
     class IncludingLoader(yaml.Loader):
@@ -128,7 +125,14 @@ def load_config(path, vars=None):
 
     IncludingLoader.add_constructor("!include", IncludingLoader.include)
 
-    return yaml.load(rendered_yaml, Loader=IncludingLoader)
+    dct = yaml.load(raw_yaml, Loader=IncludingLoader)
+
+    schema = {
+        'type': 'dict',
+        'extra_keys_schema': {'type': 'any'}
+    }
+    return dictconfig.resolve(dct, schema=schema, external_variables=variables)
+
 
 
 

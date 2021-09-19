@@ -187,7 +187,7 @@ def test_vars_available_in_config_file(demo):
         dedent(
             """
                 announcement:
-                    contents: My name is {{ vars.name }}
+                    contents: My name is ${ vars.name }
                 """
         )
     )

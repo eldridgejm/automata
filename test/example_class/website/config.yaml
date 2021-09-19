@@ -91,20 +91,20 @@ schedule:
         metadata_key_for_released: date
 
         # what should be displayed as the lecture's title? template string.
-        title: "Lecture ${ publication.metadata.number } &mdash; ${ publication.metadata.topic }"
+        title: "Lecture {{ publication.metadata.number }} &mdash; {{ publication.metadata.topic }}"
 
         # what resources are available for each lecture?
         resources:
             - 
               # the 
-              text: "<a href=${ publication.artifacts['lecture.ipynb'].path }>Lecture Notebook</a>"
+              text: "<a href={{ publication.artifacts['lecture.ipynb'].path }}>Lecture Notebook</a>"
               icon: em-spiral_note_pad
 
             - text: 'Reading: <a href="http://diveintods.com">Dive into Data Science</a>'
               icon: em-book
         parts:
             key: videos
-            text: '<a href="${ part.url }">${ part.title }</a>'
+            text: '<a href="{{ part.url }}">{{ part.title }}</a>'
 
     assignments:
 
@@ -132,13 +132,13 @@ schedule:
           metadata_key_for_due: due
 
           # what should be displayed as the assignment's title? template string.
-          title: "Homework ${ publication.metadata.number }"
+          title: "Homework {{ publication.metadata.number }}"
 
           # what resources are available for each assignment?
           resources:
               
               # homework notebooks
-              - text: "<a href=${ publication.artifacts['homework.txt'].path }>Homework Notebook</a>"
+              - text: "<a href={{ publication.artifacts['homework.txt'].path }}>Homework Notebook</a>"
                 icon: em-question
                 requires:
                     artifacts:
@@ -146,7 +146,7 @@ schedule:
                     text_if_missing: Not released yet...
 
               # solution notebooks
-              - text: "<a href=${ publication.artifacts['solution.txt'].path }>Solution Notebook</a>"
+              - text: "<a href={{ publication.artifacts['solution.txt'].path }}>Solution Notebook</a>"
                 icon: em-mag
                 #
                 # do not display this resource if the following artifact doesn't exist
@@ -159,10 +159,10 @@ schedule:
         -
             collection: discussions
             metadata_key_for_released: date
-            title: 'Discussion ${ publication.metadata.number }'
+            title: 'Discussion {{ publication.metadata.number }}'
 
             resources:
-                - text: <a href="${ publication.artifacts['discussion.ipynb'].path }">Discussion Notebook</a>
+                - text: <a href="{{ publication.artifacts['discussion.ipynb'].path }}">Discussion Notebook</a>
                   icon: em-spiral_note_pad
                   requires:
                       artifacts:

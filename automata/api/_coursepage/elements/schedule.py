@@ -2,7 +2,7 @@ import datetime
 import cerberus
 import automata.lib.materials
 
-from ._common import is_something_missing
+from ._common import is_something_missing, _render_template
 
 
 RESOURCES_SCHEMA = {
@@ -185,8 +185,6 @@ def order_weeks(element_config, weeks, today):
 
 
 def schedule( context, element_config):
-    environment = context.environment
-    now = context.now
     validator = cerberus.Validator(SCHEMA, require_all=True)
     element_config = validator.validated(element_config)
 
@@ -194,19 +192,17 @@ def schedule( context, element_config):
         raise RuntimeError(f"Invalid config: {validator.errors}")
 
     weeks = generate_weeks(element_config, context.materials)
-    weeks = order_weeks(element_config, weeks, now().date())
+    weeks = order_weeks(element_config, weeks, context.now.date())
 
     try:
-        [this_week] = [w for w in weeks if w.contains(now().date())]
+        [this_week] = [w for w in weeks if w.contains(context.now.date())]
     except ValueError:
         this_week = None
 
-    template = environment.get_template("schedule.html")
-    return template.render(
+    return _render_template('schedule.html', context, extra_vars=dict(
         element_config=element_config,
-        published=context.materials,
         weeks=weeks,
         this_week=this_week,
-        now=now(),
         is_something_missing=is_something_missing,
+        )
     )

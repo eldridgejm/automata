@@ -43,11 +43,6 @@ def build_coursepage(
     # validate the config against the theme's schema
     _coursepage.validate_theme_schema(input_path, config)
 
-    # create environments for evaluation of base templates and element templates
-    element_environment = _coursepage.create_element_environment(input_path)
-    base_environment =_coursepage.create_base_template_environment(input_path)
-
-
     context = _coursepage.RenderContext(
             input_path=input_path,
             output_path=output_path,
@@ -56,8 +51,7 @@ def build_coursepage(
             materials=published,
             config=config,
             vars=vars,
-            now=now,
-            environment=element_environment
+            now=now()
     )
 
     Elements = collections.namedtuple('Elements', [
