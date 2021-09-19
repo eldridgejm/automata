@@ -167,8 +167,6 @@ def test_raises_if_an_unknown_attribute_is_accessed_during_element_render(demo):
     with raises(Exception) as excinfo:
         build_coursepage(demo.path, demo.builddir)
 
-    assert "${ y }" in str(excinfo.value)
-
 
 def test_accepts_vars(demo):
     # given

@@ -1,3 +1,45 @@
+import dictconfig
+import jinja2
+
+
+def create_element_environment(input_path):
+    """Create the element environment and its custom filters."""
+    element_environment = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(input_path / "theme" / "elements"),
+        undefined=jinja2.StrictUndefined,
+    )
+
+    def evaluate(s, **kwargs):
+        _DELIMITER_KWARGS = dict(
+            variable_start_string="${",
+            variable_end_string="}",
+            block_start_string="${%",
+            block_end_string="%}",
+        )
+
+        try:
+            return jinja2.Template(
+                s, **_DELIMITER_KWARGS, undefined=jinja2.StrictUndefined
+            ).render(**kwargs)
+        except jinja2.UndefinedError as exc:
+            raise exceptions.ElementError(
+                f'Unknown variable in template string "{s}": {exc}'
+            )
+
+    element_environment.filters["evaluate"] = evaluate
+
+    return element_environment
+
+
+def basic_element(template_filename, config_schema):
+    def element(context, element_config):
+        element_config = dictconfig.resolve(element_config, config_schema)
+        element_environment = create_element_environment(context.input_path)
+        template = element_environment.get_template(template_filename)
+        return template.render(element_config=element_config, config=context.config,
+                published=context.materials)
+    return element
+
 def is_something_missing(publication, requirements):
     for artifact in requirements["artifacts"]:
         if artifact not in publication.artifacts:

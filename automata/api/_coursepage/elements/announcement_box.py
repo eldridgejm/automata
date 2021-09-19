@@ -1,26 +1,21 @@
-import cerberus
-
+from ._common import basic_element
 
 SCHEMA = {
-    "contents": {"type": "string", "nullable": True},
-    "urgent": {"type": "boolean", "default": False},
+    "type": "dict",
+    "required_keys": {
+        "contents": {"type": "string", "nullable": True}
+    },
+    "optional_keys": {
+        "urgent": {"type": "boolean", "default": False}
+    }
 }
 
 
-def announcement_box(context, element_config):
-    environment = context.environment
-    now = context.now
+announcement_box = basic_element('announcement_box.html', SCHEMA)
 
-    validator = cerberus.Validator(SCHEMA)
-    element_config = validator.validated(element_config)
-
-    if element_config is None:
-        raise RuntimeError(f"Invalid config: {validator.errors}")
-
-    template = environment.get_template("announcement_box.html")
-    return template.render(
-        element_config=element_config,
-        config=context.config,
-        published=context.materials
-    )
+    # return template.render(
+    #     element_config=element_config,
+    #     config=context.config,
+    #     published=context.materials
+    # )
 
