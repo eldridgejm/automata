@@ -141,7 +141,6 @@ class Elements:
             functools.partial(func, self.environment, now=self.now)
         )
 
-
 def render_page(path, variables):
     """Given page path and dict of variables, perform Jinja2 interpolation.
 
