@@ -115,15 +115,15 @@ def _register_build_coursepage_parser(parser):
     parser.add_argument("output_path")
     parser.add_argument("--materials")
     parser.add_argument("--now")
-    parser.add_argument("--context", type=pathlib.Path)
+    parser.add_argument("--vars", type=pathlib.Path)
     parser.set_defaults(cmd=_build_coursepage_cli)
 
 
 def _build_coursepage_cli(args):
-    context = {}
-    if args.context is not None:
-        with args.context.open() as fileobj:
-            context[args.context.stem] = yaml.load(fileobj, Loader=yaml.Loader)
+    vars = {}
+    if args.vars is not None:
+        with args.vars.open() as fileobj:
+            vars[args.vars.stem] = yaml.load(fileobj, Loader=yaml.Loader)
 
     if args.now is None:
         now = datetime.datetime.now
@@ -140,6 +140,6 @@ def _build_coursepage_cli(args):
         print(f"Running as if it is currently {_now}")
 
     build_coursepage(
-        args.input_path, args.output_path, args.materials, context=context, now=now
+        args.input_path, args.output_path, args.materials, vars=vars, now=now
     )
 

@@ -170,26 +170,26 @@ def test_raises_if_an_unknown_attribute_is_accessed_during_element_render(demo):
     assert "${ y }" in str(excinfo.value)
 
 
-def test_accepts_context(demo):
+def test_accepts_vars(demo):
     # given
-    demo.make_page("test.md", "{{ context.foo }}")
+    demo.make_page("test.md", "{{ vars.foo }}")
 
     # when
     build_coursepage(
-        demo.path, demo.builddir, context={"foo": "barbaz"}
+        demo.path, demo.builddir, vars={"foo": "barbaz"}
     )
 
     # then
     assert "barbaz" in demo.get_output("test.html")
 
 
-def test_context_available_in_config_file(demo):
+def test_vars_available_in_config_file(demo):
     # given
     demo.add_to_config(
         dedent(
             """
                 announcement:
-                    contents: My name is {{ context.name }}
+                    contents: My name is {{ vars.name }}
                 """
         )
     )
@@ -197,7 +197,7 @@ def test_context_available_in_config_file(demo):
 
     # when
     build_coursepage(
-        demo.path, demo.builddir, context={"name": "Zaphod Beeblebrox"}
+        demo.path, demo.builddir, vars={"name": "Zaphod Beeblebrox"}
     )
 
     # then

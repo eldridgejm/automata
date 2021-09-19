@@ -4,6 +4,7 @@ import datetime
 import pathlib
 import functools
 import shutil
+import typing
 
 import cerberus
 import jinja2
@@ -14,6 +15,16 @@ import automata.lib.materials
 
 from . import elements
 from . import exceptions
+
+
+class Context(typing.NamedTuple):
+    """Information that might be useful during the rending of pages."""
+    input_path: pathlib.Path
+    output_path: pathlib.Path
+    theme_path: pathlib.Path
+    materials_path: typing.Optional[pathlib.Path]
+    vars: typing.Optional[dict]
+    now: datetime.datetime
 
 
 def load_published(published_path, output_path):
@@ -65,7 +76,7 @@ def load_published(published_path, output_path):
     return published
 
 
-def load_config(path, context=None):
+def load_config(path, vars=None):
     """Read the configuration from a yaml file, performing interpolation.
 
     Parameters
@@ -94,10 +105,10 @@ def load_config(path, context=None):
         announcements: !include announcements.yaml
 
     """
-    if context is None:
-        context = {}
+    if vars is None:
+        vars = {}
 
-    variables = {"context": context}
+    variables = {"vars": vars}
 
     # perform template interpolation
     with path.open() as fileobj:

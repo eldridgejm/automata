@@ -15,11 +15,11 @@ def build_coursepage(
     input_path,
     output_path,
     published_path=None,
-    context=None,
+    vars=None,
     now=datetime.datetime.now,
 ):
-    if context is None:
-        context = {}
+    if vars is None:
+        vars = {}
 
     input_path = pathlib.Path(input_path)
     output_path = pathlib.Path(output_path)
@@ -36,7 +36,7 @@ def build_coursepage(
         published = None
 
     # load the configuration file
-    config = _coursepage.load_config(input_path / "config.yaml", context=context)
+    config = _coursepage.load_config(input_path / "config.yaml", vars=vars)
 
     # validate the config against the theme's schema
     _coursepage.validate_theme_schema(input_path, config)
@@ -47,7 +47,7 @@ def build_coursepage(
 
     # construct the variables used during page rendering
     variables = {
-        "context": context,
+        "vars": vars,
         "elements": _coursepage.Elements(environment=element_environment, now=now),
         "config": config,
         "published": published,

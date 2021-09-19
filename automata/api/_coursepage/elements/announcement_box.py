@@ -20,3 +20,4 @@ def announcement_box(environment, context, element_config, now):
         config=context["config"],
         published=context["published"],
     )
+

@@ -108,7 +108,7 @@ def test_publish_materials_then_build_coursepage_with_example(
             str(output_directory / "materials"),
             str(input_directory / "website"),
             str(output_directory),
-            "--context",
+            "--vars",
             str(input_directory / "course.yaml"),
         ]
     )
