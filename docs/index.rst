@@ -4,6 +4,7 @@ automata
 
 .. toctree::
    materials
+   coursepage
    lib
 
 

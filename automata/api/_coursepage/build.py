@@ -6,7 +6,6 @@ import collections
 import typing
 from functools import partial
 
-import cerberus
 import jinja2
 import markdown
 import yaml

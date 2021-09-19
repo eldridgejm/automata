@@ -1,5 +1,5 @@
-Working with course materials
-=============================
+Publishing course materials
+===========================
 
 Terminology
 -----------

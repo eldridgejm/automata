@@ -1,34 +1,36 @@
 import datetime
-import cerberus
-import automata.lib.materials
 
+import dictconfig
+
+import automata.lib.materials
 from ._common import is_something_missing, render_element_template
 
 
 RESOURCES_SCHEMA = {
     "type": "list",
-    "required": True,
-    "schema": {
+    "element_schema": {
         "type": "dict",
-        "schema": {
+        "required_keys": {
             "text": {"type": "string"},
+        },
+        "optional_keys": {
             "icon": {"type": "string", "nullable": True, "default": None},
             "requires": {
                 "type": "dict",
-                "schema": {
+                "optional_keys": {
                     "artifacts": {
                         "type": "list",
-                        "schema": {"type": "string"},
+                        "element_schema": {"type": "string"},
                         "default": [],
                     },
                     "metadata": {
                         "type": "list",
-                        "schema": {"type": "string"},
+                        "element_schema": {"type": "string"},
                         "default": [],
                     },
                     "non_null_metadata": {
                         "type": "list",
-                        "schema": {"type": "string"},
+                        "element_schema": {"type": "string"},
                         "default": [],
                     },
                     "text_if_missing": {
@@ -40,76 +42,80 @@ RESOURCES_SCHEMA = {
                 "default": None,
                 "nullable": True,
             },
-        },
+        }
     },
 }
 
-
 SCHEMA = {
-    "week_topics": {"type": "list", "schema": {"type": "string"}},
-    "week_order": {
-        "type": "string",
-        "allowed": ["this_week_first", "this_week_last"],
-        "required": False,
-    },
-    "exams": {
-        "type": "dict",
-        "keysrules": {"type": "string"},
-        "valuesrules": {"type": "date"},
-        "required": False,
-    },
-    "week_announcements": {
-        "type": "list",
-        "schema": {
+    "type": "dict",
+    "required_keys": {
+        "week_topics": {"type": "list", "element_schema": {"type": "string"}},
+        "lecture": {
             "type": "dict",
-            "schema": {
-                "week": {"type": "integer"},
-                "content": {"type": "string"},
-                "urgent": {"type": "boolean", "default": False},
+            "required_keys": {
+                "collection": {"type": "string"},
+                "metadata_key_for_released": {"type": "string"},
+                "title": {"type": "string"},
+                "resources": RESOURCES_SCHEMA,
+            },
+            "optional_keys": {
+                "parts": {
+                    "type": "dict",
+                    "required_keys": {"key": {"type": "string"}, "text": {"type": "string"}},
+                },
             },
         },
-    },
-    "first_week_number": {"type": "integer", "default": 1},
-    "first_week_start_date": {"type": "date"},
-    "lecture": {
-        "type": "dict",
-        "schema": {
-            "collection": {"type": "string"},
-            "metadata_key_for_released": {"type": "string"},
-            "title": {"type": "string"},
-            "resources": RESOURCES_SCHEMA,
-            "parts": {
+        "assignments": {
+            "type": "list",
+            "element_schema": {
                 "type": "dict",
-                "required": False,
-                "schema": {"key": {"type": "string"}, "text": {"type": "string"}},
+                "required_keys": {
+                    "collection": {"type": "string"},
+                    "metadata_key_for_released": {"type": "string"},
+                    "metadata_key_for_due": {"type": "string", "nullable": True},
+                    "title": {"type": "string"},
+                    "resources": RESOURCES_SCHEMA,
+                },
+            },
+        },
+        "discussions": {
+            "type": "list",
+            "element_schema": {
+                "type": "dict",
+                "required_keys": {
+                    "collection": {"type": "string"},
+                    "metadata_key_for_released": {"type": "string"},
+                    "title": {"type": "string"},
+                    "resources": RESOURCES_SCHEMA,
+                },
             },
         },
     },
-    "assignments": {
-        "type": "list",
-        "schema": {
+    "optional_keys": {
+        "week_order": {
+            "type": "string",
+            # "allowed": ["this_week_first", "this_week_last"],
+        },
+        "exams": {
             "type": "dict",
-            "schema": {
-                "collection": {"type": "string"},
-                "metadata_key_for_released": {"type": "string"},
-                "metadata_key_for_due": {"type": "string", "nullable": True},
-                "title": {"type": "string"},
-                "resources": RESOURCES_SCHEMA,
+            "extra_keys_schema": {"type": "date"},
+        },
+        "week_announcements": {
+            "type": "list",
+            "element_schema": {
+                "type": "dict",
+                "required_keys": {
+                    "week": {"type": "integer"},
+                    "content": {"type": "string"},
+                },
+                "optional_keys": {
+                    "urgent": {"type": "boolean", "default": False},
+                },
             },
         },
-    },
-    "discussions": {
-        "type": "list",
-        "schema": {
-            "type": "dict",
-            "schema": {
-                "collection": {"type": "string"},
-                "metadata_key_for_released": {"type": "string"},
-                "title": {"type": "string"},
-                "resources": RESOURCES_SCHEMA,
-            },
-        },
-    },
+        "first_week_number": {"type": "integer", "default": 1},
+        "first_week_start_date": {"type": "date"},
+    }
 }
 
 
@@ -185,11 +191,7 @@ def order_weeks(element_config, weeks, today):
 
 
 def schedule( context, element_config):
-    validator = cerberus.Validator(SCHEMA, require_all=True)
-    element_config = validator.validated(element_config)
-
-    if element_config is None:
-        raise RuntimeError(f"Invalid config: {validator.errors}")
+    element_config = dictconfig.resolve(element_config, SCHEMA)
 
     weeks = generate_weeks(element_config, context.materials)
     weeks = order_weeks(element_config, weeks, context.now.date())

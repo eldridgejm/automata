@@ -17,8 +17,8 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "publish"
-copyright = "2020, Justin Eldridge"
+project = "automata"
+copyright = "2021, Justin Eldridge"
 author = "Justin Eldridge"
 
 
