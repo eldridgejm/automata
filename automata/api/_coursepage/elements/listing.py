@@ -1,70 +1,66 @@
-import cerberus
+from ._common import is_something_missing, basic_element
 
-from ._common import is_something_missing
-
+COLUMN_SCHEMA = {
+    "type": "dict",
+    "required_keys": {
+        "cell_content": {"type": "string"},
+        "heading": {"type": "string"},
+    },
+    "optional_keys":{
+        "requires": {
+            "type": "dict",
+            "optional_keys": {
+                "artifacts": {
+                    "type": "list",
+                    "element_schema": {"type": "string"},
+                    "default": [],
+                    },
+                "metadata": {
+                    "type": "list",
+                    "element_schema": {"type": "string"},
+                    "default": [],
+                    },
+                "non_null_metadata": {
+                    "type": "list",
+                    "element_schema": {"type": "string"},
+                    "default": [],
+                    },
+                "cell_content_if_missing": {
+                    "type": "string",
+                    "nullable": True,
+                    "default": None,
+                    },
+                },
+            "default": None,
+            "nullable": True,
+            },
+        }
+    }
 
 SCHEMA = {
-    "collection": {"type": "string"},
-    "numbered": {"type": "boolean", "default": False},
-    "columns": {
-        "type": "list",
-        "schema": {
-            "type": "dict",
-            "schema": {
-                "cell_content": {"type": "string"},
-                "heading": {"type": "string"},
-                "requires": {
-                    "type": "dict",
-                    "schema": {
-                        "artifacts": {
-                            "type": "list",
-                            "schema": {"type": "string"},
-                            "default": [],
-                        },
-                        "metadata": {
-                            "type": "list",
-                            "schema": {"type": "string"},
-                            "default": [],
-                        },
-                        "non_null_metadata": {
-                            "type": "list",
-                            "schema": {"type": "string"},
-                            "default": [],
-                        },
-                        "cell_content_if_missing": {
-                            "type": "string",
-                            "nullable": True,
-                            "default": None,
-                        },
-                    },
-                    "default": None,
-                    "nullable": True,
-                },
-            },
-        },
+    "type": "dict",
+    "required_keys": {
+        "collection": {"type": "string"},
+        "columns": {
+            "type": "list",
+            "element_schema": COLUMN_SCHEMA
+        }
     },
+    "optional_keys": {
+        "numbered": {"type": "boolean", "default": False}
+    }
 }
 
 
-def listing(context, element_config):
-    environment = context.environment
-    now = context.now
-
-    validator = cerberus.Validator(SCHEMA, require_all=True)
-    element_config = validator.validated(element_config)
-
-    if element_config is None:
-        raise RuntimeError(f"Invalid config: {validator.errors}")
-
-    # sort the publications by key
+def _listing_vars(context, element_config):
     collections = context.materials.collections
     collection = collections[element_config["collection"]]
     publications_and_keys = sorted(collection.publications.items())
     publications = [v for (j, v) in publications_and_keys]
 
-    template = environment.get_template("listing.html")
-    return template.render(
-        element_config=element_config,
-        publications=publications,
-        is_something_missing=is_something_missing,
-    )
+    return {
+        'is_something_missing': is_something_missing,
+        'publications': publications
+    }
+
+listing = basic_element("listing.html", SCHEMA, _listing_vars)

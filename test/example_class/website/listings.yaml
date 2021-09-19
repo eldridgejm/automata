@@ -4,8 +4,8 @@ homework:
     columns:
         - heading: Problems
           cell_content: |
-              <a href="${ publication.artifacts['homework.txt'].path }">
-              Homework ${ publication.metadata.number }
+              <a href="{{ publication.artifacts['homework.txt'].path }}">
+              Homework {{ publication.metadata.number }}
               </a>
 
           requires:
@@ -15,7 +15,7 @@ homework:
 
         - heading: Solutions
           cell_content: |
-              <a href="${ publication.artifacts['solution.txt'].path }">
+              <a href="{{ publication.artifacts['solution.txt'].path }}">
               Solution
               </a>
           requires:
@@ -24,7 +24,7 @@ homework:
               cell_content_if_missing: Not yet released...
 
         - heading: Due
-          cell_content: "${ publication.metadata.due.strftime('%A, %b %d at %H:%M:%S') }"
+          cell_content: "{{ publication.metadata.due.strftime('%A, %b %d at %H:%M:%S') }}"
 
 
 lecture_notebooks:
@@ -33,8 +33,8 @@ lecture_notebooks:
     columns:
         - heading: Blank Notebook
           cell_content: |
-              <a href="${ publication.artifacts['lecture.ipynb'].path }">
-              Lecture ${ publication.metadata.number } &mdash; ${ publication.metadata.topic }
+              <a href="{{ publication.artifacts['lecture.ipynb'].path }}">
+              Lecture {{ publication.metadata.number }} &mdash; {{ publication.metadata.topic }}
               </a>
           requires:
               artifacts: 
@@ -42,4 +42,4 @@ lecture_notebooks:
               cell_content_if_missing: Not yet posted...
 
         - heading: Date
-          cell_content: "${ publication.metadata.date.strftime('%A, %b %d') }"
+          cell_content: "{{ publication.metadata.date.strftime('%A, %b %d') }}"

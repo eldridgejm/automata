@@ -31,12 +31,18 @@ def create_element_environment(input_path):
     return element_environment
 
 
-def basic_element(template_filename, config_schema):
+def basic_element(template_filename, config_schema, extra_render_vars=None):
     def element(context, element_config):
         element_config = dictconfig.resolve(element_config, config_schema)
         element_environment = create_element_environment(context.input_path)
         template = element_environment.get_template(template_filename)
-        return template.render(element_config=element_config, **context._asdict())
+
+        if extra_render_vars is not None:
+            extra_vars = extra_render_vars(context, element_config)
+        else:
+            extra_vars = {}
+
+        return template.render(element_config=element_config, **context._asdict(), **extra_vars)
     return element
 
 def is_something_missing(publication, requirements):
