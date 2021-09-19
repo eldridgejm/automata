@@ -2,7 +2,7 @@ import datetime
 import cerberus
 import automata.lib.materials
 
-from ._common import is_something_missing, _render_template
+from ._common import is_something_missing, render_element_template
 
 
 RESOURCES_SCHEMA = {
@@ -199,7 +199,7 @@ def schedule( context, element_config):
     except ValueError:
         this_week = None
 
-    return _render_template('schedule.html', context, extra_vars=dict(
+    return render_element_template('schedule.html', context, extra_vars=dict(
         element_config=element_config,
         weeks=weeks,
         this_week=this_week,

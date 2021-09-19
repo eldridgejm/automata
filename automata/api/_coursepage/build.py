@@ -16,6 +16,7 @@ import automata.lib.materials
 
 from . import elements
 from . import exceptions
+from ... import util
 
 
 class RenderContext(typing.NamedTuple):
@@ -113,19 +114,7 @@ def load_config(path, vars=None):
 
     variables = {"vars": vars}
 
-    with path.open() as fileobj:
-        raw_yaml = fileobj.read()
-
-    # we'll subclass yaml.Loader and add a constructor
-    class IncludingLoader(yaml.Loader):
-        def include(self, node):
-            included_path = path.parent / self.construct_scalar(node)
-            with included_path.open() as fileobj:
-                return yaml.load(fileobj, IncludingLoader)
-
-    IncludingLoader.add_constructor("!include", IncludingLoader.include)
-
-    dct = yaml.load(raw_yaml, Loader=IncludingLoader)
+    dct = util.load_yaml(path)
 
     schema = {
         'type': 'dict',
@@ -139,13 +128,11 @@ def validate_theme_schema(input_path, config):
     with (input_path / "theme" / "schema.yaml").open() as fileobj:
         theme_schema = yaml.load(fileobj, Loader=yaml.Loader)
 
-    validator = cerberus.Validator(theme_schema, allow_unknown=True, require_all=True)
-    result = validator.validate(config)
-    if not result:
-        raise RuntimeError(f"Invalid theme config: {validator.errors}")
+    try:
+        dictconfig.resolve(config['theme'], theme_schema)
+    except dictconfig.exceptions.Error as exc:
+        raise RuntimeError(f"Invalid theme config: {exc}")
 
-
-# new stuff --------------------------------------------
 
 def _find_input_pages(input_path):
     """Generate all page contents and their output paths.
@@ -187,20 +174,19 @@ def render_pages(input_path, output_path, theme_path, context):
     with (theme_path / 'base.html').open() as fileobj:
         template = fileobj.read()
 
-    Elements = collections.namedtuple('Elements', [
+    _Elements = collections.namedtuple('Elements', [
         'announcement_box',
         'button_bar',
         'schedule',
         'listing'
     ])
 
-    elements_ = Elements(
+    elements_ = _Elements(
         announcement_box=partial(elements.announcement_box, context),
         button_bar=partial(elements.button_bar, context),
         schedule=partial(elements.schedule, context),
         listing=partial(elements.listing, context),
     )
-
 
     for input_page_abspath in input_path.iterdir():
         with input_page_abspath.open() as fileobj:

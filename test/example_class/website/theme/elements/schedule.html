@@ -74,8 +74,8 @@
                 </ul>
             </div>
             {% set due_time = assignment.metadata[assignment_config['metadata_key_for_due']] %}
-            <div class="badge badge-pill {{ 'badge-danger' if now < due_time else 'badge-light' }}">
-                {% if now > due_time %}
+            <div class="badge badge-pill {{ 'badge-danger' if context.now < due_time else 'badge-light' }}">
+                {% if context.now > due_time %}
                     Was due
                 {% else %}
                     Due
@@ -137,7 +137,7 @@
 {% endif %}
 
 <div class="schedule">
-    <div class="schedule-week {{ 'schedule-week-future' if week.start_date > now.date() }}">
+    <div class="schedule-week {{ 'schedule-week-future' if week.start_date > context.now.date() }}">
         <div class="schedule-week-title">
             <h1 class="schedule-week-title-number">
                 {% if loop.first %}
@@ -179,7 +179,7 @@
         <div class="row">
             <div class="col-md-7">
                 {% set week_lectures = week.filter(
-                        materials.collections[lecture_config['collection']], 
+                        context.materials.collections[lecture_config['collection']], 
                         lecture_config['metadata_key_for_released']
                     ) 
                 %}
@@ -191,11 +191,11 @@
             <div class="col-md-5">
                 <div class="list-group">
                     {% for assignment_config in assignment_configs %}
-                        {{ display_assignment(materials, week, assignment_config) }}
+                        {{ display_assignment(context.materials, week, assignment_config) }}
                     {% endfor %}
 
                     {% for discussion_config in discussion_configs %}
-                        {{ display_discussion(materials, week, discussion_config) }}
+                        {{ display_discussion(context.materials, week, discussion_config) }}
                     {% endfor %}
                 </div>
             </div>

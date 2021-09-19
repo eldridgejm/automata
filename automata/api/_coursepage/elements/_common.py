@@ -4,7 +4,7 @@ import jinja2
 from .. import exceptions
 
 
-def _render_template(template_name, context, extra_vars=None):
+def render_element_template(template_name, context, extra_vars=None):
     if extra_vars is None:
         extra_vars = {}
 
@@ -30,7 +30,7 @@ def _render_template(template_name, context, extra_vars=None):
     element_environment.filters["markdown_to_html"] = markdown_to_html
 
     template = element_environment.get_template(template_name)
-    return template.render(**context._asdict(), **extra_vars)
+    return template.render(context=context, **extra_vars)
 
 def basic_element(template_filename, config_schema, extra_render_vars=None):
     def element(context, element_config):
@@ -41,7 +41,7 @@ def basic_element(template_filename, config_schema, extra_render_vars=None):
         else:
             extra_vars = {}
 
-        return _render_template(template_filename, context, {'element_config': element_config, **extra_vars})
+        return render_element_template(template_filename, context, {'element_config': element_config, **extra_vars})
     return element
 
 def is_something_missing(publication, requirements):
