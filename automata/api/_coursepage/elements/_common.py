@@ -36,8 +36,7 @@ def basic_element(template_filename, config_schema):
         element_config = dictconfig.resolve(element_config, config_schema)
         element_environment = create_element_environment(context.input_path)
         template = element_environment.get_template(template_filename)
-        return template.render(element_config=element_config, config=context.config,
-                published=context.materials)
+        return template.render(element_config=element_config, **context._asdict())
     return element
 
 def is_something_missing(publication, requirements):
