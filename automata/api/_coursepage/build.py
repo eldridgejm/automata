@@ -1,10 +1,10 @@
 """Generate a static site with abstract.abstract"""
-import argparse
-import datetime
+
 import pathlib
-import functools
-import shutil
+import datetime
+import collections
 import typing
+from functools import partial
 
 import cerberus
 import jinja2
@@ -30,7 +30,7 @@ class RenderContext(typing.NamedTuple):
     now: datetime.datetime
 
 
-def load_published(published_path, output_path):
+def load_materials(materials_path, output_path):
     """Load artifacts from ``materials.json`` and update their paths.
 
     The artifacts in ``materials.json`` have a ``path`` attribute that gives
@@ -43,7 +43,7 @@ def load_published(published_path, output_path):
 
     Parameters
     ----------
-    published_path : pathlib.Path
+    materials_path : pathlib.Path
         Path to the directory containing ``materials.json``.
     output_path : pathlib.Path
         Path to the output directory. This should be a directory under the
@@ -51,15 +51,15 @@ def load_published(published_path, output_path):
 
     Returns
     -------
-    published.Universe
-        The universe of published artifacts, with each artifact's path updated
+    materials.Universe
+        The universe of materials artifacts, with each artifact's path updated
         to be relative to ``output_path``.
 
     """
 
     # read the universe
-    with (published_path / "materials.json").open() as fileobj:
-        published = automata.lib.materials.deserialize(fileobj.read())
+    with (materials_path / "materials.json").open() as fileobj:
+        materials = automata.lib.materials.deserialize(fileobj.read())
 
     # we need to update their paths to be relative to output directory; this function
     # will do it for one artifact
@@ -67,16 +67,16 @@ def load_published(published_path, output_path):
         if artifact.path is None:
             return artifact
 
-        relative_path = published_path.relative_to(output_path) / artifact.path
+        relative_path = materials_path.relative_to(output_path) / artifact.path
         return artifact._replace(path=relative_path)
 
-    # apply the function to all artifacts, modifying `published`
-    for collection in published.collections.values():
+    # apply the function to all artifacts, modifying `materials`
+    for collection in materials.collections.values():
         for publication in collection.publications.values():
             for artifact_key, artifact in publication.artifacts.items():
                 publication.artifacts[artifact_key] = _update_path(artifact)
 
-    return published
+    return materials
 
 
 def load_config(path, vars=None):
@@ -101,7 +101,7 @@ def load_config(path, vars=None):
     .. code-block:: yaml
 
         # config.yaml
-        theme:
+        template:
             page_title: My Website
 
         schedule: !include schedule.yaml
@@ -134,87 +134,6 @@ def load_config(path, vars=None):
     return dictconfig.resolve(dct, schema=schema, external_variables=variables)
 
 
-
-
-def render_page(path, variables):
-    """Given page path and dict of variables, perform Jinja2 interpolation.
-
-    Parameters
-    ----------
-    path : str
-        The page'spath.
-    variables : dict
-        A dictionary mapping variable names to values available during
-        interpolation.
-
-    Returns
-    -------
-    str
-        The input string after interpolation.
-
-    Notes
-    -----
-    Variables are delimited by ${ }, and blocks are delimited by ${%  %}.
-
-    """
-    with path.open() as fileobj:
-        contents = fileobj.read()
-
-    template = jinja2.Template(contents, undefined=jinja2.StrictUndefined)
-
-    try:
-        return template.render(**variables)
-    except jinja2.UndefinedError as exc:
-        raise exceptions.PageError(f'Problem rendering "{path}": {exc}')
-
-
-def convert_markdown_to_html(contents):
-    """Convert markdown to HTML.
-
-    Parameters
-    ----------
-    contents : str
-        The markdown string.
-
-    Returns
-    -------
-    str
-        The HTML.
-
-    """
-    return markdown.markdown(contents, extensions=["toc"])
-
-
-def all_pages(input_path, output_path):
-    """Generate all page contents and their output paths.
-
-    Parameters
-    ----------
-    input_path : pathlib.Path
-        The path to the input. ``input_path / 'pages'`` should contain the pages.
-    output_path : pathlib.Path
-        The path to the directory where the rendered pages will be placed.
-
-    Yields
-    ------
-    (str, pathlib.Path)
-        The contents of the input page, along with the path to where the rendered
-        page should be placed.
-
-    """
-    for page_path in (input_path / "pages").iterdir():
-        root = input_path / "pages"
-        new_path = output_path / page_path.relative_to(root).with_suffix(".html")
-
-        yield page_path, new_path
-
-
-def render_base(base_environment, body_html, config):
-    return base_environment.get_template("page.html").render(
-        body=body_html, config=config
-    )
-
-
 def validate_theme_schema(input_path, config):
     """Validate a config against the theme's schema."""
     with (input_path / "theme" / "schema.yaml").open() as fileobj:
@@ -225,43 +144,6 @@ def validate_theme_schema(input_path, config):
     if not result:
         raise RuntimeError(f"Invalid theme config: {validator.errors}")
 
-
-def create_element_environment(input_path):
-    """Create the element environment and its custom filters."""
-    element_environment = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(input_path / "theme" / "elements"),
-        undefined=jinja2.StrictUndefined,
-    )
-
-    def evaluate(s, **kwargs):
-        _DELIMITER_KWARGS = dict(
-            variable_start_string="${",
-            variable_end_string="}",
-            block_start_string="${%",
-            block_end_string="%}",
-        )
-
-        try:
-            return jinja2.Template(
-                s, **_DELIMITER_KWARGS, undefined=jinja2.StrictUndefined
-            ).render(**kwargs)
-        except jinja2.UndefinedError as exc:
-            raise exceptions.ElementError(
-                f'Unknown variable in template string "{s}": {exc}'
-            )
-
-    element_environment.filters["evaluate"] = evaluate
-    element_environment.filters["markdown_to_html"] = convert_markdown_to_html
-
-    return element_environment
-
-
-def create_base_template_environment(input_path):
-    """Create the base template environment."""
-    return jinja2.Environment(
-        loader=jinja2.FileSystemLoader(input_path / "theme" / "base_templates"),
-        undefined=jinja2.StrictUndefined,
-    )
 
 # new stuff --------------------------------------------
 
@@ -300,10 +182,25 @@ def _to_html(contents):
     return markdown.markdown(contents, extensions=["toc"])
 
 
-def render_pages(input_path, output_path, template_path, elements, context):
+def render_pages(input_path, output_path, theme_path, context):
     """Render each file in the input path into an HTML file in the output path."""
-    with (template_path / 'base.html').open() as fileobj:
+    with (theme_path / 'base.html').open() as fileobj:
         template = fileobj.read()
+
+    Elements = collections.namedtuple('Elements', [
+        'announcement_box',
+        'button_bar',
+        'schedule',
+        'listing'
+    ])
+
+    elements_ = Elements(
+        announcement_box=partial(elements.announcement_box, context),
+        button_bar=partial(elements.button_bar, context),
+        schedule=partial(elements.schedule, context),
+        listing=partial(elements.listing, context),
+    )
+
 
     for input_page_abspath in input_path.iterdir():
         with input_page_abspath.open() as fileobj:
@@ -311,7 +208,7 @@ def render_pages(input_path, output_path, template_path, elements, context):
 
         input_page_relpath = input_page_abspath.relative_to(input_path)
 
-        body_interpolated = _interpolate(input_page_contents, {'elements': elements, **context._asdict()}, path=input_page_abspath)
+        body_interpolated = _interpolate(input_page_contents, {'elements': elements_, **context._asdict()}, path=input_page_abspath)
         body_html = _to_html(body_interpolated)
         page_html = _interpolate(template, {'body': body_html, **context._asdict()})
 

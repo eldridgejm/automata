@@ -1,10 +1,6 @@
 import datetime
-import collections
 import pathlib
 import shutil
-from functools import partial
-
-import yaml
 
 from . import _coursepage
 
@@ -33,7 +29,7 @@ def build_coursepage(
 
     # load the publications and update their paths
     if materials_path is not None:
-        published = _coursepage.load_published(materials_path, output_path)
+        published = _coursepage.load_materials(materials_path, output_path)
     else:
         published = None
 
@@ -54,30 +50,8 @@ def build_coursepage(
             now=now()
     )
 
-    Elements = collections.namedtuple('Elements', [
-        'announcement_box',
-        'button_bar',
-        'schedule',
-        'listing'
-    ])
-
-    elements = Elements(
-        announcement_box=partial(_coursepage.elements.announcement_box, context),
-        button_bar=partial(_coursepage.elements.button_bar, context),
-        schedule=partial(_coursepage.elements.schedule, context),
-        listing=partial(_coursepage.elements.listing, context),
-    )
-
-    # construct the variables used during page rendering
-    variables = {
-        "vars": vars,
-        "elements": elements,
-        "config": config,
-        "published": published,
-    }
-
     # convert user pages
-    _coursepage.render_pages(input_path / 'pages', output_path, input_path / 'theme', elements, context)
+    _coursepage.render_pages(input_path / 'pages', output_path, input_path / 'theme', context)
 
     # copy static files
     shutil.copytree(input_path / "theme" / "style", output_path / "style")
