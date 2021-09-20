@@ -25,7 +25,7 @@ class BuildCallbacks:
         """Called when the artifact is not ready."""
 
     def on_missing(self, artifact: UnbuiltArtifact):
-        """Called when the artifact file is missing, but missing is OK."""
+        """Called when the artifact is missing, but missing is OK."""
 
     def on_recipe(self, artifact: UnbuiltArtifact):
         """Called when artifact is being built using its recipe."""
@@ -58,11 +58,11 @@ def _build_artifact(
     -------
     Optional[BuiltArtifact]
         A summary of the build results. The result is `None` if the build time
-        is in the future, or if the file was not created and missing_ok is
+        is in the future, or if the artifact was not created and missing_ok is
         True.
 
     """
-    output = BuiltArtifact(workdir=artifact.workdir, file=artifact.file)
+    output = BuiltArtifact(workdir=artifact.workdir, path=artifact.path)
 
     if (
         not ignore_release_time
@@ -102,13 +102,13 @@ def _build_artifact(
         stdout = None if proc.stdout is None else proc.stdout.decode()
         stderr = None if proc.stderr is None else proc.stderr.decode()
 
-    filepath = artifact.workdir / artifact.file
-    if not exists(filepath):
+    path = artifact.workdir / artifact.path
+    if not exists(path):
         if artifact.missing_ok:
             callbacks.on_missing(artifact)
             return None
         else:
-            raise BuildError(f"Artifact file {filepath} does not exist.")
+            raise BuildError(f"Artifact {path} does not exist at {path}.")
 
     output = output._replace(returncode=returncode, stdout=stdout, stderr=stderr)
     callbacks.on_success(output)

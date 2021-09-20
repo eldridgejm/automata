@@ -8,5 +8,5 @@ artifacts:
         recipe: touch homework.pdf
     solution.pdf:
         recipe: mkdir build && touch build/solution.pdf
-        file: ./build/solution.pdf
+        path: ./build/solution.pdf
         ready: false

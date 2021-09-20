@@ -9,4 +9,4 @@ artifacts:
         ready: false
     solution.pdf:
         recipe: mkdir build && touch build/solution.pdf
-        file: ./build/solution.pdf
+        path: ./build/solution.pdf

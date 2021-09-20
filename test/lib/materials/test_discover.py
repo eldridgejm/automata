@@ -161,7 +161,7 @@ def test_skip_directories():
     assert "textbook" not in universe.collections["default"].publications
 
 
-def test_key_used_for_file_if_file_not_provided():
+def test_key_used_for_path_if_path_not_provided():
     # when
     universe = discover(EXAMPLE_1_DIRECTORY)
 
@@ -170,7 +170,7 @@ def test_key_used_for_file_if_file_not_provided():
         universe.collections["homeworks"]
         .publications["01-intro"]
         .artifacts["homework.pdf"]
-        .file
+        .path
         == "homework.pdf"
     )
 

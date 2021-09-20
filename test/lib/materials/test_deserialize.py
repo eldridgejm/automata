@@ -43,7 +43,7 @@ def test_serialize_deserialize_built_publication_roundtrip():
         },
         artifacts={
             "homework": automata.lib.materials.BuiltArtifact(
-                workdir=None, file="foo/bar"
+                workdir=None, path="foo/bar"
             )
         },
     )
@@ -73,7 +73,7 @@ def test_collection_as_dict():
         metadata={"name": "testing"},
         artifacts={
             "homework": automata.lib.materials.UnbuiltArtifact(
-                workdir=None, file="homework.pdf", recipe="make", release_time=None
+                workdir=None, path="homework.pdf", recipe="make", release_time=None
             ),
         },
     )
@@ -84,5 +84,5 @@ def test_collection_as_dict():
     # then
     assert d["publication_schema"]["required_artifacts"] == ["foo", "bar"]
     assert (
-        d["publications"]["01-intro"]["artifacts"]["homework"]["file"] == "homework.pdf"
+        d["publications"]["01-intro"]["artifacts"]["homework"]["path"] == "homework.pdf"
     )

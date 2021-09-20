@@ -1,5 +1,5 @@
 name: hello
 artifacts:
     homework:
-        file: ./build/nothing.pdf
+        path: ./build/nothing.pdf
         recipe: make

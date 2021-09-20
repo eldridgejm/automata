@@ -34,15 +34,15 @@ def test_build_artifact_integration(example_1):
     # then
     assert (example_1 / "homeworks" / "01-intro" / "solution.pdf").exists()
     assert result.workdir == artifact.workdir
-    assert result.file == artifact.file
-    assert result.file
+    assert result.path == artifact.path
+    assert result.path
 
 
 def test_build_artifact_when_release_time_is_in_future():
     # given
     artifact = automata.lib.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
-        file="foo.pdf",
+        path="foo.pdf",
         recipe="echo hi",
         release_time=datetime.datetime(2020, 2, 28, 23, 59, 0),
     )
@@ -64,7 +64,7 @@ def test_build_artifact_when_not_ready():
     # given
     artifact = automata.lib.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
-        file="foo.pdf",
+        path="foo.pdf",
         recipe="echo hi",
         release_time=datetime.datetime(2020, 2, 28, 23, 59, 0),
         ready=False,
@@ -87,7 +87,7 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
     # given
     artifact = automata.lib.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
-        file="foo.pdf",
+        path="foo.pdf",
         recipe="echo hi",
         release_time=datetime.datetime(2020, 2, 28, 23, 59, 0),
     )
@@ -104,14 +104,14 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
     )
 
     # then
-    assert result.file
+    assert result.path
     assert run.called
 
 
 def test_build_artifact_when_recipe_is_none():
     # given
     artifact = automata.lib.materials.UnbuiltArtifact(
-        workdir=pathlib.Path.cwd(), file="foo.pdf", recipe=None
+        workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None
     )
 
     run = Mock()
@@ -121,14 +121,14 @@ def test_build_artifact_when_recipe_is_none():
     result = automata.lib.materials.build(artifact, run=run, exists=exists)
 
     # then
-    assert result.file
+    assert result.path
     assert not run.called
 
 
-def test_build_artifact_when_recipe_is_none_raises_if_no_file():
+def test_build_artifact_when_recipe_is_none_raises_if_no_path():
     # given
     artifact = automata.lib.materials.UnbuiltArtifact(
-        workdir=pathlib.Path.cwd(), file="foo.pdf", recipe=None
+        workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None
     )
 
     run = Mock()
@@ -142,7 +142,7 @@ def test_build_artifact_when_recipe_is_none_raises_if_no_file():
 def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
     # given
     artifact = automata.lib.materials.UnbuiltArtifact(
-        workdir=pathlib.Path.cwd(), file="foo.pdf", recipe=None, missing_ok=True
+        workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None, missing_ok=True
     )
 
     run = Mock()
@@ -156,7 +156,7 @@ def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
 def test_build_artifact_raises_if_no_file():
     # given
     artifact = automata.lib.materials.UnbuiltArtifact(
-        workdir=pathlib.Path.cwd(), file="foo.pdf", recipe="touch bar"
+        workdir=pathlib.Path.cwd(), path="foo.pdf", recipe="touch bar"
     )
 
     run = Mock()
@@ -181,12 +181,12 @@ def test_build_collection(example_1):
         .publications["01-intro"]
         .artifacts["solution.pdf"]
     )
-    assert build_result.file
+    assert build_result.path
     assert (
         built_universe.collections["homeworks"]
         .publications["01-intro"]
         .artifacts["solution.pdf"]
-        .file
+        .path
     )
 
     # check that a deep copy is made

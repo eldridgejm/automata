@@ -23,10 +23,10 @@ def test_example(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
             """
         ),
@@ -55,7 +55,7 @@ def test_raises_if_required_artifact_is_not_provided(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
             """
         ),
@@ -92,10 +92,10 @@ def test_raises_if_extra_artifact_provided_without_allow_unspecified(
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 woo:
-                    file: ./something.pdf
+                    path: ./something.pdf
             """
         ),
     )
@@ -131,10 +131,10 @@ def test_allows_extra_artifact_when_allow_unspecified_given(
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 woo:
-                    file: ./something.pdf
+                    path: ./something.pdf
             """
         ),
     )
@@ -170,10 +170,10 @@ def test_with_relative_release_time(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: ${self.metadata.due}
             """
@@ -202,10 +202,10 @@ def test_with_relative_release_date_but_no_time_raises(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: metadata.released
             """
@@ -230,10 +230,10 @@ def test_with_relative_release_time_after(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 1 day after ${self.metadata.due}
             """
@@ -261,10 +261,10 @@ def test_with_relative_release_time_after_hours(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 3 hours after ${self.metadata.due}
             """
@@ -292,10 +292,10 @@ def test_with_relative_release_time_after_large(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 11 days after ${self.metadata.due}
             """
@@ -323,10 +323,10 @@ def test_with_relative_release_time_after_large_hours(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 1000 hours after ${self.metadata.due}
             """
@@ -354,10 +354,10 @@ def test_with_relative_release_date_before(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 3 days before ${self.metadata.due}
             """
@@ -385,10 +385,10 @@ def test_with_relative_release_date_before_hours(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 3 hours before ${self.metadata.due}
             """
@@ -416,10 +416,10 @@ def test_with_relative_release_time_multiple_days(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 3 days after ${self.metadata.due}
             """
@@ -447,10 +447,10 @@ def test_with_invalid_relative_date_raises(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: -1 days after ${self.metadata.due}
             """
@@ -477,10 +477,10 @@ def test_with_invalid_relative_date_variable_reference_raises(
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 1 days after ${self.metadata.foo}
             """
@@ -505,10 +505,10 @@ def test_with_absolute_release_time(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 2020-01-02 23:59:00
             """
@@ -540,10 +540,10 @@ def test_with_relative_dates_in_metadata(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 2020-01-02 23:59:00
             """
@@ -584,10 +584,10 @@ def test_with_relative_dates_in_metadata_without_offset(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 2020-01-02 23:59:00
             """
@@ -626,10 +626,10 @@ def test_with_unknown_relative_field_raises(write_file):
 
             artifacts:
                 homework:
-                    file: ./homework.pdf
+                    path: ./homework.pdf
                     recipe: make homework
                 solution:
-                    file: ./solution.pdf
+                    path: ./solution.pdf
                     recipe: make solution
                     release_time: 2020-01-02 23:59:00
             """

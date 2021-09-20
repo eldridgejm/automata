@@ -22,7 +22,7 @@ def _publish_artifact(built_artifact, outdir, filename, callbacks):
     # actually copy the artifact
     full_dst = outdir / filename
     full_dst.parent.mkdir(parents=True, exist_ok=True)
-    full_src = built_artifact.workdir / built_artifact.file
+    full_src = built_artifact.workdir / built_artifact.path
     callbacks.on_copy(full_src, full_dst)
 
     if full_src.is_dir():

@@ -205,8 +205,8 @@ def read_publication_file(path, publication_schema=None, vars=None, previous=Non
     artifacts = {}
     for key, definition in resolved["artifacts"].items():
         # if no file is provided, use the key
-        if definition["file"] is None:
-            definition["file"] = key
+        if definition["path"] is None:
+            definition["path"] = key
 
         artifacts[key] = UnbuiltArtifact(workdir=path.parent.absolute(), **definition)
 
@@ -227,7 +227,7 @@ def _make_publication_file_schema(publication_schema):
     artifact_schema = {
         "type": "dict",
         "optional_keys": {
-            "file": {"type": "string", "nullable": True, "default": None},
+            "path": {"type": "string", "nullable": True, "default": None},
             "recipe": {"type": "string", "nullable": True, "default": None},
             "ready": {"type": "boolean", "default": True},
             "missing_ok": {"type": "boolean", "default": False},

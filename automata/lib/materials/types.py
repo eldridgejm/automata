@@ -18,8 +18,8 @@ class UnbuiltArtifact(Artifact, typing.NamedTuple):
     ----------
     workdir : pathlib.Path
         Absolute path to the working directory used to build the artifact.
-    file : str
-        Path (relative to the workdir) of the file produced by the build.
+    path : str
+        Path (relative to the workdir) of the path produced by the build.
     recipe : Union[str, None]
         Command used to build the artifact. If None, no command is necessary.
     release_time: Union[datetime.datetime, None]
@@ -27,13 +27,13 @@ class UnbuiltArtifact(Artifact, typing.NamedTuple):
     ready : bool
         Whether or not the artifact is ready for publication. Default: True.
     missing_ok : bool
-        If True and the file is missing after building, then no error is raised and the
+        If True and the path is missing after building, then no error is raised and the
         result of the build is `None`.
 
     """
 
     workdir: pathlib.Path
-    file: str
+    path: str
     recipe: str = None
     release_time: datetime.datetime = None
     ready: bool = True
@@ -47,8 +47,8 @@ class BuiltArtifact(Artifact, typing.NamedTuple):
     ----------
     workdir : pathlib.Path
         Absolute path to the working directory used to build the artifact.
-    file : str
-        Path (relative to the workdir) of the file produced by the build.
+    path : str
+        Path (relative to the workdir) of the path produced by the build.
     returncode : int
         The build process's return code. If None, there was no process.
     stdout : str
@@ -59,7 +59,7 @@ class BuiltArtifact(Artifact, typing.NamedTuple):
     """
 
     workdir: pathlib.Path
-    file: str
+    path: str
     returncode: int = None
     stdout: str = None
     stderr: str = None
@@ -71,7 +71,7 @@ class PublishedArtifact(Artifact, typing.NamedTuple):
     Attributes
     ----------
     path : str
-        The path to the artifact's file relative to the output directory.
+        The path to the artifact's path relative to the output directory.
 
     """
 
