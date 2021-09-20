@@ -23,7 +23,7 @@ from pytest import fixture, mark
 # the first week is set to start on Monday, September 28
 
 
-EXAMPLE_CLASS = pathlib.Path(__file__).parent / "../../example_class"
+EXAMPLE_CLASS = pathlib.Path(__file__).parent / "../../examples/example_class"
 
 
 def example_class(tempdir, date):

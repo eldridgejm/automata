@@ -8,7 +8,7 @@ from automata.lib.materials import discover, UnbuiltArtifact, DiscoveryError
 
 
 # good example; simple
-EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent.parent
+EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent.parent / 'examples'
 
 EXAMPLE_1_DIRECTORY = EXAMPLES_ROOT / "example_1"
 

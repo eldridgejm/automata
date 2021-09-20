@@ -28,7 +28,7 @@ def output_directory(tmpdir):
 
 def test_publish_materials_simple_example(make_input_directory, output_directory):
     # given
-    input_directory = make_input_directory("example_1")
+    input_directory = make_input_directory("examples/example_1")
 
     # when
     cli(["publish-materials", str(input_directory), str(output_directory)])
@@ -41,7 +41,7 @@ def test_publish_materials_with_example_using_external_variables(
     make_input_directory, output_directory
 ):
     # given
-    input_directory = make_input_directory("example_9")
+    input_directory = make_input_directory("examples/example_9")
 
     contents = dedent(
         """
@@ -71,7 +71,7 @@ def test_publish_materials_with_example_using_external_variables(
 def test_publish_materials_creates_materials_json(
     make_input_directory, output_directory
 ):
-    input_directory = make_input_directory("example_1")
+    input_directory = make_input_directory("examples/example_1")
 
     # when
     cli(["publish-materials", str(input_directory), str(output_directory)])
@@ -89,7 +89,7 @@ def test_publish_materials_then_build_coursepage_with_example(
     make_input_directory, output_directory
 ):
     # given
-    input_directory = make_input_directory("example_class")
+    input_directory = make_input_directory("examples/example_class")
 
     # when
     cli(
