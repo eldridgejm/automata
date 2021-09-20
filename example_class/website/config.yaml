@@ -97,8 +97,7 @@ schedule:
 
         # what resources are available for each lecture?
         resources:
-            - 
-              # the 
+            -
               icon: em-spiral_note_pad
               text: |
                   <a href={{ publication.artifacts['lecture.ipynb'].path }}>Lecture Notebook</a>
