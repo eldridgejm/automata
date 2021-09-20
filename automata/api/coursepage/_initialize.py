@@ -11,7 +11,7 @@ def _extract_zip_bytes(bytes, path):
     zipfile.ZipFile(io.BytesIO(bytes)).extractall(path=path)
 
 
-def create(path):
+def initialize(path):
     """Creates a starter coursepage at the path.
 
     Parameters

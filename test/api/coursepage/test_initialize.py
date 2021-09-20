@@ -10,8 +10,8 @@ def output_directory(tmpdir):
     output_path.mkdir()
     return output_path
 
-def test_creates_coursepage(output_directory):
-    automata.api.coursepage.create(output_directory / 'website')
+def test_initializes_coursepage(output_directory):
+    automata.api.coursepage.initialize(output_directory / 'website')
 
     assert (output_directory / 'website').exists()
     assert (output_directory / 'website' / 'theme' / 'base.html').exists()

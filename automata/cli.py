@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import pathlib
+import sys
 
 import yaml
 
@@ -40,17 +41,30 @@ def cli(argv=None):
     args.cmd(args)
 
 
+def _usage_printer(parser):
+    def print_usage(*args):
+        parser.print_usage()
+        sys.exit(128)
+    return print_usage
+
+
 def _parse_args(argv):
     parser = argparse.ArgumentParser()
+    parser.set_defaults(cmd=_usage_printer(parser))
+
     subparsers = parser.add_subparsers()
 
     _register_materials_parser(subparsers)
     _register_coursepage_parser(subparsers)
 
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+
+    return args
 
 def _register_materials_parser(subparsers):
     parser = subparsers.add_parser('materials')
+    parser.set_defaults(cmd=_usage_printer(parser))
+
     subparsers = parser.add_subparsers()
 
     _register_materials_publish_parser(subparsers)
@@ -108,17 +122,19 @@ def _register_materials_publish_parser(subparsers):
 
 def _register_coursepage_parser(subparsers):
     parser = subparsers.add_parser('coursepage')
+    parser.set_defaults(cmd=_usage_printer(parser))
+
     subparsers = parser.add_subparsers()
 
     _register_coursepage_build_parser(subparsers)
-    _register_coursepage_create_parser(subparsers)
+    _register_coursepage_init_parser(subparsers)
 
 
 def _register_coursepage_build_parser(subparsers):
     parser = subparsers.add_parser('build')
 
-    parser.add_argument("input_path")
     parser.add_argument("output_path")
+    parser.add_argument("--input_path", default=pathlib.Path.cwd())
     parser.add_argument("--materials")
     parser.add_argument("--now")
     parser.add_argument("--vars", type=pathlib.Path)
@@ -151,11 +167,11 @@ def _register_coursepage_build_parser(subparsers):
 
 
 
-def _register_coursepage_create_parser(subparsers):
-    parser = subparsers.add_parser('create')
+def _register_coursepage_init_parser(subparsers):
+    parser = subparsers.add_parser('init')
 
     def cmd(args):
-        automata.api.coursepage.create(args.output_path)
+        automata.api.coursepage.initialize(args.output_path)
 
     parser.add_argument('output_path')
     parser.set_defaults(cmd=cmd)

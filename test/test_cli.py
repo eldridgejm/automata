@@ -123,7 +123,7 @@ def test_coursepage_init(output_directory):
 
     # when
     cli([
-        'coursepage', 'create', str(output_directory / 'there')
+        'coursepage', 'init', str(output_directory / 'there')
         ])
 
     assert (output_directory / 'there' / 'config.yaml').exists()
