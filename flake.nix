@@ -25,6 +25,7 @@
                 dictconfig.outputs.defaultPackage.${system}
               ];
               nativeBuildInputs = with python38Packages; [ pytest black ipython sphinx sphinx_rtd_theme lxml ];
+              doCheck = false;
             }
 
           );
