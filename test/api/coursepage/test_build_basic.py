@@ -173,9 +173,7 @@ def test_accepts_vars(demo):
     demo.make_page("test.md", "{{ vars.foo }}")
 
     # when
-    automata.api.coursepage.build(
-        demo.path, demo.builddir, vars={"foo": "barbaz"}
-    )
+    automata.api.coursepage.build(demo.path, demo.builddir, vars={"foo": "barbaz"})
 
     # then
     assert "barbaz" in demo.get_output("test.html")

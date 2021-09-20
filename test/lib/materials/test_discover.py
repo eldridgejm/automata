@@ -8,7 +8,7 @@ from automata.lib.materials import discover, UnbuiltArtifact, DiscoveryError
 
 
 # good example; simple
-EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent.parent / 'examples'
+EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent.parent / "examples"
 
 EXAMPLE_1_DIRECTORY = EXAMPLES_ROOT / "example_1"
 
@@ -215,9 +215,9 @@ def test_with_dates_relating_to_previous():
     )
 
 
-def test_interpolates_external_variables():
+def test_interpolates_vars():
     # given
-    external_variables = {
+    vars = {
         "course": {
             "name": "my favorite homework",
             "start_date": datetime.date(2020, 1, 1),
@@ -225,7 +225,7 @@ def test_interpolates_external_variables():
     }
 
     # when
-    universe = discover(EXAMPLE_9_DIRECTORY, external_variables=external_variables)
+    universe = discover(EXAMPLE_9_DIRECTORY, vars=vars)
 
     # then
     assert (

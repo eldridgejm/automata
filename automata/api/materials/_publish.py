@@ -12,9 +12,16 @@ import automata.lib.materials as mlib
 # --------------------------------------------------------------------------------------
 
 
-def publish(input_directory, output_directory, ignore_release_time=False,
-        artifact_filter=None, vars=None, skip_directories=None, verbose=False,
-        now=None):
+def publish(
+    input_directory,
+    output_directory,
+    ignore_release_time=False,
+    artifact_filter=None,
+    vars=None,
+    skip_directories=None,
+    verbose=False,
+    now=None,
+):
 
     input_directory = pathlib.Path(input_directory)
     output_directory = pathlib.Path(output_directory)
@@ -23,16 +30,9 @@ def publish(input_directory, output_directory, ignore_release_time=False,
         now = datetime.datetime.now
     else:
         _now = now
+
         def now():
             return _now
-
-    if vars is None:
-        external_variables = None
-    else:
-        name, path = vars
-        with open(path) as fileobj:
-            values = yaml.load(fileobj, Loader=yaml.Loader)
-        external_variables = {name: values}
 
     # construct callbacks for printing information to the screen. start with
     # helper functions for formatting terminal output
@@ -69,9 +69,7 @@ def publish(input_directory, output_directory, ignore_release_time=False,
     class CLIBuildCallbacks(mlib.BuildCallbacks):
         def on_build(self, key, node):
             if isinstance(node, mlib.UnbuiltArtifact):
-                relative_workdir = node.workdir.relative_to(
-                    input_directory.absolute()
-                )
+                relative_workdir = node.workdir.relative_to(input_directory.absolute())
                 path = relative_workdir / key
                 msg = _normal(str(path))
                 print(msg, end="")
@@ -136,7 +134,7 @@ def publish(input_directory, output_directory, ignore_release_time=False,
     discovered = mlib.discover(
         input_directory,
         skip_directories=skip_directories,
-        external_variables=external_variables,
+        vars=vars,
         callbacks=CLIDiscoverCallbacks(),
     )
 

@@ -37,10 +37,10 @@ def example_class(tempdir, date):
     builddir.mkdir()
 
     automata.api.materials.publish(
-            str(destination),
-            str(destination / "website/_build/published"),
-            skip_directories='template',
-            now=date
+        str(destination),
+        str(destination / "website/_build/published"),
+        skip_directories="template",
+        now=date,
     )
 
     return destination

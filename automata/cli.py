@@ -7,6 +7,7 @@ import yaml
 
 import automata.api.materials
 import automata.api.coursepage
+from automata import util
 
 
 def _arg_directory(s):
@@ -26,16 +27,6 @@ def _arg_output_directory(s):
     return _arg_directory(path)
 
 
-def _arg_vars_file(s):
-    try:
-        name, path = s.split(":")
-    except ValueError:
-        raise argparse.ArgumentTypeError(
-            'Vars file argument must be of form "name:path"'
-        )
-    return name, path
-
-
 def cli(argv=None):
     args = _parse_args(argv)
     args.cmd(args)
@@ -45,6 +36,7 @@ def _usage_printer(parser):
     def print_usage(*args):
         parser.print_usage()
         sys.exit(128)
+
     return print_usage
 
 
@@ -61,31 +53,39 @@ def _parse_args(argv):
 
     return args
 
+
 def _register_materials_parser(subparsers):
-    parser = subparsers.add_parser('materials')
+    parser = subparsers.add_parser("materials")
     parser.set_defaults(cmd=_usage_printer(parser))
 
     subparsers = parser.add_subparsers()
 
     _register_materials_publish_parser(subparsers)
 
+
 def _register_materials_publish_parser(subparsers):
-    parser = subparsers.add_parser('publish')
+    parser = subparsers.add_parser("publish")
 
     def cmd(args):
-        return automata.api.materials.publish(args.input_directory,
-                args.output_directory,
-                ignore_release_time=args.ignore_release_time,
-                artifact_filter=args.artifact_filter,
-                vars=args.vars,
-                skip_directories=args.skip_directories,
-                verbose=args.verbose,
-                now=args.now
-                )
+        if args.vars is not None:
+            args.vars = util.load_yaml(args.vars)
+
+        return automata.api.materials.publish(
+            args.input_directory,
+            args.output_directory,
+            ignore_release_time=args.ignore_release_time,
+            artifact_filter=args.artifact_filter,
+            vars=args.vars,
+            skip_directories=args.skip_directories,
+            verbose=args.verbose,
+            now=args.now,
+        )
 
     parser.set_defaults(cmd=cmd)
     parser.add_argument("output_directory", type=_arg_output_directory)
-    parser.add_argument("--input-directory", type=_arg_directory, default=pathlib.Path.cwd())
+    parser.add_argument(
+        "--input-directory", type=_arg_directory, default=pathlib.Path.cwd()
+    )
     parser.add_argument(
         "--skip-directories",
         type=str,
@@ -114,14 +114,14 @@ def _register_materials_publish_parser(subparsers):
     )
     parser.add_argument(
         "--vars",
-        type=_arg_vars_file,
+        type=pathlib.Path,
         default=None,
         help="A yaml file whose contents will be available in discovery as template variables.",
     )
 
 
 def _register_coursepage_parser(subparsers):
-    parser = subparsers.add_parser('coursepage')
+    parser = subparsers.add_parser("coursepage")
     parser.set_defaults(cmd=_usage_printer(parser))
 
     subparsers = parser.add_subparsers()
@@ -131,7 +131,7 @@ def _register_coursepage_parser(subparsers):
 
 
 def _register_coursepage_build_parser(subparsers):
-    parser = subparsers.add_parser('build')
+    parser = subparsers.add_parser("build")
 
     parser.add_argument("output_directory")
     parser.add_argument("--input-directory", default=pathlib.Path.cwd())
@@ -160,19 +160,21 @@ def _register_coursepage_build_parser(subparsers):
             print(f"Running as if it is currently {_now}")
 
         automata.api.coursepage.build(
-            args.input_directory, args.output_directory, args.materials, vars=vars, now=now
+            args.input_directory,
+            args.output_directory,
+            args.materials,
+            vars=vars,
+            now=now,
         )
 
     parser.set_defaults(cmd=cmd)
 
 
-
 def _register_coursepage_init_parser(subparsers):
-    parser = subparsers.add_parser('init')
+    parser = subparsers.add_parser("init")
 
     def cmd(args):
         automata.api.coursepage.initialize(args.output_path)
 
-    parser.add_argument('output_path')
+    parser.add_argument("output_path")
     parser.set_defaults(cmd=cmd)
-

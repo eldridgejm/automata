@@ -31,7 +31,15 @@ def test_publish_materials_simple_example(make_input_directory, output_directory
     input_directory = make_input_directory("examples/example_1")
 
     # when
-    cli(["materials", "publish", '--input-directory', str(input_directory), str(output_directory)])
+    cli(
+        [
+            "materials",
+            "publish",
+            "--input-directory",
+            str(input_directory),
+            str(output_directory),
+        ]
+    )
 
     # then
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -45,8 +53,9 @@ def test_publish_materials_with_example_using_external_variables(
 
     contents = dedent(
         """
-        name: this is a test
-        start_date: 2020-01-01
+        course:
+            name: this is a test
+            start_date: 2020-01-01
     """
     )
     with (input_directory / "myvars.yaml").open("w") as fileobj:
@@ -58,11 +67,11 @@ def test_publish_materials_with_example_using_external_variables(
             "materials",
             "publish",
             str(output_directory),
-            '--input-directory',
+            "--input-directory",
             str(input_directory),
             "--ignore-release-time",
             "--vars",
-            f"course:{input_directory}/myvars.yaml",
+            f"{input_directory}/myvars.yaml",
         ]
     )
 
@@ -76,15 +85,27 @@ def test_publish_materials_creates_materials_json(
     input_directory = make_input_directory("examples/example_1")
 
     # when
-    cli(["materials", "publish", '--input-directory', str(input_directory), str(output_directory)])
+    cli(
+        [
+            "materials",
+            "publish",
+            "--input-directory",
+            str(input_directory),
+            str(output_directory),
+        ]
+    )
 
     # then
     assert (output_directory / "materials.json").exists()
     released = json.load((output_directory / "materials.json").open())
 
     # assert that an unreleased artifact is still present in materials.json
-    assert 'homework.pdf' in released['collections']['homeworks']['publications']['02-python']['artifacts']
-
+    assert (
+        "homework.pdf"
+        in released["collections"]["homeworks"]["publications"]["02-python"][
+            "artifacts"
+        ]
+    )
 
 
 def test_publish_materials_then_build_coursepage_with_example(
@@ -96,9 +117,10 @@ def test_publish_materials_then_build_coursepage_with_example(
     # when
     cli(
         [
-            "materials", "publish",
+            "materials",
+            "publish",
             str(output_directory / "materials"),
-            '--input-directory',
+            "--input-directory",
             str(input_directory),
             "--skip-directories",
             "template",
@@ -106,7 +128,8 @@ def test_publish_materials_then_build_coursepage_with_example(
     )
     cli(
         [
-            "coursepage", "build",
+            "coursepage",
+            "build",
             str(output_directory),
             "--input-directory",
             str(input_directory / "website"),
@@ -125,8 +148,6 @@ def test_publish_materials_then_build_coursepage_with_example(
 def test_coursepage_init(output_directory):
 
     # when
-    cli([
-        'coursepage', 'init', str(output_directory / 'there')
-        ])
+    cli(["coursepage", "init", str(output_directory / "there")])
 
-    assert (output_directory / 'there' / 'config.yaml').exists()
+    assert (output_directory / "there" / "config.yaml").exists()

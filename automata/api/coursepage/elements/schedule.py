@@ -42,7 +42,7 @@ RESOURCES_SCHEMA = {
                 "default": None,
                 "nullable": True,
             },
-        }
+        },
     },
 }
 
@@ -61,7 +61,10 @@ SCHEMA = {
             "optional_keys": {
                 "parts": {
                     "type": "dict",
-                    "required_keys": {"key": {"type": "string"}, "text": {"type": "string"}},
+                    "required_keys": {
+                        "key": {"type": "string"},
+                        "text": {"type": "string"},
+                    },
                 },
             },
         },
@@ -115,7 +118,7 @@ SCHEMA = {
         },
         "first_week_number": {"type": "integer", "default": 1},
         "first_week_start_date": {"type": "date"},
-    }
+    },
 }
 
 
@@ -190,7 +193,7 @@ def order_weeks(element_config, weeks, today):
     }[week_order](weeks, today)
 
 
-def schedule( context, element_config):
+def schedule(context, element_config):
     element_config = dictconfig.resolve(element_config, SCHEMA)
 
     weeks = generate_weeks(element_config, context.materials)
@@ -201,10 +204,13 @@ def schedule( context, element_config):
     except ValueError:
         this_week = None
 
-    return render_element_template('schedule.html', context, extra_vars=dict(
-        element_config=element_config,
-        weeks=weeks,
-        this_week=this_week,
-        is_something_missing=is_something_missing,
-        )
+    return render_element_template(
+        "schedule.html",
+        context,
+        extra_vars=dict(
+            element_config=element_config,
+            weeks=weeks,
+            this_week=this_week,
+            is_something_missing=is_something_missing,
+        ),
     )

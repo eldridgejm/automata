@@ -10,8 +10,8 @@ SCHEMA = {
             "subtext": {"type": "string"},
             "icon": {"type": "string"},
             "url": {"type": "string"},
-        }
-    }
+        },
+    },
 }
 
 button_bar = basic_element("button_bar.html", SCHEMA)

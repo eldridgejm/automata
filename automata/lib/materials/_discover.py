@@ -19,7 +19,7 @@ from . import constants
 # --------------------------------------------------------------------------------------
 
 
-def read_collection_file(path, external_variables=None):
+def read_collection_file(path, vars=None):
     """Read a :class:`Collection` from a yaml file.
 
     See the documentation for a description of the format of the file.
@@ -28,8 +28,8 @@ def read_collection_file(path, external_variables=None):
     ----------
     path : pathlib.Path
         Path to the collection file.
-    external_variables : Optional[dict]
-        A dictionary of external variables available during interpolation.
+    vars : Optional[dict]
+        A dictionary of variables available during interpolation.
 
     Returns
     -------
@@ -37,14 +37,14 @@ def read_collection_file(path, external_variables=None):
         The collection object with no attached publications.
 
     """
-    if external_variables is None:
-        external_variables = {}
+    if vars is None:
+        vars = {}
 
     with path.open() as fileobj:
         raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
 
     try:
-        resolved = _resolve_collection_file(raw_contents, external_variables, path)
+        resolved = _resolve_collection_file(raw_contents, {"vars": vars}, path)
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
@@ -97,7 +97,7 @@ def _resolve_collection_file(raw_contents, external_variables, path):
         The raw dictionary loaded from the publication file.
     external_variables : Optional[dict]
         A dictionary of external_variables passed to dictconfig and used during
-        interpolation.
+        interpolation. These are accessible under ${vars}.
     path : pathlib.Path
         The path to the collection file being read. Used to format error messages.
 
@@ -140,7 +140,7 @@ def _validate_metadata_schema(metadata_schema, path):
 # --------------------------------------------------------------------------------------
 
 
-def read_publication_file(path, publication_schema=None, external_variables=None):
+def read_publication_file(path, publication_schema=None, vars=None, previous=None):
     """Read a :class:`Publication` from a yaml file.
 
     Parameters
@@ -151,9 +151,11 @@ def read_publication_file(path, publication_schema=None, external_variables=None
         A schema that described the necessary artifacts of the publication and
         what metadata it should have. If `None`, only very basic validation is
         done (see below). Default: None.
-    external_variables : dict
+    vars : dict
         A dictionary of external variables that will be available during interpolation
         of the publication file.
+    previpus : Publication
+        The previous publication. If None, there is assumed to be no previous.
 
     Returns
     -------
@@ -189,6 +191,11 @@ def read_publication_file(path, publication_schema=None, external_variables=None
             raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
         except yaml.YAMLError as exc:
             raise DiscoveryError(str(exc), path)
+
+    external_variables = {"vars": vars}
+
+    if previous is not None:
+        external_variables["previous"] = previous._deep_asdict()
 
     resolved = _resolve_publication_file(
         raw_contents, publication_schema, external_variables, path
@@ -277,7 +284,7 @@ def _resolve_publication_file(
         and so it will not be interpolated/parsed (all leafs will be left as-is).
     external_variables : Optional[dict]
         A dictionary of external_variables passed to dictconfig and used during
-        interpolation.
+        interpolation. These are accessible under ${vars}
 
     Returns
     -------
@@ -452,7 +459,7 @@ def _make_collections(collection_paths, input_directory, callbacks):
     return collections
 
 
-def _add_previous_publications(external_variables, collection):
+def _previous_publication(collection):
     """Add the resolved previous publication file to the external_variables."""
     if not collection.publication_schema.is_ordered:
         return
@@ -463,9 +470,7 @@ def _add_previous_publications(external_variables, collection):
     except IndexError:
         return
 
-    external_variables["previous"] = collection.publications[
-        previous_key
-    ]._deep_asdict()
+    return collection.publications[previous_key]
 
 
 def _make_publications(
@@ -474,7 +479,7 @@ def _make_publications(
     collections,
     *,
     callbacks,
-    external_variables,
+    vars,
 ):
     """Make the Publication objects.
 
@@ -490,12 +495,12 @@ def _make_publications(
         Publication objects will be added to these Collection objects in-place.
     callbacks : DiscoverCallbacks
         The callbacks to be invoked when interesting things happen.
-    external_variables : Optional[dict]
+    vars : Optional[dict]
         A dictionary of extra variables to be used during interpolation.
 
     """
-    if external_variables is None:
-        external_variables = {}
+    if vars is None:
+        vars = {}
 
     for path, collection_path in publication_paths.items():
         if collection_path is None:
@@ -507,13 +512,14 @@ def _make_publications(
 
         collection = collections[collection_key]
 
-        _add_previous_publications(external_variables, collection)
+        previous = _previous_publication(collection)
 
         file_path = path / constants.PUBLICATION_FILE
         publication = read_publication_file(
             file_path,
             publication_schema=collection.publication_schema,
-            external_variables=external_variables,
+            vars=vars,
+            previous=previous,
         )
 
         collection.publications[publication_key] = publication
@@ -532,7 +538,7 @@ def discover(
     input_directory,
     skip_directories=None,
     callbacks=None,
-    external_variables=None,
+    vars=None,
 ):
     """Discover the collections and publications in the filesystem.
 
@@ -547,7 +553,7 @@ def discover(
         Callbacks to be invoked during the discovery. If omitted, no callbacks
         are executed. See :class:`DiscoverCallbacks` for the possible callbacks
         and their arguments.
-    external_variables : Optional[dict]
+    vars : Optional[dict]
         A dictionary of extra variables to be available during interpolation.
 
     Returns
@@ -571,7 +577,7 @@ def discover(
         input_directory,
         collections,
         callbacks=callbacks,
-        external_variables=external_variables,
+        vars=vars,
     )
 
     return Universe(collections)

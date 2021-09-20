@@ -9,15 +9,13 @@ def render_element_template(template_name, context, extra_vars=None):
         extra_vars = {}
 
     element_environment = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(context.theme_path / 'elements'),
+        loader=jinja2.FileSystemLoader(context.theme_path / "elements"),
         undefined=jinja2.StrictUndefined,
     )
 
     def evaluate(s, **kwargs):
         try:
-            return jinja2.Template(
-                s, undefined=jinja2.StrictUndefined
-            ).render(**kwargs)
+            return jinja2.Template(s, undefined=jinja2.StrictUndefined).render(**kwargs)
         except jinja2.UndefinedError as exc:
             raise exceptions.ElementError(
                 f'Unknown variable in template string "{s}": {exc}'
@@ -32,6 +30,7 @@ def render_element_template(template_name, context, extra_vars=None):
     template = element_environment.get_template(template_name)
     return template.render(context=context, **extra_vars)
 
+
 def basic_element(template_filename, config_schema, extra_render_vars=None):
     def element(context, element_config):
         element_config = dictconfig.resolve(element_config, config_schema)
@@ -41,8 +40,12 @@ def basic_element(template_filename, config_schema, extra_render_vars=None):
         else:
             extra_vars = {}
 
-        return render_element_template(template_filename, context, {'element_config': element_config, **extra_vars})
+        return render_element_template(
+            template_filename, context, {"element_config": element_config, **extra_vars}
+        )
+
     return element
+
 
 def is_something_missing(publication, requirements):
     for artifact in requirements["artifacts"]:

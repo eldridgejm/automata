@@ -21,6 +21,7 @@ from ... import util
 
 class RenderContext(typing.NamedTuple):
     """Information that might be useful during the rendering of pages."""
+
     input_path: pathlib.Path
     output_path: pathlib.Path
     theme_path: pathlib.Path
@@ -116,10 +117,7 @@ def _load_config(path, vars=None):
 
     dct = util.load_yaml(path)
 
-    schema = {
-        'type': 'dict',
-        'extra_keys_schema': {'type': 'any'}
-    }
+    schema = {"type": "dict", "extra_keys_schema": {"type": "any"}}
     return dictconfig.resolve(dct, schema=schema, external_variables=variables)
 
 
@@ -129,7 +127,7 @@ def _validate_theme_schema(input_path, config):
         theme_schema = yaml.load(fileobj, Loader=yaml.Loader)
 
     try:
-        dictconfig.resolve(config['theme'], theme_schema)
+        dictconfig.resolve(config["theme"], theme_schema)
     except dictconfig.exceptions.Error as exc:
         raise RuntimeError(f"Invalid theme config: {exc}")
 
@@ -163,7 +161,8 @@ def _interpolate(contents, variables, path=None):
     try:
         return template.render(**variables)
     except jinja2.UndefinedError as exc:
-        raise exceptions.PageError(f'Problem rendering {path}: {exc}')
+        raise exceptions.PageError(f"Problem rendering {path}: {exc}")
+
 
 def _to_html(contents):
     return markdown.markdown(contents, extensions=["toc"])
@@ -171,15 +170,12 @@ def _to_html(contents):
 
 def _render_pages(input_path, output_path, theme_path, context):
     """Render each file in the input path into an HTML file in the output path."""
-    with (theme_path / 'base.html').open() as fileobj:
+    with (theme_path / "base.html").open() as fileobj:
         template = fileobj.read()
 
-    _Elements = collections.namedtuple('Elements', [
-        'announcement_box',
-        'button_bar',
-        'schedule',
-        'listing'
-    ])
+    _Elements = collections.namedtuple(
+        "Elements", ["announcement_box", "button_bar", "schedule", "listing"]
+    )
 
     elements_ = _Elements(
         announcement_box=partial(elements.announcement_box, context),
@@ -194,13 +190,18 @@ def _render_pages(input_path, output_path, theme_path, context):
 
         input_page_relpath = input_page_abspath.relative_to(input_path)
 
-        body_interpolated = _interpolate(input_page_contents, {'elements': elements_, **context._asdict()}, path=input_page_abspath)
+        body_interpolated = _interpolate(
+            input_page_contents,
+            {"elements": elements_, **context._asdict()},
+            path=input_page_abspath,
+        )
         body_html = _to_html(body_interpolated)
-        page_html = _interpolate(template, {'body': body_html, **context._asdict()})
+        page_html = _interpolate(template, {"body": body_html, **context._asdict()})
 
-        output_page_abspath = (output_path / input_page_relpath).with_suffix('.html')
-        with output_page_abspath.open('w') as fileobj:
+        output_page_abspath = (output_path / input_page_relpath).with_suffix(".html")
+        with output_page_abspath.open("w") as fileobj:
             fileobj.write(page_html)
+
 
 def build(
     input_path,
@@ -233,20 +234,19 @@ def build(
     _validate_theme_schema(input_path, config)
 
     context = RenderContext(
-            input_path=input_path,
-            output_path=output_path,
-            theme_path=input_path / 'theme',
-            materials_path=materials_path,
-            materials=published,
-            config=config,
-            vars=vars,
-            now=now()
+        input_path=input_path,
+        output_path=output_path,
+        theme_path=input_path / "theme",
+        materials_path=materials_path,
+        materials=published,
+        config=config,
+        vars=vars,
+        now=now(),
     )
 
     # convert user pages
-    _render_pages(input_path / 'pages', output_path, input_path / 'theme', context)
+    _render_pages(input_path / "pages", output_path, input_path / "theme", context)
 
     # copy static files
     shutil.copytree(input_path / "theme" / "style", output_path / "style")
     shutil.copytree(input_path / "static", output_path / "static")
-

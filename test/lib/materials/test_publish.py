@@ -5,7 +5,7 @@ from pytest import fixture
 
 import automata.lib.materials
 
-EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent.parent / 'examples'
+EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent.parent / "examples"
 EXAMPLE_1_DIRECTORY = EXAMPLES_ROOT / "example_1"
 
 

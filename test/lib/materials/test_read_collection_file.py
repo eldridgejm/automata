@@ -53,7 +53,7 @@ def test_resolves(write_file):
                     - ${self.publication_schema.optional_artifacts.0}
 
                 optional_artifacts:
-                    - ${external.optional}
+                    - ${vars.external.optional}
 
                 metadata_schema:
                     required_keys:
@@ -66,7 +66,7 @@ def test_resolves(write_file):
     )
 
     # when
-    collection = read_collection_file(path, {"external": {"optional": "template"}})
+    collection = read_collection_file(path, vars={"external": {"optional": "template"}})
 
     # then
     assert collection.publication_schema.required_artifacts == [
