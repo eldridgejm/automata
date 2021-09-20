@@ -1,13 +1,6 @@
-<div class="row" style="font-size: 40pt; margin-bottom: 1em">
-    <div class="col-md-10">
-        <a href="./index.html" style="color: black">⤺</a>
-        <i class="em-svg em-scroll schedule-resource-icon" aria-role="presentation" ></i>
-        Syllabus
-    </div>
-</div>
+# 📜 Syllabus
 
-
-<i class="em em-wave" aria-role="presentation" aria-label="WAVING HAND SIGN"></i>
+👋
 Welcome to DSC 10 in Summer Quarter 2020!
 This page should answer most of the
 questions you might have about how the course is run; check out the [frequently asked
@@ -26,11 +19,7 @@ Here is what the syllabus will cover:
 - [frequently asked questions](#faq)
 
 
-<h2 id="getting-started">
-    <i class="em em-passenger_ship" aria-role="presentation" aria-label=""></i>
-    &nbsp;
-    getting started
-</h2>
+## 🚢 Getting Started
 
 To get started in DSC 10, you'll need to set up accounts on a couple of
 websites.

@@ -22,23 +22,59 @@
         <link href="https://emoji-css.afeld.me/emoji.css" rel="stylesheet">
 
         <!-- Fonts -->
-<link href="https://fonts.googleapis.com/css?family=Arvo|Bitter|Fira+Sans|Noto+Serif+JP|Roboto+Slab&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Arvo|Bitter|Fira+Sans|Noto+Serif+JP|Roboto+Slab&display=swap" rel="stylesheet">
 
-    <title>{{ config.theme.page_title }}</title>
-    </head>
-    <body class="text-md-left">
+        <title>{{ config.theme.page_title }}</title>
+        </head>
 
-        <div class="container">
-            <div class="row">
-                <div class="col-md-1">
-                </div>
-                <div class="col-md-10">
-                    {{ body }}
-                </div>
-                <div class="col-md-1">
+        <body>
+            <!-- responsive sidebar code comes from https://stackoverflow.com/a/48477019 -->
+            <div class="container-fluid h-100">
+                <div class="nav row wrapper min-vh-100 flex-column flex-sm-row">
+                    <aside class="col-12 col-sm-3 p-0 bg-light flex-shrink-1">
+                        <nav class="navbar navbar-expand-sm navbar-light bg-light align-items-end flex-sm-column flex-row">
+                            <a class="navbar-brand" href="#"><i class="fa fa-bullseye fa-fw"></i>DSC 80</a>
+                            <a href class="navbar-toggler" data-toggle="collapse" data-target=".sidebar">
+                                <span class="navbar-toggler-icon"></span>
+                            </a>
+                            <div class="collapse navbar-collapse sidebar">
+                                <ul class="flex-column navbar-nav w-100 justify-content-between">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" href="./index.html"><span class="">🗓️ Schedule</span></a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="./syllabus.html"><span class="">📜 Syllabus</span></a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#"><span class="">👨‍🏫 Office Hours</span></a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#"><span class="">💬 Campuswire</span></a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#"><span class="">💯 Gradescope</span></a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#"><span class="">📖 Textbook</span></a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="./resources.html"><span class="">📚 All Materials</span></a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </nav>
+                    </aside>
+                    <main class="col bg-faded main-content">
+
+                        <div class="site-title">
+                            <h1>DSC 80 &ndash; The Practice of Data Science</h1>
+                            <hr>
+                        </div>
+
+
+                        {{ body }}
+                    </main>
                 </div>
             </div>
-        </div>
-
-    </body>
+        </body>
 </html>

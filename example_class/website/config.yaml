@@ -93,7 +93,7 @@ schedule:
         metadata_key_for_released: date
 
         # what should be displayed as the lecture's title? template string.
-        title: "Lecture {{ publication.metadata.number }} &mdash; {{ publication.metadata.topic }}"
+        title: "Lecture {{ publication.metadata.number }} &ndash; {{ publication.metadata.topic }}"
 
         # what resources are available for each lecture?
         resources:
