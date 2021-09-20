@@ -1,6 +1,6 @@
 metadata:
     topic: Probability
-    date: 2020-10-22
+    date: 2021-10-22
     number: 7
 
     videos:
@@ -17,3 +17,4 @@ metadata:
 artifacts:
     lecture.ipynb:
         recipe: touch lecture.ipynb
+        release_time: ${self.metadata.date} 12:00:00

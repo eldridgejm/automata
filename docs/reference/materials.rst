@@ -68,9 +68,9 @@ artifact file exists.
 
 *publish* will create a JSON file named ``<output_directory>/materials.json``.
 This file contains nested dictionaries describing the structure of the
-collection → publication → artifact hierarchy. *All* artifacts, regardless
-of whether they are released or not, will appear in `materials.json` -- but only
-artifacts that have been released will be copied to the output directory.
+collection → publication → artifact hierarchy. *All* publications, regardless
+of whether they have released artifacts or not, will appear in `materials.json`.
+However, only artifacts that have been released will appear.
 
 
 Defining a collection with `collection.yaml`
