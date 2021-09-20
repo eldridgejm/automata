@@ -16,3 +16,6 @@ metadata:
 artifacts:
     lecture.ipynb:
         recipe: touch lecture.ipynb
+
+    supplement.ipynb:
+        recipe: touch supplement.ipynb

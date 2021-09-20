@@ -2,6 +2,9 @@ publication_schema:
     required_artifacts:
         - lecture.ipynb
 
+    optional_artifacts:
+        - supplement.ipynb
+
     metadata_schema:
         required_keys:
             topic:

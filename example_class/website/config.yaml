@@ -99,8 +99,15 @@ schedule:
         resources:
             - 
               # the 
-              text: "<a href={{ publication.artifacts['lecture.ipynb'].path }}>Lecture Notebook</a>"
               icon: em-spiral_note_pad
+              text: |
+                  <a href={{ publication.artifacts['lecture.ipynb'].path }}>Lecture Notebook</a>
+
+                  {% if "supplement.ipynb" in publication.artifacts %}
+                      |
+                      <a href={{ publication.artifacts['supplement.ipynb'].path }}>Supplementary Notebook</a>
+                  {% endif %}
+
 
             - text: 'Reading: <a href="http://diveintods.com">Dive into Data Science</a>'
               icon: em-book

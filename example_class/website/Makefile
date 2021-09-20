@@ -1,8 +1,8 @@
 .PHONY: website
 website: clean
 	mkdir _build
-	publish .. _build/published --skip-directories template
-	abstract _build --published _build/published --context ../course.yaml
+	automata materials publish --input-directory .. _build/materials --skip-directories template
+	automata coursepage build --materials _build/materials _build --vars ../course.yaml
 
 .PHONY: clean
 clean:
