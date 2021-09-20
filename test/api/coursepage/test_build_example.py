@@ -3,8 +3,8 @@ import shutil
 import datetime
 import lxml.html
 
-import automata
 import automata.api.coursepage
+import automata.api.materials
 
 from pytest import fixture, mark
 
@@ -36,16 +36,11 @@ def example_class(tempdir, date):
 
     builddir.mkdir()
 
-    automata.cli(
-        [
-            "publish-materials",
+    automata.api.materials.publish(
             str(destination),
             str(destination / "website/_build/published"),
-            "--skip-directories",
-            "template",
-            "--now",
-            date.isoformat(),
-        ],
+            skip_directories='template',
+            now=date
     )
 
     return destination

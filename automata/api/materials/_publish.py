@@ -16,15 +16,13 @@ def publish(input_directory, output_directory, ignore_release_time=False,
         artifact_filter=None, vars=None, skip_directories=None, verbose=False,
         now=None):
 
+    input_directory = pathlib.Path(input_directory)
+    output_directory = pathlib.Path(output_directory)
+
     if now is None:
         now = datetime.datetime.now
     else:
-        try:
-            n_days = int(now)
-            _now = datetime.datetime.now() + datetime.timedelta(days=n_days)
-        except ValueError:
-            _now = datetime.datetime.fromisoformat(now)
-
+        _now = now
         def now():
             return _now
 
