@@ -36,37 +36,29 @@ def _arg_vars_file(s):
 
 
 def cli(argv=None):
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers()
-
-    publish_materials = subparsers.add_parser("publish-materials")
-    _register_publish_materials(publish_materials)
-
-    build_coursepage_parser = subparsers.add_parser("build-coursepage")
-    _register_build_coursepage_parser(build_coursepage_parser)
-
-    init_coursepage_parser = subparsers.add_parser("init-coursepage")
-    _register_init_coursepage_parser(init_coursepage_parser)
-
-    args = parser.parse_args(argv)
+    args = _parse_args(argv)
     args.cmd(args)
 
 
-def _register_publish_materials(parser):
-    """The command line interface.
+def _parse_args(argv):
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
 
-    Parameters
-    ----------
-    argv : List[str]
-        A list of command line arguments. If None, the arguments will be read from the
-        command line passed to the process by the shell.
-    now : Callable[[], datetime.datetime]
-        A callable producing the current datetime. This is useful when testing, as it
-        allows you to inject a fixed, known time.
+    _register_materials_parser(subparsers)
+    _register_coursepage_parser(subparsers)
 
-    """
+    return parser.parse_args(argv)
 
-    def _publish_materials(args):
+def _register_materials_parser(subparsers):
+    parser = subparsers.add_parser('materials')
+    subparsers = parser.add_subparsers()
+
+    _register_materials_publish_parser(subparsers)
+
+def _register_materials_publish_parser(subparsers):
+    parser = subparsers.add_parser('publish')
+
+    def cmd(args):
         return automata.api.materials.publish(args.input_directory,
                 args.output_directory,
                 ignore_release_time=args.ignore_release_time,
@@ -77,7 +69,7 @@ def _register_publish_materials(parser):
                 now=args.now
                 )
 
-    parser.set_defaults(cmd=_publish_materials)
+    parser.set_defaults(cmd=cmd)
     parser.add_argument("input_directory", type=_arg_directory)
     parser.add_argument("output_directory", type=_arg_output_directory)
     parser.add_argument(
@@ -114,43 +106,57 @@ def _register_publish_materials(parser):
     )
 
 
-def _register_build_coursepage_parser(parser):
+def _register_coursepage_parser(subparsers):
+    parser = subparsers.add_parser('coursepage')
+    subparsers = parser.add_subparsers()
+
+    _register_coursepage_build_parser(subparsers)
+    _register_coursepage_create_parser(subparsers)
+
+
+def _register_coursepage_build_parser(subparsers):
+    parser = subparsers.add_parser('build')
+
     parser.add_argument("input_path")
     parser.add_argument("output_path")
     parser.add_argument("--materials")
     parser.add_argument("--now")
     parser.add_argument("--vars", type=pathlib.Path)
-    parser.set_defaults(cmd=_build_coursepage_cli)
+
+    def cmd(args):
+        vars = {}
+        if args.vars is not None:
+            with args.vars.open() as fileobj:
+                vars[args.vars.stem] = yaml.load(fileobj, Loader=yaml.Loader)
+
+        if args.now is None:
+            now = datetime.datetime.now
+        else:
+            try:
+                n_days = int(args.now)
+                _now = datetime.datetime.now() + datetime.timedelta(days=n_days)
+            except ValueError:
+                _now = datetime.datetime.fromisoformat(args.now)
+
+            def now():
+                return _now
+
+            print(f"Running as if it is currently {_now}")
+
+        automata.api.coursepage.build(
+            args.input_path, args.output_path, args.materials, vars=vars, now=now
+        )
+
+    parser.set_defaults(cmd=cmd)
 
 
-def _build_coursepage_cli(args):
-    vars = {}
-    if args.vars is not None:
-        with args.vars.open() as fileobj:
-            vars[args.vars.stem] = yaml.load(fileobj, Loader=yaml.Loader)
 
-    if args.now is None:
-        now = datetime.datetime.now
-    else:
-        try:
-            n_days = int(args.now)
-            _now = datetime.datetime.now() + datetime.timedelta(days=n_days)
-        except ValueError:
-            _now = datetime.datetime.fromisoformat(args.now)
+def _register_coursepage_create_parser(subparsers):
+    parser = subparsers.add_parser('create')
 
-        def now():
-            return _now
-
-        print(f"Running as if it is currently {_now}")
-
-    automata.api.coursepage.build(
-        args.input_path, args.output_path, args.materials, vars=vars, now=now
-    )
-
-def _register_init_coursepage_parser(parser):
-    def _init_coursepage_cli(args):
+    def cmd(args):
         automata.api.coursepage.create(args.output_path)
 
     parser.add_argument('output_path')
-    parser.set_defaults(cmd=_init_coursepage_cli)
+    parser.set_defaults(cmd=cmd)
 

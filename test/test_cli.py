@@ -31,7 +31,7 @@ def test_publish_materials_simple_example(make_input_directory, output_directory
     input_directory = make_input_directory("examples/example_1")
 
     # when
-    cli(["publish-materials", str(input_directory), str(output_directory)])
+    cli(["materials", "publish", str(input_directory), str(output_directory)])
 
     # then
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -55,7 +55,8 @@ def test_publish_materials_with_example_using_external_variables(
     # when
     cli(
         [
-            "publish-materials",
+            "materials",
+            "publish",
             str(input_directory),
             str(output_directory),
             "--ignore-release-time",
@@ -74,7 +75,7 @@ def test_publish_materials_creates_materials_json(
     input_directory = make_input_directory("examples/example_1")
 
     # when
-    cli(["publish-materials", str(input_directory), str(output_directory)])
+    cli(["materials", "publish", str(input_directory), str(output_directory)])
 
     # then
     assert (output_directory / "materials.json").exists()
@@ -94,7 +95,7 @@ def test_publish_materials_then_build_coursepage_with_example(
     # when
     cli(
         [
-            "publish-materials",
+            "materials", "publish",
             str(input_directory),
             str(output_directory / "materials"),
             "--skip-directories",
@@ -103,11 +104,11 @@ def test_publish_materials_then_build_coursepage_with_example(
     )
     cli(
         [
-            "build-coursepage",
-            "--materials",
-            str(output_directory / "materials"),
+            "coursepage", "build",
             str(input_directory / "website"),
             str(output_directory),
+            "--materials",
+            str(output_directory / "materials"),
             "--vars",
             str(input_directory / "course.yaml"),
         ]
@@ -122,7 +123,7 @@ def test_coursepage_init(output_directory):
 
     # when
     cli([
-        'init-coursepage', str(output_directory / 'there')
+        'coursepage', 'create', str(output_directory / 'there')
         ])
 
     assert (output_directory / 'there' / 'config.yaml').exists()
