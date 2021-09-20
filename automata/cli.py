@@ -4,7 +4,7 @@ import pathlib
 
 import yaml
 
-from automata.api import publish_materials, build_coursepage
+from automata.api import publish_materials, build_coursepage, init_coursepage
 
 
 def _arg_directory(s):
@@ -43,6 +43,9 @@ def cli(argv=None):
 
     build_coursepage_parser = subparsers.add_parser("build-coursepage")
     _register_build_coursepage_parser(build_coursepage_parser)
+
+    init_coursepage_parser = subparsers.add_parser("init-coursepage")
+    _register_init_coursepage_parser(init_coursepage_parser)
 
     args = parser.parse_args(argv)
     args.cmd(args)
@@ -142,4 +145,11 @@ def _build_coursepage_cli(args):
     build_coursepage(
         args.input_path, args.output_path, args.materials, vars=vars, now=now
     )
+
+def _register_init_coursepage_parser(parser):
+    def _init_coursepage_cli(args):
+        init_coursepage(args.output_path)
+
+    parser.add_argument('output_path')
+    parser.set_defaults(cmd=_init_coursepage_cli)
 

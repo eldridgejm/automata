@@ -56,3 +56,4 @@ def build_coursepage(
     # copy static files
     shutil.copytree(input_path / "theme" / "style", output_path / "style")
     shutil.copytree(input_path / "static", output_path / "static")
+
