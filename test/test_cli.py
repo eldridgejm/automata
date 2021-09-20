@@ -5,7 +5,7 @@ import json
 import pathlib
 from textwrap import dedent
 
-from pytest import fixture
+from pytest import fixture, mark
 
 
 @fixture
@@ -115,3 +115,14 @@ def test_publish_materials_then_build_coursepage_with_example(
 
     # then
     assert (output_directory / "index.html").exists()
+
+
+@mark.slow
+def test_coursepage_init(output_directory):
+
+    # when
+    cli([
+        'init-coursepage', str(output_directory / 'there')
+        ])
+
+    assert (output_directory / 'there' / 'config.yaml').exists()

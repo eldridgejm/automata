@@ -1,6 +1,6 @@
 import pathlib
 
-import automata.api
+import automata.api.coursepage
 
 from pytest import fixture
 
@@ -11,7 +11,7 @@ def output_directory(tmpdir):
     return output_path
 
 def test_creates_coursepage(output_directory):
-    automata.api.init_coursepage(output_directory / 'website')
+    automata.api.coursepage.create(output_directory / 'website')
 
     assert (output_directory / 'website').exists()
     assert (output_directory / 'website' / 'theme' / 'base.html').exists()

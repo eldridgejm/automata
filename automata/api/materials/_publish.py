@@ -6,19 +6,13 @@ import textwrap
 import yaml
 
 
-from automata.lib.materials._discover import DiscoverCallbacks, discover
-from automata.lib.materials._build import BuildCallbacks, build
-from automata.lib.materials._filter import FilterCallbacks, filter_nodes
-from automata.lib.materials._publish import PublishCallbacks, publish
-from automata.lib.materials._serialize import serialize
-from automata.lib.materials.types import UnbuiltArtifact
-
+import automata.lib.materials as mlib
 
 # cli
 # --------------------------------------------------------------------------------------
 
 
-def publish_materials(input_directory, output_directory, ignore_release_time=False,
+def publish(input_directory, output_directory, ignore_release_time=False,
         artifact_filter=None, vars=None, skip_directories=None, verbose=False,
         now=None):
 
@@ -65,7 +59,7 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
 
     # the callbacks
 
-    class CLIDiscoverCallbacks(DiscoverCallbacks):
+    class CLIDiscoverCallbacks(mlib.DiscoverCallbacks):
         def on_publication(self, path):
             publication_name = str(path.parent)
             print(f"{_normal(publication_name)}")
@@ -74,9 +68,9 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
             relpath = path.relative_to(input_directory)
             print(_warning(f"Skipping directory {relpath}"))
 
-    class CLIBuildCallbacks(BuildCallbacks):
+    class CLIBuildCallbacks(mlib.BuildCallbacks):
         def on_build(self, key, node):
-            if isinstance(node, UnbuiltArtifact):
+            if isinstance(node, mlib.UnbuiltArtifact):
                 relative_workdir = node.workdir.relative_to(
                     input_directory.absolute()
                 )
@@ -89,7 +83,7 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
                 f"   Release time {node.release_time} has not yet been reached. "
                 "Skipping."
             )
-            if isinstance(node, UnbuiltArtifact):
+            if isinstance(node, mlib.UnbuiltArtifact):
                 print(_warning(msg))
 
             else:
@@ -106,7 +100,7 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
         def on_not_ready(self, node):
             msg = f"not ready → skipping"
 
-            if isinstance(node, UnbuiltArtifact):
+            if isinstance(node, mlib.UnbuiltArtifact):
                 print(_warning(f" {msg}"))
 
             else:
@@ -120,7 +114,7 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
         def on_success(self, output):
             print(_success("   build was successful ✓"))
 
-    class CLIFilterCallbacks(FilterCallbacks):
+    class CLIFilterCallbacks(mlib.FilterCallbacks):
         def on_miss(self, x):
             key = f"{x.collection_key}/{x.publication_key}/{x.artifact_key}"
             print(_warning(f"\tRemoving {key}"))
@@ -129,7 +123,7 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
             key = f"{x.collection_key}/{x.publication_key}/{x.artifact_key}"
             print(_success(f"\tKeeping {key}"))
 
-    class CLIPublishCallbacks(PublishCallbacks):
+    class CLIPublishCallbacks(mlib.PublishCallbacks):
         def on_copy(self, src, dst):
             src = src.relative_to(input_directory.absolute())
             dst = dst.relative_to(output_directory)
@@ -141,7 +135,7 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
     print()
     print(_header("Discovered publications:"))
 
-    discovered = discover(
+    discovered = mlib.discover(
         input_directory,
         skip_directories=skip_directories,
         external_variables=external_variables,
@@ -152,19 +146,19 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
         # filter out artifacts whose keys do not match this string
 
         def keep(k, v):
-            if not isinstance(v, UnbuiltArtifact):
+            if not isinstance(v, mlib.UnbuiltArtifact):
                 return True
             else:
                 return k == artifact_filter
 
-        discovered = filter_nodes(
+        discovered = mlib.filter_nodes(
             discovered, keep, remove_empty_nodes=True, callbacks=CLIFilterCallbacks()
         )
 
     print()
     print(_header("Building:"))
 
-    built = build(
+    built = mlib.build(
         discovered,
         callbacks=CLIBuildCallbacks(),
         ignore_release_time=ignore_release_time,
@@ -174,8 +168,8 @@ def publish_materials(input_directory, output_directory, ignore_release_time=Fal
 
     print()
     print(_header("Copying:"))
-    published = publish(built, output_directory, callbacks=CLIPublishCallbacks())
+    published = mlib.publish(built, output_directory, callbacks=CLIPublishCallbacks())
 
     # serialize the results
     with (output_directory / "materials.json").open("w") as fileobj:
-        fileobj.write(serialize(published))
+        fileobj.write(mlib.serialize(published))

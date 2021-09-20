@@ -1,15 +1,16 @@
 """Generate a static site with abstract.abstract"""
 
-import pathlib
-import datetime
-import collections
-import typing
 from functools import partial
+import collections
+import datetime
+import pathlib
+import shutil
+import typing
 
+import dictconfig
 import jinja2
 import markdown
 import yaml
-import dictconfig
 
 import automata.lib.materials
 
@@ -30,7 +31,7 @@ class RenderContext(typing.NamedTuple):
     now: datetime.datetime
 
 
-def load_materials(materials_path, output_path):
+def _load_materials(materials_path, output_path):
     """Load artifacts from ``materials.json`` and update their paths.
 
     The artifacts in ``materials.json`` have a ``path`` attribute that gives
@@ -79,7 +80,7 @@ def load_materials(materials_path, output_path):
     return materials
 
 
-def load_config(path, vars=None):
+def _load_config(path, vars=None):
     """Read the configuration from a yaml file, performing interpolation.
 
     Parameters
@@ -122,7 +123,7 @@ def load_config(path, vars=None):
     return dictconfig.resolve(dct, schema=schema, external_variables=variables)
 
 
-def validate_theme_schema(input_path, config):
+def _validate_theme_schema(input_path, config):
     """Validate a config against the theme's schema."""
     with (input_path / "theme" / "schema.yaml").open() as fileobj:
         theme_schema = yaml.load(fileobj, Loader=yaml.Loader)
@@ -168,7 +169,7 @@ def _to_html(contents):
     return markdown.markdown(contents, extensions=["toc"])
 
 
-def render_pages(input_path, output_path, theme_path, context):
+def _render_pages(input_path, output_path, theme_path, context):
     """Render each file in the input path into an HTML file in the output path."""
     with (theme_path / 'base.html').open() as fileobj:
         template = fileobj.read()
@@ -200,3 +201,52 @@ def render_pages(input_path, output_path, theme_path, context):
         output_page_abspath = (output_path / input_page_relpath).with_suffix('.html')
         with output_page_abspath.open('w') as fileobj:
             fileobj.write(page_html)
+
+def build(
+    input_path,
+    output_path,
+    materials_path=None,
+    vars=None,
+    now=datetime.datetime.now,
+):
+    if vars is None:
+        vars = {}
+
+    input_path = pathlib.Path(input_path)
+    output_path = pathlib.Path(output_path)
+    if materials_path is not None:
+        materials_path = pathlib.Path(materials_path)
+
+    # create the output path, if it doesn't already exist
+    output_path.mkdir(exist_ok=True)
+
+    # load the publications and update their paths
+    if materials_path is not None:
+        published = _load_materials(materials_path, output_path)
+    else:
+        published = None
+
+    # load the configuration file
+    config = _load_config(input_path / "config.yaml", vars=vars)
+
+    # validate the config against the theme's schema
+    _validate_theme_schema(input_path, config)
+
+    context = RenderContext(
+            input_path=input_path,
+            output_path=output_path,
+            theme_path=input_path / 'theme',
+            materials_path=materials_path,
+            materials=published,
+            config=config,
+            vars=vars,
+            now=now()
+    )
+
+    # convert user pages
+    _render_pages(input_path / 'pages', output_path, input_path / 'theme', context)
+
+    # copy static files
+    shutil.copytree(input_path / "theme" / "style", output_path / "style")
+    shutil.copytree(input_path / "static", output_path / "static")
+

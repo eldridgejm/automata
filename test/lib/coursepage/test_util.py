@@ -3,7 +3,7 @@ import pathlib
 
 from pytest import fixture
 
-from automata.api._coursepage import load_config
+from automata import util
 
 
 @fixture
@@ -19,7 +19,7 @@ def write_file(tmpdir):
     return inner
 
 
-def test_load_config(write_file):
+def test_load_yaml_understands_include_directive(write_file):
     # given
     config_yaml = dedent(
         """
@@ -49,7 +49,7 @@ def test_load_config(write_file):
     write_file("bar.yaml", bar_yaml)
 
     # when
-    config = load_config(path)
+    config = util.load_yaml(path)
 
     # then
     assert config["foo"]["x"] == 1

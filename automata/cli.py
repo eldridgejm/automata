@@ -4,7 +4,8 @@ import pathlib
 
 import yaml
 
-from automata.api import publish_materials, build_coursepage, init_coursepage
+import automata.api.materials
+import automata.api.coursepage
 
 
 def _arg_directory(s):
@@ -66,7 +67,7 @@ def _register_publish_materials(parser):
     """
 
     def _publish_materials(args):
-        return publish_materials(args.input_directory,
+        return automata.api.materials.publish(args.input_directory,
                 args.output_directory,
                 ignore_release_time=args.ignore_release_time,
                 artifact_filter=args.artifact_filter,
@@ -142,13 +143,13 @@ def _build_coursepage_cli(args):
 
         print(f"Running as if it is currently {_now}")
 
-    build_coursepage(
+    automata.api.coursepage.build(
         args.input_path, args.output_path, args.materials, vars=vars, now=now
     )
 
 def _register_init_coursepage_parser(parser):
     def _init_coursepage_cli(args):
-        init_coursepage(args.output_path)
+        automata.api.coursepage.create(args.output_path)
 
     parser.add_argument('output_path')
     parser.set_defaults(cmd=_init_coursepage_cli)
