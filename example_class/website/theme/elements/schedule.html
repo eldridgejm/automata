@@ -1,0 +1,206 @@
+{% macro display_resource(resource_config, publication) %}
+
+    {% set is_missing = false %}
+    {% set skip = false %}
+    {% if resource_config['requires'] is not none %}
+        {% set is_missing = is_something_missing(publication, resource_config['requires']) %}
+        {% set text_if_missing = resource_config['requires']['text_if_missing'] %}
+
+        {% if is_missing and (text_if_missing is none) %}
+            {% set skip = true %}
+        {% endif %}
+    {% endif %}
+
+    {% if not skip %}
+    <li class="schedule-resource">
+        {% if resource_config['icon'] is not none %}
+            <i class="em-svg {{ resource_config.icon }} schedule-resource-icon" aria-role="presentation" ></i>
+        {% endif %}
+        {% if is_missing %}
+            {{ text_if_missing }}
+        {% else %}
+            {{ resource_config.text | evaluate(publication=publication) }}
+        {% endif %}
+    </li>
+    {% endif %}
+
+{% endmacro %}
+
+
+{% macro display_lecture(lecture, lecture_config, last) %}
+    <div class="schedule-lecture {{ 'last' if last -}}">
+        <h3 class="schedule-week-component-title">
+            {{ lecture_config['title'] | evaluate(publication=lecture) }}
+        </h3>
+        <div class="schedule-lecture-resources">
+            <ul class="schedule-lecture-resources">
+            {% for resource_config in lecture_config['resources'] %}
+                {{ display_resource(resource_config, lecture) }}
+            {% endfor %}
+            </ul>
+        </div>
+
+        <div class="schedule-lecture-parts">
+            <ol class="schedule-lecture-parts">
+            {% for part in lecture.metadata[lecture_config['parts']['key']] %}
+                <li>
+                    {{ lecture_config['parts']['text'] | evaluate(part=part) }}
+                </li>
+            {% endfor %}
+            </ol>
+        </div>
+    </div>
+{% endmacro %}
+
+
+{% macro display_assignment(materials, week, assignment_config) %}
+
+    {% set week_assignments = week.filter(
+            materials.collections[assignment_config['collection']],
+            assignment_config['metadata_key_for_released']
+        ) 
+    %}
+
+    {% for key, assignment in week_assignments.publications.items() | sort(attribute='0') %}
+        <div class="list-group-item">
+            <h3 class="schedule-week-component-title">
+                {{ assignment_config['title'] | evaluate(publication=assignment) }}
+            </h3>
+            <div class="schedule-assignment-resources">
+                <ul class="schedule-assignment-resources">
+                {% for resource_config in assignment_config['resources'] %}
+                    {{ display_resource(resource_config, assignment) }}
+                {% endfor %}
+                </ul>
+            </div>
+            {% set due_time = assignment.metadata[assignment_config['metadata_key_for_due']] %}
+            <div class="badge badge-pill {{ 'badge-danger' if context.now < due_time else 'badge-light' }}">
+                {% if context.now > due_time %}
+                    Was due
+                {% else %}
+                    Due
+                {% endif %}
+                {{ due_time.strftime('%A, %b %d at %H:%M %p') }}
+            </div>
+        </div>
+    {% endfor %}
+
+{% endmacro %}
+
+
+{% macro display_discussion(materials, week, discussion_config) %}
+
+    {% set week_discussions = week.filter(
+            materials.collections[discussion_config['collection']], 
+            discussion_config['metadata_key_for_released']
+        ) 
+    %}
+
+    {% for key, discussion in week_discussions.publications.items() | sort(attribute='0') %}
+        <div class="list-group-item">
+            <h3 class="schedule-week-component-title">
+                {{ discussion_config['title'] | evaluate(publication=discussion) }}
+            </h3>
+            <div class="schedule-discussion-resources">
+                <ul class="schedule-discussion-resources">
+                {% for resource_config in discussion_config['resources'] %}
+                    {{ display_resource(resource_config, discussion) }}
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% endfor %}
+
+{% endmacro %}
+
+
+{% set lecture_config = element_config['lecture'] %}
+{% set assignment_configs = element_config['assignments'] %}
+{% set discussion_configs = element_config['discussions'] %}
+
+{% for week in weeks -%}
+
+{% if this_week is not none %}
+
+    {% if week.number == this_week.number + 1 %}
+        <div class="schedule-separator">
+            future weeks
+        </div>
+    {% endif %}
+
+    {% if week.number == this_week.number - 1 %}
+        <div class="schedule-separator">
+            past weeks
+        </div>
+    {% endif %}
+
+{% endif %}
+
+<div class="schedule">
+    <div class="schedule-week {{ 'schedule-week-future' if week.start_date > context.now.date() }}">
+        <div class="schedule-week-title">
+            <h1 class="schedule-week-title-number">
+                {% if loop.first %}
+                    This Week
+                {% else %}
+                    Week {{ week.number }}
+                {% endif %}
+
+                {% set max_week = weeks | max(attribute='number') %}
+                {% if week.number == max_week.number %}
+                    <i class="em-svg em-checkered_flag" aria-role="presentation" ></i>
+                {% endif %}
+            </h1>
+            <h2 class="schedule-week-title-topic">{{ week.topic }}</h2>
+
+            {% for exam_name, exam_date in element_config['exams'].items() %}
+                {% if week.contains(exam_date) %}
+                    <div class="badge badge-pill badge-danger">
+                        {{ exam_name }} on {{ exam_date.strftime('%A, %b %d') }}
+                    </div>
+                {% endif %}
+            {% endfor %}
+
+        </div>
+
+        {% for announcement_config in element_config['week_announcements'] %}
+            {% if announcement_config.week == week.number %}
+                {% if announcement_config['urgent'] %}
+                    {% set class = "alert-danger" %}
+                {% else %}
+                    {% set class = "alert-primary" %}
+                {% endif %}
+                <div class="alert {{ class }} schedule-announcement">
+                    <p>{{ announcement_config.content | evaluate | markdown_to_html }}</p>
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        <div class="row">
+            <div class="col-md-7">
+                {% set week_lectures = week.filter(
+                        context.materials.collections[lecture_config['collection']], 
+                        lecture_config['metadata_key_for_released']
+                    ) 
+                %}
+                {% for key, lecture in week_lectures.publications.items() | sort(attribute='0', reverse=true) %}
+                    {{ display_lecture(lecture, lecture_config, loop.last) }}
+                {% endfor %}
+
+            </div>
+            <div class="col-md-5">
+                <div class="list-group">
+                    {% for assignment_config in assignment_configs %}
+                        {{ display_assignment(context.materials, week, assignment_config) }}
+                    {% endfor %}
+
+                    {% for discussion_config in discussion_configs %}
+                        {{ display_discussion(context.materials, week, discussion_config) }}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endfor %}
+</div>

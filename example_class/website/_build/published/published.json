@@ -1,0 +1,498 @@
+{
+    "collections": {
+        "default": {
+            "schema": {
+                "required_artifacts": [],
+                "optional_artifacts": null,
+                "metadata_schema": null,
+                "allow_unspecified_artifacts": true
+            },
+            "publications": {}
+        },
+        "labs": {
+            "schema": {
+                "required_artifacts": [
+                    "lab.txt",
+                    "solution.txt"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "due": {
+                        "type": "datetime"
+                    },
+                    "released": {
+                        "type": "datetime"
+                    },
+                    "number": {
+                        "type": "integer"
+                    }
+                },
+                "allow_unspecified_artifacts": false
+            },
+            "publications": {
+                "01-intro": {
+                    "metadata": {
+                        "due": "2020-10-07 23:59:00",
+                        "number": 1,
+                        "released": "2020-10-01 23:59:00"
+                    },
+                    "artifacts": {
+                        "lab.txt": {
+                            "path": "labs/01-intro/lab.txt"
+                        },
+                        "solution.txt": {
+                            "path": "labs/01-intro/solution.txt"
+                        }
+                    }
+                },
+                "03-charts_and_functions": {
+                    "metadata": {
+                        "due": "2020-10-22 23:59:00",
+                        "number": 3,
+                        "released": "2020-10-15 23:59:00"
+                    },
+                    "artifacts": {
+                        "lab.txt": {
+                            "path": "labs/03-charts_and_functions/lab.txt"
+                        },
+                        "solution.txt": {
+                            "path": null
+                        }
+                    }
+                },
+                "02-tables": {
+                    "metadata": {
+                        "due": "2020-10-14 23:59:00",
+                        "number": 2,
+                        "released": "2020-10-07 23:59:00"
+                    },
+                    "artifacts": {
+                        "lab.txt": {
+                            "path": "labs/02-tables/lab.txt"
+                        },
+                        "solution.txt": {
+                            "path": null
+                        }
+                    }
+                }
+            }
+        },
+        "discussions": {
+            "schema": {
+                "required_artifacts": [
+                    "discussion.ipynb"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "topic": {
+                        "type": "string"
+                    },
+                    "date": {
+                        "type": "date"
+                    },
+                    "number": {
+                        "type": "integer"
+                    }
+                },
+                "allow_unspecified_artifacts": false
+            },
+            "publications": {
+                "03-babypandas": {
+                    "metadata": {
+                        "topic": "Tables",
+                        "date": "2020-10-15",
+                        "number": 3
+                    },
+                    "artifacts": {
+                        "discussion.ipynb": {
+                            "path": "discussions/03-babypandas/discussion.ipynb"
+                        }
+                    }
+                },
+                "01-intro": {
+                    "metadata": {
+                        "topic": "Introduction",
+                        "date": "2020-10-01",
+                        "number": 1
+                    },
+                    "artifacts": {
+                        "discussion.ipynb": {
+                            "path": "discussions/01-intro/discussion.ipynb"
+                        }
+                    }
+                },
+                "02-python": {
+                    "metadata": {
+                        "topic": "Python",
+                        "date": "2020-10-08",
+                        "number": 2
+                    },
+                    "artifacts": {
+                        "discussion.ipynb": {
+                            "path": "discussions/02-python/discussion.ipynb"
+                        }
+                    }
+                }
+            }
+        },
+        "projects": {
+            "schema": {
+                "required_artifacts": [
+                    "project.ipynb"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "due": {
+                        "type": "datetime"
+                    },
+                    "released": {
+                        "type": "datetime"
+                    }
+                },
+                "allow_unspecified_artifacts": false
+            },
+            "publications": {
+                "project_01": {
+                    "metadata": {
+                        "due": "2020-11-01 23:59:00",
+                        "released": "2020-10-15 23:59:00"
+                    },
+                    "artifacts": {
+                        "project.ipynb": {
+                            "path": "projects/project_01/project.ipynb"
+                        }
+                    }
+                }
+            }
+        },
+        "homeworks": {
+            "schema": {
+                "required_artifacts": [
+                    "homework.txt",
+                    "solution.txt"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "due": {
+                        "type": "datetime"
+                    },
+                    "released": {
+                        "type": "datetime"
+                    },
+                    "number": {
+                        "type": "integer"
+                    }
+                },
+                "allow_unspecified_artifacts": false
+            },
+            "publications": {
+                "01-intro": {
+                    "metadata": {
+                        "due": "2020-10-07 23:59:00",
+                        "number": 1,
+                        "released": "2020-10-01 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/01-intro/homework.txt"
+                        },
+                        "solution.txt": {
+                            "path": "homeworks/01-intro/solution.txt"
+                        }
+                    }
+                },
+                "03-charts_and_functions": {
+                    "metadata": {
+                        "due": "2020-10-22 23:59:00",
+                        "number": 3,
+                        "released": "2020-10-15 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": null
+                        },
+                        "solution.txt": {
+                            "path": null
+                        }
+                    }
+                },
+                "04-work_in_progress": {
+                    "metadata": {
+                        "due": "2020-10-31 23:59:00",
+                        "number": 4,
+                        "released": "2020-10-30 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": null
+                        },
+                        "solution.txt": {
+                            "path": null
+                        }
+                    }
+                },
+                "02-tables": {
+                    "metadata": {
+                        "due": "2020-10-14 23:59:00",
+                        "number": 2,
+                        "released": "2020-10-07 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/02-tables/homework.txt"
+                        },
+                        "solution.txt": {
+                            "path": null
+                        }
+                    }
+                }
+            }
+        },
+        "lectures": {
+            "schema": {
+                "required_artifacts": [
+                    "lecture.ipynb"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "topic": {
+                        "type": "string"
+                    },
+                    "date": {
+                        "type": "date"
+                    },
+                    "number": {
+                        "type": "integer"
+                    },
+                    "videos": {
+                        "type": "list",
+                        "schema": {
+                            "type": "dict",
+                            "schema": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "allow_unspecified_artifacts": false
+            },
+            "publications": {
+                "03-babypandas": {
+                    "metadata": {
+                        "topic": "Tables",
+                        "date": "2020-10-08",
+                        "number": 3,
+                        "videos": [
+                            {
+                                "title": "Introduction",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "Another Video",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "A third video is what this is",
+                                "url": "http://uscd.edu"
+                            },
+                            {
+                                "title": "This is the fourth video and it has a long name",
+                                "url": "http://dsc10.com"
+                            }
+                        ]
+                    },
+                    "artifacts": {
+                        "lecture.ipynb": {
+                            "path": "lectures/03-babypandas/lecture.ipynb"
+                        }
+                    }
+                },
+                "04-groupby": {
+                    "metadata": {
+                        "topic": "Groupby",
+                        "date": "2020-10-13",
+                        "number": 4,
+                        "videos": [
+                            {
+                                "title": "Introduction",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "Another Video",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "A third video is what this is",
+                                "url": "http://uscd.edu"
+                            },
+                            {
+                                "title": "This is the fourth video and it has a long name",
+                                "url": "http://dsc10.com"
+                            }
+                        ]
+                    },
+                    "artifacts": {
+                        "lecture.ipynb": {
+                            "path": "lectures/04-groupby/lecture.ipynb"
+                        }
+                    }
+                },
+                "05-charts": {
+                    "metadata": {
+                        "topic": "Charts",
+                        "date": "2020-10-15",
+                        "number": 5,
+                        "videos": [
+                            {
+                                "title": "Introduction",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "Another Video",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "A third video is what this is",
+                                "url": "http://uscd.edu"
+                            },
+                            {
+                                "title": "This is the fourth video and it has a long name",
+                                "url": "http://dsc10.com"
+                            }
+                        ]
+                    },
+                    "artifacts": {
+                        "lecture.ipynb": {
+                            "path": "lectures/05-charts/lecture.ipynb"
+                        }
+                    }
+                },
+                "01-intro": {
+                    "metadata": {
+                        "topic": "Introduction",
+                        "date": "2020-10-01",
+                        "number": 1,
+                        "videos": [
+                            {
+                                "title": "Introduction",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "Another Video",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "A third video is what this is",
+                                "url": "http://uscd.edu"
+                            },
+                            {
+                                "title": "This is the fourth video and it has a long name",
+                                "url": "http://dsc10.com"
+                            }
+                        ]
+                    },
+                    "artifacts": {
+                        "lecture.ipynb": {
+                            "path": "lectures/01-intro/lecture.ipynb"
+                        }
+                    }
+                },
+                "06-functions": {
+                    "metadata": {
+                        "topic": "Functions",
+                        "date": "2020-10-20",
+                        "number": 6,
+                        "videos": [
+                            {
+                                "title": "Introduction",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "Another Video",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "A third video is what this is",
+                                "url": "http://uscd.edu"
+                            },
+                            {
+                                "title": "This is the fourth video and it has a long name",
+                                "url": "http://dsc10.com"
+                            }
+                        ]
+                    },
+                    "artifacts": {
+                        "lecture.ipynb": {
+                            "path": "lectures/06-functions/lecture.ipynb"
+                        }
+                    }
+                },
+                "02-python": {
+                    "metadata": {
+                        "topic": "Python",
+                        "date": "2020-10-06",
+                        "number": 2,
+                        "videos": [
+                            {
+                                "title": "Introduction",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "Another Video",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "A third video is what this is",
+                                "url": "http://uscd.edu"
+                            },
+                            {
+                                "title": "This is the fourth video and it has a long name",
+                                "url": "http://dsc10.com"
+                            }
+                        ]
+                    },
+                    "artifacts": {
+                        "lecture.ipynb": {
+                            "path": "lectures/02-python/lecture.ipynb"
+                        }
+                    }
+                },
+                "07-probability": {
+                    "metadata": {
+                        "topic": "Probability",
+                        "date": "2020-10-22",
+                        "number": 7,
+                        "videos": [
+                            {
+                                "title": "Introduction",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "Another Video",
+                                "url": "http://youtube.com"
+                            },
+                            {
+                                "title": "A third video is what this is",
+                                "url": "http://uscd.edu"
+                            },
+                            {
+                                "title": "This is the fourth video and it has a long name",
+                                "url": "http://dsc10.com"
+                            }
+                        ]
+                    },
+                    "artifacts": {
+                        "lecture.ipynb": {
+                            "path": "lectures/07-probability/lecture.ipynb"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

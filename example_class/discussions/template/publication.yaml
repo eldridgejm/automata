@@ -1,0 +1,9 @@
+discussion:
+    topic: Lecture {{ project.number }}
+    date: 2020-10-01
+    number: {{ project.number }}
+
+
+artifacts:
+    discussion.ipynb:
+        recipe: touch discussion.ipynb
