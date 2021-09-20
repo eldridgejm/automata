@@ -2,3 +2,12 @@ type: dict
 required_keys:
     page_title:
         type: string
+    navigation:
+        type: list
+        element_schema:
+            type: dict
+            required_keys:
+                text:
+                    type: string
+                url:
+                    type: string

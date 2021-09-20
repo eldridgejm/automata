@@ -1,45 +1,28 @@
 theme:
     page_title: "DSC 80"
+    navigation:
+        - text: 🗓️ Schedule
+          url: ./index.html
 
+        - text: 📜 Syllabus
+          url: ./syllabus.html
+
+        - text: 👨‍🏫 Office Hours
+          url: ./officehours.html
+
+        - text: 📚 All Materials
+          url: ./resources.html
+
+        - text: 💬 Campuswire
+          url: campuswire.com
+
+        - text: 💯 Gradescope
+          url: gradescope.com
+
+        - text: 📖 Textbook
+          url: https://afraenkel.github.io/practical-data-science/introduction
 
 listings: !include listings.yaml
-
-
-buttons:
-    top:
-      buttons:
-        - text: Syllabus
-          subtext: FAQ, etc.
-          url: ./syllabus.html
-          icon: em-scroll
-
-        - text: Office Hours
-          subtext: Calendar
-          url: ./office_hours.html
-          icon: em-male-teacher
-
-        - text: Campuswire
-          subtext: Message Board
-          url: www.campuswire.com
-          icon: em-left_speech_bubble
-
-        - text: Gradescope
-          subtext: Gradebook
-          url: www.gradescope.com
-          icon: em-100
-
-    bottom:
-      buttons:
-        - text: Textbook
-          subtext: Dive into Data Science
-          url: http://diveintods.com
-          icon: em-blue_book
-
-        - text: All Resources
-          subtext: Calendar
-          url: ./resources.html
-          icon: em-books
-
 
 schedule:
     # what should the first week be numbered?
