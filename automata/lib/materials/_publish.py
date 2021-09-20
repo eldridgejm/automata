@@ -24,7 +24,11 @@ def _publish_artifact(built_artifact, outdir, filename, callbacks):
     full_dst.parent.mkdir(parents=True, exist_ok=True)
     full_src = built_artifact.workdir / built_artifact.file
     callbacks.on_copy(full_src, full_dst)
-    shutil.copy(full_src, full_dst)
+
+    if full_src.is_dir():
+        shutil.copytree(full_src, full_dst)
+    else:
+        shutil.copy(full_src, full_dst)
 
     return PublishedArtifact(path=full_dst.relative_to(outdir))
 
