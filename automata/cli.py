@@ -7,6 +7,8 @@ import yaml
 
 import automata.api.materials
 import automata.api.coursepage
+import automata.api.sync
+
 from automata import util
 
 
@@ -48,6 +50,7 @@ def _parse_args(argv):
 
     _register_materials_parser(subparsers)
     _register_coursepage_parser(subparsers)
+    _register_sync_parser(subparsers)
 
     args = parser.parse_args(argv)
 
@@ -178,3 +181,24 @@ def _register_coursepage_init_parser(subparsers):
 
     parser.add_argument("output_path")
     parser.set_defaults(cmd=cmd)
+
+def _register_sync_parser(subparsers):
+    parser = subparsers.add_parser("sync")
+    parser.set_defaults(cmd=_usage_printer(parser))
+
+    subparsers = parser.add_subparsers()
+
+    _register_sync_git_branch_parser(subparsers)
+
+
+def _register_sync_git_branch_parser(subparsers):
+    parser = subparsers.add_parser('git')
+    parser.add_argument('local_directory')
+    parser.add_argument('git_repo_url')
+    parser.add_argument('branch')
+
+    def cmd(args):
+        return automata.api.sync.git(args.local_directory, args.git_repo_url, args.branch)
+
+    parser.set_defaults(cmd=cmd)
+
