@@ -31,7 +31,7 @@ def test_publish_materials_simple_example(make_input_directory, output_directory
     input_directory = make_input_directory("examples/example_1")
 
     # when
-    cli(["materials", "publish", str(input_directory), str(output_directory)])
+    cli(["materials", "publish", '--input-directory', str(input_directory), str(output_directory)])
 
     # then
     assert (output_directory / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -57,8 +57,9 @@ def test_publish_materials_with_example_using_external_variables(
         [
             "materials",
             "publish",
-            str(input_directory),
             str(output_directory),
+            '--input-directory',
+            str(input_directory),
             "--ignore-release-time",
             "--vars",
             f"course:{input_directory}/myvars.yaml",
@@ -75,7 +76,7 @@ def test_publish_materials_creates_materials_json(
     input_directory = make_input_directory("examples/example_1")
 
     # when
-    cli(["materials", "publish", str(input_directory), str(output_directory)])
+    cli(["materials", "publish", '--input-directory', str(input_directory), str(output_directory)])
 
     # then
     assert (output_directory / "materials.json").exists()
@@ -96,8 +97,9 @@ def test_publish_materials_then_build_coursepage_with_example(
     cli(
         [
             "materials", "publish",
-            str(input_directory),
             str(output_directory / "materials"),
+            '--input-directory',
+            str(input_directory),
             "--skip-directories",
             "template",
         ]
@@ -105,8 +107,9 @@ def test_publish_materials_then_build_coursepage_with_example(
     cli(
         [
             "coursepage", "build",
-            str(input_directory / "website"),
             str(output_directory),
+            "--input-directory",
+            str(input_directory / "website"),
             "--materials",
             str(output_directory / "materials"),
             "--vars",

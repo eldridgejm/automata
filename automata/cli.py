@@ -84,8 +84,8 @@ def _register_materials_publish_parser(subparsers):
                 )
 
     parser.set_defaults(cmd=cmd)
-    parser.add_argument("input_directory", type=_arg_directory)
     parser.add_argument("output_directory", type=_arg_output_directory)
+    parser.add_argument("--input-directory", type=_arg_directory, default=pathlib.Path.cwd())
     parser.add_argument(
         "--skip-directories",
         type=str,
@@ -133,8 +133,8 @@ def _register_coursepage_parser(subparsers):
 def _register_coursepage_build_parser(subparsers):
     parser = subparsers.add_parser('build')
 
-    parser.add_argument("output_path")
-    parser.add_argument("--input_path", default=pathlib.Path.cwd())
+    parser.add_argument("output_directory")
+    parser.add_argument("--input-directory", default=pathlib.Path.cwd())
     parser.add_argument("--materials")
     parser.add_argument("--now")
     parser.add_argument("--vars", type=pathlib.Path)
@@ -160,7 +160,7 @@ def _register_coursepage_build_parser(subparsers):
             print(f"Running as if it is currently {_now}")
 
         automata.api.coursepage.build(
-            args.input_path, args.output_path, args.materials, vars=vars, now=now
+            args.input_directory, args.output_directory, args.materials, vars=vars, now=now
         )
 
     parser.set_defaults(cmd=cmd)
