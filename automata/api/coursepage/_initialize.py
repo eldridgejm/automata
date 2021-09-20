@@ -41,6 +41,12 @@ def initialize(path):
     # use the default config from the theme
     (path / "theme" / "default-config.yaml").rename(path / "config.yaml")
 
+    # add an announcement box to the configuration
+    with (path / 'config.yaml').open('a') as fileobj:
+        fileobj.write('my_announcement:\n')
+        fileobj.write('    content: This is an **announcement box** element. Configure it in `config.yaml`.\n')
+        fileobj.write('    urgent: false')
+
     # make the pages directory and place an index.md file within
     (path / "pages").mkdir()
     with (path / "pages" / "index.md").open("w") as fileobj:
@@ -48,10 +54,16 @@ def initialize(path):
             "\n".join(
                 [
                     "# Welcome!",
+                    ""
                     "You can change this page by editing `pages/index.md`.",
                     "This file is converted from markdown to HTML.",
                     "See the documentation for how to add *elements* to the page. Elements",
                     "are useful for displaying the course schedule, all course materials, etc.",
+                    "",
+                    "The below is an element:",
+                    "{{ elements.announcement_box(config.my_announcement) }}"
                 ]
             )
         )
+
+    (path / 'static').mkdir()

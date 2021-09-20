@@ -50,6 +50,7 @@ SCHEMA = {
     "type": "dict",
     "required_keys": {
         "week_topics": {"type": "list", "element_schema": {"type": "string"}},
+        "first_week_start_date": {"type": "date"},
         "lecture": {
             "type": "dict",
             "required_keys": {
@@ -97,6 +98,7 @@ SCHEMA = {
     "optional_keys": {
         "week_order": {
             "type": "string",
+            "default": "this_week_first",
             # "allowed": ["this_week_first", "this_week_last"],
         },
         "exams": {
@@ -117,7 +119,6 @@ SCHEMA = {
             },
         },
         "first_week_number": {"type": "integer", "default": 1},
-        "first_week_start_date": {"type": "date"},
     },
 }
 

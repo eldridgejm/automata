@@ -1,4 +1,0 @@
-Creating course pages
-=====================
-
-

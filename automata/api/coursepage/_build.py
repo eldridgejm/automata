@@ -248,5 +248,5 @@ def build(
     _render_pages(input_path / "pages", output_path, input_path / "theme", context)
 
     # copy static files
-    shutil.copytree(input_path / "theme" / "style", output_path / "style")
-    shutil.copytree(input_path / "static", output_path / "static")
+    shutil.copytree(input_path / "theme" / "style", output_path / "style", dirs_exist_ok=True)
+    shutil.copytree(input_path / "static", output_path / "static", dirs_exist_ok=True)

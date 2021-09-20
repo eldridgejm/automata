@@ -1,4 +1,5 @@
 import dictconfig
+import markdown
 import jinja2
 
 from .. import exceptions
@@ -22,7 +23,7 @@ def render_element_template(template_name, context, extra_vars=None):
             )
 
     def markdown_to_html(s):
-        return s
+        return markdown.markdown(s)
 
     element_environment.filters["evaluate"] = evaluate
     element_environment.filters["markdown_to_html"] = markdown_to_html

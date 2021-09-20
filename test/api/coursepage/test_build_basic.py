@@ -103,7 +103,7 @@ def test_pages_have_access_to_elements(demo):
     config = dedent(
         """
         announcement:
-            contents: This is a test.
+            content: This is a test.
             urgent: true
         """
     )
@@ -185,7 +185,7 @@ def test_vars_available_in_config_file(demo):
         dedent(
             """
                 announcement:
-                    contents: My name is ${ vars.name }
+                    content: My name is ${ vars.name }
                 """
         )
     )

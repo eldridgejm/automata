@@ -1,0 +1,7 @@
+Reference
+=========
+
+.. toctree::
+
+   materials
+   coursepage

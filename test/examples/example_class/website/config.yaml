@@ -7,6 +7,7 @@ listings: !include listings.yaml
 
 buttons:
     top:
+      buttons:
         - text: Syllabus
           subtext: FAQ, etc.
           url: ./syllabus.html
@@ -28,6 +29,7 @@ buttons:
           icon: em-100
 
     bottom:
+      buttons:
         - text: Textbook
           subtext: Dive into Data Science
           url: http://diveintods.com

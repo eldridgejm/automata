@@ -3,8 +3,10 @@ automata
 ########
 
 .. toctree::
-   materials
-   coursepage
+   :maxdepth: 2
+
+   cookbook/index
+   reference/index
    lib
 
 

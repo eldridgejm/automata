@@ -1,5 +1,5 @@
-Publishing course materials
-===========================
+Defining course materials
+=========================
 
 Terminology
 -----------
@@ -24,6 +24,53 @@ exactly one collection.
 
 An artifact may have a **release time**, before which it will not be built or
 published. Likewise, entire publications can have release times, too.
+
+The process of releasing course materials occurs in three steps: 1)
+**discover**, 2) **build**, and 3) **publish**.
+
+In the **discovery** step, the **input directory** is recursively searched for
+collections, publications, and artifacts. As described above, collections and
+publications are defined by `collection.yaml` and `publication.yaml` files,
+respectively.
+
+Once all collections, publications, and artifacts have been discovered, the
+**build** phase is entered. Artifacts are built by running the command given in
+the artifact's `recipe` field within the directory containing the artifact's
+``publication.yaml`` file. Different artifacts should have "orthogonal" build
+processes so that the order in which the artifacts are built is
+inconsequential.
+
+If an error occurs during any build the entire process is halted and the
+program returns without continuing on to the next phase. An error is
+considered to occur if the build process returns a nonzero error code, or if
+the artifact file is missing after the recipe is run.
+
+In the **publish** phase, all published artifacts -- that is, those which are
+ready and whose release date has passed -- are copied to an **output
+directory**. Additionally, a JSON file containing information about the
+collection -> publication -> artifact hierarchy is placed at the root of the
+output directory.
+
+Artifacts are copied to a location within the output directory according to the
+following "formula":
+
+.. code-block:: text
+
+    <output_directory>/<collection_key>/<publication_key>/<artifact_key>
+
+For instance, an artifact keyed ``homework.pdf`` in the ``01-intro``
+publication of the ``homeworks`` collection will be copied to::
+
+    <output_directory>/homeworks/01-intro/homework.pdf
+
+An artifact which has not been released will not be copied, even if the
+artifact file exists.
+
+*publish* will create a JSON file named ``<output_directory>/materials.json``.
+This file contains nested dictionaries describing the structure of the
+collection → publication → artifact hierarchy. *All* artifacts, regardless
+of whether they are released or not, will appear in `materials.json` -- but only
+artifacts that have been released will be copied to the output directory.
 
 
 Defining a collection with `collection.yaml`
@@ -248,7 +295,9 @@ Upon loading this publication file, the `name` field will contain "The one
 after the First Homework".
 
 Lastly, a dictionary of external variables may be supplied to `automata` when
-it is invoked. These variables may also be referred to within `publication.yaml`.
+it is invoked. These variables may also be referred to within `publication.yaml`
+through the ``${vars}`` variable.
+
 For example, suppose `automata` is given the dictionary:
 
 .. code:: python
@@ -266,7 +315,7 @@ Then the following will resolve so that the value of the `number` key will be 42
 .. code:: yaml
 
     metadata:
-        number: ${foo.bar}
+        number: ${vars.foo.bar}
 
 
 Arithmetic
@@ -365,54 +414,10 @@ sets all other dates relative to this.
             release_time: ${self.artifacts."homework.pdf".release_time}
 
 
-Discovering, building, and publishing artifacts
------------------------------------------------
+Building and publishing artifacts
+---------------------------------
 
-One of `automata`'s main functions is to discover, build, and release all of
-the course materials that are ready and whose release time has been reached.
-This is often performed as part of a script, but it can also be done by
-invoking :code:`automata publish-materials` at the command line.
-
-In the **discovery** step, the **input directory** is recursively searched for
-collections, publications, and artifacts. As described above, collections and
-publications are defined by `collection.yaml` and `publication.yaml` files,
-respectively.
-
-Once all collections, publications, and artifacts have been discovered, the
-**build** phase is entered. Artifacts are built by running the command given in
-the artifact's `recipe` field within the directory containing the artifact's
-``publication.yaml`` file. Different artifacts should have "orthogonal" build
-processes so that the order in which the artifacts are built is
-inconsequential.
-
-If an error occurs during any build the entire process is halted and the
-program returns without continuing on to the next phase. An error is
-considered to occur if the build process returns a nonzero error code, or if
-the artifact file is missing after the recipe is run.
-
-In the **publish** phase, all published artifacts -- that is, those which are
-ready and whose release date has passed -- are copied to an **output
-directory**. Additionally, a JSON file containing information about the
-collection -> publication -> artifact hierarchy is placed at the root of the
-output directory.
-
-Artifacts are copied to a location within the output directory according to the
-following "formula":
-
-.. code-block:: text
-
-    <output_directory>/<collection_key>/<publication_key>/<artifact_key>
-
-For instance, an artifact keyed ``homework.pdf`` in the ``01-intro``
-publication of the ``homeworks`` collection will be copied to::
-
-    <output_directory>/homeworks/01-intro/homework.pdf
-
-An artifact which has not been released will not be copied, even if the
-artifact file exists.
-
-*publish* will create a JSON file named ``<output_directory>/materials.json``.
-This file contains nested dictionaries describing the structure of the
-collection → publication → artifact hierarchy. *All* artifacts, regardless
-of whether they are released or not, will appear in `materials.json` -- but only
-artifacts that have been released will be copied to the output directory.
+Once `publication.yaml` and `collection.yaml` files have been created, course
+materials can be built and exported. This is often performed as part of a
+script, but it can also be done by invoking :code:`automata materials publish`
+at the command line (see below).
