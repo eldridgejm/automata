@@ -112,7 +112,7 @@ def test_publish_materials_then_build_coursepage_with_example(
     make_input_directory, output_directory
 ):
     # given
-    input_directory = make_input_directory("examples/example_class")
+    input_directory = make_input_directory("../example_class")
 
     # when
     cli(

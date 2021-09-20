@@ -1,9 +1,0 @@
-metadata:
-    topic: Introduction
-    date: 2020-10-01
-    number: 1
-    recording: http://google.com
-
-artifacts:
-    discussion.ipynb:
-        recipe: touch discussion.ipynb
