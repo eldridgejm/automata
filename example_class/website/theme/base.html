@@ -24,7 +24,7 @@
         <!-- Fonts -->
         <link href="https://fonts.googleapis.com/css?family=Be+Vietnam+Pro|Roboto|Roboto+Slab&display=swap" rel="stylesheet">
 
-        <title>{{ config.theme.page_title }}</title>
+        <title>{{ config.theme.short_title }}</title>
         </head>
 
         <body>
@@ -33,7 +33,7 @@
                 <div class="nav row wrapper min-vh-100 flex-column flex-sm-row">
                     <aside class="col-12 col-sm-3 p-0 bg-light flex-shrink-1">
                         <nav class="navbar navbar-expand-sm navbar-light bg-light align-items-end flex-sm-column flex-row">
-                            <a class="navbar-brand" href="#"><i class="fa fa-bullseye fa-fw"></i>DSC 80</a>
+                            <a class="navbar-brand" href="#"><i class="fa fa-bullseye fa-fw"></i>{{ config.theme.short_title }}</a>
                             <a href class="navbar-toggler" data-toggle="collapse" data-target=".sidebar">
                                 <span class="navbar-toggler-icon"></span>
                             </a>
@@ -51,7 +51,7 @@
                     <main class="col bg-faded main-content">
 
                         <div class="site-title">
-                            <h1>DSC 80 &ndash; The Practice of Data Science</h1>
+                            <h1>{{ config.theme.short_title }} &ndash; {{ config.theme.long_title }}</h1>
                             <hr>
                         </div>
 

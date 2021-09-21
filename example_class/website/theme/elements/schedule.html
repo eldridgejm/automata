@@ -13,8 +13,10 @@
 
     {% if not skip %}
     <li class="schedule-resource">
-        {% if resource_config['icon'] is not none %}
-            <i class="em-svg {{ resource_config.icon }} schedule-resource-icon" aria-role="presentation" ></i>
+        {% if resource_config['title'] is not none %}
+            <span class="schedule-resource-title">
+                {{ resource_config['title'] | evaluate(publication=publication) }}
+            </span>
         {% endif %}
         {% if is_missing %}
             {{ text_if_missing }}
@@ -40,15 +42,17 @@
             </ul>
         </div>
 
-        <div class="schedule-lecture-parts">
-            <ol class="schedule-lecture-parts">
-            {% for part in lecture.metadata[lecture_config['parts']['key']] %}
-                <li>
-                    {{ lecture_config['parts']['text'] | evaluate(part=part) }}
-                </li>
-            {% endfor %}
-            </ol>
-        </div>
+        {% if 'parts' in lecture_config %}
+            <div class="schedule-lecture-parts">
+                <ol class="schedule-lecture-parts">
+                {% for part in lecture.metadata[lecture_config['parts']['key']] %}
+                    <li>
+                        {{ lecture_config['parts']['text'] | evaluate(part=part) }}
+                    </li>
+                {% endfor %}
+                </ol>
+            </div>
+        {% endif %}
     </div>
 {% endmacro %}
 

@@ -152,8 +152,9 @@ ul li.schedule-resource {
     list-style-type: none;
 }
 
-i.schedule-resource-icon {
-    margin-right: .6em;
+span.schedule-resource-title {
+    color: #27262b;
+    margin-right: .2em;
 }
 
 div.schedule-announcement {

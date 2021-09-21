@@ -14,7 +14,7 @@ RESOURCES_SCHEMA = {
             "text": {"type": "string"},
         },
         "optional_keys": {
-            "icon": {"type": "string", "nullable": True, "default": None},
+            "title": {"type": "string", "nullable": True, "default": None},
             "requires": {
                 "type": "dict",
                 "optional_keys": {

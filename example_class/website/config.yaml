@@ -1,5 +1,6 @@
 theme:
-    page_title: "DSC 80"
+    short_title: "DSC 80"
+    long_title: "Practice of Data Science"
     navigation:
         - text: 🗓️ Schedule
           url: ./index.html
@@ -81,9 +82,9 @@ schedule:
         # what resources are available for each lecture?
         resources:
             -
-              icon: em-spiral_note_pad
+              title: Lecture Materials
               text: |
-                  <a href={{ publication.artifacts['lecture.ipynb'].path }}>Lecture Notebook</a>
+                  <a href={{ publication.artifacts['lecture.ipynb'].path }}>Notebook</a>
 
                   {% if "supplement.ipynb" in publication.artifacts %}
                       |
@@ -91,8 +92,8 @@ schedule:
                   {% endif %}
 
 
-            - text: 'Reading: <a href="http://diveintods.com">Dive into Data Science</a>'
-              icon: em-book
+            - text: '<a href="http://diveintods.com">Dive into Data Science</a>'
+              title: Reading
         parts:
             key: videos
             text: '<a href="{{ part.url }}">{{ part.title }}</a>'
@@ -130,7 +131,6 @@ schedule:
               
               # homework notebooks
               - text: "<a href={{ publication.artifacts['homework.txt'].path }}>Homework Notebook</a>"
-                icon: em-question
                 requires:
                     artifacts:
                         - homework.txt
@@ -138,7 +138,6 @@ schedule:
 
               # solution notebooks
               - text: "<a href={{ publication.artifacts['solution.txt'].path }}>Solution Notebook</a>"
-                icon: em-mag
                 #
                 # do not display this resource if the following artifact doesn't exist
                 requires:
@@ -154,7 +153,6 @@ schedule:
 
             resources:
                 - text: <a href="{{ publication.artifacts['discussion.ipynb'].path }}">Discussion Notebook</a>
-                  icon: em-spiral_note_pad
                   requires:
                       artifacts:
                           - discussion.ipynb
