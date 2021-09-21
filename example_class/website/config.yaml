@@ -8,6 +8,9 @@ theme:
         - text: 📜 Syllabus
           url: ./syllabus.html
 
+        - text: 👥 People
+          url: ./people.html
+
         - text: 👨‍🏫 Office Hours
           url: ./officehours.html
 
@@ -160,3 +163,32 @@ schedule:
                   requires:
                       metadata:
                           - recording
+
+
+people:
+    - group: instructors
+      members:
+
+        - name: Justin Eldridge
+          about: I teach data science classes at UCSD.
+          website: http://eldridgejm.github.io
+          photo: static/me.png
+
+        - name: Also Justin
+          about: I also teach data science classes at UCSD.
+          website: http://eldridgejm.github.io
+          photo: static/me.png
+
+    - group: staff
+      members:
+
+        - name: Justin Eldridge
+          role: tutor
+          about: I teach data science classes at UCSD.
+          website: http://eldridgejm.github.io
+          photo: static/me.png
+
+        - name: Also Justin
+          about: I also teach data science classes at UCSD.
+          website: http://eldridgejm.github.io
+          photo: static/me.png

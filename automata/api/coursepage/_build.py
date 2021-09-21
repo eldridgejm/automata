@@ -174,13 +174,14 @@ def _render_pages(input_path, output_path, theme_path, context):
         template = fileobj.read()
 
     _Elements = collections.namedtuple(
-        "Elements", ["announcement_box", "schedule", "listing"]
+        "Elements", ["announcement_box", "schedule", "listing", "people"]
     )
 
     elements_ = _Elements(
         announcement_box=partial(elements.announcement_box, context),
         schedule=partial(elements.schedule, context),
         listing=partial(elements.listing, context),
+        people=partial(elements.people, context),
     )
 
     for input_page_abspath in input_path.iterdir():

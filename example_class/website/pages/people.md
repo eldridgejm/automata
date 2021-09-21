@@ -1,0 +1,1 @@
+{{ elements.people(config.people) }}
