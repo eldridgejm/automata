@@ -146,7 +146,7 @@ def _register_coursepage_build_parser(subparsers):
         vars = {}
         if args.vars is not None:
             with args.vars.open() as fileobj:
-                vars[args.vars.stem] = yaml.load(fileobj, Loader=yaml.Loader)
+                vars = yaml.load(fileobj, Loader=yaml.Loader)
 
         if args.now is None:
             now = datetime.datetime.now
