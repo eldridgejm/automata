@@ -15,6 +15,9 @@ def render_element_template(template_name, context, extra_vars=None):
     )
 
     def evaluate(s, **kwargs):
+        if 'context' not in kwargs:
+            kwargs['context'] = context
+
         try:
             return jinja2.Template(s, undefined=jinja2.StrictUndefined).render(**kwargs)
         except jinja2.UndefinedError as exc:
