@@ -249,4 +249,5 @@ def build(
 
     # copy static files
     shutil.copytree(input_path / "theme" / "style", output_path / "style", dirs_exist_ok=True)
-    shutil.copytree(input_path / "static", output_path / "static", dirs_exist_ok=True)
+    if (input_path / "static").exists():
+        shutil.copytree(input_path / "static", output_path / "static", dirs_exist_ok=True)
