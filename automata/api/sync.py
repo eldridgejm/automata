@@ -26,7 +26,7 @@ def git(local_directory, git_repo_url, branch, msg='automata commit'):
 
 
 def _shell_in(cwd, cmd):
-    return subprocess.run(cmd, shell=True, cwd=cwd)
+    return subprocess.run(cmd, shell=True, cwd=cwd, check=True)
 
 
 
