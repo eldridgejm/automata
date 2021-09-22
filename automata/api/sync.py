@@ -34,7 +34,7 @@ def _git(cwd, local_directory, git_repo_url, branch, msg):
     # 1. clone the repo
     _shell_in(cwd, f"git clone {git_repo_url} remote")
 
-    _shell_in(cwd / 'remote', f"git checkout {branch}")
+    _shell_in(cwd / 'remote', f"git checkout -B {branch}")
 
     # 2. remove all of the files
     print("Updating files...")
