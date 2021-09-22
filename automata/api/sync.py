@@ -25,8 +25,8 @@ def git(local_directory, git_repo_url, branch, msg='automata commit'):
         _git(wd, local_directory, git_repo_url, branch, msg)
 
 
-def _shell_in(cwd, cmd):
-    return subprocess.run(cmd, shell=True, cwd=cwd, check=True)
+def _shell_in(cwd, cmd, check=True):
+    return subprocess.run(cmd, shell=True, cwd=cwd, check=check)
 
 
 
@@ -45,7 +45,9 @@ def _git(cwd, local_directory, git_repo_url, branch, msg):
 
     # 4. add and commit
     _shell_in(cwd / 'remote', "git add .")
-    _shell_in(cwd / 'remote', f"git commit -m '{msg}'")
+
+    # don't check, because if there were no changes this will return nonzero
+    _shell_in(cwd / 'remote', f"git commit -m '{msg}'", check=False)
 
     # 5. push to remote
     _shell_in(cwd / 'remote', f"git push origin {branch}")
