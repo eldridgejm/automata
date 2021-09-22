@@ -48,4 +48,4 @@ def _git(cwd, local_directory, git_repo_url, branch, msg):
     _shell_in(cwd / 'remote', f"git commit -m '{msg}'")
 
     # 5. push to remote
-    _shell_in(cwd / 'remote', "git push origin {branch}")
+    _shell_in(cwd / 'remote', f"git push origin {branch}")
