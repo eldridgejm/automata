@@ -176,7 +176,7 @@
         {% set class = "alert-primary" %}
         {% endif %}
         <div class="alert {{ class }} schedule-announcement">
-            <p>{{ announcement_config.content | evaluate | markdown_to_html }}</p>
+            <p>{{ announcement_config.content | evaluate(context=context) | markdown_to_html }}</p>
         </div>
         {% endif %}
         {% endfor %}
