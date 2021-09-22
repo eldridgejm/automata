@@ -36,7 +36,7 @@
 body {
     font-size: 13pt;
     font-family: 'Roboto', sans-serif;
-    line-height: 1.4;
+    line-height: 1.5;
     color: #5c5962;
 }
 
@@ -145,16 +145,43 @@ ol.schedule-lecture-parts li:before {
     opacity: 0.2;
 }
 
-ul li.schedule-resource {
+/* tip for separators found at: 
+ * https://www.jankollars.com/posts/multi-line-horizontal-list-with-separators/ 
+ */
+ul.schedule-lecture-resources li.schedule-resource {
     font-size: 12pt;
     margin-left: -2.5em;
     margin-bottom: .4em;
     list-style-type: none;
 }
 
+ul.schedule-assignment-resources, ul.schedule-discussion-resources {
+    display: flex;
+    flex-wrap: wrap;
+    padding-left: 0;
+    list-style: none;
+    margin-left: -1.75ch;
+    clip-path: inset(0 0 0 1.75ch);
+    font-size: 12pt;
+}
+
+ul.schedule-assignment-resources li, ul.schedule-discussion-resources li {
+    padding-left: 0ch;
+}
+
+ul.schedule-assignment-resources li::before, ul.schedule-discussion-resources li::before {
+    content: '•';
+    display: inline-block;
+    margin-left: .5ch;
+    margin-right: .25ch;
+    width: .5ch;
+    text-align: center;
+}
+
 span.schedule-resource-title {
     color: #27262b;
     margin-right: .2em;
+    font-weight: 500;
 }
 
 div.schedule-announcement {

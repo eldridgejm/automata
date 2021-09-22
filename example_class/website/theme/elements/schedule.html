@@ -71,7 +71,7 @@
                 {{ assignment_config['title'] | evaluate(publication=assignment) }}
             </h3>
             <div class="schedule-assignment-resources">
-                <ul class="schedule-assignment-resources">
+                <ul class="schedule-assignment-resources" style="list-style: none">
                 {% for resource_config in assignment_config['resources'] %}
                     {{ display_resource(resource_config, assignment) }}
                 {% endfor %}
@@ -122,88 +122,93 @@
 {% set assignment_configs = element_config['assignments'] %}
 {% set discussion_configs = element_config['discussions'] %}
 
+<div class="schedule">
 {% for week in weeks -%}
 
-{% if this_week is not none %}
+    {% if this_week is not none %}
 
-    {% if week.number == this_week.number + 1 %}
-        <div class="schedule-separator">
-            future weeks
-        </div>
+        {% if week.number == this_week.number + 1 %}
+            <div class="schedule-separator">
+                future weeks
+            </div>
+        {% endif %}
+
+        {% if week.number == this_week.number - 1 %}
+            <div class="schedule-separator">
+                past weeks
+            </div>
+        {% endif %}
+
     {% endif %}
 
-    {% if week.number == this_week.number - 1 %}
-        <div class="schedule-separator">
-            past weeks
-        </div>
-    {% endif %}
+    {% set is_in_future = week.start_date > context.now.date() %}
 
-{% endif %}
-
-<div class="schedule">
-    <div class="schedule-week {{ 'schedule-week-future' if week.start_date > context.now.date() }}">
+    <div class="schedule-week {{ 'schedule-week-future' if is_in_future }}">
         <div class="schedule-week-title">
             <h1 class="schedule-week-title-number">
                 {% if loop.first %}
-                    This Week
+                This Week
                 {% else %}
-                    Week {{ week.number }}
+                Week {{ week.number }}
                 {% endif %}
 
                 {% set max_week = weeks | max(attribute='number') %}
                 {% if week.number == max_week.number %}
-                    <i class="em-svg em-checkered_flag" aria-role="presentation" ></i>
                 {% endif %}
             </h1>
             <h2 class="schedule-week-title-topic">{{ week.topic }}</h2>
 
             {% for exam_name, exam_date in element_config['exams'].items() %}
-                {% if week.contains(exam_date) %}
-                    <div class="badge badge-pill badge-danger">
-                        {{ exam_name }} on {{ exam_date.strftime('%A, %b %d') }}
-                    </div>
-                {% endif %}
+            {% if week.contains(exam_date) %}
+            <div class="badge badge-pill badge-danger">
+                {{ exam_name }} on {{ exam_date.strftime('%A, %b %d') }}
+            </div>
+            {% endif %}
             {% endfor %}
 
         </div>
 
         {% for announcement_config in element_config['week_announcements'] %}
-            {% if announcement_config.week == week.number %}
-                {% if announcement_config['urgent'] %}
-                    {% set class = "alert-danger" %}
-                {% else %}
-                    {% set class = "alert-primary" %}
-                {% endif %}
-                <div class="alert {{ class }} schedule-announcement">
-                    <p>{{ announcement_config.content | evaluate | markdown_to_html }}</p>
-                </div>
-            {% endif %}
+        {% if announcement_config.week == week.number %}
+        {% if announcement_config['urgent'] %}
+        {% set class = "alert-danger" %}
+        {% else %}
+        {% set class = "alert-primary" %}
+        {% endif %}
+        <div class="alert {{ class }} schedule-announcement">
+            <p>{{ announcement_config.content | evaluate | markdown_to_html }}</p>
+        </div>
+        {% endif %}
         {% endfor %}
 
+        {% if not is_in_future %}
         <div class="row">
             <div class="col-md-7">
                 {% set week_lectures = week.filter(
-                        context.materials.collections[lecture_config['collection']], 
-                        lecture_config['metadata_key_for_released']
-                    ) 
+                context.materials.collections[lecture_config['collection']], 
+                lecture_config['metadata_key_for_released']
+                ) 
                 %}
+
                 {% for key, lecture in week_lectures.publications.items() | sort(attribute='0', reverse=true) %}
-                    {{ display_lecture(lecture, lecture_config, loop.last) }}
+                {{ display_lecture(lecture, lecture_config, loop.last) }}
                 {% endfor %}
 
             </div>
             <div class="col-md-5">
                 <div class="list-group">
                     {% for assignment_config in assignment_configs %}
-                        {{ display_assignment(context.materials, week, assignment_config) }}
+                    {{ display_assignment(context.materials, week, assignment_config) }}
                     {% endfor %}
 
                     {% for discussion_config in discussion_configs %}
-                        {{ display_discussion(context.materials, week, discussion_config) }}
+                    {{ display_discussion(context.materials, week, discussion_config) }}
                     {% endfor %}
                 </div>
             </div>
         </div>
+        {% endif %}
+
     </div>
 
 {% endfor %}
