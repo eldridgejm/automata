@@ -12,6 +12,10 @@ def render_element_template(template_name, context, extra_vars=None):
     element_environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader(context.theme_path / "elements"),
         undefined=jinja2.StrictUndefined,
+        variable_start_string='${',
+        variable_end_string='}',
+        block_start_string='{%',
+        block_end_string='%}',
     )
 
     def evaluate(s, **kwargs):
@@ -19,7 +23,12 @@ def render_element_template(template_name, context, extra_vars=None):
             kwargs['context'] = context
 
         try:
-            return jinja2.Template(s, undefined=jinja2.StrictUndefined).render(**kwargs)
+            return jinja2.Template(s, undefined=jinja2.StrictUndefined,
+                variable_start_string='$(',
+                variable_end_string=')',
+                block_start_string='(%',
+                block_end_string='%)'
+                    ).render(**kwargs)
         except jinja2.UndefinedError as exc:
             raise exceptions.ElementError(
                 f'Unknown variable in template string "{s}": {exc}'

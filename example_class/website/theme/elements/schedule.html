@@ -15,13 +15,13 @@
     <li class="schedule-resource">
         {% if resource_config['title'] is not none %}
             <span class="schedule-resource-title">
-                {{ resource_config['title'] | evaluate(publication=publication) }}
+                ${ resource_config['title'] | evaluate(publication=publication) }
             </span>
         {% endif %}
         {% if is_missing %}
-            {{ text_if_missing }}
+            ${ text_if_missing }
         {% else %}
-            {{ resource_config.text | evaluate(publication=publication) }}
+            ${ resource_config.text | evaluate(publication=publication) }
         {% endif %}
     </li>
     {% endif %}
@@ -30,14 +30,14 @@
 
 
 {% macro display_lecture(lecture, lecture_config, last) %}
-    <div class="schedule-lecture {{ 'last' if last -}}">
+    <div class="schedule-lecture ${ 'last' if last -}">
         <h3 class="schedule-week-component-title">
-            {{ lecture_config['title'] | evaluate(publication=lecture) }}
+            ${ lecture_config['title'] | evaluate(publication=lecture) }
         </h3>
         <div class="schedule-lecture-resources">
             <ul class="schedule-lecture-resources">
             {% for resource_config in lecture_config['resources'] %}
-                {{ display_resource(resource_config, lecture) }}
+                ${ display_resource(resource_config, lecture) }
             {% endfor %}
             </ul>
         </div>
@@ -47,7 +47,7 @@
                 <ol class="schedule-lecture-parts">
                 {% for part in lecture.metadata[lecture_config['parts']['key']] %}
                     <li>
-                        {{ lecture_config['parts']['text'] | evaluate(part=part) }}
+                        ${ lecture_config['parts']['text'] | evaluate(part=part) }
                     </li>
                 {% endfor %}
                 </ol>
@@ -68,23 +68,23 @@
     {% for key, assignment in week_assignments.publications.items() | sort(attribute='0') %}
         <div class="list-group-item">
             <h3 class="schedule-week-component-title">
-                {{ assignment_config['title'] | evaluate(publication=assignment) }}
+                ${ assignment_config['title'] | evaluate(publication=assignment) }
             </h3>
             <div class="schedule-assignment-resources">
                 <ul class="schedule-assignment-resources" style="list-style: none">
                 {% for resource_config in assignment_config['resources'] %}
-                    {{ display_resource(resource_config, assignment) }}
+                    ${ display_resource(resource_config, assignment) }
                 {% endfor %}
                 </ul>
             </div>
             {% set due_time = assignment.metadata[assignment_config['metadata_key_for_due']] %}
-            <div class="badge badge-pill {{ 'badge-danger' if context.now < due_time else 'badge-light' }}">
+            <div class="badge badge-pill ${ 'badge-danger' if context.now < due_time else 'badge-light' }">
                 {% if context.now > due_time %}
                     Was due
                 {% else %}
                     Due
                 {% endif %}
-                {{ due_time.strftime('%A, %b %d at %H:%M %p') }}
+                ${ due_time.strftime('%A, %b %d at %H:%M %p') }
             </div>
         </div>
     {% endfor %}
@@ -103,12 +103,12 @@
     {% for key, discussion in week_discussions.publications.items() | sort(attribute='0') %}
         <div class="list-group-item">
             <h3 class="schedule-week-component-title">
-                {{ discussion_config['title'] | evaluate(publication=discussion) }}
+                ${ discussion_config['title'] | evaluate(publication=discussion) }
             </h3>
             <div class="schedule-discussion-resources">
                 <ul class="schedule-discussion-resources">
                 {% for resource_config in discussion_config['resources'] %}
-                    {{ display_resource(resource_config, discussion) }}
+                    ${ display_resource(resource_config, discussion) }
                 {% endfor %}
                 </ul>
             </div>
@@ -143,25 +143,25 @@
 
     {% set is_in_future = week.start_date > context.now.date() %}
 
-    <div class="schedule-week {{ 'schedule-week-future' if is_in_future }}">
+    <div class="schedule-week ${ 'schedule-week-future' if is_in_future }">
         <div class="schedule-week-title">
             <h1 class="schedule-week-title-number">
                 {% if loop.first %}
                 This Week
                 {% else %}
-                Week {{ week.number }}
+                Week ${ week.number }
                 {% endif %}
 
                 {% set max_week = weeks | max(attribute='number') %}
                 {% if week.number == max_week.number %}
                 {% endif %}
             </h1>
-            <h2 class="schedule-week-title-topic">{{ week.topic }}</h2>
+            <h2 class="schedule-week-title-topic">${ week.topic }</h2>
 
             {% for exam_name, exam_date in element_config['exams'].items() %}
             {% if week.contains(exam_date) %}
             <div class="badge badge-pill badge-danger">
-                {{ exam_name }} on {{ exam_date.strftime('%A, %b %d') }}
+                ${ exam_name } on ${ exam_date.strftime('%A, %b %d') }
             </div>
             {% endif %}
             {% endfor %}
@@ -175,8 +175,8 @@
         {% else %}
         {% set class = "alert-primary" %}
         {% endif %}
-        <div class="alert {{ class }} schedule-announcement">
-            <p>{{ announcement_config.content | evaluate(context=context) | markdown_to_html }}</p>
+        <div class="alert ${ class } schedule-announcement">
+            <p>${ announcement_config.content | evaluate(context=context) | markdown_to_html }</p>
         </div>
         {% endif %}
         {% endfor %}
@@ -191,18 +191,18 @@
                 %}
 
                 {% for key, lecture in week_lectures.publications.items() | sort(attribute='0', reverse=true) %}
-                {{ display_lecture(lecture, lecture_config, loop.last) }}
+                ${ display_lecture(lecture, lecture_config, loop.last) }
                 {% endfor %}
 
             </div>
             <div class="col-md-5">
                 <div class="list-group">
                     {% for assignment_config in assignment_configs %}
-                    {{ display_assignment(context.materials, week, assignment_config) }}
+                    ${ display_assignment(context.materials, week, assignment_config) }
                     {% endfor %}
 
                     {% for discussion_config in discussion_configs %}
-                    {{ display_discussion(context.materials, week, discussion_config) }}
+                    ${ display_discussion(context.materials, week, discussion_config) }
                     {% endfor %}
                 </div>
             </div>

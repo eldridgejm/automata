@@ -82,7 +82,7 @@ def test_pages_have_access_to_published_artifacts(demo):
     # given
     contents = dedent(
         """
-        {{ materials.collections.homeworks.publications["01-intro"].artifacts["homework.pdf"].path }}
+        ${ materials.collections.homeworks.publications["01-intro"].artifacts["homework.pdf"].path }
         """
     )
     demo.make_page("one.md", contents)
@@ -99,7 +99,7 @@ def test_pages_have_access_to_published_artifacts(demo):
 
 def test_pages_have_access_to_elements(demo):
     # given
-    demo.make_page("one.md", "{{ elements.announcement_box(config['announcement']) }}")
+    demo.make_page("one.md", "${ elements.announcement_box(config['announcement']) }")
     config = dedent(
         """
         announcement:
@@ -129,7 +129,7 @@ def test_pages_are_rendered_in_base_template(demo):
 
 def test_raises_if_an_unknown_variable_is_accessed_during_page_render(demo):
     # given
-    demo.make_page("one.md", "{{ foo }}")
+    demo.make_page("one.md", "${ foo }")
 
     # when
     with raises(automata.api.coursepage.PageError) as excinfo:
@@ -140,7 +140,7 @@ def test_raises_if_an_unknown_variable_is_accessed_during_page_render(demo):
 
 def test_raises_if_an_unknown_attribute_is_accessed_during_page_render(demo):
     # given
-    demo.make_page("one.md", "{{ config.this_dont_exist }}")
+    demo.make_page("one.md", "${ config.this_dont_exist }")
 
     # when
     with raises(automata.api.coursepage.PageError) as excinfo:
@@ -161,7 +161,7 @@ def test_raises_if_an_unknown_attribute_is_accessed_during_element_render(demo):
         """
         )
     )
-    demo.make_page("one.md", "{{ elements.announcement_box(config['announcement']) }}")
+    demo.make_page("one.md", "${ elements.announcement_box(config['announcement']) }")
 
     # when
     with raises(Exception) as excinfo:
@@ -170,7 +170,7 @@ def test_raises_if_an_unknown_attribute_is_accessed_during_element_render(demo):
 
 def test_accepts_vars(demo):
     # given
-    demo.make_page("test.md", "{{ vars.foo }}")
+    demo.make_page("test.md", "${ vars.foo }")
 
     # when
     automata.api.coursepage.build(demo.path, demo.builddir, vars={"foo": "barbaz"})
@@ -189,7 +189,7 @@ def test_vars_available_in_config_file(demo):
                 """
         )
     )
-    demo.make_page("one.md", "{{ elements.announcement_box(config['announcement']) }}")
+    demo.make_page("one.md", "${ elements.announcement_box(config['announcement']) }")
 
     # when
     automata.api.coursepage.build(

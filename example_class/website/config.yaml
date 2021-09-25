@@ -80,26 +80,26 @@ schedule:
         metadata_key_for_released: date
 
         # what should be displayed as the lecture's title? template string.
-        title: "Lecture {{ publication.metadata.number }} &ndash; {{ publication.metadata.topic }}"
+        title: "Lecture $( publication.metadata.number ) &ndash; $( publication.metadata.topic )"
 
         # what resources are available for each lecture?
         resources:
             -
               title: Lecture Materials
               text: |
-                  <a href={{ publication.artifacts['lecture.ipynb'].path }}>Notebook</a>
+                  <a href=$( publication.artifacts['lecture.ipynb'].path )>Notebook</a>
 
-                  {% if "supplement.ipynb" in publication.artifacts %}
+                  (% if "supplement.ipynb" in publication.artifacts %)
                       |
-                      <a href={{ publication.artifacts['supplement.ipynb'].path }}>Supplementary Notebook</a>
-                  {% endif %}
+                      <a href=$( publication.artifacts['supplement.ipynb'].path )>Supplementary Notebook</a>
+                  (% endif %)
 
 
             - text: '<a href="http://diveintods.com">Dive into Data Science</a>'
               title: Reading
         parts:
             key: videos
-            text: '<a href="{{ part.url }}">{{ part.title }}</a>'
+            text: '<a href="$( part.url )">$( part.title )</a>'
 
     assignments:
 
@@ -127,20 +127,20 @@ schedule:
           metadata_key_for_due: due
 
           # what should be displayed as the assignment's title? template string.
-          title: "Homework {{ publication.metadata.number }}"
+          title: "Homework $( publication.metadata.number )"
 
           # what resources are available for each assignment?
           resources:
               
               # homework notebooks
-              - text: "<a href={{ publication.artifacts['homework.txt'].path }}>Homework Notebook</a>"
+              - text: "<a href=$( publication.artifacts['homework.txt'].path )>Homework Notebook</a>"
                 requires:
                     artifacts:
                         - homework.txt
                     text_if_missing: Not released yet...
 
               # solution notebooks
-              - text: "<a href={{ publication.artifacts['solution.txt'].path }}>Solution Notebook</a>"
+              - text: "<a href=$( publication.artifacts['solution.txt'].path )>Solution Notebook</a>"
                 #
                 # do not display this resource if the following artifact doesn't exist
                 requires:
@@ -152,10 +152,10 @@ schedule:
         -
             collection: discussions
             metadata_key_for_released: date
-            title: 'Discussion {{ publication.metadata.number }}'
+            title: 'Discussion $( publication.metadata.number )'
 
             resources:
-                - text: <a href="{{ publication.artifacts['discussion.ipynb'].path }}">Discussion Notebook</a>
+                - text: <a href="$( publication.artifacts['discussion.ipynb'].path )">Discussion Notebook</a>
                   requires:
                       artifacts:
                           - discussion.ipynb

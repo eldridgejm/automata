@@ -50,7 +50,7 @@ def test_resolves(write_file):
                 required_artifacts:
                     - homework
                     - solution
-                    - ${self.publication_schema.optional_artifacts.0}
+                    - ${this.publication_schema.optional_artifacts.0}
 
                 optional_artifacts:
                     - ${vars.external.optional}

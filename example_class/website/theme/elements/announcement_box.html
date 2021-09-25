@@ -6,6 +6,6 @@
 
 {% if element_config['content'] is not none %}
 <div class="jumbotron">
-    <p class="lead">{{ element_config['content'] | evaluate | markdown_to_html }}</p>
+    <p class="lead">${ element_config['content'] | evaluate | markdown_to_html }</p>
 </div>
 {% endif %}

@@ -5,9 +5,9 @@
     {% endif %}
 
     {% if is_missing %}
-        {{ column['requires']['cell_content_if_missing'] | evaluate(publication=publication) }}
+        ${ column['requires']['cell_content_if_missing'] | evaluate(publication=publication) }
     {% else %}
-        {{ column['cell_content'] | evaluate(publication=publication) }}
+        { column['cell_content'] | evaluate(publication=publication) }
     {% endif %}
 {% endmacro %}
 
@@ -19,7 +19,7 @@
                 <th scope="col">#</th>
             {% endif %}
             {% for column in element_config['columns'] %}
-            <th scope="col">{{ column['heading'] }}</th>
+            <th scope="col">${ column['heading'] }</th>
             {% endfor %}
             </tr>
         </thead>
@@ -28,11 +28,11 @@
             {% for publication in publications %}
             <tr>
                 {% if element_config['numbered'] %}
-                <th scope="row"> {{ loop.index }}</th>
+                <th scope="row"> ${ loop.index }</th>
                 {% endif %}
                 {% for column in element_config['columns'] %}
                 <td>
-                    {{ display_cell(publication, column) }}
+                    ${ display_cell(publication, column) }
                 </td>
                 {% endfor %}
             </tr>

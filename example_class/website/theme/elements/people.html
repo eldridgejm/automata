@@ -1,25 +1,25 @@
 <div>
 {% for group in element_config %}
-<h2>{{ group.group.capitalize() }}</h2>
+<h2>${ group.group.capitalize() }</h2>
     {% for person in group.members -%}
     <div class="row py-4">
         <div class="col-3 align-top">
-            <img src="{{ person.photo }}" style="clip-path: circle(); width: 100%">
+            <img src="${ person.photo }" style="clip-path: circle(); width: 100%">
         </div>
         <div class="col-9">
             <h4 style="padding-top: 0; margin-top: 0">
                 {% if 'website' in person %}
-                    <a href="{{ person.website }}">{{ person.name }}</a>
+                    <a href="${ person.website }">${ person.name }</a>
                 {% else %}
-                    {{ person.name }}
+                    ${ person.name }
                 {% endif %}
             </h4>
             {% if 'role' in person %}
-            <p><b>{{ person.role.capitalize() }}</b></p>
+            <p><b>${ person.role.capitalize() }</b></p>
             {% endif %}
 
             {% if 'about' in person %}
-            <p>{{ person.about }}</p>
+            <p>${ person.about }</p>
             {% endif %}
 
         </div>

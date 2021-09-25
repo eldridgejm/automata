@@ -1,1 +1,1 @@
-{{ elements.schedule(config['schedule']) }}
+${ elements.schedule(config['schedule']) }

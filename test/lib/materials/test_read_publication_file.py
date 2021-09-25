@@ -51,7 +51,7 @@ def test_raises_if_required_artifact_is_not_provided(write_file):
             metadata:
                 name: Homework 01
                 due: 2020-09-10
-                released: ${ self.metadata.due }
+                released: ${ this.metadata.due }
 
             artifacts:
                 homework:
@@ -88,7 +88,7 @@ def test_raises_if_extra_artifact_provided_without_allow_unspecified(
             metadata:
                 name: Homework 01
                 due: 2020-09-10
-                released: ${ self.metadata.due }
+                released: ${ this.metadata.due }
 
             artifacts:
                 homework:
@@ -127,7 +127,7 @@ def test_allows_extra_artifact_when_allow_unspecified_given(
             metadata:
                 name: Homework 01
                 due: 2020-09-10
-                released: ${ self.metadata.due }
+                released: ${ this.metadata.due }
 
             artifacts:
                 homework:
@@ -175,7 +175,7 @@ def test_with_relative_release_time(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: ${self.metadata.due}
+                    release_time: ${this.metadata.due}
             """
         ),
     )
@@ -235,7 +235,7 @@ def test_with_relative_release_time_after(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 1 day after ${self.metadata.due}
+                    release_time: 1 day after ${this.metadata.due}
             """
         ),
     )
@@ -266,7 +266,7 @@ def test_with_relative_release_time_after_hours(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 hours after ${self.metadata.due}
+                    release_time: 3 hours after ${this.metadata.due}
             """
         ),
     )
@@ -297,7 +297,7 @@ def test_with_relative_release_time_after_large(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 11 days after ${self.metadata.due}
+                    release_time: 11 days after ${this.metadata.due}
             """
         ),
     )
@@ -328,7 +328,7 @@ def test_with_relative_release_time_after_large_hours(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 1000 hours after ${self.metadata.due}
+                    release_time: 1000 hours after ${this.metadata.due}
             """
         ),
     )
@@ -359,7 +359,7 @@ def test_with_relative_release_date_before(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 days before ${self.metadata.due}
+                    release_time: 3 days before ${this.metadata.due}
             """
         ),
     )
@@ -390,7 +390,7 @@ def test_with_relative_release_date_before_hours(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 hours before ${self.metadata.due}
+                    release_time: 3 hours before ${this.metadata.due}
             """
         ),
     )
@@ -421,7 +421,7 @@ def test_with_relative_release_time_multiple_days(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 days after ${self.metadata.due}
+                    release_time: 3 days after ${this.metadata.due}
             """
         ),
     )
@@ -452,7 +452,7 @@ def test_with_invalid_relative_date_raises(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: -1 days after ${self.metadata.due}
+                    release_time: -1 days after ${this.metadata.due}
             """
         ),
     )
@@ -482,7 +482,7 @@ def test_with_invalid_relative_date_variable_reference_raises(
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 1 days after ${self.metadata.foo}
+                    release_time: 1 days after ${this.metadata.foo}
             """
         ),
     )
@@ -536,7 +536,7 @@ def test_with_relative_dates_in_metadata(write_file):
             metadata:
                 name: Homework 01
                 due: 2020-09-10 23:59:00
-                released: 7 days before ${self.metadata.due}
+                released: 7 days before ${this.metadata.due}
 
             artifacts:
                 homework:
@@ -580,7 +580,7 @@ def test_with_relative_dates_in_metadata_without_offset(write_file):
             metadata:
                 name: Homework 01
                 due: 2020-09-10
-                released: ${ self.metadata.due }
+                released: ${ this.metadata.due }
 
             artifacts:
                 homework:

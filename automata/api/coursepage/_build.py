@@ -157,7 +157,9 @@ def _find_input_pages(input_path):
 
 
 def _interpolate(contents, variables, path=None):
-    template = jinja2.Template(contents, undefined=jinja2.StrictUndefined)
+    template = jinja2.Template(contents, undefined=jinja2.StrictUndefined,
+            variable_start_string="${", variable_end_string="}",
+            block_start_string="{%", block_end_string="%}")
     try:
         return template.render(**variables)
     except jinja2.UndefinedError as exc:

@@ -1,12 +1,12 @@
 All Homeworks
 =============
 
-{{ elements.listing(config['listings']['homework']) }}
+${ elements.listing(config['listings']['homework']) }
 
 All Lecture Notebooks
 =====================
 
-{{ elements.listing(config['listings']['lecture_notebooks']) }}
+${ elements.listing(config['listings']['lecture_notebooks']) }
 
 Exam Solutions
 ==============

@@ -1,1 +1,1 @@
-{{ elements.people(config.people) }}
+${ elements.people(config.people) }
