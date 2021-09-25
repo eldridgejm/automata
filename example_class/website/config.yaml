@@ -2,28 +2,28 @@ theme:
     short_title: "DSC 80"
     long_title: "Practice of Data Science"
     navigation:
-        - text: 🗓️ Schedule
+        - text: Schedule
           url: ./index.html
 
-        - text: 📜 Syllabus
+        - text: Syllabus
           url: ./syllabus.html
 
-        - text: 👥 People
+        - text: People
           url: ./people.html
 
-        - text: 👨‍🏫 Office Hours
+        - text: Office Hours
           url: ./officehours.html
 
-        - text: 📚 All Materials
+        - text: All Materials
           url: ./resources.html
 
-        - text: 💬 Campuswire
+        - text: Campuswire
           url: campuswire.com
 
-        - text: 💯 Gradescope
+        - text: Gradescope
           url: gradescope.com
 
-        - text: 📖 Textbook
+        - text: Textbook
           url: https://afraenkel.github.io/practical-data-science/introduction
 
 listings: !include listings.yaml

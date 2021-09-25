@@ -4,5 +4,5 @@ metadata:
 
 artifacts:
     project.ipynb:
-        release_time: 2 days after ${self.metadata.released}
+        release_time: 2 days after ${this.metadata.released}
         recipe: touch project.ipynb

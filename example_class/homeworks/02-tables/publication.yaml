@@ -12,8 +12,8 @@ metadata:
 artifacts:
     homework.txt:
         recipe: touch "homework.txt"
-        release_time: ${self.metadata.released}
+        release_time: ${this.metadata.released}
 
     solution.txt:
         recipe: touch "solution.txt"
-        release_time: 1 day after ${self.metadata.due}
+        release_time: 1 day after ${this.metadata.due}

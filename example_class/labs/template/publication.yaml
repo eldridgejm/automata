@@ -15,4 +15,4 @@ artifacts:
 
     solution.txt:
         recipe: touch "solution.txt"
-        release_time: 1 day after ${self.metadata.due}
+        release_time: 1 day after ${this.metadata.due}
