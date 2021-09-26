@@ -6,7 +6,7 @@ from ...lib.materials import constants
 
 def resolve(path, vars=None):
     """Return a resolved dictionary from a publication.yaml or collection.yaml file."""
-    path = pathlib.Path(path)
+    path = pathlib.Path(path).absolute()
 
     if vars is None:
         vars = {}
