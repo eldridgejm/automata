@@ -6,7 +6,7 @@ from ...lib.materials import constants
 
 def resolve(path, vars=None):
     """Return a resolved dictionary from a publication.yaml or collection.yaml file."""
-    path = pathlib.Path(path).absolute()
+    path = pathlib.Path(path).resolve()
 
     if vars is None:
         vars = {}
@@ -58,7 +58,8 @@ def _find_parent_collection_root(dir_path):
 
 def _find_previous(this_publication_path, collection_root):
     all_publications = sorted(pathlib.Path(collection_root).glob('**/publication.yaml'))
-    index = all_publications.index(this_publication_path.absolute())
+    all_publications = [p.resolve() for p in all_publications]
+    index = all_publications.index(this_publication_path.resolve())
     if index == 0:
         return None
     else:
