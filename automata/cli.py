@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import json
 import pathlib
 import sys
 
@@ -8,6 +9,7 @@ import yaml
 import automata.api.materials
 import automata.api.coursepage
 import automata.api.sync
+import automata.lib.materials
 
 from automata import util
 
@@ -64,6 +66,7 @@ def _register_materials_parser(subparsers):
     subparsers = parser.add_subparsers()
 
     _register_materials_publish_parser(subparsers)
+    _register_materials_resolve_parser(subparsers)
 
 
 def _register_materials_publish_parser(subparsers):
@@ -120,6 +123,38 @@ def _register_materials_publish_parser(subparsers):
         type=pathlib.Path,
         default=None,
         help="A yaml file whose contents will be available in discovery as template variables.",
+    )
+
+
+def _register_materials_resolve_parser(subparsers):
+    parser = subparsers.add_parser("resolve")
+
+    def cmd(args):
+        if args.vars is not None:
+            args.vars = util.load_yaml(args.vars)
+
+        dct = automata.api.materials.resolve(
+            args.path,
+            vars=args.vars,
+        )
+
+        if args.format == 'json':
+            automata.lib.materials.serialize(dct)
+
+    parser.set_defaults(cmd=cmd)
+    parser.add_argument("path", type=pathlib.Path)
+    parser.add_argument(
+        "--vars",
+        type=pathlib.Path,
+        default=None,
+        help="A yaml file whose contents will be available in discovery as template variables.",
+    )
+    parser.add_argument(
+        "--format",
+        type=str,
+        choices=['json', 'yaml'],
+        default='json',
+        help="The output format.",
     )
 
 
