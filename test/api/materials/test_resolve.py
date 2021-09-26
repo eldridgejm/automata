@@ -54,4 +54,4 @@ def test_resolve_takes_a_path_and_returns_a_resolved_dictionary(publish_on_oct_1
     resolved = api.materials.resolve(publish_on_oct_16 / 'homeworks' / '02-tables' / 'publication.yaml')
 
     # then
-    resolved['artifacts']['homework.txt']['release_time'] == datetime.datetime(2020, 10, 7, 23, 59, 0)
+    resolved.artifacts['homework.txt'].release_time == datetime.datetime(2020, 10, 7, 23, 59, 0)

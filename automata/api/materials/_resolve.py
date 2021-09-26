@@ -12,9 +12,9 @@ def resolve(path, vars=None):
         vars = {}
 
     if path.name == 'collection.yaml':
-        return _resolve_collection_file(path, vars)._deep_asdict()
+        return _resolve_collection_file(path, vars)
     elif path.name == 'publication.yaml':
-        return _resolve_publication_file(path, vars)._deep_asdict()
+        return _resolve_publication_file(path, vars)
     else:
         raise ValueError('The path is not to a collection.yaml or publication.yaml')
 

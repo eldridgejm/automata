@@ -11,3 +11,5 @@ publication_schema:
                 type: datetime
             number:
                 type: integer
+        optional_keys:
+            human_due: string

@@ -9,6 +9,8 @@ metadata:
     # particular week
     released: 2020-10-7 23:59:00
 
+    human_due: ${ this.metadata.due.strftime('%A, %B %d') }
+
 artifacts:
     homework.txt:
         recipe: touch "homework.txt"

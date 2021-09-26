@@ -133,13 +133,15 @@ def _register_materials_resolve_parser(subparsers):
         if args.vars is not None:
             args.vars = util.load_yaml(args.vars)
 
-        dct = automata.api.materials.resolve(
+        node = automata.api.materials.resolve(
             args.path,
             vars=args.vars,
         )
 
         if args.format == 'json':
-            automata.lib.materials.serialize(dct)
+            print(automata.lib.materials.serialize(node))
+        elif args.format == 'yaml':
+            print(yaml.dump(dct._deep_asdict(), Dumper=yaml.Dumper))
 
     parser.set_defaults(cmd=cmd)
     parser.add_argument("path", type=pathlib.Path)
