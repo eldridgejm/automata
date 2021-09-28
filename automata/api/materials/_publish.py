@@ -16,6 +16,7 @@ def publish(
     input_directory,
     output_directory,
     ignore_release_time=False,
+    ignore_ready=False,
     artifact_filter=None,
     vars=None,
     skip_directories=None,
@@ -158,6 +159,7 @@ def publish(
         discovered,
         callbacks=CLIBuildCallbacks(),
         ignore_release_time=ignore_release_time,
+        ignore_ready=ignore_ready,
         verbose=verbose,
         now=now,
     )

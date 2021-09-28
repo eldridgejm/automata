@@ -38,6 +38,7 @@ def _build_artifact(
     artifact,
     *,
     ignore_release_time=False,
+    ignore_ready=False,
     now=datetime.datetime.now,
     verbose=False,
     run=subprocess.run,
@@ -52,6 +53,9 @@ def _build_artifact(
         The artifact to build.
     ignore_release_time : bool
         If True, the release time of the artifact will be ignored, and it will
+        be built anyways. Default: False.
+    ignore_ready : bool
+        If True, the readiness of an artifact will be ignored, and it will
         be built anyways. Default: False.
 
     Returns
@@ -72,7 +76,7 @@ def _build_artifact(
         callbacks.on_too_soon(artifact)
         return None
 
-    if not artifact.ready:
+    if not artifact.ready and not ignore_ready:
         callbacks.on_not_ready(artifact)
         return None
 
@@ -119,6 +123,7 @@ def build(
     parent: typing.Union[Universe, Collection, Publication, UnbuiltArtifact],
     *,
     ignore_release_time=False,
+    ignore_ready=False,
     verbose=False,
     now=datetime.datetime.now,
     run=subprocess.run,
@@ -136,6 +141,9 @@ def build(
     ignore_release_time : bool
         If ``True``, all artifacts will be built, even if their release time
         has not yet passed.
+    ignore_ready : bool
+        If ``True``, all artifacts will be built, even if they are marked as
+        not ready.
     callbacks : Optional[BuildCallbacks]
         Callbacks to be invoked during the build. If omitted, no callbacks
         are executed. See :class:`BuildCallbacks` for the possible callbacks
@@ -163,6 +171,7 @@ def build(
 
     kwargs = dict(
         ignore_release_time=ignore_release_time,
+        ignore_ready=ignore_ready,
         now=now,
         run=run,
         verbose=verbose,
