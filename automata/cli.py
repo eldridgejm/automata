@@ -80,6 +80,7 @@ def _register_materials_publish_parser(subparsers):
             args.input_directory,
             args.output_directory,
             ignore_release_time=args.ignore_release_time,
+            ignore_ready=args.ignore_ready,
             artifact_filter=args.artifact_filter,
             vars=args.vars,
             skip_directories=args.skip_directories,
@@ -101,7 +102,12 @@ def _register_materials_publish_parser(subparsers):
     parser.add_argument(
         "--ignore-release-time",
         action="store_true",
-        help="if provided, all artifacts will be built and published regardless of release time",
+        help="if provided, artifacts whose release time is in the future will still be built and published",
+    )
+    parser.add_argument(
+        "--ignore-ready",
+        action="store_true",
+        help="if provided, artifacts marked as unready will still be built and published",
     )
     parser.add_argument(
         "--artifact-filter",
