@@ -15,6 +15,7 @@ RESOURCES_SCHEMA = {
         },
         "optional_keys": {
             "title": {"type": "string", "nullable": True, "default": None},
+            "key_for_parts": {"type": "string"},
             "requires": {
                 "type": "dict",
                 "optional_keys": {
@@ -60,13 +61,6 @@ SCHEMA = {
                 "resources": RESOURCES_SCHEMA,
             },
             "optional_keys": {
-                "parts": {
-                    "type": "dict",
-                    "required_keys": {
-                        "key": {"type": "string"},
-                        "text": {"type": "string"},
-                    },
-                },
             },
         },
         "assignments": {

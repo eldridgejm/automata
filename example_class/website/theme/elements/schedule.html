@@ -21,7 +21,21 @@
         {% if is_missing %}
             ${ text_if_missing }
         {% else %}
-            ${ resource_config.text | evaluate(publication=publication) }
+            {% if 'key_for_parts' in resource_config %}
+                <div class="schedule-resource-parts">
+                    <ol class="schedule-resource-parts">
+                    {% set parts = publication | get_dotted_attr(resource_config['key_for_parts']) %}
+                    {% for part in parts %}
+                        <li>
+                            ${ resource_config.text | evaluate(part=part, publication=publication) }
+                        </li>
+                    {% endfor %}
+                    </ol>
+                </div>
+            {% else %}
+                ${ resource_config.text | evaluate(publication=publication) }
+            {% endif %}
+
         {% endif %}
     </li>
     {% endif %}
@@ -41,18 +55,6 @@
             {% endfor %}
             </ul>
         </div>
-
-        {% if 'parts' in lecture_config %}
-            <div class="schedule-lecture-parts">
-                <ol class="schedule-lecture-parts">
-                {% for part in lecture.metadata[lecture_config['parts']['key']] %}
-                    <li>
-                        ${ lecture_config['parts']['text'] | evaluate(part=part) }
-                    </li>
-                {% endfor %}
-                </ol>
-            </div>
-        {% endif %}
     </div>
 {% endmacro %}
 

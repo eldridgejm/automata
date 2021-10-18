@@ -97,9 +97,10 @@ schedule:
 
             - text: '<a href="http://diveintods.com">Dive into Data Science</a>'
               title: Reading
-        parts:
-            key: videos
-            text: '<a href="$( part.url )">$( part.title )</a>'
+
+            - key_for_parts: metadata.videos
+              title: Videos
+              text: '<a href="$( part.url )">$( part.title )</a>'
 
     assignments:
 

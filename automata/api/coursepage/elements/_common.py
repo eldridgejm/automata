@@ -34,11 +34,24 @@ def render_element_template(template_name, context, extra_vars=None):
                 f'Unknown variable in template string "{s}": {exc}'
             )
 
+    def get_dotted_attr(obj, path):
+        parts = list(reversed(path.split('.')))
+
+        while parts:
+            part = parts.pop()
+            try:
+                obj = obj[part]
+            except TypeError:
+                obj = getattr(obj, part)
+
+        return obj
+
     def markdown_to_html(s):
         return markdown.markdown(s)
 
     element_environment.filters["evaluate"] = evaluate
     element_environment.filters["markdown_to_html"] = markdown_to_html
+    element_environment.filters["get_dotted_attr"] = get_dotted_attr
 
     template = element_environment.get_template(template_name)
     return template.render(context=context, **extra_vars)
