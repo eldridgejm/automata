@@ -183,7 +183,7 @@ def _register_materials_status_parser(subparsers):
             args.vars = util.load_yaml(args.vars)
 
         automata.api.materials.status(
-                vars=vars,
+                vars=args.vars,
                 skip_directories=args.skip_directories
         )
 
