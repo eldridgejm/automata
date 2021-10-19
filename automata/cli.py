@@ -67,6 +67,7 @@ def _register_materials_parser(subparsers):
 
     _register_materials_publish_parser(subparsers)
     _register_materials_resolve_parser(subparsers)
+    _register_materials_status_parser(subparsers)
 
 
 def _register_materials_publish_parser(subparsers):
@@ -164,6 +165,24 @@ def _register_materials_resolve_parser(subparsers):
         default='json',
         help="The output format.",
     )
+
+
+def _register_materials_status_parser(subparsers):
+    parser = subparsers.add_parser("status")
+
+    parser.add_argument(
+        "--skip-directories",
+        type=str,
+        nargs="+",
+        help="directories that will be ignored during discovery",
+    )
+
+    def cmd(args):
+        automata.api.materials.status(
+                skip_directories=args.skip_directories
+        )
+
+    parser.set_defaults(cmd=cmd)
 
 
 def _register_coursepage_parser(subparsers):
