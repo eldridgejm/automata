@@ -37,7 +37,7 @@ def _print_artifact(a, cwd):
     print(artifact_path, a.artifact.release_time)
 
 
-def status(skip_directories=None, now=None):
+def status(skip_directories=None, now=None, vars=None):
     if now is None:
         now = datetime.datetime.now()
 
@@ -51,7 +51,7 @@ def status(skip_directories=None, now=None):
         return not a.artifact.ready and (a.artifact.release_time is not None and a.artifact.release_time <= now)
 
     cwd = pathlib.Path.cwd()
-    universe = materials.discover(cwd, skip_directories=skip_directories)
+    universe = materials.discover(cwd, skip_directories=skip_directories, vars=vars)
 
     artifacts = list(_all_artifacts(universe))
 

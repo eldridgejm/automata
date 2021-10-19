@@ -176,9 +176,14 @@ def _register_materials_status_parser(subparsers):
         nargs="+",
         help="directories that will be ignored during discovery",
     )
+    parser.add_argument("--vars", type=pathlib.Path)
 
     def cmd(args):
+        if args.vars is not None:
+            args.vars = util.load_yaml(args.vars)
+
         automata.api.materials.status(
+                vars=vars,
                 skip_directories=args.skip_directories
         )
 
