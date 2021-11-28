@@ -1,7 +1,7 @@
 import json
 import datetime
 
-from .types import Artifact, Publication, Collection, Universe
+from .types import UnbuiltArtifact, BuiltArtifact, PublishedArtifact, Publication, Collection, Universe
 
 
 # serialization
@@ -26,7 +26,7 @@ def serialize(node):
     def converter(o):
         return str(o)
 
-    if isinstance(node, Artifact):
+    if isinstance(node, (UnbuiltArtifact, BuiltArtifact, PublishedArtifact)):
         dct = node._asdict()
     else:
         dct = node._deep_asdict()

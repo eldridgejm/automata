@@ -2,16 +2,14 @@ import typing
 import pathlib
 import datetime
 
+from typing import Optional, Mapping
+
 
 # types
 # --------------------------------------------------------------------------------------
 
 
-class Artifact:
-    """Base class for all artifact types."""
-
-
-class UnbuiltArtifact(Artifact, typing.NamedTuple):
+class UnbuiltArtifact(typing.NamedTuple):
     """The inputs needed to build an artifact.
 
     Attributes
@@ -34,13 +32,13 @@ class UnbuiltArtifact(Artifact, typing.NamedTuple):
 
     workdir: pathlib.Path
     path: str
-    recipe: str = None
-    release_time: datetime.datetime = None
+    recipe: Optional[str] = None
+    release_time: Optional[datetime.datetime] = None
     ready: bool = True
     missing_ok: bool = False
 
 
-class BuiltArtifact(Artifact, typing.NamedTuple):
+class BuiltArtifact(typing.NamedTuple):
     """The results of building an artifact.
 
     Attributes
@@ -60,12 +58,12 @@ class BuiltArtifact(Artifact, typing.NamedTuple):
 
     workdir: pathlib.Path
     path: str
-    returncode: int = None
-    stdout: str = None
-    stderr: str = None
+    returncode: Optional[int] = None
+    stdout: Optional[str] = None
+    stderr: Optional[str] = None
 
 
-class PublishedArtifact(Artifact, typing.NamedTuple):
+class PublishedArtifact(typing.NamedTuple):
     """A published artifact.
 
     Attributes
@@ -76,6 +74,9 @@ class PublishedArtifact(Artifact, typing.NamedTuple):
     """
 
     path: str
+
+
+Artifact = typing.Union[UnbuiltArtifact, BuiltArtifact, PublishedArtifact]
 
 
 def _artifact_from_dict(dct):
@@ -232,8 +233,8 @@ class PublicationSchema(typing.NamedTuple):
     """
 
     required_artifacts: typing.Collection[str]
-    optional_artifacts: typing.Collection[str] = None
-    metadata_schema: typing.Mapping[str, typing.Mapping] = None
+    optional_artifacts: Optional[typing.Collection[str]] = None
+    metadata_schema: Optional[typing.Mapping[str, typing.Mapping]] = None
     allow_unspecified_artifacts: bool = False
     is_ordered: bool = False
 
@@ -251,5 +252,5 @@ class DateContext(typing.NamedTuple):
 
     """
 
-    known: dict = None
+    known: Optional[Mapping[str, datetime.datetime]] = None
     start_of_week_one: typing.Optional[datetime.date] = None

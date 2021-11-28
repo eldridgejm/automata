@@ -6,7 +6,7 @@ import automata.materials.lib as materials
 
 
 _ArtifactLocation = collections.namedtuple(
-    "ArtifactLocation",
+    "_ArtifactLocation",
     [
         "artifact_key",
         "artifact",
