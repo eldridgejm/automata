@@ -4,7 +4,7 @@ from textwrap import dedent
 
 from pytest import fixture
 
-import automata.materials
+import automata.materials.lib
 
 EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent.parent / "examples"
 EXAMPLE_1_DIRECTORY = EXAMPLES_ROOT / "example_1"
@@ -57,11 +57,11 @@ def example_course(example_course_factory, tmpdir):
 
 def test_publish(example_1, outdir):
     # given
-    discovered = automata.materials.discover(example_1)
-    builts = automata.materials.build(discovered)
+    discovered = automata.materials.lib.discover(example_1)
+    builts = automata.materials.lib.build(discovered)
 
     # when
-    published = automata.materials.publish(builts, outdir)
+    published = automata.materials.lib.publish(builts, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -75,12 +75,12 @@ def test_publish(example_1, outdir):
 
 def test_artifact_not_copied_if_not_released(example_1, outdir):
     # given
-    discovered = automata.materials.discover(example_1)
-    built = automata.materials.build(discovered)
+    discovered = automata.materials.lib.discover(example_1)
+    built = automata.materials.lib.build(discovered)
     publication = built.collections["homeworks"].publications["02-python"]
 
     # when
-    published = automata.materials.publish(built, outdir)
+    published = automata.materials.lib.publish(built, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -120,9 +120,9 @@ def test_capable_of_publishing_entire_directories(example_course, outdir):
     example_course.create_collection('homeworks', collection_yaml)
     example_course.create_publication('homeworks', '01-testing', publication_yaml)
 
-    discovered = automata.materials.discover(example_course.path)
-    built = automata.materials.build(discovered)
-    published = automata.materials.publish(built, outdir)
+    discovered = automata.materials.lib.discover(example_course.path)
+    built = automata.materials.lib.build(discovered)
+    published = automata.materials.lib.publish(built, outdir)
 
     assert (outdir / 'homeworks' / '01-testing' / 'problems').is_dir()
     assert (outdir / 'homeworks' / '01-testing' / 'problems' / 'one.pdf').is_file()

@@ -2,7 +2,7 @@ import pathlib
 import collections
 import datetime
 
-import automata.materials as materials
+import automata.materials.lib as materials
 
 
 _ArtifactLocation = collections.namedtuple(

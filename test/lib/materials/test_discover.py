@@ -4,7 +4,7 @@ from textwrap import dedent
 
 from pytest import raises, fixture, mark
 
-from automata.materials import discover, UnbuiltArtifact, DiscoveryError
+from automata.materials.lib import discover, UnbuiltArtifact, DiscoveryError
 
 
 # good example; simple

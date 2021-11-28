@@ -6,7 +6,7 @@ import textwrap
 import yaml
 
 
-import automata.materials as mlib
+import automata.materials.lib as mlib
 
 # cli
 # --------------------------------------------------------------------------------------

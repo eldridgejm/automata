@@ -1,7 +1,7 @@
 from textwrap import dedent
 from pytest import raises
 
-from automata.materials import read_collection_file, DiscoveryError
+from automata.materials.lib import read_collection_file, DiscoveryError
 
 
 def test_example(write_file):

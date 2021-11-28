@@ -3,7 +3,7 @@ import datetime
 
 from pytest import raises, fixture, mark
 
-from automata.materials import (
+from automata.materials.lib import (
     read_publication_file,
     DiscoveryError,
     PublicationSchema,
