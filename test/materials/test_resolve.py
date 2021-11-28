@@ -7,7 +7,7 @@ from pytest import fixture
 from automata import materials
 
 
-EXAMPLE_CLASS = pathlib.Path(__file__).parent / "../../../example_class"
+EXAMPLE_CLASS = pathlib.Path(__file__).parent / "../../example_class"
 
 
 def example_class(tempdir, date):
