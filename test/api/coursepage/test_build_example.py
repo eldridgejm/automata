@@ -4,7 +4,7 @@ import datetime
 import lxml.html
 
 import automata.api.coursepage
-import automata.api.materials
+import automata.materials
 
 from pytest import fixture, mark
 
@@ -36,7 +36,7 @@ def example_class(tempdir, date):
 
     builddir.mkdir()
 
-    automata.api.materials.publish(
+    automata.materials.publish(
         str(destination),
         str(destination / "website/_build/published"),
         skip_directories="template",

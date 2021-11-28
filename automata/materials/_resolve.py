@@ -1,7 +1,7 @@
 import pathlib
 
-from ...materials.lib import read_collection_file, read_publication_file, discover
-from ...materials.lib import constants
+from .lib import read_collection_file, read_publication_file, discover
+from .lib import constants
 
 
 def resolve(path, vars=None):

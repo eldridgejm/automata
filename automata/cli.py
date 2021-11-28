@@ -6,9 +6,9 @@ import sys
 
 import yaml
 
-import automata.api.materials
+import automata.materials
 import automata.api.coursepage
-import automata.api.sync
+import automata.sync
 import automata.materials.lib
 
 from automata import util
@@ -77,7 +77,7 @@ def _register_materials_publish_parser(subparsers):
         if args.vars is not None:
             args.vars = util.load_yaml(args.vars)
 
-        return automata.api.materials.publish(
+        return automata.materials.publish(
             args.input_directory,
             args.output_directory,
             ignore_release_time=args.ignore_release_time,
@@ -140,7 +140,7 @@ def _register_materials_resolve_parser(subparsers):
         if args.vars is not None:
             args.vars = util.load_yaml(args.vars)
 
-        node = automata.api.materials.resolve(
+        node = automata.materials.resolve(
             args.path,
             vars=args.vars,
         )
@@ -182,7 +182,7 @@ def _register_materials_status_parser(subparsers):
         if args.vars is not None:
             args.vars = util.load_yaml(args.vars)
 
-        automata.api.materials.status(
+        automata.materials.status(
                 vars=args.vars,
                 skip_directories=args.skip_directories
         )
