@@ -6,7 +6,7 @@ from textwrap import dedent
 
 from pytest import raises, fixture, mark
 
-import automata.api.coursepage
+import automata.coursepage
 
 # basic tests
 # --------------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ def test_converts_pages_from_markdown_to_html(demo):
     demo.make_page("one.md", "# This is a header\n**this is bold!**")
 
     # when
-    automata.api.coursepage.build(demo.path, demo.builddir)
+    automata.coursepage.build(demo.path, demo.builddir)
 
     # then
     assert '<h1 id="this-is-a-header">This is a header</h1>' in demo.get_output(
@@ -89,7 +89,7 @@ def test_pages_have_access_to_published_artifacts(demo):
     demo.use_example_published("basic_published")
 
     # when
-    automata.api.coursepage.build(
+    automata.coursepage.build(
         demo.path, demo.builddir, materials_path=demo.builddir / "published"
     )
 
@@ -110,7 +110,7 @@ def test_pages_have_access_to_elements(demo):
     demo.add_to_config(config)
 
     # when
-    automata.api.coursepage.build(demo.path, demo.builddir)
+    automata.coursepage.build(demo.path, demo.builddir)
 
     # then
     assert "This is a test" in demo.get_output("one.html")
@@ -121,7 +121,7 @@ def test_pages_are_rendered_in_base_template(demo):
     demo.make_page("one.md", "this is the page")
 
     # when
-    automata.api.coursepage.build(demo.path, demo.builddir)
+    automata.coursepage.build(demo.path, demo.builddir)
 
     # then
     assert "<html>" in demo.get_output("one.html")
@@ -132,8 +132,8 @@ def test_raises_if_an_unknown_variable_is_accessed_during_page_render(demo):
     demo.make_page("one.md", "${ foo }")
 
     # when
-    with raises(automata.api.coursepage.PageError) as excinfo:
-        automata.api.coursepage.build(demo.path, demo.builddir)
+    with raises(automata.coursepage.PageError) as excinfo:
+        automata.coursepage.build(demo.path, demo.builddir)
 
     assert "one.md" in str(excinfo.value)
 
@@ -143,8 +143,8 @@ def test_raises_if_an_unknown_attribute_is_accessed_during_page_render(demo):
     demo.make_page("one.md", "${ config.this_dont_exist }")
 
     # when
-    with raises(automata.api.coursepage.PageError) as excinfo:
-        automata.api.coursepage.build(demo.path, demo.builddir)
+    with raises(automata.coursepage.PageError) as excinfo:
+        automata.coursepage.build(demo.path, demo.builddir)
 
     assert "one.md" in str(excinfo.value)
 
@@ -165,7 +165,7 @@ def test_raises_if_an_unknown_attribute_is_accessed_during_element_render(demo):
 
     # when
     with raises(Exception) as excinfo:
-        automata.api.coursepage.build(demo.path, demo.builddir)
+        automata.coursepage.build(demo.path, demo.builddir)
 
 
 def test_accepts_vars(demo):
@@ -173,7 +173,7 @@ def test_accepts_vars(demo):
     demo.make_page("test.md", "${ vars.foo }")
 
     # when
-    automata.api.coursepage.build(demo.path, demo.builddir, vars={"foo": "barbaz"})
+    automata.coursepage.build(demo.path, demo.builddir, vars={"foo": "barbaz"})
 
     # then
     assert "barbaz" in demo.get_output("test.html")
@@ -192,7 +192,7 @@ def test_vars_available_in_config_file(demo):
     demo.make_page("one.md", "${ elements.announcement_box(config['announcement']) }")
 
     # when
-    automata.api.coursepage.build(
+    automata.coursepage.build(
         demo.path, demo.builddir, vars={"name": "Zaphod Beeblebrox"}
     )
 

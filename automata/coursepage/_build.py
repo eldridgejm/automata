@@ -16,7 +16,7 @@ import automata.materials.lib
 
 from . import elements
 from . import exceptions
-from ... import util
+from .. import util
 
 
 class RenderContext(typing.NamedTuple):

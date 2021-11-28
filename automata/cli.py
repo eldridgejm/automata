@@ -7,7 +7,7 @@ import sys
 import yaml
 
 import automata.materials
-import automata.api.coursepage
+import automata.coursepage
 import automata.sync
 import automata.materials.lib
 
@@ -229,7 +229,7 @@ def _register_coursepage_build_parser(subparsers):
 
             print(f"Running as if it is currently {_now}")
 
-        automata.api.coursepage.build(
+        automata.coursepage.build(
             args.input_directory,
             args.output_directory,
             args.materials,
@@ -244,7 +244,7 @@ def _register_coursepage_init_parser(subparsers):
     parser = subparsers.add_parser("init")
 
     def cmd(args):
-        automata.api.coursepage.initialize(args.output_path)
+        automata.coursepage.initialize(args.output_path)
 
     parser.add_argument("output_path")
     parser.set_defaults(cmd=cmd)
@@ -265,7 +265,7 @@ def _register_sync_git_branch_parser(subparsers):
     parser.add_argument('branch')
 
     def cmd(args):
-        return automata.api.sync.git(args.local_directory, args.git_repo_url, args.branch)
+        return automata.sync.git(args.local_directory, args.git_repo_url, args.branch)
 
     parser.set_defaults(cmd=cmd)
 
