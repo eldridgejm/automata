@@ -12,7 +12,7 @@ import jinja2
 import markdown
 import yaml
 
-import automata.lib.materials
+import automata.materials
 
 from . import elements
 from . import exceptions
@@ -26,7 +26,7 @@ class RenderContext(typing.NamedTuple):
     output_path: pathlib.Path
     theme_path: pathlib.Path
     materials_path: typing.Optional[pathlib.Path]
-    materials: typing.Optional[automata.lib.materials.Universe]
+    materials: typing.Optional[automata.materials.Universe]
     config: dict
     vars: typing.Optional[dict]
     now: datetime.datetime
@@ -61,7 +61,7 @@ def _load_materials(materials_path, output_path):
 
     # read the universe
     with (materials_path / "materials.json").open() as fileobj:
-        materials = automata.lib.materials.deserialize(fileobj.read())
+        materials = automata.materials.deserialize(fileobj.read())
 
     # we need to update their paths to be relative to output directory; this function
     # will do it for one artifact

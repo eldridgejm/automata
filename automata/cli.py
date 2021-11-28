@@ -9,7 +9,7 @@ import yaml
 import automata.api.materials
 import automata.api.coursepage
 import automata.api.sync
-import automata.lib.materials
+import automata.materials
 
 from automata import util
 
@@ -146,7 +146,7 @@ def _register_materials_resolve_parser(subparsers):
         )
 
         if args.format == 'json':
-            print(automata.lib.materials.serialize(node))
+            print(automata.materials.serialize(node))
         elif args.format == 'yaml':
             print(yaml.dump(dct._deep_asdict(), Dumper=yaml.Dumper))
 

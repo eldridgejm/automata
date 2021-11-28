@@ -1,6 +1,6 @@
 import pathlib
 
-from automata.lib.materials import discover, UnbuiltArtifact, filter_nodes
+from automata.materials import discover, UnbuiltArtifact, filter_nodes
 
 
 # good example; simple
