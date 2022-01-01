@@ -1,4 +1,5 @@
 import datetime
+import dataclasses
 import subprocess
 import pathlib
 import typing
@@ -114,7 +115,7 @@ def _build_artifact(
         else:
             raise BuildError(f"Artifact {path} does not exist at {path}.")
 
-    output = output._replace(returncode=returncode, stdout=stdout, stderr=stderr)
+    output = dataclasses.replace(output, returncode=returncode, stdout=stdout, stderr=stderr)
     callbacks.on_success(output)
     return output
 

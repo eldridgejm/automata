@@ -1,17 +1,20 @@
 import typing
 import pathlib
 import datetime
+import dataclasses
 
 
 # types
 # --------------------------------------------------------------------------------------
 
 
+@dataclasses.dataclass
 class Artifact:
     """Base class for all artifact types."""
 
 
-class UnbuiltArtifact(Artifact, typing.NamedTuple):
+@dataclasses.dataclass
+class UnbuiltArtifact(Artifact):
     """The inputs needed to build an artifact.
 
     Attributes
@@ -40,7 +43,8 @@ class UnbuiltArtifact(Artifact, typing.NamedTuple):
     missing_ok: bool = False
 
 
-class BuiltArtifact(Artifact, typing.NamedTuple):
+@dataclasses.dataclass
+class BuiltArtifact(Artifact):
     """The results of building an artifact.
 
     Attributes
@@ -65,7 +69,8 @@ class BuiltArtifact(Artifact, typing.NamedTuple):
     stderr: str = None
 
 
-class PublishedArtifact(Artifact, typing.NamedTuple):
+@dataclasses.dataclass
+class PublishedArtifact(Artifact):
     """A published artifact.
 
     Attributes
@@ -114,7 +119,7 @@ class Publication(typing.NamedTuple):
         """A dictionary representation of the publication and its children."""
         return {
             "metadata": self.metadata,
-            "artifacts": {k: a._asdict() for (k, a) in self.artifacts.items()},
+            "artifacts": {k: dataclasses.asdict(a) for (k, a) in self.artifacts.items()},
         }
 
     @classmethod

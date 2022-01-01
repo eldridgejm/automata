@@ -2,6 +2,7 @@
 
 from functools import partial
 import collections
+import dataclasses
 import datetime
 import pathlib
 import shutil
@@ -70,7 +71,7 @@ def _load_materials(materials_path, output_path):
             return artifact
 
         relative_path = materials_path.relative_to(output_path) / artifact.path
-        return artifact._replace(path=relative_path)
+        return dataclasses.replace(artifact, path=relative_path)
 
     # apply the function to all artifacts, modifying `materials`
     for collection in materials.collections.values():

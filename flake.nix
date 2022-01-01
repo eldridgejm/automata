@@ -1,7 +1,7 @@
 {
   description = "Python package for automating the publication of course materials.";
 
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/21.05;
+  inputs.nixpkgs.url = github:NixOS/nixpkgs/21.11;
 
   inputs.dictconfig.url = github:eldridgejm/dictconfig/master;
   inputs.dictconfig.inputs.nixpkgs.follows = "nixpkgs";
