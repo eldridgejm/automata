@@ -15,16 +15,16 @@
         automata = forAllSystems (system:
           with import nixpkgs { system = "${system}"; };
 
-            python38Packages.buildPythonPackage {
+            python3Packages.buildPythonPackage {
               name = "automata";
               src = ./.;
-              propagatedBuildInputs = with python38Packages; [ 
+              propagatedBuildInputs = with python3Packages; [ 
                 pyyaml
                 markdown
                 jinja2
                 dictconfig.outputs.defaultPackage.${system}
               ];
-              nativeBuildInputs = with python38Packages; [ pytest black ipython sphinx sphinx_rtd_theme lxml ];
+              nativeBuildInputs = with python3Packages; [ pytest black ipython sphinx sphinx_rtd_theme lxml ];
               doCheck = false;
             }
 
