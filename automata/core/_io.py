@@ -32,7 +32,7 @@ class MalformedFileError(Error):
 # ======================================================================================
 
 
-# we start by building a dictconfig schema for collection.yaml.  collection.yaml
+# we start by building a dictconfig schema for collection.yaml. collection.yaml
 # consists mostly of the publication spec, whose dictconfig schema is defined below.
 # We'll reuse this schema later when implementing read_publication_file, because that
 # function takes in the publication spec as an optional argument, and we'll want to be
@@ -207,7 +207,10 @@ def _make_publication_dictconfig_schema(
     dictconfig_schema = {
         "type": "dict",
         "required_keys": {"artifacts": artifacts_schema},
-        "optional_keys": {},
+        "optional_keys": {
+            "ready": {"type": "boolean", "default": True},
+            "release_time": {"type": "datetime", "nullable": True, "default": None},
+        },
     }
 
     if publication_spec["metadata_schema"] is not None:

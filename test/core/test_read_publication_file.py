@@ -730,3 +730,122 @@ def test_with_invalid_publication_spec_raises(write_file):
     # when / then
     with raises(MalformedFileError):
         publication = read_publication_file(path, publication_spec=spec)
+
+
+def test_ready_field_defaults_to_true(write_file):
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Homework 01
+                due: 2020-09-04 23:59:00
+                released: 2020-09-01
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                    recipe: make homework
+                solution:
+                    path: ./solution.pdf
+                    recipe: make solution
+            """
+        ),
+    )
+
+    # when
+    publication = read_publication_file(path)
+
+    # then
+    assert publication["ready"]
+
+
+def test_ready_field_can_be_provided(write_file):
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Homework 01
+                due: 2020-09-04 23:59:00
+                released: 2020-09-01
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                    recipe: make homework
+                solution:
+                    path: ./solution.pdf
+                    recipe: make solution
+
+            ready: false
+            """
+        ),
+    )
+
+    # when
+    publication = read_publication_file(path)
+
+    # then
+    assert not publication["ready"]
+
+
+def test_release_time_field_defaults_to_none(write_file):
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Homework 01
+                due: 2020-09-04 23:59:00
+                released: 2020-09-01
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                    recipe: make homework
+                solution:
+                    path: ./solution.pdf
+                    recipe: make solution
+            """
+        ),
+    )
+
+    # when
+    publication = read_publication_file(path)
+
+    # then
+    assert publication["release_time"] is None
+
+def test_release_time_field_can_be_provided(write_file):
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Homework 01
+                due: 2020-09-04 23:59:00
+                released: 2020-09-01
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                    recipe: make homework
+                solution:
+                    path: ./solution.pdf
+                    recipe: make solution
+
+            release_time: 2022-01-01
+            """
+        ),
+    )
+
+    # when
+    publication = read_publication_file(path)
+
+    # then
+    assert publication["release_time"] == datetime.datetime(2022, 1, 1)
