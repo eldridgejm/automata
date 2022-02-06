@@ -3,7 +3,10 @@ from textwrap import dedent
 
 from pytest import raises
 
-from automata.materials.lib import discover, UnbuiltArtifact, DiscoveryError
+from automata.materials.lib import discover, DiscoveryError
+
+# we've got some fancy formatting below, so turn off formatter
+# fmt: off
 
 def test_finds_collections(example):
     # given
@@ -86,12 +89,13 @@ def test_loads_artifacts(example):
             optional_artifacts:
                 - solution.pdf
     """))
-    pub01 = homeworks.create_publication("01-intro", publication_yaml=dedent("""
+    publication_yaml=dedent("""
         metadata: {}
         artifacts:
             solution.pdf:
                 recipe: touch solution.pdf
-    """))
+    """)
+    pub01 = homeworks.create_publication("01-intro", publication_yaml=publication_yaml)
 
     # when
     universe = discover(example.root)

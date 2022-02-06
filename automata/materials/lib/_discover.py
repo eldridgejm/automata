@@ -154,7 +154,7 @@ def read_publication_file(path, publication_schema=None, vars=None, previous=Non
     vars : dict
         A dictionary of external variables that will be available during interpolation
         of the publication file.
-    previpus : Publication
+    previous : Publication
         The previous publication. If None, there is assumed to be no previous.
 
     Returns
