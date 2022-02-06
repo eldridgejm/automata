@@ -80,7 +80,7 @@ _COLLECTION_FILE_DICTCONFIG_SCHEMA = {
     "type": "dict",
     "required_keys": {"publication_spec": _PUBLICATION_SPEC_SCHEMA},
     "optional_keys": {
-        "is_ordered": {"type": "boolean", "default": False},
+        "ordered": {"type": "boolean", "default": False},
     }
 }
 

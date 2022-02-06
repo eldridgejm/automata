@@ -285,11 +285,11 @@ def test_key_used_for_path_if_path_not_provided(example):
     )
 
 
-def test_sorts_publications_lexicographically_if_collection_is_ordered(example):
+def test_sorts_publications_lexicographically_if_collection_ordered(example):
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
         publication_spec:
             required_artifacts: []
-        is_ordered: true
+        ordered: true
     """))
     names = [
         "01-intro",
@@ -325,7 +325,7 @@ def test_with_dates_relating_to_previous(example):
                 required_keys:
                     date:
                         type: datetime
-        is_ordered: true
+        ordered: true
     """))
 
     pub01 = lectures.create_publication("01-intro", publication_yaml=dedent("""

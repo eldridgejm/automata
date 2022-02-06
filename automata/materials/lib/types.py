@@ -227,7 +227,7 @@ class PublicationSchema(typing.NamedTuple):
         style of cerberus. If None, no validation will be performed. Default: None.
     allow_unspecified_artifacts : Optional[Boolean]
         Is it permissible for a publication to have unknown artifacts? Default: False.
-    is_ordered : Optional[Boolean]
+    ordered : Optional[Boolean]
         Should the publications be considered ordered by their keys? Default: False
 
     """
@@ -236,7 +236,7 @@ class PublicationSchema(typing.NamedTuple):
     optional_artifacts: Optional[typing.Collection[str]] = None
     metadata_schema: Optional[typing.Mapping[str, typing.Mapping]] = None
     allow_unspecified_artifacts: bool = False
-    is_ordered: bool = False
+    ordered: bool = False
 
 
 class DateContext(typing.NamedTuple):

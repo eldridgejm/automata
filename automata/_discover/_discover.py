@@ -175,7 +175,7 @@ def _make_collections(collection_paths, input_directory, callbacks):
 
 def _previous_publication(collection):
     """Add the resolved previous publication file to the external_variables."""
-    if not collection.is_ordered:
+    if not collection.ordered:
         return
 
     # the previous publication was just the last one added to collection.publications

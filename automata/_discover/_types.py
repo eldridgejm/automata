@@ -151,7 +151,7 @@ class Collection(typing.NamedTuple):
 
     publication_spec: "PublicationSchema"
     publications: typing.Mapping[str, Publication]
-    is_ordered: bool = True
+    ordered: bool = True
 
     def _deep_asdict(self):
         """A dictionary representation of the collection and its children."""
