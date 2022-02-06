@@ -6,7 +6,8 @@ import dictconfig  # type: ignore
 import yaml
 from typing import Optional
 
-from .exceptions import DiscoveryError
+from ..exceptions import Error
+
 
 # Technical Notes
 # ===============
@@ -14,8 +15,22 @@ from .exceptions import DiscoveryError
 # the dictconfig format. Dictconfig handles the heavy-lifting of interpolation and
 # parsing of the files' fields.
 
+# exceptions
+# ==========
+
+class MalformedFileError(Error):
+    """The file being read is malformed."""
+
+    def __init__(self, path, reason):
+        self.path = path
+        self.reason = reason
+
+    def __str__(self):
+        return f"The file {self.path} is malformed: {self.reason}"
+
 # collection files
 # ======================================================================================
+
 
 # we start by building a dictconfig schema for collection.yaml.  collection.yaml
 # consists mostly of the publication spec, whose dictconfig schema is defined below.
@@ -26,6 +41,8 @@ from .exceptions import DiscoveryError
 # a specific schema for the "metadata_schema" can't be made, since we don't know what
 # metadata the user will provide. Instead, we'll use dictconfig's schema validator to
 # dynamically check that it makes sense -- this will be done in read_collection_file.
+
+
 _PUBLICATION_SPEC_SCHEMA = {
     "type": "dict",
     "required_keys": {
@@ -77,7 +94,7 @@ def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dic
 
     Raises
     ------
-    DiscoveryError
+    MalformedFileError
         If the file is malformed.
 
     Returns
@@ -100,7 +117,7 @@ def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dic
             external_variables={"vars": vars},
         )  # type: ignore
     except dictconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), path)
+        raise MalformedFileError(path, str(exc))
 
     # validate the metadata schema using dictconfig.validate_schema. this wasn't done by
     # dictconfig.resolve above, because our schema accepted anything for the
@@ -110,13 +127,14 @@ def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dic
         try:
             dictconfig.validate_schema({"type": "dict", **metadata_schema})
         except dictconfig.exceptions.InvalidSchemaError as exc:
-            raise DiscoveryError(exc, path)
+            raise MalformedFileError(exc, path)
 
     return resolved
 
 
 # publication files
 # ======================================================================================
+
 # Reading publication.yaml file is considerably more involved than reading
 # collection.yaml, largely because the schema of a publication file is dynamic, being
 # provided by the collection.yaml file. We do not know a priori what artifacts must be
@@ -129,8 +147,11 @@ def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dic
 # higher level of abstraction. It is usually provided in `collection.yaml`. We use this
 # "publication spec" to build a "dictconfig schema for publication.yaml".
 
+
 # we start by making the dictconfig schema for a single artifact in a publication.yaml
 # file. This is static -- it doesn't depend on the high-level "publication spec"
+
+
 _ARTIFACT_DICTCONFIG_SCHEMA = {
     "type": "dict",
     "optional_keys": {
@@ -142,8 +163,10 @@ _ARTIFACT_DICTCONFIG_SCHEMA = {
     },
 }
 
+
 # next, we'll build the dictconfig schema for the artifacts field of publication.yaml
 # here we need to know the high-level publication spec.
+
 
 def _make_artifacts_dictconfig_schema(publication_spec: dict) -> dict:
     """Builds a dictconfig schema for the artifacts key in publication.yaml.
@@ -159,13 +182,11 @@ def _make_artifacts_dictconfig_schema(publication_spec: dict) -> dict:
         "optional_keys": {},
     }
 
-    if publication_spec["required_artifacts"] is not None:
-        for artifact in publication_spec["required_artifacts"]:
-            artifacts_schema["required_keys"][artifact] = _ARTIFACT_DICTCONFIG_SCHEMA
+    for artifact in publication_spec["required_artifacts"]:
+        artifacts_schema["required_keys"][artifact] = _ARTIFACT_DICTCONFIG_SCHEMA
 
-    if publication_spec["optional_artifacts"] is not None:
-        for artifact in publication_spec["optional_artifacts"]:
-            artifacts_schema["optional_keys"][artifact] = _ARTIFACT_DICTCONFIG_SCHEMA
+    for artifact in publication_spec["optional_artifacts"]:
+        artifacts_schema["optional_keys"][artifact] = _ARTIFACT_DICTCONFIG_SCHEMA
 
     if publication_spec["allow_unspecified_artifacts"]:
         artifacts_schema["extra_keys_schema"] = _ARTIFACT_DICTCONFIG_SCHEMA
@@ -173,36 +194,13 @@ def _make_artifacts_dictconfig_schema(publication_spec: dict) -> dict:
     return artifacts_schema
 
 
-# the publication spec used by default in read_publication_file when no
-# schema is provided. does only minimal checking, and allows most metadata /
-# artifacts.
-_PERMISSIVE_PUBLICATION_SPEC = {
-    "required_artifacts": [],
-    "optional_artifacts": {},
-    "allow_unspecified_artifacts": True,
-    "metadata_schema": {"extra_keys_schema": {"type": "any"}},
-}
-
-# default schema options to use in read_publication_file if a publication
-# schema is provided, but is missing fields.
-_PUBLICATION_SPEC_DEFAULTS = {
-    "required_artifacts": [],
-    "optional_artifacts": {},
-    "allow_unspecified_artifacts": False,
-    "metadata_schema": {},
-}
+# we can now construct a dictconfig schema for the entire publication.yaml file.
 
 
 def _make_publication_dictconfig_schema(
-    publication_spec: Optional[dict],
+    publication_spec: dict,
 ) -> dict:
     """Construct a dictconfig schema for validating and resolving the publication file."""
-
-    if publication_spec is None:
-        publication_spec = _PERMISSIVE_PUBLICATION_SPEC.copy()
-
-    # fill in missing publication spec options
-    publication_spec = {**_PUBLICATION_SPEC_DEFAULTS, **publication_spec}
 
     artifacts_schema = _make_artifacts_dictconfig_schema(publication_spec)
 
@@ -223,11 +221,23 @@ def _make_publication_dictconfig_schema(
     return dictconfig_schema
 
 
+# now we prepare for the high-level read_publication_file. It will optionally accept a
+# publication spec. if one isn't provided, we'll provide the permissive spec below.
+# it does only minimal checking, and allows most metadata / artifacts.
+
+_PERMISSIVE_PUBLICATION_SPEC = {
+    "required_artifacts": [],
+    "optional_artifacts": {},
+    "allow_unspecified_artifacts": True,
+    "metadata_schema": {"extra_keys_schema": {"type": "any"}},
+}
+
+
 def read_publication_file(
     path: pathlib.Path,
     publication_spec: Optional[dict] = None,
     vars: Optional[dict] = None,
-    previous=None,
+    previous: Optional[dict] = None,
 ) -> dict:
     """Read a publication.yaml file, resolving its templated fields.
 
@@ -236,14 +246,16 @@ def read_publication_file(
     path : pathlib.Path
         Path to the collection file.
     publication_spec : Optional[dict]
-        A schema that described the necessary artifacts of the publication and
-        what metadata it should have. If `None`, only very basic validation is
-        done (see below). Default: None.
-    vars : dict
+        A dictionary that describes the necessary artifacts of the publication and
+        what metadata it should have. This dictionary typically comes from a
+        collection.yaml file. If `None`, only very basic validation is done (see below).
+        Default: None.
+    vars : Optional[dict]
         A dictionary of external variables that will be available during interpolation
-        of the publication file.
-    previous : Publication
-        The previous publication. If None, there is assumed to be no previous.
+        of the publication file. Default: None.
+    previous : Optional[dict]
+        The previous publication as a dictionary of the form returned by this function.
+        If None, there is assumed to be no previous publication.
 
     Returns
     -------
@@ -252,47 +264,47 @@ def read_publication_file(
 
     Raises
     ------
-    DiscoveryError
+    MalformedFileError
         If the publication file's contents are invalid.
 
     Notes
     -----
 
-    The file should have a "metadata" key whose value is a dictionary
-    of metadata. It should also have an "artifacts" key whose value is a
-    dictionary mapping artifact names to artifact definitions.
-
-    Optionally, the file can have a "release_time" key providing a time at
-    which the publication should be considered released. It may also have
-    a "ready" key; if this is False, the publication will not be considered
-    released.
-
-    If the ``publication_spec`` argument is not provided, only very basic
-    validation is performed by this function. Namely, the metadata schema and
-    required/optional artifacts are not enforced. See the :func:`validate`
-    function for validating these aspects of the publication. If the schema is
-    provided, :func:`validate` is called as a convenience.
+    If the ``publication_spec`` argument is not provided, only very basic validation is
+    performed by this function. Namely, the metadata schema and required/optional
+    artifacts are not enforced.
 
     """
+    if publication_spec is None:
+        publication_spec = _PERMISSIVE_PUBLICATION_SPEC.copy()
+
+    # fill in the defaults in the publication spec
+    try:
+        publication_spec: dict = dictconfig.resolve(
+            publication_spec, schema=_PUBLICATION_SPEC_SCHEMA
+        )  # type: ignore
+    except dictconfig.exceptions.ResolutionError as exc:
+        raise MalformedFileError(path, str(exc))
+
     with path.open() as fileobj:
         try:
             raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
         except yaml.YAMLError as exc:
-            raise DiscoveryError(str(exc), path)
+            raise MalformedFileError(path, str(exc))
 
     external_variables = {"vars": vars}
 
     if previous is not None:
-        external_variables["previous"] = previous._deep_asdict()
+        external_variables["previous"] = previous
 
     dictconfig_schema = _make_publication_dictconfig_schema(publication_spec)
 
     try:
-        resolved = dictconfig.resolve(
+        resolved: dict = dictconfig.resolve(
             raw_contents, dictconfig_schema, external_variables=external_variables
-        )
+        ) # type: ignore
     except dictconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), path)
+        raise MalformedFileError(path, str(exc))
 
     for key, definition in resolved["artifacts"].items():
         # if no file is provided, use the key

@@ -1,7 +1,7 @@
 from textwrap import dedent
 from pytest import raises
 
-from automata.core import read_collection_file, DiscoveryError
+from automata.core import read_collection_file, MalformedFileError
 
 
 def test_example(write_file):
@@ -104,7 +104,7 @@ def test_validates_fields(write_file):
     )
 
     # then
-    with raises(DiscoveryError):
+    with raises(MalformedFileError):
         collection = read_collection_file(path)
 
 
@@ -130,7 +130,7 @@ def test_requires_required_artifacts(write_file):
     )
 
     # then
-    with raises(DiscoveryError):
+    with raises(MalformedFileError):
         collection = read_collection_file(path)
 
 
@@ -202,5 +202,5 @@ def test_raises_on_invalid_metadata_schema(write_file):
     )
 
     # when then
-    with raises(DiscoveryError):
+    with raises(MalformedFileError):
         collection = read_collection_file(path)
