@@ -15,8 +15,10 @@ from ..exceptions import Error
 # the dictconfig format. Dictconfig handles the heavy-lifting of interpolation and
 # parsing of the files' fields.
 
+
 # exceptions
 # ==========
+
 
 class MalformedFileError(Error):
     """The file being read is malformed."""
@@ -27,6 +29,7 @@ class MalformedFileError(Error):
 
     def __str__(self):
         return f"The file {self.path} is malformed: {self.reason}"
+
 
 # collection files
 # ======================================================================================
