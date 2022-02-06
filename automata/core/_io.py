@@ -308,7 +308,7 @@ def read_publication_file(
     try:
         resolved: dict = dictconfig.resolve(
             raw_contents, dictconfig_schema, external_variables=external_variables
-        ) # type: ignore
+        )  # type: ignore
     except dictconfig.exceptions.ResolutionError as exc:
         raise MalformedFileError(path, str(exc))
 
