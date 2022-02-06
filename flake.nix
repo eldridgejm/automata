@@ -19,7 +19,7 @@
               name = "automata";
               src = ./.;
               propagatedBuildInputs = with python3Packages; [ 
-                pyyaml
+                ruamel_yaml
                 markdown
                 jinja2
                 rich

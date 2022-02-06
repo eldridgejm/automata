@@ -134,7 +134,6 @@ def _make_default_collection():
         required_artifacts=[],
         metadata_schema=None,
         allow_unspecified_artifacts=True,
-        is_ordered=False
     )
     return Collection(publication_spec=default_schema, publications={})
 
@@ -176,7 +175,7 @@ def _make_collections(collection_paths, input_directory, callbacks):
 
 def _previous_publication(collection):
     """Add the resolved previous publication file to the external_variables."""
-    if not collection.publication_spec['is_ordered']:
+    if not collection.is_ordered:
         return
 
     # the previous publication was just the last one added to collection.publications

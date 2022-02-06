@@ -151,6 +151,7 @@ class Collection(typing.NamedTuple):
 
     publication_spec: "PublicationSchema"
     publications: typing.Mapping[str, Publication]
+    is_ordered: bool = True
 
     def _deep_asdict(self):
         """A dictionary representation of the collection and its children."""
@@ -212,3 +213,11 @@ class Universe(typing.NamedTuple):
                 k: Collection._deep_fromdict(d) for (k, d) in dct["collections"].items()
             },
         )
+
+# --------- new stuff ------------
+
+class DiscoveredCollection:
+
+    def __init__(self, filepath: pathlib.Path, dct: dict):
+        self.filepath = filepath
+        self.publication_spec = dct['publication_spec']

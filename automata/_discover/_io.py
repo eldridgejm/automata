@@ -3,11 +3,12 @@
 import pathlib
 
 import dictconfig  # type: ignore
-import yaml
+from ruamel.yaml import YAML
 from typing import Optional
 
 from ..exceptions import Error
 
+yaml = YAML()
 
 # Technical Notes
 # ===============
@@ -69,8 +70,7 @@ _PUBLICATION_SPEC_SCHEMA = {
         "allow_unspecified_artifacts": {
             "type": "boolean",
             "default": False,
-        },
-        "is_ordered": {"type": "boolean", "default": False},
+        }
     },
 }
 
@@ -79,6 +79,9 @@ _PUBLICATION_SPEC_SCHEMA = {
 _COLLECTION_FILE_DICTCONFIG_SCHEMA = {
     "type": "dict",
     "required_keys": {"publication_spec": _PUBLICATION_SPEC_SCHEMA},
+    "optional_keys": {
+        "is_ordered": {"type": "boolean", "default": False},
+    }
 }
 
 
@@ -110,7 +113,7 @@ def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dic
         vars = {}
 
     with path.open() as fileobj:
-        raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
+        raw_contents = yaml.load(fileobj)
 
     # attempt to resolve the templated fields in the dictionary
     try:
@@ -294,7 +297,7 @@ def read_publication_file(
 
     with path.open() as fileobj:
         try:
-            raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
+            raw_contents = yaml.load(fileobj.read())
         except yaml.YAMLError as exc:
             raise MalformedFileError(path, str(exc))
 
