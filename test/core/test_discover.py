@@ -3,7 +3,7 @@ from textwrap import dedent
 
 from pytest import raises
 
-from automata.materials.lib import discover, DiscoveryError
+from automata.core import discover, DiscoveryError, MalformedFileError
 
 # we've got some fancy formatting below, so turn off formatter
 # fmt: off
@@ -55,7 +55,7 @@ def test_finds_singleton_publications_and_places_them_in_default_collection(exam
 def test_reads_publication_metadata(example):
     # given
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             required_artifacts: []
             metadata_schema:
                 extra_keys_schema:
@@ -84,7 +84,7 @@ def test_reads_publication_metadata(example):
 def test_loads_artifacts(example):
     # given
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             required_artifacts: []
             optional_artifacts:
                 - solution.pdf
@@ -113,7 +113,7 @@ def test_loads_artifacts(example):
 def test_loads_dates_as_dates_in_metadata(example):
     # given
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             metadata_schema:
                 required_keys:
                     due:
@@ -152,7 +152,7 @@ def test_loads_dates_as_dates_in_metadata(example):
 def test_reads_ready(example):
     # given
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             required_artifacts: []
             optional_artifacts:
                 - solution.pdf
@@ -186,7 +186,7 @@ def test_validates_collection_schema(example):
     pub01 = homeworks.create_publication("01-intro")
 
     # when run on a malformed collection.yaml
-    with raises(DiscoveryError):
+    with raises(MalformedFileError):
         discover(example.root)
 
 
@@ -197,14 +197,14 @@ def test_validates_publication_schema(example):
         asdksajdjla
     """))
 
-    with raises(DiscoveryError):
+    with raises(MalformedFileError):
         discover(example.root)
 
 
 def test_validates_publication_metadata_schema(example):
     # given
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             metadata_schema:
                 required_keys:
                     due:
@@ -219,7 +219,7 @@ def test_validates_publication_metadata_schema(example):
     """))
 
     # when
-    with raises(DiscoveryError):
+    with raises(MalformedFileError):
         discover(example.root)
 
 
@@ -259,7 +259,7 @@ def test_skip_directories(example):
 def test_key_used_for_path_if_path_not_provided(example):
     # given
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             required_artifacts: []
             optional_artifacts:
                 - solution.pdf
@@ -287,7 +287,7 @@ def test_key_used_for_path_if_path_not_provided(example):
 
 def test_sorts_publications_lexicographically_if_collection_is_ordered(example):
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             is_ordered: true
             required_artifacts: []
     """))
@@ -319,7 +319,7 @@ def test_sorts_publications_lexicographically_if_collection_is_ordered(example):
 def test_with_dates_relating_to_previous(example):
     # given
     lectures = example.create_collection("lectures", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             required_artifacts: []
             metadata_schema:
                 required_keys:
@@ -390,7 +390,7 @@ def test_with_dates_relating_to_previous(example):
 def test_interpolates_vars(example):
     # given
     homeworks = example.create_collection("homeworks", collection_yaml=dedent("""
-        publication_schema:
+        publication_spec:
             required_artifacts: []
             metadata_schema:
                 required_keys:

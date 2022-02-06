@@ -5,7 +5,7 @@ from pytest import fixture
 
 
 DEFAULT_COLLECTION_YAML = dedent("""
-publication_schema:
+publication_spec:
     required_artifacts: []
     metadata_schema: {}
 """)
