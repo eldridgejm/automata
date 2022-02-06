@@ -1,7 +1,7 @@
 from textwrap import dedent
 from pytest import raises
 
-from automata.core import read_collection_file, MalformedFileError
+from automata import read_collection_file, MalformedFileError
 
 
 def test_example(write_file):

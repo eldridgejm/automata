@@ -3,7 +3,7 @@ import datetime
 
 from pytest import raises, fixture, mark
 
-from automata.core import read_publication_file, MalformedFileError
+from automata import read_publication_file, MalformedFileError
 
 
 def test_example(write_file):

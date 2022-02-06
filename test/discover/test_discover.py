@@ -3,7 +3,7 @@ from textwrap import dedent
 
 from pytest import raises
 
-from automata.core import discover, DiscoveryError, MalformedFileError
+from automata import discover, DiscoveryError, MalformedFileError
 
 # we've got some fancy formatting below, so turn off formatter
 # fmt: off
