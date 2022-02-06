@@ -1,3 +1,5 @@
+"""Read `collection.yaml` and `publication.yaml` files."""
+
 import pathlib
 
 import dictconfig  # type: ignore
@@ -6,47 +8,62 @@ from typing import Optional
 
 from .exceptions import DiscoveryError
 
+# Technical Notes
+# ===============
+# This module specifies the schema for publication.yaml and collection.yaml files using
+# the dictconfig format. Dictconfig handles the heavy-lifting of interpolation and
+# parsing of the files' fields.
 
 # collection files
 # ======================================================================================
 
-"""The dictconfig schema describing a valid collection file."""
-_COLLECTION_FILE_SCHEMA = {
+# we start by building a dictconfig schema for collection.yaml.  collection.yaml
+# consists mostly of the publication spec, whose dictconfig schema is defined below.
+# We'll reuse this schema later when implementing read_publication_file, because that
+# function takes in the publication spec as an optional argument, and we'll want to be
+# able to validate it.
+#
+# a specific schema for the "metadata_schema" can't be made, since we don't know what
+# metadata the user will provide. Instead, we'll use dictconfig's schema validator to
+# dynamically check that it makes sense -- this will be done in read_collection_file.
+_PUBLICATION_SPEC_SCHEMA = {
     "type": "dict",
     "required_keys": {
-        "publication_schema": {
-            "type": "dict",
-            "required_keys": {
-                "required_artifacts": {
-                    "type": "list",
-                    "element_schema": {"type": "string"},
-                }
-            },
-            "optional_keys": {
-                "optional_artifacts": {
-                    "type": "list",
-                    "element_schema": {"type": "string"},
-                    "default": [],
-                },
-                "metadata_schema": {
-                    "type": "dict",
-                    "extra_keys_schema": {"type": "any"},
-                    "default": None,
-                    "nullable": True,
-                },
-                "allow_unspecified_artifacts": {
-                    "type": "boolean",
-                    "default": False,
-                },
-                "is_ordered": {"type": "boolean", "default": False},
-            },
+        "required_artifacts": {
+            "type": "list",
+            "element_schema": {"type": "string"},
         }
+    },
+    "optional_keys": {
+        "optional_artifacts": {
+            "type": "list",
+            "element_schema": {"type": "string"},
+            "default": [],
+        },
+        "metadata_schema": {
+            "type": "dict",
+            "extra_keys_schema": {"type": "any"},
+            "default": None,
+            "nullable": True,
+        },
+        "allow_unspecified_artifacts": {
+            "type": "boolean",
+            "default": False,
+        },
+        "is_ordered": {"type": "boolean", "default": False},
     },
 }
 
 
+# the dictconfig schema describing a valid collection file
+_COLLECTION_FILE_DICTCONFIG_SCHEMA = {
+    "type": "dict",
+    "required_keys": {"publication_spec": _PUBLICATION_SPEC_SCHEMA},
+}
+
+
 def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dict:
-    """Read a collection file and resolve its templated fields.
+    """Read a collection yaml file, resolving its templated fields.
 
     See the documentation for a description of the format of the file.
 
@@ -55,12 +72,18 @@ def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dic
     path : pathlib.Path
         Path to the collection file.
     vars : Optional[dict]
-        A dictionary of variables available during interpolation.
+        A dictionary of variables available during interpolation. These can be accessed
+        in `collection.yaml` via the `${ vars.<key> }` syntax.
+
+    Raises
+    ------
+    DiscoveryError
+        If the file is malformed.
 
     Returns
     -------
     dict
-        The collection file's interpolated contents as a dictionary.
+        The collection file's contents as a dictionary.
 
     """
     if vars is None:
@@ -72,13 +95,17 @@ def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dic
     # attempt to resolve the templated fields in the dictionary
     try:
         resolved: dict = dictconfig.resolve(
-            raw_contents, _COLLECTION_FILE_SCHEMA, external_variables={"vars": vars}
+            raw_contents,
+            _COLLECTION_FILE_DICTCONFIG_SCHEMA,
+            external_variables={"vars": vars},
         )  # type: ignore
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    # validate the metadata schema
-    metadata_schema = resolved["publication_schema"]["metadata_schema"]
+    # validate the metadata schema using dictconfig.validate_schema. this wasn't done by
+    # dictconfig.resolve above, because our schema accepted anything for the
+    # metadata_schema field.
+    metadata_schema = resolved["publication_spec"]["metadata_schema"]
     if metadata_schema is not None:
         try:
             dictconfig.validate_schema({"type": "dict", **metadata_schema})
@@ -90,18 +117,125 @@ def read_collection_file(path: pathlib.Path, vars: Optional[dict] = None) -> dic
 
 # publication files
 # ======================================================================================
+# Reading publication.yaml file is considerably more involved than reading
+# collection.yaml, largely because the schema of a publication file is dynamic, being
+# provided by the collection.yaml file. We do not know a priori what artifacts must be
+# in the publication, or what metadata will be provided.
+#
+# Our goal in the next few lines of code is to construct a dictconfig schema for the
+# publication.yaml. To do this, we'll use the "publication spec", if provided. This
+# terminology is potentially confusing -- the "publication spec" is *not* a dictconfig
+# schema, rather, it is a dictionary specifying the requirements of a publication at a
+# higher level of abstraction. It is usually provided in `collection.yaml`. We use this
+# "publication spec" to build a "dictconfig schema for publication.yaml".
+
+# we start by making the dictconfig schema for a single artifact in a publication.yaml
+# file. This is static -- it doesn't depend on the high-level "publication spec"
+_ARTIFACT_DICTCONFIG_SCHEMA = {
+    "type": "dict",
+    "optional_keys": {
+        "path": {"type": "string", "nullable": True, "default": None},
+        "recipe": {"type": "string", "nullable": True, "default": None},
+        "ready": {"type": "boolean", "default": True},
+        "missing_ok": {"type": "boolean", "default": False},
+        "release_time": {"type": "datetime", "nullable": True, "default": None},
+    },
+}
+
+# next, we'll build the dictconfig schema for the artifacts field of publication.yaml
+# here we need to know the high-level publication spec.
+
+def _make_artifacts_dictconfig_schema(publication_spec: dict) -> dict:
+    """Builds a dictconfig schema for the artifacts key in publication.yaml.
+
+    This requires knowing the publication spec, because the publication spec
+    specifies which artifacts are required, which are optional, and whether unknown
+    artifacts are permitted.
+
+    """
+    artifacts_schema = {
+        "type": "dict",
+        "required_keys": {},
+        "optional_keys": {},
+    }
+
+    if publication_spec["required_artifacts"] is not None:
+        for artifact in publication_spec["required_artifacts"]:
+            artifacts_schema["required_keys"][artifact] = _ARTIFACT_DICTCONFIG_SCHEMA
+
+    if publication_spec["optional_artifacts"] is not None:
+        for artifact in publication_spec["optional_artifacts"]:
+            artifacts_schema["optional_keys"][artifact] = _ARTIFACT_DICTCONFIG_SCHEMA
+
+    if publication_spec["allow_unspecified_artifacts"]:
+        artifacts_schema["extra_keys_schema"] = _ARTIFACT_DICTCONFIG_SCHEMA
+
+    return artifacts_schema
+
+
+# the publication spec used by default in read_publication_file when no
+# schema is provided. does only minimal checking, and allows most metadata /
+# artifacts.
+_PERMISSIVE_PUBLICATION_SPEC = {
+    "required_artifacts": [],
+    "optional_artifacts": {},
+    "allow_unspecified_artifacts": True,
+    "metadata_schema": {"extra_keys_schema": {"type": "any"}},
+}
+
+# default schema options to use in read_publication_file if a publication
+# schema is provided, but is missing fields.
+_PUBLICATION_SPEC_DEFAULTS = {
+    "required_artifacts": [],
+    "optional_artifacts": {},
+    "allow_unspecified_artifacts": False,
+    "metadata_schema": {},
+}
+
+
+def _make_publication_dictconfig_schema(
+    publication_spec: Optional[dict],
+) -> dict:
+    """Construct a dictconfig schema for validating and resolving the publication file."""
+
+    if publication_spec is None:
+        publication_spec = _PERMISSIVE_PUBLICATION_SPEC.copy()
+
+    # fill in missing publication spec options
+    publication_spec = {**_PUBLICATION_SPEC_DEFAULTS, **publication_spec}
+
+    artifacts_schema = _make_artifacts_dictconfig_schema(publication_spec)
+
+    dictconfig_schema = {
+        "type": "dict",
+        "required_keys": {"artifacts": artifacts_schema},
+        "optional_keys": {},
+    }
+
+    if publication_spec["metadata_schema"] is not None:
+        dictconfig_schema["optional_keys"]["metadata"] = {
+            "type": "dict",
+            **publication_spec["metadata_schema"],
+        }
+    else:
+        dictconfig_schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
+
+    return dictconfig_schema
 
 
 def read_publication_file(
-    path: pathlib.Path, publication_schema=None, vars=None, previous=None
+    path: pathlib.Path,
+    publication_spec: Optional[dict] = None,
+    vars: Optional[dict] = None,
+    previous=None,
 ) -> dict:
-    """Read a publication.yaml file.
+    """Read a publication.yaml file, resolving its templated fields.
 
     Parameters
     ----------
     path : pathlib.Path
         Path to the collection file.
-    publication_schema : Optional[PublicationSchema]
+    publication_spec : Optional[dict]
         A schema that described the necessary artifacts of the publication and
         what metadata it should have. If `None`, only very basic validation is
         done (see below). Default: None.
@@ -113,8 +247,8 @@ def read_publication_file(
 
     Returns
     -------
-    Publication
-        The publication.
+    dict
+        The contents of the publication file with templated areas resolved.
 
     Raises
     ------
@@ -133,7 +267,7 @@ def read_publication_file(
     a "ready" key; if this is False, the publication will not be considered
     released.
 
-    If the ``publication_schema`` argument is not provided, only very basic
+    If the ``publication_spec`` argument is not provided, only very basic
     validation is performed by this function. Namely, the metadata schema and
     required/optional artifacts are not enforced. See the :func:`validate`
     function for validating these aspects of the publication. If the schema is
@@ -151,11 +285,11 @@ def read_publication_file(
     if previous is not None:
         external_variables["previous"] = previous._deep_asdict()
 
-    schema = _make_dictconfig_scheme_for_publication_file(publication_schema)
+    dictconfig_schema = _make_publication_dictconfig_schema(publication_spec)
 
     try:
         resolved = dictconfig.resolve(
-            raw_contents, schema, external_variables=external_variables
+            raw_contents, dictconfig_schema, external_variables=external_variables
         )
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
@@ -166,79 +300,3 @@ def read_publication_file(
             definition["path"] = key
 
     return resolved
-
-
-_PERMISSIVE_PUBLICATION_SCHEMA = {
-    "required_artifacts": [],
-    "optional_artifacts": {},
-    "allow_unspecified_artifacts": True,
-    "metadata_schema": {"extra_keys_schema": {"type": "any"}},
-}
-
-_DEFAULT_PUBLICATION_SCHEMA = {
-    "required_artifacts": [],
-    "optional_artifacts": {},
-    "allow_unspecified_artifacts": False,
-    "metadata_schema": {},
-}
-
-
-_ARTIFACT_SCHEMA = {
-            "type": "dict",
-            "optional_keys": {
-                "path": {"type": "string", "nullable": True, "default": None},
-                "recipe": {"type": "string", "nullable": True, "default": None},
-                "ready": {"type": "boolean", "default": True},
-                "missing_ok": {"type": "boolean", "default": False},
-                "release_time": {"type": "datetime", "nullable": True, "default": None},
-                },
-            }
-
-def _make_artifacts_schema(publication_schema) -> dict:
-    artifacts_schema = {
-    "type": "dict",
-    "required_keys": {},
-    "optional_keys": {},
-    }
-
-    if publication_schema["required_artifacts"] is not None:
-        for artifact in publication_schema["required_artifacts"]:
-            artifacts_schema["required_keys"][artifact] = _ARTIFACT_SCHEMA
-
-    if publication_schema["optional_artifacts"] is not None:
-        for artifact in publication_schema["optional_artifacts"]:
-            artifacts_schema["optional_keys"][artifact] = _ARTIFACT_SCHEMA
-
-    if publication_schema["allow_unspecified_artifacts"]:
-        artifacts_schema["extra_keys_schema"] = _ARTIFACT_SCHEMA
-
-    return artifacts_schema
-
-
-def _make_dictconfig_scheme_for_publication_file(publication_schema: Optional[dict]) -> dict:
-    """Construct a dictconfig schema for validating and resolving the publication file."""
-
-    if publication_schema is None:
-        publication_schema = _PERMISSIVE_PUBLICATION_SCHEMA.copy()
-
-    for key in _DEFAULT_PUBLICATION_SCHEMA.keys():
-        if key not in publication_schema:
-            publication_schema[key] = _DEFAULT_PUBLICATION_SCHEMA[key]
-
-    artifacts_schema = _make_artifacts_schema(publication_schema)
-
-    schema = {
-        "type": "dict",
-        "required_keys": {"artifacts": artifacts_schema},
-        "optional_keys": {},
-    }
-
-    if publication_schema["metadata_schema"] is not None:
-        schema["optional_keys"]["metadata"] = {
-            "type": "dict",
-            **publication_schema["metadata_schema"],
-        }
-    else:
-        schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
-
-    return schema

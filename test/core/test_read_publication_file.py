@@ -60,7 +60,7 @@ def test_raises_if_required_artifact_is_not_provided(write_file):
         ),
     )
 
-    schema = dict(
+    publication_spec = dict(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -73,7 +73,7 @@ def test_raises_if_required_artifact_is_not_provided(write_file):
 
     # when
     with raises(DiscoveryError):
-        read_publication_file(path, publication_schema=schema)
+        read_publication_file(path, publication_spec=publication_spec)
 
 
 def test_raises_if_extra_artifact_provided_without_allow_unspecified(
@@ -99,7 +99,7 @@ def test_raises_if_extra_artifact_provided_without_allow_unspecified(
         ),
     )
 
-    schema = dict(
+    publication_spec = dict(
         required_artifacts=["homework"],
         metadata_schema={
             "required_keys": {
@@ -112,7 +112,7 @@ def test_raises_if_extra_artifact_provided_without_allow_unspecified(
 
     # when
     with raises(DiscoveryError):
-        read_publication_file(path, publication_schema=schema)
+        read_publication_file(path, publication_spec=publication_spec)
 
 
 def test_allows_extra_artifact_when_allow_unspecified_given(
@@ -138,7 +138,7 @@ def test_allows_extra_artifact_when_allow_unspecified_given(
         ),
     )
 
-    schema = dict(
+    publication_spec = dict(
         required_artifacts=["homework"],
         metadata_schema={
             "required_keys": {
@@ -151,7 +151,7 @@ def test_allows_extra_artifact_when_allow_unspecified_given(
     )
 
     # when
-    pub = read_publication_file(path, publication_schema=schema)
+    pub = read_publication_file(path, publication_spec=publication_spec)
 
     assert "woo" in pub['artifacts']
 
@@ -549,7 +549,7 @@ def test_with_relative_dates_in_metadata(write_file):
         ),
     )
 
-    schema = dict(
+    publication_spec = dict(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -561,7 +561,7 @@ def test_with_relative_dates_in_metadata(write_file):
     )
 
     # when
-    publication = read_publication_file(path, publication_schema=schema)
+    publication = read_publication_file(path, publication_spec=publication_spec)
 
     # then
     expected = datetime.datetime(2020, 9, 3, 23, 59, 0)
@@ -593,7 +593,7 @@ def test_with_relative_dates_in_metadata_without_offset(write_file):
         ),
     )
 
-    schema = dict(
+    publication_spec = dict(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -605,7 +605,7 @@ def test_with_relative_dates_in_metadata_without_offset(write_file):
     )
 
     # when
-    publication = read_publication_file(path, publication_schema=schema)
+    publication = read_publication_file(path, publication_spec=publication_spec)
 
     # then
     expected = datetime.date(2020, 9, 10)
@@ -635,7 +635,7 @@ def test_with_unknown_relative_field_raises(write_file):
         ),
     )
 
-    schema = dict(
+    publication_spec = dict(
         required_artifacts=["homework", "solution"],
         metadata_schema={
             "required_keys": {
@@ -648,4 +648,4 @@ def test_with_unknown_relative_field_raises(write_file):
 
     # when
     with raises(DiscoveryError):
-        publication = read_publication_file(path, publication_schema=schema)
+        publication = read_publication_file(path, publication_spec=publication_spec)
