@@ -240,11 +240,6 @@ class InternalNode(Mapping):
         self._children[key] = value
 
 
-def _write(self):
-    with self.filepath.open('w') as fileobj:
-        yaml.dump(self._config, fileobj)
-
-
 def attr_in_config(key, whose=None):
 
     if whose is None:
@@ -254,20 +249,26 @@ def attr_in_config(key, whose=None):
     def attr(self):
         return whose(self)._config[key]
 
-    @attr.setter
-    def attr(self, new_value):
-        whose(self)._config[key] = new_value
-
     return attr
 
-class DiscoveredMaterials(InternalNode):
+
+class Materials_(InternalNode):
+    pass
+
+class Collection_(InternalNode):
+    pass
+
+class Publication_(InternalNode):
+    pass
+
+class DiscoveredMaterials(Materials_):
 
     def __init__(self, root: pathlib.Path, collections=None):
         self.root = root
         super().__init__(collections)
 
 
-class DiscoveredCollection(InternalNode):
+class DiscoveredCollection(Collection_):
 
     def __init__(self, filepath: pathlib.Path, config: dict, publications=None):
         self.filepath = filepath
@@ -276,8 +277,6 @@ class DiscoveredCollection(InternalNode):
 
     ordered = attr_in_config('ordered')
     publication_spec = attr_in_config('publication_spec')
-
-    write = _write
 
     @classmethod
     def from_file(cls, path):
@@ -288,45 +287,39 @@ class DiscoveredCollection(InternalNode):
 
 
 
-class DiscoveredPublication(InternalNode):
+class DiscoveredPublication(Publication_):
 
-    def __init__(self, filepath: pathlib.Path, config: dict, artifacts=None):
+    def __init__(self, filepath: pathlib.Path, config: dict):
         self.filepath = filepath
         self._config = config
+
+        artifacts = {}
+        for key, artifact_dct in config['artifacts'].items():
+            artifacts[key] = DiscoveredArtifact(self, artifact_dct)
+
         super().__init__(artifacts)
 
     metadata = attr_in_config('metadata')
     ready = attr_in_config('ready')
     release_time = attr_in_config('release_time')
 
-    write = _write
-
     @classmethod
     def from_file(cls, path):
         with path.open() as fileobj:
             config = yaml.load(fileobj)
 
-        artifacts_config = config['artifacts']
-        del config['artifacts']
-
-        obj = cls(path, config)
-
-        artifacts = {}
-        for key, artifact_dct in artifacts_config.items():
-            artifact = DiscoveredArtifact(obj, artifact_dct)
-            obj._add_child(key, artifact)
-
-        return obj
+        return cls(path, config)
 
 
 class DiscoveredArtifact:
 
-    def __init__(self, publication, config):
-        self.parent = publication
+    def __init__(self, parent, config: dict):
+        self.parent = parent
+        self._config = config
 
-    workdir: pathlib.Path
-    path: str
-    recipe: Optional[str] = None
-    release_time: Optional[datetime.datetime] = None
-    ready: bool = True
-    missing_ok: bool = False
+    workdir = attr_in_config("workdir")
+    path = attr_in_config("path")
+    recipe = attr_in_config("recipe")
+    release_time = attr_in_config("release_time")
+    ready = attr_in_config("ready")
+    missing_ok = attr_in_config("missing_ok")
