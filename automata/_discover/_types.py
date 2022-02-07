@@ -240,17 +240,44 @@ class InternalNode(Mapping):
         self._children[key] = value
 
 
-
-class Collection(InternalNode):
-    pass
-
-
-
-class Publication(InternalNode):
-    pass
+def _write(self):
+    with self.filepath.open('w') as fileobj:
+        yaml.dump(self._config, fileobj)
 
 
-def with_config_file(cls):
+def attr_in_config(key, whose=None):
+
+    if whose is None:
+        whose = lambda self: self
+
+    @property
+    def attr(self):
+        return whose(self)._config[key]
+
+    @attr.setter
+    def attr(self, new_value):
+        whose(self)._config[key] = new_value
+
+    return attr
+
+class DiscoveredMaterials(InternalNode):
+
+    def __init__(self, root: pathlib.Path, collections=None):
+        self.root = root
+        super().__init__(collections)
+
+
+class DiscoveredCollection(InternalNode):
+
+    def __init__(self, filepath: pathlib.Path, config: dict, publications=None):
+        self.filepath = filepath
+        self._config = config
+        super().__init__(publications)
+
+    ordered = attr_in_config('ordered')
+    publication_spec = attr_in_config('publication_spec')
+
+    write = _write
 
     @classmethod
     def from_file(cls, path):
@@ -259,49 +286,47 @@ def with_config_file(cls):
 
         return cls(path, config)
 
-    def write(self):
-        with self.filepath.open('w') as fileobj:
-            yaml.dump(self._config, fileobj)
-
-    cls.from_file = from_file
-    cls.write = write
-
-    return cls
 
 
-def config_attr(key):
-    @property
-    def attr(self):
-        return self._config[key]
-
-    @attr.setter
-    def attr(self, new_value):
-        self._config[key] = new_value
-
-    return attr
-
-
-@with_config_file
-class DiscoveredCollection(Collection):
-
-    def __init__(self, filepath: pathlib.Path, config: dict, publications=None):
-        self.filepath = filepath
-        self._config = config
-        super().__init__(publications)
-
-    ordered = config_attr('ordered')
-    publication_spec = config_attr('publication_spec')
-
-
-@with_config_file
-class DiscoveredPublication(Publication):
+class DiscoveredPublication(InternalNode):
 
     def __init__(self, filepath: pathlib.Path, config: dict, artifacts=None):
         self.filepath = filepath
         self._config = config
         super().__init__(artifacts)
 
-    metadata = config_attr('metadata')
-    ready = config_attr('ready')
-    release_time = config_attr('release_time')
+    metadata = attr_in_config('metadata')
+    ready = attr_in_config('ready')
+    release_time = attr_in_config('release_time')
 
+    write = _write
+
+    @classmethod
+    def from_file(cls, path):
+        with path.open() as fileobj:
+            config = yaml.load(fileobj)
+
+        artifacts_config = config['artifacts']
+        del config['artifacts']
+
+        obj = cls(path, config)
+
+        artifacts = {}
+        for key, artifact_dct in artifacts_config.items():
+            artifact = DiscoveredArtifact(obj, artifact_dct)
+            obj._add_child(key, artifact)
+
+        return obj
+
+
+class DiscoveredArtifact:
+
+    def __init__(self, publication, config):
+        self.parent = publication
+
+    workdir: pathlib.Path
+    path: str
+    recipe: Optional[str] = None
+    release_time: Optional[datetime.datetime] = None
+    ready: bool = True
+    missing_ok: bool = False
