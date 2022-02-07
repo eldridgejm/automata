@@ -66,3 +66,17 @@ class ExamplePublication:
 def example(tmpdir_factory):
     test_root = pathlib.Path(tmpdir_factory.mktemp("tmp"))
     return ExampleCourse(test_root)
+
+
+@fixture
+def write_file(tmpdir):
+    tmpdir = pathlib.Path(tmpdir)
+
+    def inner(filename, contents):
+        path = tmpdir / filename
+        with path.open("w") as fileobj:
+            fileobj.write(contents)
+        return path
+
+    return inner
+

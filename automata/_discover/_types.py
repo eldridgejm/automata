@@ -4,6 +4,11 @@ import datetime
 
 from typing import Optional, Mapping
 
+from ruamel.yaml import YAML
+
+
+yaml = YAML()
+
 
 # types
 # --------------------------------------------------------------------------------------
@@ -216,8 +221,103 @@ class Universe(typing.NamedTuple):
 
 # --------- new stuff ------------
 
-class DiscoveredCollection:
+class DiscoveredCollection(Mapping):
 
-    def __init__(self, filepath: pathlib.Path, dct: dict):
+    def __init__(self, filepath: pathlib.Path, config: dict, publications=None):
         self.filepath = filepath
-        self.publication_spec = dct['publication_spec']
+        self._config = config
+        self._children = publications or {}
+
+    def __getitem__(self, key):
+        return self._children[key]
+
+    def __iter__(self, key, value):
+        return iter(self._children)
+
+    def __len__(self):
+        return len(self._children)
+
+    def _add_child(self, key, value):
+        self._children[key] = value
+
+    @classmethod
+    def from_file(cls, path):
+        with path.open() as fileobj:
+            config = yaml.load(fileobj)
+
+        return cls(path, config)
+
+    @property
+    def publication_spec(self):
+        return self._config['publication_spec']
+
+    @publication_spec.setter
+    def publication_spec(self, new_value):
+        self._config['publication_spec'] = new_value
+
+    @property
+    def ordered(self):
+        return self._config['ordered']
+
+    @ordered.setter
+    def ordered(self, new_value):
+        self._config['ordered'] = new_value
+
+    def write(self):
+        with self.filepath.open('w') as fileobj:
+            yaml.dump(self._config, fileobj)
+
+
+class DiscoveredPublication(Mapping):
+
+    def __init__(self, filepath: pathlib.Path, config: dict, publications=None):
+        self.filepath = filepath
+        self._config = config
+        self._children = publications or {}
+
+    def __getitem__(self, key):
+        return self._children[key]
+
+    def __iter__(self, key, value):
+        return iter(self._children)
+
+    def __len__(self):
+        return len(self._children)
+
+    def _add_child(self, key, value):
+        self._children[key] = value
+
+    @classmethod
+    def from_file(cls, path):
+        with path.open() as fileobj:
+            config = yaml.load(fileobj)
+
+        return cls(path, config)
+
+    @property
+    def metadata(self):
+        return self._config['metadata']
+
+    @metadata.setter
+    def metadata(self, new_value):
+        self._config['metadata'] = new_value
+
+    @property
+    def ready(self):
+        return self._config['ready']
+
+    @ready.setter
+    def ready(self, new_value):
+        self._config['ready'] = new_value
+
+    @property
+    def release_time(self):
+        return self._config['release_time']
+
+    @release_time.setter
+    def release_time(self, new_value):
+        self._config['release_time'] = new_value
+
+    def write(self):
+        with self.filepath.open('w') as fileobj:
+            yaml.dump(self._config, fileobj)

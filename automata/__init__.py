@@ -6,4 +6,6 @@ from ._discover import (
     read_collection_file,
     DiscoveryError,
     MalformedFileError,
+    DiscoveredCollection,
+    DiscoveredPublication
 )
