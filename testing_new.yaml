@@ -1,0 +1,15 @@
+foo:
+  # this is a comment
+  bar: 18
+  baz:
+    # this is too
+    # and this
+
+    # there is some whitespace up there
+    ready: true # it is!
+
+
+something:
+- 1       # one
+- 2   # two
+- 3                # three
