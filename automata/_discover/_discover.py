@@ -8,7 +8,12 @@ from ._types import (
     Collection,
     Universe,
 )
-from ._io import read_collection_file, read_publication_file
+from ._io import (
+    read_collection_file,
+    read_publication_file,
+    CollectionFile,
+    PublicationFile,
+)
 from .exceptions import DiscoveryError
 
 # the file used to define a collection
@@ -18,6 +23,7 @@ COLLECTION_FILE = "collection.yaml"
 PUBLICATION_FILE = "publication.yaml"
 
 import dictconfig
+
 
 class DiscoverCallbacks:
     """Callbacks used in :func:`discover`. Defaults do nothing."""
@@ -53,24 +59,14 @@ class DiscoverCallbacks:
         """
 
 
-def _is_collection(path):
-    """Determine if the path is a collection."""
-    return (path / COLLECTION_FILE).is_file()
-
-
-def _is_publication(path):
-    """Determine if the path is a publication."""
-    return (path / PUBLICATION_FILE).is_file()
-
-
 def _search_for_collections_and_publications(
-    input_directory: pathlib.Path, skip_directories=None, callbacks=None
+    root: pathlib.Path, skip_directories=None, callbacks=None
 ):
-    """Perform a BFS to find all collections and publications in the filesystem.
+    """Find all collection and publication files in the filesystem under root.
 
     Parameters
     ----------
-    input_directory : pathlib.Path
+    root : pathlib.Path
         Path to the input directory that will be recursively searched.
     skip_directories : Optional[Collection[str]]
         A collection of folder names that, if found, will be skipped over. If None,
@@ -83,10 +79,10 @@ def _search_for_collections_and_publications(
     List[Path]
         The path to every collection discovered. The "default" collection is not included.
     Mapping[Path, Union[Path, None]]
-        A mapping whose keys are the paths to all discovered publications. The values
-        are paths to the collections containing the publications. If a publication has
-        no collection (or rather, belongs to the "default" collection), its value will
-        be ``None``.
+        A mapping whose keys are the paths to all discovered publications. The
+        values are paths to the collections containing the publications. If a
+        publication has no collection (or rather, belongs to the "default"
+        collection), its value will be ``None``.
 
     Raises
     ------
@@ -100,7 +96,7 @@ def _search_for_collections_and_publications(
     if callbacks is None:
         callbacks = DiscoverCallbacks()
 
-    queue = deque([(input_directory, None)])
+    queue = deque([(root, None)])
 
     collections = []
     publications = {}
@@ -236,9 +232,9 @@ def _make_publications(
             previous=previous,
         )
 
-        for key, artifact_dct in publication_dct['artifacts'].items():
+        for key, artifact_dct in publication_dct["artifacts"].items():
             artifact = UnbuiltArtifact(**artifact_dct, workdir=path)
-            publication_dct['artifacts'][key] = artifact
+            publication_dct["artifacts"][key] = artifact
 
         publication = Publication(**publication_dct)
 
@@ -302,3 +298,96 @@ def discover(
     )
 
     return Universe(collections)
+
+
+def _is_collection(path):
+    """Determine if the path is a collection."""
+    return (path / COLLECTION_FILE).is_file()
+
+
+def _is_publication(path):
+    """Determine if the path is a publication."""
+    return (path / PUBLICATION_FILE).is_file()
+
+
+def _dfs(
+    root,
+    *,
+    skip_directories,
+    collections,
+    current_collection,
+    current_collection_publications,
+):
+
+    if _is_collection(root):
+        if current_collection is not None:
+            raise DiscoveryError(f"Nested collection found.", root)
+
+        current_collection = CollectionFile(root / COLLECTION_FILE)
+        current_collection_publications = []
+        collections.append((current_collection, current_collection_publications))
+
+    if _is_publication(root):
+        publication = PublicationFile(root / PUBLICATION_FILE, current_collection)
+        current_collection_publications.append(publication)
+
+    subdirectories = sorted(d for d in root.iterdir() if d.is_dir())
+
+    for subdirectory in subdirectories:
+
+        if subdirectory.name in skip_directories:
+            continue
+        else:
+            _dfs(
+                subdirectory,
+                skip_directories=skip_directories,
+                collections=collections,
+                current_collection=current_collection,
+                current_collection_publications=current_collection_publications,
+            )
+
+
+def find_definition_files(root, skip_directories=None):
+    """Search the filesystem for collection and publication files.
+
+    Files are produced in DFS order, and directories are explored in alphabetical order.
+
+    If a singleton publication (i.e., a publication not part of any collection) is
+    found, its parent_collection_file attribute is set to None.
+
+    Parameters
+    ----------
+    root : pathlib.Path
+        The root directory of the search.
+    skip_directories : List[str]
+        A list of strings, each of which is the name of a directory that, if
+        encountered, will not be explored.
+
+    Returns
+    -------
+    List[Tuple[Optional[CollectionFile], List[PublicationFile]]]
+        A list of pairs. The first entry of the pair is a CollectionFile (or possibly
+        None). The second entry is a list of PublicationFile objects that occur in
+        the associated collection.
+
+    """
+
+    if skip_directories is None:
+        skip_directories = set()
+
+    singleton_publications = []
+    collections = [(None, singleton_publications)]
+
+    _dfs(
+        root,
+        skip_directories=skip_directories,
+        collections=collections,
+        current_collection=None,
+        current_collection_publications=singleton_publications,
+    )
+
+    # if the default collection has no publications, remove it
+    if not collections[0][1]:
+        collections.pop(0)
+
+    return collections

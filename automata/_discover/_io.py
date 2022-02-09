@@ -70,7 +70,7 @@ _PUBLICATION_SPEC_SCHEMA = {
         "allow_unspecified_artifacts": {
             "type": "boolean",
             "default": False,
-        }
+        },
     },
 }
 
@@ -81,7 +81,7 @@ _COLLECTION_FILE_DICTCONFIG_SCHEMA = {
     "required_keys": {"publication_spec": _PUBLICATION_SPEC_SCHEMA},
     "optional_keys": {
         "ordered": {"type": "boolean", "default": False},
-    }
+    },
 }
 
 
@@ -321,3 +321,60 @@ def read_publication_file(
             definition["path"] = key
 
     return resolved
+
+
+# types
+# =====
+
+# The classes below represent collection and publication files and provide convenience
+# methods for reading and writing them.
+
+
+class CollectionFile:
+    """Represents a collection file."""
+
+    def __init__(self, path):
+        self.path = path
+
+    def read_raw(self) -> dict:
+        """Read the file and return raw contents as a dict without resolution."""
+        with self.path.open() as fileobj:
+            return yaml.load(fileobj)
+
+    def read(self, vars: Optional[dict] = None) -> dict:
+        """Read the collection file, resolving and validating its contents."""
+        return read_collection_file(self.path, vars)
+
+    def write(self, dct: dict):
+        """Write a dictionary into the collection file."""
+        with self.path.open("w") as fileobj:
+            return yaml.dump(fileobj, dict)
+
+
+class PublicationFile:
+    """Represents a publication file."""
+
+    def __init__(self, path, parent_collection_file=None):
+        self.path = path
+        self.parent_collection_file = parent_collection_file
+
+    def read_raw(self):
+        """Read the file and return raw contents as a dictionary."""
+        with self.path.open() as fileobj:
+            return yaml.load(fileobj)
+
+    def read(
+        self,
+        publication_spec: Optional[dict] = None,
+        vars: Optional[dict] = None,
+        previous: Optional[dict] = None,
+    ) -> dict:
+        """Read the publication file, resolving and validating its contents."""
+        return read_publication_file(
+            self.path, publication_spec=publication_spec, vars=vars, previous=previous
+        )
+
+    def write(self, dct):
+        """Write a dictionary into the publication file."""
+        with self.path.open("w") as fileobj:
+            return yaml.dump(fileobj, dict)

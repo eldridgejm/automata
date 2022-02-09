@@ -222,44 +222,11 @@ class Universe(typing.NamedTuple):
 # --------- new stuff ------------
 
 
-class InternalNode(Mapping):
+from .._types import Materials as Materials_
+from .._types import Collection as Collection_
+from .._types import Publication as Publication_
+from .._types import Artifact as Artifact_
 
-    def __init__(self, children=None):
-        self._children = children or {}
-
-    def __getitem__(self, key):
-        return self._children[key]
-
-    def __iter__(self, key, value):
-        return iter(self._children)
-
-    def __len__(self):
-        return len(self._children)
-
-    def _add_child(self, key, value):
-        self._children[key] = value
-
-
-def attr_in_config(key, whose=None):
-
-    if whose is None:
-        whose = lambda self: self
-
-    @property
-    def attr(self):
-        return whose(self)._config[key]
-
-    return attr
-
-
-class Materials_(InternalNode):
-    pass
-
-class Collection_(InternalNode):
-    pass
-
-class Publication_(InternalNode):
-    pass
 
 class DiscoveredMaterials(Materials_):
 
@@ -272,54 +239,30 @@ class DiscoveredCollection(Collection_):
 
     def __init__(self, filepath: pathlib.Path, config: dict, publications=None):
         self.filepath = filepath
-        self._config = config
-        super().__init__(publications)
-
-    ordered = attr_in_config('ordered')
-    publication_spec = attr_in_config('publication_spec')
-
-    @classmethod
-    def from_file(cls, path):
-        with path.open() as fileobj:
-            config = yaml.load(fileobj)
-
-        return cls(path, config)
-
+        super().__init__(publication_spec=config['publication_spec'], ordered=config['ordered'], publications=publications)
 
 
 class DiscoveredPublication(Publication_):
 
-    def __init__(self, filepath: pathlib.Path, config: dict):
+    def __init__(self, filepath: pathlib.Path, config):
         self.filepath = filepath
-        self._config = config
 
+        workdir = filepath.parent
         artifacts = {}
         for key, artifact_dct in config['artifacts'].items():
-            artifacts[key] = DiscoveredArtifact(self, artifact_dct)
+            artifacts[key] = DiscoveredArtifact(self, workdir, artifact_dct)
 
-        super().__init__(artifacts)
-
-    metadata = attr_in_config('metadata')
-    ready = attr_in_config('ready')
-    release_time = attr_in_config('release_time')
-
-    @classmethod
-    def from_file(cls, path):
-        with path.open() as fileobj:
-            config = yaml.load(fileobj)
-
-        return cls(path, config)
+        super().__init__(metadata=config['metadata'], release_time=config['release_time'], ready=config['ready'], artifacts=artifacts)
 
 
 class DiscoveredArtifact:
 
-    def __init__(self, parent, config: dict):
+    def __init__(self, parent, workdir, config: dict):
         self.parent = parent
-        self._config = config
 
-    workdir = attr_in_config("workdir")
-    path = attr_in_config("path")
-    recipe = attr_in_config("recipe")
-    release_time = attr_in_config("release_time")
-    ready = attr_in_config("ready")
-    missing_ok = attr_in_config("missing_ok")
+        self.workdir = workdir
+        self.path = config["path"]
+        self.recipe = config["recipe"]
+        self.release_time = config["release_time"]
+        self.ready = config["ready"]
+        self.missing_ok = config["missing_ok"]

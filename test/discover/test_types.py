@@ -1,4 +1,5 @@
 import datetime
+import pathlib
 from textwrap import dedent
 
 from ruamel.yaml import YAML
@@ -24,34 +25,10 @@ def test_create_collection_from_dict():
     }
 
     # when
-    collection = DiscoveredCollection(None, dct)
+    collection = DiscoveredCollection(pathlib.Path.cwd(), dct)
 
     # then
     assert collection.ordered
-
-
-def test_create_collection_from_file(write_file):
-    # given
-    path = write_file(
-        "collection.yaml",
-        dedent(
-            """
-        # foooo
-        publication_spec:
-            required_artifacts: ['homework.pdf'] # barrrr
-
-        ordered: true
-    """
-        ),
-    )
-
-    # when
-    collection = DiscoveredCollection.from_file(path)
-
-    # then
-    assert collection.ordered
-    assert collection.publication_spec["required_artifacts"] == ["homework.pdf"]
-
 
 
 def test_collection_acts_like_mapping():
@@ -64,10 +41,10 @@ def test_collection_acts_like_mapping():
     }
 
     # when
-    collection = DiscoveredCollection(None, dct)
-    collection._add_child("foo", 1)
-    collection._add_child("bar", 2)
-    collection._add_child("baz", 3)
+    collection = DiscoveredCollection(pathlib.Path.cwd(), dct)
+    collection["foo"] = 1
+    collection["bar"] = 2
+    collection["baz"] = 3
 
     # then
     assert collection["foo"] == 1
@@ -84,13 +61,21 @@ def test_create_publication_from_dict():
     # given
     dct = {
         "artifacts": {
-            "homework.pdf": {"recipe": "touch homework.pdf"},
+            "homework.pdf": {
+                "path": None,
+                "release_time": None,
+                "ready": True,
+                "missing_ok": True,
+                "recipe": "touch homework.pdf"
+            },
         },
         "metadata": {"due": "2022-01-01"},
+        "release_time": "2022-01-01",
+        "ready": True
     }
 
     # when
-    publication = DiscoveredPublication(None, dct)
+    publication = DiscoveredPublication(pathlib.Path.cwd(), dct)
 
     # then
     assert publication.metadata["due"] == "2022-01-01"
@@ -100,53 +85,53 @@ def test_create_publication_from_dict_creates_artifacts():
     # given
     dct = {
         "artifacts": {
-            "homework.pdf": {"recipe": "touch homework.pdf"},
+            "homework.pdf": {
+                "path": None,
+                "release_time": None,
+                "ready": True,
+                "missing_ok": True,
+                "recipe": "touch homework.pdf"
+            },
         },
         "metadata": {"due": "2022-01-01"},
+        "release_time": "2022-01-01",
+        "ready": True
     }
 
     # when
-    publication = DiscoveredPublication(None, dct)
+    publication = DiscoveredPublication(pathlib.Path.cwd(), dct)
 
     # then
     assert publication['homework.pdf'].recipe == "touch homework.pdf"
 
 
-def test_create_publication_from_file(write_file):
-    # given
-    path = write_file(
-        "publication.yaml",
-        dedent(
-            """
-            artifacts:
-                homework.pdf:
-                    recipe: touch homework.pdf
-            metadata:
-                due: 2022-01-01
-        """
-        ),
-    )
-
-    # when
-    publication = DiscoveredPublication.from_file(path)
-
-    # then
-    assert publication.metadata["due"] == datetime.date(2022, 1, 1)
-
-
 def test_publication_acts_like_mapping():
     dct = {
         "artifacts": {
-            "homework.pdf": {"recipe": "make"},
-            "solution.pdf": {"recipe": "make solution"}
+            "homework.pdf": {
+                "path": None,
+                "release_time": None,
+                "ready": True,
+                "missing_ok": True,
+                "recipe": "make"
+            },
+            "solution.pdf": {
+                "path": None,
+                "release_time": None,
+                "ready": True,
+                "missing_ok": True,
+                "recipe": "make solution"
+            }
         },
         "metadata": {
             "due": "2021-01-01"
-        }
+        },
+        "release_time": "2022-01-01",
+        "ready": True
     }
 
     # when
-    publication = DiscoveredPublication(None, dct)
+    publication = DiscoveredPublication(pathlib.Path.cwd(), dct)
 
     # then
     assert publication["homework.pdf"].recipe == "make"
