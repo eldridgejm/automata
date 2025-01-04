@@ -1,7 +1,0 @@
-metadata:
-    what: ok
-
-artifacts:
-    homework:
-        path: ./build/nothing.pdf
-        recipe: make

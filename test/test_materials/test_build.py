@@ -7,21 +7,10 @@ from pytest import raises, fixture
 
 import automata.materials
 
-# good example; simple
-EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent / "examples"
-EXAMPLE_1_DIRECTORY = EXAMPLES_ROOT / "example_1"
 
-
-@fixture
-def example_1(tmpdir):
-    path = pathlib.Path(tmpdir) / "example_1"
-    shutil.copytree(EXAMPLE_1_DIRECTORY, path)
-    return path
-
-
-def test_build_artifact_integration(example_1):
+def test_build_artifact_integration(default_example_course):
     # given
-    universe = automata.materials.discover(example_1)
+    universe = automata.materials.discover(default_example_course.path)
     artifact = (
         universe.collections["homeworks"]
         .publications["01-intro"]
@@ -32,7 +21,9 @@ def test_build_artifact_integration(example_1):
     result = automata.materials.build(artifact)
 
     # then
-    assert (example_1 / "homeworks" / "01-intro" / "solution.pdf").exists()
+    assert (
+        default_example_course.path / "homeworks" / "01-intro" / "solution.pdf"
+    ).exists()
     assert result.workdir == artifact.workdir
     assert result.path == artifact.path
     assert result.path
@@ -164,18 +155,20 @@ def test_build_artifact_raises_if_no_file():
 
     # when
     with raises(automata.materials.BuildError):
-        result = automata.materials.build(artifact, run=run, exists=exists)
+        automata.materials.build(artifact, run=run, exists=exists)
 
 
-def test_build_collection(example_1):
+def test_build_collection(default_example_course):
     # given
-    universe = automata.materials.discover(example_1)
+    universe = automata.materials.discover(default_example_course.path)
 
     # when
     built_universe = automata.materials.build(universe)
 
     # then
-    assert (example_1 / "homeworks" / "01-intro" / "solution.pdf").exists()
+    assert (
+        default_example_course.path / "homeworks" / "01-intro" / "solution.pdf"
+    ).exists()
     build_result = (
         built_universe.collections["homeworks"]
         .publications["01-intro"]

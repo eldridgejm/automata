@@ -1,21 +1,9 @@
 import pathlib
-import shutil
 from textwrap import dedent
 
 from pytest import fixture
 
 import automata.materials
-
-EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent / "examples"
-EXAMPLE_1_DIRECTORY = EXAMPLES_ROOT / "example_1"
-
-
-@fixture
-def example_1(tmpdir):
-    path = pathlib.Path(tmpdir) / "example_1"
-    shutil.copytree(EXAMPLE_1_DIRECTORY, path)
-    return path
-
 
 @fixture
 def outdir(tmpdir):
@@ -24,9 +12,9 @@ def outdir(tmpdir):
     return outdir
 
 
-def test_publish(example_1, outdir):
+def test_publish(default_example_course, outdir):
     # given
-    discovered = automata.materials.discover(example_1)
+    discovered = automata.materials.discover(default_example_course.path)
     builts = automata.materials.build(discovered)
 
     # when
@@ -42,9 +30,9 @@ def test_publish(example_1, outdir):
     )
 
 
-def test_artifact_not_copied_if_not_released(example_1, outdir):
+def test_artifact_not_copied_if_not_released(default_example_course, outdir):
     # given
-    discovered = automata.materials.discover(example_1)
+    discovered = automata.materials.discover(default_example_course.path)
     built = automata.materials.build(discovered)
     publication = built.collections["homeworks"].publications["02-python"]
 

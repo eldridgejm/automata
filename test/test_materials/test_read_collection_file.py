@@ -4,7 +4,7 @@ from pytest import raises
 from automata.materials import read_collection_file, DiscoveryError
 
 
-def test_example(write_file):
+def test_on_valid_file(write_file):
     # given
     path = write_file(
         "collection.yaml",
@@ -105,7 +105,7 @@ def test_validates_fields(write_file):
 
     # then
     with raises(DiscoveryError):
-        collection = read_collection_file(path)
+        read_collection_file(path)
 
 
 def test_requires_required_artifacts(write_file):
@@ -131,7 +131,7 @@ def test_requires_required_artifacts(write_file):
 
     # then
     with raises(DiscoveryError):
-        collection = read_collection_file(path)
+        read_collection_file(path)
 
 
 def test_doesnt_require_optional_artifacts(write_file):
@@ -203,4 +203,4 @@ def test_raises_on_invalid_metadata_schema(write_file):
 
     # when then
     with raises(DiscoveryError):
-        collection = read_collection_file(path)
+        read_collection_file(path)

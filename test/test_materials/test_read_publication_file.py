@@ -10,7 +10,7 @@ from automata.materials import (
 )
 
 
-def test_example(write_file):
+def test_on_valid_file(write_file):
     # given
     path = write_file(
         "publication.yaml",

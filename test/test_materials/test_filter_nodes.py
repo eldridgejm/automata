@@ -2,16 +2,9 @@ import pathlib
 
 from automata.materials import discover, UnbuiltArtifact, filter_nodes
 
-
-# good example; simple
-EXAMPLES_ROOT = pathlib.Path(__file__).parent.parent / "examples"
-
-EXAMPLE_1_DIRECTORY = EXAMPLES_ROOT / "example_1"
-
-
-def test_basic():
+def test_basic(default_example_course):
     # when
-    universe = discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(default_example_course.path)
 
     def keep(k, v):
         if not isinstance(v, UnbuiltArtifact):
@@ -32,9 +25,9 @@ def test_basic():
     )
 
 
-def test_removes_nodes_without_children():
+def test_removes_nodes_without_children(default_example_course):
     # when
-    universe = discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(default_example_course.path)
 
     def keep(k, v):
         if not isinstance(v, UnbuiltArtifact):
@@ -48,9 +41,9 @@ def test_removes_nodes_without_children():
     assert "homeworks" not in universe.collections
 
 
-def test_preserves_nodes_without_children_by_default():
+def test_preserves_nodes_without_children_by_default(default_example_course):
     # when
-    universe = discover(EXAMPLE_1_DIRECTORY)
+    universe = discover(default_example_course.path)
 
     def keep(k, v):
         if not isinstance(v, UnbuiltArtifact):
