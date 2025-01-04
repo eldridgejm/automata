@@ -21,8 +21,8 @@ updating your course website each time your course materials change, have
 - **Streamline beginning-of-the-quarter course setup**. Because *automata*
   allows you to specify release dates relative to one another, your
   beginning-of-the-quarter wesbite setup can be as simple as specifying the
-  start date of your course. Run *automata* regularly after this, you don't
-  need to touch the website again until the next quarter.
+  start date of your course. If you run *automata* regularly after this, you
+  don't need to touch the website again until the next quarter.
 
 - **Integrate with GitHub Actions**: Automate the deployment of your course
   website with GitHub Actions, so that simply pushing to your course repository
