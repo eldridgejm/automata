@@ -27,6 +27,7 @@
               jinja2
               dictconfig.outputs.defaultPackage.${system}
             ];
+            nativeBuildInputs = with python3Packages; [setuptools wheel pip];
             doCheck = false;
           }
     );
@@ -43,6 +44,7 @@
               sphinx
               sphinx_rtd_theme
               ruff
+              mypy
 
               # install gradelib package to 1) make sure it's installable, and
               # 2) to get its dependencies. But below we'll add it to PYTHONPATH
