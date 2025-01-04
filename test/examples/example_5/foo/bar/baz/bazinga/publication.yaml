@@ -1,0 +1,4 @@
+artifacts:
+    foo:
+        path: filename
+        recipe: ok

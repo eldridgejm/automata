@@ -1,0 +1,22 @@
+publication_schema:
+    required_artifacts:
+        - homework.pdf
+        - solution.pdf
+
+    optional_artifacts:
+        - template.zip
+
+    metadata_schema:
+        required_keys:
+            name:
+                type: string
+            due:
+                type: datetime
+            released:
+                type: date
+        optional_keys:
+            author:
+                type: date
+
+
+    is_ordered: true
