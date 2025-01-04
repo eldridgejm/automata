@@ -1,11 +1,13 @@
+"""Common test fixtures for the automata package."""
+
 import pathlib
-from textwrap import dedent
 
 from pytest import fixture
 
 
 @fixture
 def write_file(tmpdir):
+    """A fixture providing a function that writes a file to a temporary directory."""
     tmpdir = pathlib.Path(tmpdir)
 
     def inner(filename, contents):
@@ -17,34 +19,28 @@ def write_file(tmpdir):
     return inner
 
 
-class ExampleCourse:
-    """A class that helps to in creating an example course."""
+class CourseBuilder:
+    """A class that helps in building an example course."""
 
-    def __init__(self, path: pathlib.Path, default_collection_yaml, default_publication_yaml):
+    def __init__(self, path: pathlib.Path):
         self.path = pathlib.Path(path)
-        self.default_collection_yaml = default_collection_yaml
-        self.default_publication_yaml = default_publication_yaml
 
-    def create_collection(self, name, collection_yaml=None):
-        if collection_yaml is None:
-            collection_yaml = self.default_collection_yaml
-
+    def create_collection(self, name, collection_yaml):
+        """Create a collection in the example course."""
         (self.path / name).mkdir()
-        with (self.path / name / 'collection.yaml').open('w') as fileobj:
+        with (self.path / name / "collection.yaml").open("w") as fileobj:
             fileobj.write(collection_yaml)
 
-    def create_publication(self, collection_name, publication_name, publication_yaml=None):
-        if publication_yaml is None:
-            publication_yaml = self.default_publication_yaml
-
-        publication_path = (self.path / collection_name / publication_name)
+    def create_publication(self, collection_name, publication_name, publication_yaml):
+        """Create a publication in the example course."""
+        publication_path = self.path / collection_name / publication_name
         publication_path.mkdir()
 
-        with (publication_path / 'publication.yaml').open('w') as fileobj:
+        with (publication_path / "publication.yaml").open("w") as fileobj:
             fileobj.write(publication_yaml)
 
 
 @fixture
-def example_course_factory():
-    return ExampleCourse
-
+def temporary_course(tmpdir):
+    """Creates an example course in a temporary directory."""
+    return CourseBuilder(tmpdir)
