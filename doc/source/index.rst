@@ -34,3 +34,6 @@ updating your course website each time your course materials change, have
    :maxdepth: 2
    :caption: Contents:
 
+   tutorial/index.rst
+   reference/index.rst
+   developer/index.rst

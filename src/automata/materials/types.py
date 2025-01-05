@@ -1,12 +1,15 @@
+"""Core types for representing materials in an automata course."""
+
 import typing
 import pathlib
 import datetime
 import dataclasses
 
+# material hierarchy nodes =============================================================
 
-# types
-# --------------------------------------------------------------------------------------
+# These types represent nodes in the "materials hierarchy".
 
+# artifacts ----------------------------------------------------------------------------
 
 @dataclasses.dataclass
 class Artifact:
@@ -23,50 +26,51 @@ class UnbuiltArtifact(Artifact):
         Absolute path to the working directory used to build the artifact.
     path : str
         Path (relative to the workdir) of the path produced by the build.
-    recipe : Union[str, None]
+    recipe : Optional[str]
         Command used to build the artifact. If None, no command is necessary.
     release_time: Union[datetime.datetime, None]
-        Time/date the artifact should be made public. If None, it is always available.
+        Time/date the artifact should be made public. If None, it is always
+        available.
     ready : bool
         Whether or not the artifact is ready for publication. Default: True.
     missing_ok : bool
-        If True and the path is missing after building, then no error is raised and the
-        result of the build is `None`.
+        If True and no file exists at the above path after building, then no
+        error is raised and the result of the build is `None`. Default: True.
 
     """
 
     workdir: pathlib.Path
     path: str
-    recipe: str = None
-    release_time: datetime.datetime = None
+    recipe: typing.Optional[str] = None
+    release_time: typing.Optional[datetime.datetime] = None
     ready: bool = True
     missing_ok: bool = False
 
 
 @dataclasses.dataclass
 class BuiltArtifact(Artifact):
-    """The results of building an artifact.
+    """The result of building an artifact.
 
     Attributes
     ----------
     workdir : pathlib.Path
         Absolute path to the working directory used to build the artifact.
     path : str
-        Path (relative to the workdir) of the path produced by the build.
+        Path (relative to the workdir) of the artifact produced by the build.
     returncode : int
-        The build process's return code. If None, there was no process.
+        The build process's return code. If None, there was no process. Default: None.
     stdout : str
-        The build process's stdout. If None, there was no process.
+        The build process's stdout. If None, there was no process. Default: None.
     stderr : str
-        The build process's stderr. If None, there was no process.
+        The build process's stderr. If None, there was no process. Default: None.
 
     """
 
     workdir: pathlib.Path
     path: str
-    returncode: int = None
-    stdout: str = None
-    stderr: str = None
+    returncode: typing.Optional[int] = None
+    stdout: typing.Optional[str] = None
+    stderr: typing.Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -76,15 +80,33 @@ class PublishedArtifact(Artifact):
     Attributes
     ----------
     path : str
-        The path to the artifact's path relative to the output directory.
+        The path to the artifact relative to the output directory.
 
     """
 
     path: str
 
 
-def _artifact_from_dict(dct):
-    """Infers the artifact type from the dictionary and performs conversion."""
+def _artifact_from_dict(
+    dct,
+) -> typing.Union[UnbuiltArtifact, BuiltArtifact, PublishedArtifact]:
+    """Given a dictionary representing an artifact, converts it to the appropriate type.
+
+    Works by inferring the artifact type (UnbuiltArtifact, BuiltArtifact, or
+    PublishedArtifact) from the dictionary's keys.
+
+
+    Parameters
+    ----------
+    dct : Dict
+        A dictionary containing the attributes of an artifact. Must be either
+        an UnbuiltArtifact, BuiltArtifact, or PublishedArtifact.
+
+    Returns
+    -------
+    UnbuiltArtifact, PublishedArtifact, BuiltArtifact
+
+    """
     if "recipe" in dct:
         type_ = UnbuiltArtifact
     elif "returncode" in dct:
@@ -95,9 +117,16 @@ def _artifact_from_dict(dct):
     return type_(**dct)
 
 
-# the following are "Internal Nodes" of the collection -> publication ->
-# artifact hierarchy. they all have _children attributes and _deep_asdict
-# and _replace_children methods>
+# publication, collection, universe ----------------------------------------------------
+
+# the following are "Internal Nodes" of the universe -> collection ->
+# publication -> artifact hierarchy. They all share the following attributes
+# and methods:
+#
+#   ._children: the nodes directly under the node in question in the hierarchy
+#   ._replace_children(new_children): replaces the node's current children with
+#       new children, creating a new node.
+#   ._deep_asdict(): returns a dictionary of all of the node's attributes.
 
 
 class Publication(typing.NamedTuple):
@@ -119,7 +148,9 @@ class Publication(typing.NamedTuple):
         """A dictionary representation of the publication and its children."""
         return {
             "metadata": self.metadata,
-            "artifacts": {k: dataclasses.asdict(a) for (k, a) in self.artifacts.items()},
+            "artifacts": {
+                k: dataclasses.asdict(a) for (k, a) in self.artifacts.items()
+            },
         }
 
     @classmethod
@@ -215,6 +246,9 @@ class Universe(typing.NamedTuple):
             },
         )
 
+# other ================================================================================
+
+# publication schema -------------------------------------------------------------------
 
 class PublicationSchema(typing.NamedTuple):
     """Rules governing publications.
@@ -237,11 +271,12 @@ class PublicationSchema(typing.NamedTuple):
     """
 
     required_artifacts: typing.Collection[str]
-    optional_artifacts: typing.Collection[str] = None
-    metadata_schema: typing.Mapping[str, typing.Mapping] = None
-    allow_unspecified_artifacts: bool = False
+    optional_artifacts: typing.Optional[typing.Collection[str]] = None
+    metadata_schema: typing.Optional[typing.Mapping[str, typing.Mapping]] = None
+    allow_unspecified_artifacts: typing.Optional[bool] = False
     is_ordered: bool = False
 
+# date context -------------------------------------------------------------------------
 
 class DateContext(typing.NamedTuple):
     """A context used to resolve smart dates.
