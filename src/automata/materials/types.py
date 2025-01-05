@@ -74,8 +74,8 @@ class BuiltArtifact(Artifact):
 
 
 @dataclasses.dataclass
-class ExportedArtifact(Artifact):
-    """An exported artifact.
+class PublishedArtifact(Artifact):
+    """A published artifact.
 
     Attributes
     ----------
