@@ -120,8 +120,8 @@ def _build_artifact(
     return output
 
 
-def build(
-    parent: typing.Union[Universe, Collection, Publication, UnbuiltArtifact],
+def build_node(
+    node: typing.Union[Universe, Collection, Publication, UnbuiltArtifact],
     *,
     ignore_release_time=False,
     ignore_ready=False,
@@ -135,7 +135,7 @@ def build(
 
     Parameters
     ----------
-    parent : Union[Universe, Collection, Publication, UnbuiltArtifact]
+    node : Union[Universe, Collection, Publication, UnbuiltArtifact]
         The thing to build. Operates recursively, so if given a
         :class:`Universe`, for instance, will build all of the artifacts
         within.
@@ -180,17 +180,17 @@ def build(
         callbacks=callbacks,
     )
 
-    if isinstance(parent, UnbuiltArtifact):
-        return _build_artifact(parent, **kwargs)
+    if isinstance(node, UnbuiltArtifact):
+        return _build_artifact(node, **kwargs)
 
     # recursively build the children
     new_children = {}
-    for child_key, child in parent._children.items():
+    for child_key, child in node._children.items():
         callbacks.on_build(child_key, child)
-        result = build(child, **kwargs)
+        result = build_node(child, **kwargs)
         # if a node is not built (perhaps due to it not being ready), the
         # result is None. this next conditional prevents such nodes from
         # appearing in the tree
         if result is not None:
             new_children[child_key] = result
-    return parent._replace_children(new_children)
+    return node._replace_children(new_children)

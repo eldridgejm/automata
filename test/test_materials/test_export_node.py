@@ -15,7 +15,7 @@ def outdir(tmpdir):
 def test_export_node(default_example_course, outdir):
     # given
     discovered = automata.materials.discover(default_example_course.path)
-    builts = automata.materials.build(discovered)
+    builts = automata.materials.build_node(discovered)
 
     # when
     exported = automata.materials.export_node(builts, outdir)
@@ -33,7 +33,7 @@ def test_export_node(default_example_course, outdir):
 def test_artifact_not_copied_if_not_released(default_example_course, outdir):
     # given
     discovered = automata.materials.discover(default_example_course.path)
-    built = automata.materials.build(discovered)
+    built = automata.materials.build_node(discovered)
     publication = built.collections["homeworks"].publications["02-python"]
 
     # when
@@ -82,7 +82,7 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
     temporary_course.create_publication("homeworks", "01-testing", publication_yaml)
 
     discovered = automata.materials.discover(temporary_course.path)
-    built = automata.materials.build(discovered)
+    built = automata.materials.build_node(discovered)
     exported = automata.materials.export_node(built, outdir)
 
     assert (outdir / "homeworks" / "01-testing" / "problems").is_dir()
