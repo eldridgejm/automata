@@ -1,4 +1,4 @@
-from .types import UnbuiltArtifact, BuiltArtifact, PublishedArtifact
+from .types import UnbuiltArtifact, BuiltArtifact, ExportedArtifact
 
 
 # filter_nodes()
@@ -38,7 +38,7 @@ def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
     # bottom up -- by the time the predicate is applied to publication, its artifacts
     # have been filtered
 
-    if isinstance(parent, (UnbuiltArtifact, BuiltArtifact, PublishedArtifact)):
+    if isinstance(parent, (UnbuiltArtifact, BuiltArtifact, ExportedArtifact)):
         return parent
 
     new_children = {}
@@ -47,7 +47,7 @@ def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
             child, predicate, remove_empty_nodes=remove_empty_nodes, callbacks=callbacks
         )
         is_artifact = isinstance(
-            new_child, (UnbuiltArtifact, BuiltArtifact, PublishedArtifact)
+            new_child, (UnbuiltArtifact, BuiltArtifact, ExportedArtifact)
         )
         if is_artifact or (not remove_empty_nodes) or new_child._children:
             new_children[child_key] = new_child

@@ -2,7 +2,7 @@ import pathlib
 import shutil
 import re
 
-from .types import BuiltArtifact, PublishedArtifact
+from .types import BuiltArtifact, ExportedArtifact
 
 
 # publishing
@@ -30,7 +30,7 @@ def _publish_artifact(built_artifact, outdir, filename, callbacks):
     else:
         shutil.copy(full_src, full_dst)
 
-    return PublishedArtifact(path=full_dst.relative_to(outdir))
+    return ExportedArtifact(path=full_dst.relative_to(outdir))
 
 
 def publish(parent, outdir, prefix="", callbacks=None):
@@ -55,8 +55,8 @@ def publish(parent, outdir, prefix="", callbacks=None):
     -------
     type(parent)
         A copy of the parent, but with all leaf artifact nodes replace by
-        :class:`PublishedArtifact` instances. Artifacts which have not yet
-        been released are still converted to PublishedArtifact, but their ``path``
+        :class:`ExportedArtifact` instances. Artifacts which have not yet
+        been released are still converted to ExportedArtifact, but their ``path``
         is set to ``None``.
 
     Notes

@@ -74,8 +74,8 @@ class BuiltArtifact(Artifact):
 
 
 @dataclasses.dataclass
-class PublishedArtifact(Artifact):
-    """A published artifact.
+class ExportedArtifact(Artifact):
+    """An exported artifact.
 
     Attributes
     ----------
@@ -89,22 +89,22 @@ class PublishedArtifact(Artifact):
 
 def _artifact_from_dict(
     dct,
-) -> typing.Union[UnbuiltArtifact, BuiltArtifact, PublishedArtifact]:
+) -> typing.Union[UnbuiltArtifact, BuiltArtifact, ExportedArtifact]:
     """Given a dictionary representing an artifact, converts it to the appropriate type.
 
     Works by inferring the artifact type (UnbuiltArtifact, BuiltArtifact, or
-    PublishedArtifact) from the dictionary's keys.
+    ExportedArtifact) from the dictionary's keys.
 
 
     Parameters
     ----------
     dct : Dict
         A dictionary containing the attributes of an artifact. Must be either
-        an UnbuiltArtifact, BuiltArtifact, or PublishedArtifact.
+        an UnbuiltArtifact, BuiltArtifact, or ExportedArtifact.
 
     Returns
     -------
-    UnbuiltArtifact, PublishedArtifact, BuiltArtifact
+    UnbuiltArtifact, ExportedArtifact, BuiltArtifact
 
     """
     if "recipe" in dct:
@@ -112,7 +112,7 @@ def _artifact_from_dict(
     elif "returncode" in dct:
         type_ = BuiltArtifact
     else:
-        type_ = PublishedArtifact
+        type_ = ExportedArtifact
 
     return type_(**dct)
 
