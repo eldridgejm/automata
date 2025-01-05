@@ -12,13 +12,13 @@ def outdir(tmpdir):
     return outdir
 
 
-def test_publish(default_example_course, outdir):
+def test_export_node(default_example_course, outdir):
     # given
     discovered = automata.materials.discover(default_example_course.path)
     builts = automata.materials.build(discovered)
 
     # when
-    published = automata.materials.publish(builts, outdir)
+    exported = automata.materials.export_node(builts, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -26,7 +26,7 @@ def test_publish(default_example_course, outdir):
 
     assert (
         "homework.pdf"
-        in published.collections["homeworks"].publications["01-intro"].artifacts
+        in exported.collections["homeworks"].publications["01-intro"].artifacts
     )
 
 
@@ -37,7 +37,7 @@ def test_artifact_not_copied_if_not_released(default_example_course, outdir):
     publication = built.collections["homeworks"].publications["02-python"]
 
     # when
-    published = automata.materials.publish(built, outdir)
+    exported = automata.materials.export_node(built, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -46,7 +46,7 @@ def test_artifact_not_copied_if_not_released(default_example_course, outdir):
     assert "solution.pdf" not in (publication.artifacts)
 
 
-def test_capable_of_publishing_entire_directories(temporary_course, outdir):
+def test_capable_of_exporting_entire_directories(temporary_course, outdir):
     collection_yaml = dedent(
         """
         publication_schema:
@@ -83,7 +83,7 @@ def test_capable_of_publishing_entire_directories(temporary_course, outdir):
 
     discovered = automata.materials.discover(temporary_course.path)
     built = automata.materials.build(discovered)
-    published = automata.materials.publish(built, outdir)
+    exported = automata.materials.export_node(built, outdir)
 
     assert (outdir / "homeworks" / "01-testing" / "problems").is_dir()
     assert (outdir / "homeworks" / "01-testing" / "problems" / "one.pdf").is_file()
