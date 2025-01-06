@@ -20,16 +20,17 @@ from . import constants
 
 
 def read_collection_file(path, vars=None):
-    """Read a :class:`Collection` from a yaml file.
+    """Reads a :class:`Collection` from a ``collection.yaml`` file.
 
     See the documentation for a description of the format of the file.
 
     Parameters
     ----------
     path : pathlib.Path
-        Path to the collection file.
+        Path to the ``collection.yaml`` file.
     vars : Optional[dict]
-        A dictionary of variables available during interpolation.
+        A dictionary of variables available during interpolation. If None, no
+        variables will be made available.
 
     Returns
     -------
@@ -141,26 +142,27 @@ def _validate_metadata_schema(metadata_schema, path):
 
 
 def read_publication_file(path, publication_schema=None, vars=None, previous=None):
-    """Read a :class:`Publication` from a yaml file.
+    """Read a :class:`Publication` from a ``publication.yaml`` file.
 
     Parameters
     ----------
     path : pathlib.Path
-        Path to the collection file.
+        Path to the ``publication.yaml`` file.
     publication_schema : Optional[PublicationSchema]
         A schema that described the necessary artifacts of the publication and
         what metadata it should have. If `None`, only very basic validation is
         done (see below). Default: None.
-    vars : dict
-        A dictionary of external variables that will be available during interpolation
-        of the publication file.
-    previpus : Publication
+    vars : Optional[dict]
+        A dictionary of external variables that will be available during
+        interpolation of the publication file. If None, no variables will be
+        available. Default: None.
+    previous : Optional[Publication]
         The previous publication. If None, there is assumed to be no previous.
 
     Returns
     -------
     Publication
-        The publication.
+        The publication, along with its artifacts.
 
     Raises
     ------

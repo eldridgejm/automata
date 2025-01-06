@@ -1,4 +1,72 @@
-"""Core types for representing materials in an automata course."""
+"""This module provides types for representing materials in an `automata` course.
+
+Types for representing nodes in the materials hierarchy
+-------------------------------------------------------
+
+`automata` conceptually organizes course materials into a hierarchy. At the
+bottom of the hierarchy are "artifacts" (files). Artifacts are grouped into
+"publications", which are in turn grouped into "collections". At the root of
+the hierarchy is the "universe", which contains all of the collections. The
+types in this module are used to represent the nodes in this hierarchy.
+
+Artifacts
+~~~~~~~~~
+
+There are three types of artifacts: :class:`UnbuiltArtifact`,
+:class:`BuiltArtifact`, and :class:`ExportedArtifact`. These represent artifacts
+at different stages of the build/export process.
+
+.. autoclass:: UnbuiltArtifact
+.. autoclass:: BuiltArtifact
+.. autoclass:: ExportedArtifact
+
+These three classes are all subclasses of :class:`Artifact`:
+
+.. autoclass:: Artifact
+
+Publications, Collections, and Universes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Artifacts are the "leaf" nodes in the materials hierarchy. On the other hand, the
+"internal" nodes of the hierarchy are represented by :class:`Publication`,
+:class:`Collection`, and :class:`Universe`. These classes are all containers for
+nodes of the next level down in the hierarchy. 
+
+The unique attributes of each of these classes are documented below. However, all
+three classes share the following attributes and methods:
+
+.. attribute:: ._children
+
+    The nodes directly under the node in question in the hierarchy. Their type will
+    depend on the class in question.
+
+.. method:: ._replace_children(new_children:)
+
+    Replaces the node's current children with new children, creating a new node.
+
+.. method:: ._deep_asdict()
+
+    Returns a dictionary of all of the node's attributes, including its
+    children. Operates recursively.
+
+.. method:: ._deep_fromdict(dct:)
+
+    Given a dictionary representation of the node, returns a new node. Round-trip
+    compatible with :meth:`_deep_asdict`.
+
+The unique attributes of each class are:
+
+.. autoclass:: Publication
+.. autoclass:: Collection
+.. autoclass:: Universe
+
+Types for schemas and dates
+---------------------------
+
+.. autoclass:: PublicationSchema
+.. autoclass:: DateContext
+
+"""
 
 import typing
 import pathlib
@@ -18,7 +86,7 @@ class Artifact:
 
 @dataclasses.dataclass
 class UnbuiltArtifact(Artifact):
-    """The inputs needed to build an artifact.
+    """Represents an unbuilt artifact and the information necessary to build it.
 
     Attributes
     ----------
@@ -49,7 +117,7 @@ class UnbuiltArtifact(Artifact):
 
 @dataclasses.dataclass
 class BuiltArtifact(Artifact):
-    """The result of building an artifact.
+    """Represents the result of building an artifact.
 
     Attributes
     ----------
@@ -75,7 +143,7 @@ class BuiltArtifact(Artifact):
 
 @dataclasses.dataclass
 class ExportedArtifact(Artifact):
-    """An exported artifact.
+    """Represents an exported artifact.
 
     Attributes
     ----------
@@ -251,7 +319,11 @@ class Universe(typing.NamedTuple):
 # publication schema -------------------------------------------------------------------
 
 class PublicationSchema(typing.NamedTuple):
-    """Rules governing publications.
+    """Represents a schema used to validate publications.
+
+    Collections can have a schema that defines the required and optional
+    artifacts and metadata that the publications within the collection must
+    contain. This class is used to represent that schema.
 
     Attributes
     ----------
@@ -261,12 +333,28 @@ class PublicationSchema(typing.NamedTuple):
         Names of artifacts that publication are permitted to contain. Default: empty
         list.
     metadata_schema : Mapping[str, Any], optional
-        A dictionary describing a schema used to validate publication metadata. In the
-        style of cerberus. If None, no validation will be performed. Default: None.
+        A dictionary describing a schema used to validate publication metadata.
+        In the style of the cerberus library
+        (https://docs.python-cerberus.org/en/stable/). If None, no validation
+        will be performed. Default: None.
     allow_unspecified_artifacts : Optional[Boolean]
         Is it permissible for a publication to have unknown artifacts? Default: False.
     is_ordered : Optional[Boolean]
         Should the publications be considered ordered by their keys? Default: False
+
+    Example
+    -------
+
+    The following schema requires that all publications contain a "homework.pdf"
+    artifact and a "solution.pdf" artifact. The metadata for each publication must
+    contain a "due_date" key with a value that is a string.
+
+    >>> schema = PublicationSchema(
+    ...     required_artifacts=["homework.pdf", "solution.pdf"],
+    ...     metadata_schema={
+    ...         "due_date": {"type": "string"}
+    ...     }
+    ... )
 
     """
 
@@ -279,7 +367,7 @@ class PublicationSchema(typing.NamedTuple):
 # date context -------------------------------------------------------------------------
 
 class DateContext(typing.NamedTuple):
-    """A context used to resolve smart dates.
+    """a context used when resolving dates.
 
     Attributes
     ----------

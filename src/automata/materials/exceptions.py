@@ -1,5 +1,11 @@
-# exceptions
-# --------------------------------------------------------------------------------------
+"""Exceptions used in :mod:`automata.materials`.
+
+.. autoclass:: Error
+.. autoclass:: ValidationError
+.. autoclass:: DiscoveryError
+.. autoclass:: BuildError
+
+"""
 
 
 class Error(Exception):
