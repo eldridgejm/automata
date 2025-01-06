@@ -1,5 +1,9 @@
-import pathlib
+"""Provides the discover() function, which searches the filesystem for materials."""
+
 from collections import deque, OrderedDict
+from typing import Optional, Dict, Any
+import typing
+import pathlib
 
 from .types import (
     Collection,
@@ -12,12 +16,56 @@ from ._read_publication_file import read_publication_file
 from . import constants
 
 
-# discovery: discover()
-# --------------------------------------------------------------------------------------
+def discover(
+    input_directory: pathlib.Path,
+    skip_directories: Optional[typing.Collection[str]] = None,
+    callbacks=None,
+    vars: Optional[Dict[str, Any]] = None,
+):
+    """Discover the collections and publications in the filesystem.
+
+    Parameters
+    ----------
+    input_directory : Path
+        The path to the directory that will be recursively searched.
+    skip_directories : Optional[Collection[str]]
+        A collection of directory names that should be skipped if discovered.
+        If None, no directories will be skipped.
+    callbacks
+        Callbacks to be invoked during the discovery. If omitted, no callbacks
+        are executed. See below for the possible callbacks and their arguments.
+    vars : Optional[dict]
+        A dictionary of extra variables to be available during interpolation.
+
+    Returns
+    -------
+    Universe
+        The collections and the nested publications and artifacts, contained in
+        a :class:`Universe` instance.
+    """
+    if callbacks is None:
+        callbacks = _DiscoverCallbacks()
+
+    collection_paths, publication_paths = _search_for_collections_and_publications(
+        input_directory, skip_directories=skip_directories, callbacks=callbacks
+    )
+
+    publication_paths = _sort_dictionary(publication_paths)
+
+    collections = _make_collections(collection_paths, input_directory, callbacks)
+    _make_publications(
+        publication_paths,
+        input_directory,
+        collections,
+        callbacks=callbacks,
+        vars=vars,
+    )
+
+    return Universe(collections)
 
 
-class DiscoverCallbacks:
-    """Callbacks used in :func:`discover`. Defaults do nothing."""
+class _DiscoverCallbacks:
+    """Default callbacks used in :func:`discover`. Defaults do nothing."""
 
     def on_collection(self, path):
         """When a collection is discovered.
@@ -28,6 +76,7 @@ class DiscoverCallbacks:
             The path of the collection file.
 
         """
+        return path
 
     def on_publication(self, path):
         """When a publication is discovered.
@@ -38,6 +87,7 @@ class DiscoverCallbacks:
             The path of the publication file.
 
         """
+        return path
 
     def on_skip(self, path):
         """When a directory is skipped.
@@ -48,6 +98,7 @@ class DiscoverCallbacks:
             The path of the directory to be skipped.
 
         """
+        return path
 
 
 def _is_collection(path):
@@ -72,7 +123,7 @@ def _search_for_collections_and_publications(
     skip_directories : Optional[Collection[str]]
         A collection of folder names that, if found, will be skipped over. If None,
         every folder is searched.
-    callbacks : DiscoverCallbacks
+    callbacks
         Callbacks invoked when interesting things happen.
 
     Returns
@@ -95,7 +146,7 @@ def _search_for_collections_and_publications(
         skip_directories = set()
 
     if callbacks is None:
-        callbacks = DiscoverCallbacks()
+        callbacks = _DiscoverCallbacks()
 
     queue = deque([(input_directory, None)])
 
@@ -120,7 +171,7 @@ def _search_for_collections_and_publications(
                 if subpath.name in skip_directories:
                     callbacks.on_skip(subpath)
                     continue
-                queue.append((subpath, parent_collection_path))
+                queue.append((subpath, parent_collection_path))  # type: ignore
 
     return collections, publications
 
@@ -144,7 +195,7 @@ def _make_collections(collection_paths, input_directory, callbacks):
         A list containing the path to every discovered collection.
     input_directory : Path
         Path to the root of the search.
-    callbacks : DiscoverCallbacks
+    callbacks
         The callbacks to be invoked when interesting things happen.
 
     Returns
@@ -203,7 +254,7 @@ def _make_publications(
     collections : Mapping[str, Collection]
         A mapping from collection keys to Collection objects. The newly-created
         Publication objects will be added to these Collection objects in-place.
-    callbacks : DiscoverCallbacks
+    callbacks
         The callbacks to be invoked when interesting things happen.
     vars : Optional[dict]
         A dictionary of extra variables to be used during interpolation.
@@ -242,52 +293,3 @@ def _sort_dictionary(dct):
     for key in sorted(dct):
         result[key] = dct[key]
     return result
-
-
-def discover(
-    input_directory,
-    skip_directories=None,
-    callbacks=None,
-    vars=None,
-):
-    """Discover the collections and publications in the filesystem.
-
-    Parameters
-    ----------
-    input_directory : Path
-        The path to the directory that will be recursively searched.
-    skip_directories : Optional[Collection[str]]
-        A collection of directory names that should be skipped if discovered.
-        If None, no directories will be skipped.
-    callbacks : Optional[DiscoverCallbacks]
-        Callbacks to be invoked during the discovery. If omitted, no callbacks
-        are executed. See :class:`DiscoverCallbacks` for the possible callbacks
-        and their arguments.
-    vars : Optional[dict]
-        A dictionary of extra variables to be available during interpolation.
-
-    Returns
-    -------
-    Universe
-        The collections and the nested publications and artifacts, contained in
-        a :class:`Universe` instance.
-    """
-    if callbacks is None:
-        callbacks = DiscoverCallbacks()
-
-    collection_paths, publication_paths = _search_for_collections_and_publications(
-        input_directory, skip_directories=skip_directories, callbacks=callbacks
-    )
-
-    publication_paths = _sort_dictionary(publication_paths)
-
-    collections = _make_collections(collection_paths, input_directory, callbacks)
-    _make_publications(
-        publication_paths,
-        input_directory,
-        collections,
-        callbacks=callbacks,
-        vars=vars,
-    )
-
-    return Universe(collections)
