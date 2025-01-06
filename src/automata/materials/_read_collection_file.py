@@ -1,9 +1,48 @@
+"""Provides read_collection_file(), which reads a Collection from a collection.yaml."""
+
+from typing import Optional, Dict, Any
+import pathlib
+
 import dictconfig
 import yaml
 
-from .types import UnbuiltArtifact, Publication, Collection, PublicationSchema
+from .types import Collection, PublicationSchema
 
 from .exceptions import DiscoveryError
+
+# the dictconfig schema describing a valid collection file.
+COLLECTION_FILE_SCHEMA = {
+    "type": "dict",
+    "required_keys": {
+        "publication_schema": {
+            "type": "dict",
+            "required_keys": {
+                "required_artifacts": {
+                    "type": "list",
+                    "element_schema": {"type": "string"},
+                }
+            },
+            "optional_keys": {
+                "optional_artifacts": {
+                    "type": "list",
+                    "element_schema": {"type": "string"},
+                    "default": [],
+                },
+                "metadata_schema": {
+                    "type": "dict",
+                    "extra_keys_schema": {"type": "any"},
+                    "default": None,
+                    "nullable": True,
+                },
+                "allow_unspecified_artifacts": {
+                    "type": "boolean",
+                    "default": False,
+                },
+                "is_ordered": {"type": "boolean", "default": False},
+            },
+        }
+    },
+}
 
 
 def read_collection_file(path, vars=None):
@@ -40,43 +79,9 @@ def read_collection_file(path, vars=None):
     return Collection(publication_schema=publication_schema, publications={})
 
 
-def _collection_file_schema():
-    """The dictconfig schema describing a valid collection file."""
-    return {
-        "type": "dict",
-        "required_keys": {
-            "publication_schema": {
-                "type": "dict",
-                "required_keys": {
-                    "required_artifacts": {
-                        "type": "list",
-                        "element_schema": {"type": "string"},
-                    }
-                },
-                "optional_keys": {
-                    "optional_artifacts": {
-                        "type": "list",
-                        "element_schema": {"type": "string"},
-                        "default": [],
-                    },
-                    "metadata_schema": {
-                        "type": "dict",
-                        "extra_keys_schema": {"type": "any"},
-                        "default": None,
-                        "nullable": True,
-                    },
-                    "allow_unspecified_artifacts": {
-                        "type": "boolean",
-                        "default": False,
-                    },
-                    "is_ordered": {"type": "boolean", "default": False},
-                },
-            }
-        },
-    }
-
-
-def _resolve_collection_file(raw_contents, external_variables, path):
+def _resolve_collection_file(
+    raw_contents: dict, external_variables: Optional[dict], path: pathlib.Path
+) -> dict:
     """Resolves (interpolates and parses) the raw collection file contents.
 
     Parameters
@@ -100,12 +105,10 @@ def _resolve_collection_file(raw_contents, external_variables, path):
         If the collection file is invalid.
 
     """
-    schema = _collection_file_schema()
-
     try:
-        resolved = dictconfig.resolve(
-            raw_contents, schema, external_variables=external_variables
-        )
+        resolved: Dict[str, Any] = dictconfig.resolve(
+            raw_contents, COLLECTION_FILE_SCHEMA, external_variables=external_variables
+        )  # type: ignore
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
@@ -115,6 +118,10 @@ def _resolve_collection_file(raw_contents, external_variables, path):
 
 
 def _validate_metadata_schema(metadata_schema, path):
+    """Ensures that the publication metadata schema provided is valid.
+
+    Converts dictconfig exceptions into DiscoveryError exceptions.
+    """
     if metadata_schema is None:
         return
 
@@ -122,5 +129,3 @@ def _validate_metadata_schema(metadata_schema, path):
         dictconfig.validate_schema({"type": "dict", **metadata_schema})
     except dictconfig.exceptions.InvalidSchemaError as exc:
         raise DiscoveryError(exc, path)
-
-

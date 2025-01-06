@@ -1,7 +1,11 @@
+"""Provides read_publication_file(), which reads a Publication from a publication.yaml."""
+
+from typing import Optional, Dict, Any
+
 import dictconfig
 import yaml
 
-from .types import UnbuiltArtifact, Publication, Collection, PublicationSchema
+from .types import UnbuiltArtifact, Publication, PublicationSchema
 
 from .exceptions import DiscoveryError
 
@@ -27,7 +31,7 @@ def read_publication_file(path, publication_schema=None, vars=None, previous=Non
     Returns
     -------
     Publication
-        The publication, along with its artifacts.
+        The publication, along with its artifacts as :class:`UnbuiltArtifact` objects.
 
     Raises
     ------
@@ -64,9 +68,9 @@ def read_publication_file(path, publication_schema=None, vars=None, previous=Non
     if previous is not None:
         external_variables["previous"] = previous._deep_asdict()
 
-    resolved = _resolve_publication_file(
+    resolved: Dict[str, Any] = _resolve_publication_file(
         raw_contents, publication_schema, external_variables, path
-    )
+    )  # type: ignore
 
     # convert each artifact to an Artifact object
     artifacts = {}
@@ -85,8 +89,15 @@ def read_publication_file(path, publication_schema=None, vars=None, previous=Non
     return publication
 
 
-def _make_publication_file_schema(publication_schema):
-    """Construct a dictconfig schema for validating and resolving the publication file."""
+def _make_publication_file_schema(
+    publication_schema: Optional[PublicationSchema],
+) -> dict:
+    """Construct a dictconfig schema for validating and resolving the publication file.
+
+    A function is necessary here in order to convert the PublicationSchema object
+    to a dictconfig schema dictionary.
+
+    """
 
     if publication_schema is None:
         publication_schema = PublicationSchema([], allow_unspecified_artifacts=True)
