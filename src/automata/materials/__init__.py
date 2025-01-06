@@ -67,6 +67,8 @@ Functions
 """
 
 from . import types, exceptions
+from ._read_collection_file import read_collection_file
+from ._read_publication_file import read_publication_file
 from ._discover import *
 from ._build_node import *
 from ._export_node import *
