@@ -13,13 +13,13 @@ class FilterCallbacks:
         """On an artifact miss."""
 
 
-def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
-    """Remove nodes from a Universe/Collection/Publication.
+def filter_nodes(root, predicate, remove_empty_nodes=False, callbacks=None):
+    """Remove nodes from a Universe/Collection/Publication according to a predicate.
 
     Parameters
     ----------
-    parent
-        The root of the tree.
+    root : Union[Universe, Collection, Publication, Artifact]
+        The root of the tree whose nodes are to be filtered.
     predicate : Callable[[node], bool]
         A function which takes in a node and returns True/False whether it
         should be kept.
@@ -29,8 +29,8 @@ def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
 
     Returns
     -------
-    type(parent)
-        An object of the same type as the parent, but wth all filtered nodes
+    type(root)
+        An object of the same type as the root, but wth all filtered nodes
         removed. Furthermore, if a node has no children after filtering, it
         is removed.
 
@@ -38,11 +38,11 @@ def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
     # bottom up -- by the time the predicate is applied to publication, its artifacts
     # have been filtered
 
-    if isinstance(parent, (UnbuiltArtifact, BuiltArtifact, ExportedArtifact)):
-        return parent
+    if isinstance(root, (UnbuiltArtifact, BuiltArtifact, ExportedArtifact)):
+        return root
 
     new_children = {}
-    for child_key, child in parent._children.items():
+    for child_key, child in root._children.items():
         new_child = filter_nodes(
             child, predicate, remove_empty_nodes=remove_empty_nodes, callbacks=callbacks
         )
@@ -54,4 +54,4 @@ def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
 
     new_children = {k: v for (k, v) in new_children.items() if predicate(k, v)}
 
-    return parent._replace_children(new_children)
+    return root._replace_children(new_children)

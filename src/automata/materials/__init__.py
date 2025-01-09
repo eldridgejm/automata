@@ -18,8 +18,8 @@ higher-level functions in the :mod:`automata.api` module.
    read_collection_file
    read_publication_file
    discover
-   build_node
-   export_node
+   build_tree
+   export_tree
    filter_nodes
    serialize
    deserialize
@@ -48,8 +48,8 @@ Functions
 .. autofunction:: read_collection_file
 .. autofunction:: read_publication_file
 .. autofunction:: discover
-.. autofunction:: build_node
-.. autofunction:: export_node
+.. autofunction:: build_tree
+.. autofunction:: export_tree
 .. autofunction:: filter_nodes
 .. autofunction:: serialize
 .. autofunction:: deserialize
@@ -70,7 +70,7 @@ from . import types, exceptions
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file
 from ._discover import *
-from ._build_node import *
-from ._export_node import *
+from ._build_tree import *
+from ._export_tree import *
 from ._filter import *
 from ._serialize import *
