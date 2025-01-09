@@ -44,7 +44,7 @@ def discover(
         a :class:`Universe` instance.
     """
     if callbacks is None:
-        callbacks = _DiscoverCallbacks()
+        callbacks = _DiscoverCallbacksNoOp()
 
     collection_paths, publication_paths = _search_for_collections_and_publications(
         input_directory, skip_directories=skip_directories, callbacks=callbacks
@@ -64,7 +64,7 @@ def discover(
     return Universe(collections)
 
 
-class _DiscoverCallbacks:
+class _DiscoverCallbacksNoOp:
     """Default callbacks used in :func:`discover`. Defaults do nothing."""
 
     def on_collection(self, path):
@@ -146,7 +146,7 @@ def _search_for_collections_and_publications(
         skip_directories = set()
 
     if callbacks is None:
-        callbacks = _DiscoverCallbacks()
+        callbacks = _DiscoverCallbacksNoOp()
 
     queue = deque([(input_directory, None)])
 
