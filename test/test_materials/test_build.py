@@ -18,7 +18,7 @@ def test_build_artifact_integration(default_example_course):
     )
 
     # when
-    result = automata.materials.build_tree(artifact)
+    result = automata.materials.build(artifact)
 
     # then
     assert (
@@ -44,7 +44,7 @@ def test_build_artifact_when_release_time_is_in_future():
     now = Mock(return_value=datetime.datetime(2020, 1, 1, 0, 0, 0))
 
     # when
-    result = automata.materials.build_tree(artifact, run=run, now=now)
+    result = automata.materials.build(artifact, run=run, now=now)
 
     # then
     assert result is None
@@ -67,7 +67,7 @@ def test_build_artifact_when_not_ready():
     now = Mock(return_value=datetime.datetime(2020, 3, 1, 0, 0, 0))
 
     # when
-    result = automata.materials.build_tree(artifact, run=run, now=now)
+    result = automata.materials.build(artifact, run=run, now=now)
 
     # then
     assert result is None
@@ -90,7 +90,7 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
     exists = Mock(return_value=True)
 
     # when
-    result = automata.materials.build_tree(
+    result = automata.materials.build(
         artifact, run=run, now=now, exists=exists, ignore_release_time=True
     )
 
@@ -109,7 +109,7 @@ def test_build_artifact_when_recipe_is_none():
     exists = Mock(return_value=True)
 
     # when
-    result = automata.materials.build_tree(artifact, run=run, exists=exists)
+    result = automata.materials.build(artifact, run=run, exists=exists)
 
     # then
     assert result.path
@@ -127,7 +127,7 @@ def test_build_artifact_when_recipe_is_none_raises_if_no_path():
 
     # when
     with raises(automata.materials.BuildError):
-        result = automata.materials.build_tree(artifact, run=run, exists=exists)
+        result = automata.materials.build(artifact, run=run, exists=exists)
 
 
 def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
@@ -140,7 +140,7 @@ def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
     exists = Mock(return_value=False)
 
     # when
-    result = automata.materials.build_tree(artifact, run=run, exists=exists)
+    result = automata.materials.build(artifact, run=run, exists=exists)
     assert result is None
 
 
@@ -155,7 +155,7 @@ def test_build_artifact_raises_if_no_file():
 
     # when
     with raises(automata.materials.BuildError):
-        automata.materials.build_tree(artifact, run=run, exists=exists)
+        automata.materials.build(artifact, run=run, exists=exists)
 
 
 def test_build_collection(default_example_course):
@@ -163,7 +163,7 @@ def test_build_collection(default_example_course):
     universe = automata.materials.discover(default_example_course.path)
 
     # when
-    built_universe = automata.materials.build_tree(universe)
+    built_universe = automata.materials.build(universe)
 
     # then
     assert (

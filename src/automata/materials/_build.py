@@ -129,7 +129,7 @@ def _build_artifact(
     return output
 
 
-def build_tree(
+def build(
     root: typing.Union[Universe, Collection, Publication, UnbuiltArtifact],
     *,
     ignore_release_time=False,
@@ -196,7 +196,7 @@ def build_tree(
     new_children = {}
     for child_key, child in root._children.items():
         callbacks.on_build(child_key, child)
-        result = build_tree(child, **kwargs)
+        result = build(child, **kwargs)
         # if a node is not built (perhaps due to it not being ready), the
         # result is None. this next conditional prevents such nodes from
         # appearing in the tree

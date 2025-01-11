@@ -148,7 +148,7 @@ def publish(
             else:
                 return k == artifact_filter
 
-        discovered = mlib.filter_nodes(
+        discovered = mlib.filter(
             discovered, keep, remove_empty_nodes=True, callbacks=CLIFilterCallbacks()
         )
 
