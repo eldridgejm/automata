@@ -6,7 +6,7 @@ import pathlib
 import dictconfig
 import yaml
 
-from .types import Collection, PublicationSchema
+from ._types import Collection, PublicationSchema
 
 from .exceptions import DiscoveryError
 
@@ -46,7 +46,7 @@ COLLECTION_FILE_SCHEMA = {
 
 
 def read_collection_file(path, vars=None):
-    """Reads a :class:`Collection` from a ``collection.yaml`` file.
+    """Reads a :class:`types.Collection` from a ``collection.yaml`` file.
 
     See the documentation for a description of the format of the file.
 

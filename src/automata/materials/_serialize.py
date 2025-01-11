@@ -1,7 +1,7 @@
 import json
 import datetime
 
-from .types import Artifact, Publication, Collection, Universe
+from ._types import Artifact, Publication, Collection, Universe
 
 
 # serialization

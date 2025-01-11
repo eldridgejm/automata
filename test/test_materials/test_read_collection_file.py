@@ -1,7 +1,8 @@
 from textwrap import dedent
 from pytest import raises
 
-from automata.materials import read_collection_file, DiscoveryError
+from automata.materials import read_collection_file
+from automata.materials.exceptions import DiscoveryError
 
 
 def test_on_valid_file(write_file):

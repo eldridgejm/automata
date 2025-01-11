@@ -1,7 +1,7 @@
 import pathlib
 
 from automata.materials import discover, filter
-from automata.materials.types import UnbuiltArtifact
+from automata.materials import UnbuiltArtifact
 
 def test_basic(default_example_course):
     # when

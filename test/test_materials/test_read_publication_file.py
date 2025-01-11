@@ -5,9 +5,11 @@ from pytest import raises, fixture, mark
 
 from automata.materials import (
     read_publication_file,
-    DiscoveryError,
-    PublicationSchema,
 )
+
+from automata.materials import PublicationSchema
+
+from automata.materials.exceptions import DiscoveryError
 
 
 def test_on_valid_file(write_file):

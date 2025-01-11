@@ -1,41 +1,34 @@
-:mod:`automata.materials` - low-level tools for working with course materials
-=============================================================================
+:mod:`automata.materials` - a library for working with course materials
+=======================================================================
 
 .. automodule:: automata.materials
 
 This module may be useful to you if you want to work with your course materials
 in a programmatic way (perhaps even without using `automata` to build your
 course website). It provides the core functionality of `automata`, but it can
-also be useful as a library for third party applications. However, this module
+also be used as a library within third party applications. However, this module
 is rather low-level. If you are simply looking for a way to invoke `automata`
 from a Python script, you might be more interested in the higher-level
 functions in the :mod:`automata.api` module.
 
+The functions and classes in this module are as follows:
+
 **Core Types**
 
-:mod:`automata.materials.types` defines a number of classes for representing course
-materials, following the convention described in the tutorial.
+:mod:`automata.materials` defines a number of classes for representing course
+materials, following the convention described in the tutorial of grouping them into
+collections, publications, and artifacts.
 
 .. autosummary::
    :nosignatures:
 
-   types.Artifact
    types.UnbuiltArtifact
    types.BuiltArtifact
    types.ExportedArtifact
+   types.Artifact
    types.Publication
-   types.Collection
-
-**Other Types**
-
-These miscellaneous types define the interface for information passed into some
-of the core functions below.
-
-.. autosummary::
-   :nosignatures:
-
    types.PublicationSchema
-   types.DateContext
+   types.Collection
 
 **Core Functions**
 
@@ -45,30 +38,34 @@ These functions provide the core functionality of `automata`.
 .. autosummary::
    :nosignatures:
 
-   read_collection_file
-   read_publication_file
    discover
+   filter
    build
    export
-   filter
    serialize
    deserialize
+   read_collection_file
+   read_publication_file
 
 **Callback Interfaces**
 
-Certain core functions, such as :func:`build`, accept callbacks. The below
-classes define the interface for these callbacks, and can be subclassed and
-their methods overridden to provide custom behavior.
+The four core functions of :func:`discover`, :func:`filter`, :func:`build`, and
+:func:`export` accept callbacks which are primarily used to provide feedback to
+the user about the progress of these operations. The below classes define the
+interface for these callbacks, and can be subclassed and their methods
+overridden to provide custom behavior.
 
 .. autosummary::
    :nosignatures:
 
+   DiscoverCallbacks
+   FilterCallbacks
    BuildCallbacks
+   ExportCallbacks
+
 
 Core types for representing course materials
 --------------------------------------------
-
-.. module:: automata.materials.types
 
 As described in :ref:`convention`, `automata` establishes a convention for
 organizing and annotating course materials. In this convention, individual
@@ -78,7 +75,7 @@ collection of publications is called a *collection*. Collections, publications,
 and artifacts are all defined in the filesystem using YAML files placed alongside
 the course materials they describe.
 
-The :mod:`automata.materials.types` module defines classes for representing
+The :mod:`automata.materials` module defines classes for representing
 collections, publications, and artifacts in Python. Because `automata`'s
 convention is *hierarchical* (with artifacts contained in publications, and
 publications contained in collections), a collection of course materials can be
@@ -141,51 +138,79 @@ a :class:`Universe` object:
 
 .. module:: automata.materials
 
-Finding, filtering, building and exporting materials
-----------------------------------------------------
+Discovering, filtering, building and exporting materials
+--------------------------------------------------------
+
+The four core functions in `automata.materials` are :func:`discover`,
+:func:`filter`, :func:`build`, and :func:`export`. These functions allow you to
+read course materials from the filesystem, filter them based on various criteria,
+build them (i.e., run any necessary build processes to generate artifacts), and
+export them to a directory.
+
+.. autofunction:: discover
+.. autofunction:: filter
+.. autofunction:: build
+.. autofunction:: export
+
+It is common to use these functions within user-facing code, such as a command
+line interface. The functions themselves do not print any output, but they do
+accept callbacks that can be used to provide feedback to the user. These callbacks
+can be provided by subclassing the appropriate callback interface below:
+
+.. autoclass:: DiscoverCallbacks
+    :members:
+
+.. autoclass:: FilterCallbacks
+   :members:
+
+.. autoclass:: BuildCallbacks
+    :members:
+
+.. autoclass:: ExportCallbacks
+    :members:
+
+Serialization and deserialization
+---------------------------------
+
+The node types (collections, publications, and artifacts) described above are primarily
+used for representing course materials in memory. However, you may want to save these
+objects to disk, or read them from disk. The :func:`serialize` and :func:`deserialize`
+functions provide a way to do this.
+
+.. autofunction:: serialize
+.. autofunction:: deserialize
 
 Reading configuration files
 ---------------------------
 
 In most cases, you'll want to use :func:`discover` to recursively find all the
-course materials in a directory. However, if you want to read a single
-collection or publication file, you can use the following functions:
+course materials in a directory, resulting in a :class:`Universe` instance that
+(through its descendants) contains all information about the course materials.
+However, if you want to read a single collection or publication file, you can
+use the following functions:
 
 .. autofunction:: read_collection_file
 .. autofunction:: read_publication_file
 
-Serialization and deserialization
----------------------------------
 
 Exception types
 ---------------
 
+Because :mod:`automata.materials` is designed to be used as a library, it provides
+a number of exception types that can be raised in the course of its operation.
+These are all contained in the :mod:`automata.materials.exceptions` module.
 
-:mod:`automata.materials`
--------------------------
+.. module:: automata.materials.exceptions
 
-.. autofunction:: read_collection_file
-.. autofunction:: read_publication_file
-.. autofunction:: discover
-.. autofunction:: build
-.. autoclass:: BuildCallbacks
-    :members:
-.. autofunction:: export
-.. autofunction:: filter
-.. autofunction:: serialize
-.. autofunction:: deserialize
+.. autoclass:: Error
+.. autoclass:: ValidationError
+.. autoclass:: DiscoveryError
+.. autoclass:: BuildError
 
 
+.. module:: automata.materials.exceptions
 
-Types for schemas and dates
----------------------------
 
-.. autoclass:: PublicationSchema
 .. autoclass:: DateContext
 
-
-:mod:`automata.materials.exceptions`
-------------------------------------
-
-.. automodule:: automata.materials.exceptions
 

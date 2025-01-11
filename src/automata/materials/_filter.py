@@ -1,4 +1,5 @@
-from .types import UnbuiltArtifact, BuiltArtifact, ExportedArtifact
+from ._types import UnbuiltArtifact, BuiltArtifact, ExportedArtifact
+from typing import Optional
 
 
 # filter()
@@ -6,6 +7,8 @@ from .types import UnbuiltArtifact, BuiltArtifact, ExportedArtifact
 
 
 class FilterCallbacks:
+    """Callbacks used by :func:`filter`."""
+
     def on_hit(self, x):
         """On an artifact match."""
 
@@ -13,7 +16,12 @@ class FilterCallbacks:
         """On an artifact miss."""
 
 
-def filter(root, predicate, remove_empty_nodes=False, callbacks=None):
+def filter(
+    root,
+    predicate,
+    remove_empty_nodes=False,
+    callbacks: Optional[FilterCallbacks] = None,
+):
     """Remove nodes from a Universe/Collection/Publication according to a predicate.
 
     Parameters
@@ -30,7 +38,7 @@ def filter(root, predicate, remove_empty_nodes=False, callbacks=None):
     Returns
     -------
     type(root)
-        An object of the same type as the root, but wth all filtered nodes
+        An object of the same type as the root, but with all filtered nodes
         removed. Furthermore, if a node has no children after filtering, it
         is removed.
 

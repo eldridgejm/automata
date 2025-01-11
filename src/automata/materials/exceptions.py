@@ -1,23 +1,28 @@
-"""Exceptions used in :mod:`automata.materials`.
-
-.. autoclass:: Error
-.. autoclass:: ValidationError
-.. autoclass:: DiscoveryError
-.. autoclass:: BuildError
-
-"""
+"""Exceptions used in :mod:`automata.materials`."""
 
 
 class Error(Exception):
-    """Generic error."""
+    """Generic error, and base class for all exceptions in this module."""
 
 
 class ValidationError(Error):
-    """Publication does not satisfy schema."""
+    """The publication does not satisfy its schema."""
 
 
 class DiscoveryError(Error):
-    """A configuration file is not valid."""
+    """A configuration file is not valid.
+
+    The string representation of this exception will contain the error message
+    and the path to the file that caused the error.
+
+    Attributes
+    ----------
+    msg : str
+        The error message.
+    path : Path
+        The path to the file that caused the error.
+
+    """
 
     def __init__(self, msg, path):
         self.path = path

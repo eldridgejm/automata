@@ -7,7 +7,7 @@ import typing
 
 import yaml
 
-from . import serialize, discover, DateContext
+from . import serialize, discover
 
 
 ArtifactLocation = collections.namedtuple(

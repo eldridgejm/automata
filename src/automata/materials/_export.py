@@ -1,7 +1,7 @@
 import pathlib
 import shutil
 
-from .types import BuiltArtifact, ExportedArtifact
+from ._types import BuiltArtifact, ExportedArtifact
 
 
 # exporting
@@ -9,6 +9,8 @@ from .types import BuiltArtifact, ExportedArtifact
 
 
 class ExportCallbacks:
+    """Callbacks used by :func:`export`."""
+
     def on_copy(self, src, dst):
         """Called when copying a file."""
 

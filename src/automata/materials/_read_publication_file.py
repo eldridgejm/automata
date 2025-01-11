@@ -5,20 +5,20 @@ from typing import Optional, Dict, Any
 import dictconfig
 import yaml
 
-from .types import UnbuiltArtifact, Publication, PublicationSchema
+from ._types import UnbuiltArtifact, Publication, PublicationSchema
 
 from .exceptions import DiscoveryError
 
 
 def read_publication_file(path, publication_schema=None, vars=None, previous=None):
-    """Read a :class:`Publication` from a ``publication.yaml`` file.
+    """Reads a :class:`types.Publication` from a ``publication.yaml`` file.
 
     Parameters
     ----------
     path : pathlib.Path
         Path to the ``publication.yaml`` file.
     publication_schema : Optional[PublicationSchema]
-        A schema that described the necessary artifacts of the publication and
+        A schema that describes the necessary artifacts of the publication and
         what metadata it should have. If `None`, only very basic validation is
         done (see below). Default: None.
     vars : Optional[dict]

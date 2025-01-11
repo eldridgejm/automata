@@ -68,7 +68,7 @@ def test_collection_as_dict():
     collection.publications["01-intro"] = automata.materials.Publication(
         metadata={"name": "testing"},
         artifacts={
-            "homework": automata.materials.types.UnbuiltArtifact(
+            "homework": automata.materials.UnbuiltArtifact(
                 workdir=None, path="homework.pdf", recipe="make", release_time=None
             ),
         },

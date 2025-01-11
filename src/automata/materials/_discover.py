@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 import typing
 import pathlib
 
-from .types import (
+from ._types import (
     Collection,
     Universe,
     PublicationSchema,
@@ -16,56 +16,8 @@ from ._read_publication_file import read_publication_file
 from . import constants
 
 
-def discover(
-    input_directory: pathlib.Path,
-    skip_directories: Optional[typing.Collection[str]] = None,
-    callbacks=None,
-    vars: Optional[Dict[str, Any]] = None,
-):
-    """Discover the collections and publications in the filesystem.
-
-    Parameters
-    ----------
-    input_directory : Path
-        The path to the directory that will be recursively searched.
-    skip_directories : Optional[Collection[str]]
-        A collection of directory names that should be skipped if discovered.
-        If None, no directories will be skipped.
-    callbacks
-        Callbacks to be invoked during the discovery. If omitted, no callbacks
-        are executed. See below for the possible callbacks and their arguments.
-    vars : Optional[dict]
-        A dictionary of extra variables to be available during interpolation.
-
-    Returns
-    -------
-    Universe
-        The collections and the nested publications and artifacts, contained in
-        a :class:`Universe` instance.
-    """
-    if callbacks is None:
-        callbacks = _DiscoverCallbacksNoOp()
-
-    collection_paths, publication_paths = _search_for_collections_and_publications(
-        input_directory, skip_directories=skip_directories, callbacks=callbacks
-    )
-
-    publication_paths = _sort_dictionary(publication_paths)
-
-    collections = _make_collections(collection_paths, input_directory, callbacks)
-    _make_publications(
-        publication_paths,
-        input_directory,
-        collections,
-        callbacks=callbacks,
-        vars=vars,
-    )
-
-    return Universe(collections)
-
-
-class _DiscoverCallbacksNoOp:
-    """Default callbacks used in :func:`discover`. Defaults do nothing."""
+class DiscoverCallbacks:
+    """Callbacks used by :func:`discover`."""
 
     def on_collection(self, path):
         """When a collection is discovered.
@@ -99,6 +51,54 @@ class _DiscoverCallbacksNoOp:
 
         """
         return path
+
+
+def discover(
+    input_directory: pathlib.Path,
+    skip_directories: Optional[typing.Collection[str]] = None,
+    callbacks: Optional[DiscoverCallbacks] = None,
+    vars: Optional[Dict[str, Any]] = None,
+) -> Universe:
+    """Discover the course materials in the filesystem.
+
+    Parameters
+    ----------
+    input_directory : Path
+        The path to the directory that will be recursively searched.
+    skip_directories : Optional[Collection[str]]
+        A collection of directory names that should be skipped if discovered.
+        If None, no directories will be skipped.
+    callbacks : DiscoverCallbacks
+        Callbacks to be invoked during the discovery. If omitted, no callbacks
+        are executed. See below for the possible callbacks and their arguments.
+    vars : Optional[dict]
+        A dictionary of extra variables to be available during interpolation.
+
+    Returns
+    -------
+    Universe
+        The collections and the nested publications and artifacts, contained in
+        a :class:`Universe` instance.
+    """
+    if callbacks is None:
+        callbacks = DiscoverCallbacks()
+
+    collection_paths, publication_paths = _search_for_collections_and_publications(
+        input_directory, skip_directories=skip_directories, callbacks=callbacks
+    )
+
+    publication_paths = _sort_dictionary(publication_paths)
+
+    collections = _make_collections(collection_paths, input_directory, callbacks)
+    _make_publications(
+        publication_paths,
+        input_directory,
+        collections,
+        callbacks=callbacks,
+        vars=vars,
+    )
+
+    return Universe(collections)
 
 
 def _is_collection(path):

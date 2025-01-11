@@ -7,7 +7,7 @@ import pathlib
 import typing
 
 
-from .types import (
+from ._types import (
     UnbuiltArtifact,
     BuiltArtifact,
     ExportedArtifact,
@@ -163,7 +163,7 @@ def build(
     exists=pathlib.Path.exists,
     callbacks: typing.Optional[BuildCallbacks] = None,
 ):
-    """Build a universe/collection/publication/artifact.
+    """Build all artifacts contained under the given root node.
 
     Parameters
     ----------

@@ -321,23 +321,3 @@ class PublicationSchema(typing.NamedTuple):
     metadata_schema: typing.Optional[typing.Mapping[str, typing.Mapping]] = None
     allow_unspecified_artifacts: typing.Optional[bool] = False
     is_ordered: bool = False
-
-
-# date context -------------------------------------------------------------------------
-
-
-class DateContext(typing.NamedTuple):
-    """a context used when resolving dates.
-
-    Attributes
-    ----------
-    known : Optional[Mapping[str, datetime]]
-        A dictionary of known dates. If None, there are no known dates.
-    start_of_week_one : Optional[datetime.date]
-        What should be considered the start of "week 1". If None, smart dates referring
-        to weeks cannot be used.
-
-    """
-
-    known: dict = None
-    start_of_week_one: typing.Optional[datetime.date] = None
