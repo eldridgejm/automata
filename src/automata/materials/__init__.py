@@ -20,7 +20,7 @@ higher-level functions in the :mod:`automata.api` module.
    discover
    build
    export
-   filter_nodes
+   filter
    serialize
    deserialize
 
@@ -49,8 +49,10 @@ Functions
 .. autofunction:: read_publication_file
 .. autofunction:: discover
 .. autofunction:: build
+.. autoclass:: BuildCallbacks
+    :members:
 .. autofunction:: export
-.. autofunction:: filter_nodes
+.. autofunction:: filter
 .. autofunction:: serialize
 .. autofunction:: deserialize
 
@@ -70,7 +72,7 @@ from . import types, exceptions
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file
 from ._discover import *
-from ._build import *
+from ._build import build, BuildCallbacks
 from ._export import *
-from ._filter import *
+from ._filter import filter
 from ._serialize import *

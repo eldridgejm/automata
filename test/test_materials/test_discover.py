@@ -4,7 +4,8 @@ from textwrap import dedent
 
 from pytest import raises, fixture, mark
 
-from automata.materials import discover, UnbuiltArtifact, DiscoveryError
+from automata.materials import discover, DiscoveryError
+from automata.materials.types import UnbuiltArtifact
 
 
 def test_finds_collections(default_example_course):

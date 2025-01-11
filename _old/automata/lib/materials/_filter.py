@@ -1,7 +1,7 @@
 from .types import UnbuiltArtifact, BuiltArtifact, PublishedArtifact
 
 
-# filter_nodes()
+# filter()
 # --------------------------------------------------------------------------------------
 
 
@@ -13,7 +13,7 @@ class FilterCallbacks:
         """On an artifact miss."""
 
 
-def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
+def filter(parent, predicate, remove_empty_nodes=False, callbacks=None):
     """Remove nodes from a Universe/Collection/Publication.
 
     Parameters
@@ -43,7 +43,7 @@ def filter_nodes(parent, predicate, remove_empty_nodes=False, callbacks=None):
 
     new_children = {}
     for child_key, child in parent._children.items():
-        new_child = filter_nodes(
+        new_child = filter(
             child, predicate, remove_empty_nodes=remove_empty_nodes, callbacks=callbacks
         )
         is_artifact = isinstance(

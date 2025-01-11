@@ -33,7 +33,7 @@ Library API
     build
     publish
     deserialize
-    filter_nodes
+    filter
     read_collection_file
     read_publication_file
     serialize
@@ -181,10 +181,10 @@ Filtering
 ~~~~~~~~~
 
 Collections, publications, and artifacts can be removed using
-:func:`filter_nodes`.
+:func:`filter`.
 
 
-.. autofunction:: filter_nodes
+.. autofunction:: filter
 
 
 :mod:`automata.lib.coursepage`

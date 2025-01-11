@@ -1,6 +1,7 @@
 import pathlib
 
-from automata.materials import discover, UnbuiltArtifact, filter_nodes
+from automata.materials import discover, filter
+from automata.materials.types import UnbuiltArtifact
 
 def test_basic(default_example_course):
     # when
@@ -12,7 +13,7 @@ def test_basic(default_example_course):
 
         return k == "solution.pdf"
 
-    universe = filter_nodes(universe, keep)
+    universe = filter(universe, keep)
 
     # then
     assert (
@@ -35,7 +36,7 @@ def test_removes_nodes_without_children(default_example_course):
 
         return k not in {"solution.pdf", "homework.pdf"}
 
-    universe = filter_nodes(universe, keep, remove_empty_nodes=True)
+    universe = filter(universe, keep, remove_empty_nodes=True)
 
     # then
     assert "homeworks" not in universe.collections
@@ -51,7 +52,7 @@ def test_preserves_nodes_without_children_by_default(default_example_course):
 
         return k not in {"solution.pdf", "homework.pdf"}
 
-    universe = filter_nodes(universe, keep)
+    universe = filter(universe, keep)
 
     # then
     assert "homeworks" in universe.collections

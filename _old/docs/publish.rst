@@ -50,7 +50,7 @@ The full API of the package is as follows:
     build
     deserialize
     discover
-    filter_nodes
+    filter
     publish
     read_collection_file
     read_publication_file
@@ -209,10 +209,10 @@ Filtering
 ---------
 
 Collections, publications, and artifacts can be removed using
-:func:`filter_nodes`.
+:func:`filter`.
 
 
-.. autofunction:: filter_nodes
+.. autofunction:: filter
 
 
 Indices and tables

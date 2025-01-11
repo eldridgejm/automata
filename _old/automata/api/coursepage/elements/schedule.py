@@ -141,7 +141,7 @@ class Week:
         self.topic = topic
 
     def filter(self, collection, date_key):
-        return automata.lib.materials.filter_nodes(
+        return automata.lib.materials.filter(
             collection, _publication_within_week(self.start_date, date_key)
         )
 

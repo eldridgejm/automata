@@ -31,7 +31,7 @@ def test_build_artifact_integration(default_example_course):
 
 def test_build_artifact_when_release_time_is_in_future():
     # given
-    artifact = automata.materials.UnbuiltArtifact(
+    artifact = automata.materials.types.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="foo.pdf",
         recipe="echo hi",
@@ -53,7 +53,7 @@ def test_build_artifact_when_release_time_is_in_future():
 
 def test_build_artifact_when_not_ready():
     # given
-    artifact = automata.materials.UnbuiltArtifact(
+    artifact = automata.materials.types.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="foo.pdf",
         recipe="echo hi",
@@ -76,7 +76,7 @@ def test_build_artifact_when_not_ready():
 
 def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
     # given
-    artifact = automata.materials.UnbuiltArtifact(
+    artifact = automata.materials.types.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="foo.pdf",
         recipe="echo hi",
@@ -101,7 +101,7 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
 
 def test_build_artifact_when_recipe_is_none():
     # given
-    artifact = automata.materials.UnbuiltArtifact(
+    artifact = automata.materials.types.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None
     )
 
@@ -118,7 +118,7 @@ def test_build_artifact_when_recipe_is_none():
 
 def test_build_artifact_when_recipe_is_none_raises_if_no_path():
     # given
-    artifact = automata.materials.UnbuiltArtifact(
+    artifact = automata.materials.types.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None
     )
 
@@ -126,13 +126,13 @@ def test_build_artifact_when_recipe_is_none_raises_if_no_path():
     exists = Mock(return_value=False)
 
     # when
-    with raises(automata.materials.BuildError):
+    with raises(automata.materials.exceptions.BuildError):
         result = automata.materials.build(artifact, run=run, exists=exists)
 
 
 def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
     # given
-    artifact = automata.materials.UnbuiltArtifact(
+    artifact = automata.materials.types.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None, missing_ok=True
     )
 
@@ -146,7 +146,7 @@ def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
 
 def test_build_artifact_raises_if_no_file():
     # given
-    artifact = automata.materials.UnbuiltArtifact(
+    artifact = automata.materials.types.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(), path="foo.pdf", recipe="touch bar"
     )
 
@@ -154,7 +154,7 @@ def test_build_artifact_raises_if_no_file():
     exists = Mock(return_value=False)
 
     # when
-    with raises(automata.materials.BuildError):
+    with raises(automata.materials.exceptions.BuildError):
         automata.materials.build(artifact, run=run, exists=exists)
 
 
