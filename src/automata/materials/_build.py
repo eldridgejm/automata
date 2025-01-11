@@ -1,4 +1,4 @@
-"""Provides materials.build(), which recursively builds materials."""
+"""Provides :func:`automata.materials.build()`, which recursively builds artifacts."""
 
 import datetime
 import dataclasses
@@ -7,16 +7,33 @@ import pathlib
 import typing
 
 
-from .types import UnbuiltArtifact, BuiltArtifact, Universe, Collection, Publication
+from .types import (
+    UnbuiltArtifact,
+    BuiltArtifact,
+    ExportedArtifact,
+    Universe,
+    Collection,
+    Publication,
+)
 from .exceptions import BuildError
 
 
-class _BuildCallbacksNoOp:
-    """Default callbacks used by :func:`build` which do nothing."""
+class BuildCallbacks:
+    """Callbacks used by :func:`build`.
+
+    To provide callbacks to :func:`build`, subclass this class and override
+    the methods you want to use. The methods that are not overridden will be
+    no-ops.
+
+    """
 
     def on_build(self, key, node):
         """Called when building a collection/publication/artifact."""
         return key, node
+
+    def on_already_built(self, artifact: typing.Union[BuiltArtifact, ExportedArtifact]):
+        """Called when the artifact is already built and possibly exported."""
+        return artifact
 
     def on_too_soon(self, artifact: UnbuiltArtifact):
         """Called when it is too soon to release the artifact."""
@@ -48,9 +65,12 @@ def _build_artifact(
     verbose=False,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    callbacks=_BuildCallbacksNoOp(),
+    callbacks: typing.Optional[BuildCallbacks] = None,
 ):
     """Build an artifact using its recipe.
+
+    This private helper function is used by :func:`build` to build an artifact.
+    It is not intended to be called by the user directly.
 
     Parameters
     ----------
@@ -74,6 +94,9 @@ def _build_artifact(
         True.
 
     """
+    if callbacks is None:
+        callbacks = BuildCallbacks()
+
     output = BuiltArtifact(workdir=artifact.workdir, path=artifact.path)
 
     if (
@@ -99,8 +122,8 @@ def _build_artifact(
             "cwd": artifact.workdir,
         }
         if not verbose:
-            kwargs["stdout"] = subprocess.PIPE
-            kwargs["stderr"] = subprocess.PIPE
+            kwargs["stdout"] = subprocess.PIPE  # type: ignore
+            kwargs["stderr"] = subprocess.PIPE  # type: ignore
 
         proc = run(artifact.recipe, shell=True, **kwargs)
 
@@ -138,7 +161,7 @@ def build(
     now=datetime.datetime.now,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    callbacks=None,
+    callbacks: typing.Optional[BuildCallbacks] = None,
 ):
     """Build a universe/collection/publication/artifact.
 
@@ -154,10 +177,12 @@ def build(
     ignore_ready : bool
         If ``True``, all artifacts will be built, even if they are marked as
         not ready.
-    callbacks : Optional[BuildCallbacks]
-        Callbacks to be invoked during the build. If omitted, no callbacks
-        are executed. See :class:`BuildCallbacks` for the possible callbacks
-        and their arguments.
+    callbacks : BuildCallbacks
+        An instance of :class:`BuildCallbacks` that contains methods that will
+        be invoked as callbacks at various points during the build process. See
+        :class:`BuildCallbacks` for the possible methods and their meanings. If
+        this argument is not provided, a default set of no-op callbacks will be
+        used.
 
     Returns
     -------
@@ -175,9 +200,14 @@ def build(
     or universe, all of the unbuilt publications and artifacts within are
     recursively removed from the tree.
 
+    If an artifact is encountered that isn't an instance of :class:`UnbuiltArtifact`,
+    as is instead an instance of :class:`BuiltArtifact` or :class:`ExportedArtifact`,
+    the callback :meth:`BuildCallbacks.on_already_built` is called and the artifact
+    is not rebuilt.
+
     """
     if callbacks is None:
-        callbacks = _BuildCallbacksNoOp()
+        callbacks = BuildCallbacks()
 
     kwargs = dict(
         ignore_release_time=ignore_release_time,
@@ -190,13 +220,16 @@ def build(
     )
 
     if isinstance(root, UnbuiltArtifact):
-        return _build_artifact(root, **kwargs)
+        return _build_artifact(root, **kwargs)  # type: ignore
 
     # recursively build the children
     new_children = {}
     for child_key, child in root._children.items():
+        if isinstance(child, BuiltArtifact) or isinstance(child, ExportedArtifact):
+            callbacks.on_already_built(child)
+            continue
         callbacks.on_build(child_key, child)
-        result = build(child, **kwargs)
+        result = build(child, **kwargs)  # type: ignore
         # if a node is not built (perhaps due to it not being ready), the
         # result is None. this next conditional prevents such nodes from
         # appearing in the tree
