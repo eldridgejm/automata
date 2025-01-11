@@ -154,8 +154,8 @@ class Publication(typing.NamedTuple):
 
     """
 
-    metadata: typing.Mapping[str, typing.Any]
-    artifacts: typing.Mapping[str, Artifact]
+    metadata: typing.MutableMapping[str, typing.Any]
+    artifacts: typing.MutableMapping[str, Artifact]
 
     def _deep_asdict(self) -> dict:
         """A dictionary representation of the publication and its children."""
@@ -195,13 +195,13 @@ class Collection(typing.NamedTuple):
     ----------
     publication_schema : PublicationSchema
         A schema used to validate the publications within the collection.
-    publications : Mapping[str, Publication]
+    publications : MutableMapping[str, Publication]
         The publications contained in the collection.
 
     """
 
     publication_schema: "PublicationSchema"
-    publications: typing.Mapping[str, Publication]
+    publications: typing.MutableMapping[str, Publication]
 
     def _deep_asdict(self) -> dict:
         """A dictionary representation of the collection and its children."""
@@ -244,7 +244,7 @@ class Universe(typing.NamedTuple):
 
     """
 
-    collections: typing.Mapping[str, Collection]
+    collections: typing.MutableMapping[str, Collection]
 
     @property
     def _children(self):

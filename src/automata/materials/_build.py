@@ -1,4 +1,4 @@
-"""Provides :func:`automata.materials.build()`, which recursively builds artifacts."""
+"""Provides build(), which recursively builds artifacts."""
 
 import datetime
 import dataclasses
@@ -27,8 +27,20 @@ class BuildCallbacks:
 
     """
 
-    def on_build(self, key, node):
-        """Called when building a collection/publication/artifact."""
+    def on_build(
+        self, key: str, node: typing.Union[Collection, Publication, UnbuiltArtifact]
+    ):
+        """Called when building a collection/publication/artifact.
+
+        Parameters
+        ----------
+        key : str
+            The key of the node. Generally, this is the relative path to the
+            node from the root.
+        node : Collection | Publication | UnbuiltArtifact
+            The node whose artifacts are being built.
+
+        """
         return key, node
 
     def on_already_built(self, artifact: typing.Union[BuiltArtifact, ExportedArtifact]):
@@ -155,9 +167,9 @@ def _build_artifact(
 def build(
     root: Universe | Collection | Publication | UnbuiltArtifact,
     *,
-    ignore_release_time=False,
-    ignore_ready=False,
-    verbose=False,
+    ignore_release_time: bool = False,
+    ignore_ready: bool = False,
+    verbose: bool = False,
     now=datetime.datetime.now,
     run=subprocess.run,
     exists=pathlib.Path.exists,
@@ -225,9 +237,13 @@ def build(
     # recursively build the children
     new_children = {}
     for child_key, child in root._children.items():
+        # check if it is already built, and skip it if so
         if isinstance(child, BuiltArtifact) or isinstance(child, ExportedArtifact):
             callbacks.on_already_built(child)
             continue
+
+        assert isinstance(child, (Collection, Publication, UnbuiltArtifact))
+
         callbacks.on_build(child_key, child)
         result = build(child, **kwargs)  # type: ignore
         # if a node is not built (perhaps due to it not being ready), the
@@ -235,4 +251,5 @@ def build(
         # appearing in the tree
         if result is not None:
             new_children[child_key] = result
+
     return root._replace_children(new_children)

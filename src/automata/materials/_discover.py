@@ -1,4 +1,4 @@
-"""Provides the discover() function, which searches the filesystem for materials."""
+"""Provides discover(), which searches the filesystem for materials."""
 
 from collections import deque, OrderedDict
 from typing import Optional, Dict, Any
@@ -7,6 +7,7 @@ import pathlib
 
 from ._types import (
     Collection,
+    Publication,
     Universe,
     PublicationSchema,
 )
@@ -53,78 +54,54 @@ class DiscoverCallbacks:
         return path
 
 
-def discover(
-    input_directory: pathlib.Path,
-    skip_directories: Optional[typing.Collection[str]] = None,
-    callbacks: Optional[DiscoverCallbacks] = None,
-    vars: Optional[Dict[str, Any]] = None,
-) -> Universe:
-    """Discover the course materials in the filesystem.
+# helper functions =====================================================================
+
+
+def _is_collection(dirpath: pathlib.Path) -> bool:
+    """Determines if the directory at the given path is a collection.
+
+    It does this by checking to see if collection.yaml exists at the path.
 
     Parameters
     ----------
-    input_directory : Path
-        The path to the directory that will be recursively searched.
-    skip_directories : Optional[Collection[str]]
-        A collection of directory names that should be skipped if discovered.
-        If None, no directories will be skipped.
-    callbacks : DiscoverCallbacks
-        Callbacks to be invoked during the discovery. If omitted, no callbacks
-        are executed. See below for the possible callbacks and their arguments.
-    vars : Optional[dict]
-        A dictionary of extra variables to be available during interpolation.
+    dirpath : pathlib.Path
+        The path to a directory to check.
 
-    Returns
-    -------
-    Universe
-        The collections and the nested publications and artifacts, contained in
-        a :class:`Universe` instance.
     """
-    if callbacks is None:
-        callbacks = DiscoverCallbacks()
-
-    collection_paths, publication_paths = _search_for_collections_and_publications(
-        input_directory, skip_directories=skip_directories, callbacks=callbacks
-    )
-
-    publication_paths = _sort_dictionary(publication_paths)
-
-    collections = _make_collections(collection_paths, input_directory, callbacks)
-    _make_publications(
-        publication_paths,
-        input_directory,
-        collections,
-        callbacks=callbacks,
-        vars=vars,
-    )
-
-    return Universe(collections)
+    return (dirpath / constants.COLLECTION_FILE).is_file()
 
 
-def _is_collection(path):
-    """Determine if the path is a collection."""
-    return (path / constants.COLLECTION_FILE).is_file()
+def _is_publication(dirpath: pathlib.Path) -> bool:
+    """Determine if the directory at the given path is a publication.
 
+    It does this by checking to see if publication.yaml exists at the path.
 
-def _is_publication(path):
-    """Determine if the path is a publication."""
-    return (path / constants.PUBLICATION_FILE).is_file()
+    Parameters
+    ----------
+    dirpath : pathlib.Path
+        The path to a directory to check.
+
+    """
+    return (dirpath / constants.PUBLICATION_FILE).is_file()
 
 
 def _search_for_collections_and_publications(
-    input_directory: pathlib.Path, skip_directories=None, callbacks=None
+    root_directory: pathlib.Path,
+    skip_directories: Optional[typing.Collection[str]] = None,
+    callbacks: Optional[DiscoverCallbacks] = None,
 ):
     """Perform a BFS to find all collections and publications in the filesystem.
 
     Parameters
     ----------
-    input_directory : pathlib.Path
-        Path to the input directory that will be recursively searched.
+    root_directory : pathlib.Path
+        Path to the root directory that will be recursively searched.
     skip_directories : Optional[Collection[str]]
         A collection of folder names that, if found, will be skipped over. If None,
         every folder is searched.
-    callbacks
-        Callbacks invoked when interesting things happen.
+    callbacks: DiscoverCallbacks
+        Callbacks invoked when interesting things happen. If omitted, no callbacks
+        are invoked.
 
     Returns
     -------
@@ -146,9 +123,9 @@ def _search_for_collections_and_publications(
         skip_directories = set()
 
     if callbacks is None:
-        callbacks = _DiscoverCallbacksNoOp()
+        callbacks = DiscoverCallbacks()
 
-    queue = deque([(input_directory, None)])
+    queue = deque([(root_directory, None)])
 
     collections = []
     publications = {}
@@ -158,7 +135,7 @@ def _search_for_collections_and_publications(
 
         if _is_collection(current_path):
             if parent_collection_path is not None:
-                raise DiscoveryError(f"Nested collection found.", current_path)
+                raise DiscoveryError("Nested collection found.", current_path)
 
             collections.append(current_path)
             parent_collection_path = current_path
@@ -176,8 +153,8 @@ def _search_for_collections_and_publications(
     return collections, publications
 
 
-def _make_default_collection():
-    """Create a default collection."""
+def _make_default_collection() -> Collection:
+    """Create a "default" collection."""
     default_schema = PublicationSchema(
         required_artifacts=[],
         metadata_schema=None,
@@ -186,15 +163,27 @@ def _make_default_collection():
     return Collection(publication_schema=default_schema, publications={})
 
 
-def _make_collections(collection_paths, input_directory, callbacks):
-    """Make the Collection objects.
+def _make_collections(
+    collection_paths: typing.Collection[pathlib.Path],
+    root_directory,
+    callbacks: DiscoverCallbacks,
+) -> typing.MutableMapping[str, Collection]:
+    """Given a collection of paths to collections, create Collection objects.
+
+    In other words, this function reads the collection.yaml files and creates
+    Collection objects from them. It is a relatively thin wrapper around
+    :func:`read_collection_file`. Beyond reading the collection files, this
+    function assigns each collection a key, which is the string form of the
+    path relative to the input directory. It also adds a "default" collection
+    to the output for publications that are not part of any collection.
 
     Parameters
     ----------
-    collection_paths : List[Path]
-        A list containing the path to every discovered collection.
-    input_directory : Path
-        Path to the root of the search.
+    collection_paths : Collection[pathlib.Path]
+        A collection containing paths to directories representing collections.
+    root_directory : Path
+        Path to the root directory containing all course materials. All collection keys
+        will be relative to this path.
     callbacks
         The callbacks to be invoked when interesting things happen.
 
@@ -211,7 +200,7 @@ def _make_collections(collection_paths, input_directory, callbacks):
 
         collection = read_collection_file(file_path)
 
-        key = str(path.relative_to(input_directory))
+        key = str(path.relative_to(root_directory))
         collections[key] = collection
 
         callbacks.on_collection(file_path)
@@ -220,44 +209,61 @@ def _make_collections(collection_paths, input_directory, callbacks):
     return collections
 
 
-def _previous_publication(collection):
-    """Add the resolved previous publication file to the external_variables."""
+def _last_publication(collection: Collection) -> Optional[Publication]:
+    """Finds the last publication in an (ordered) collection.
+
+    Returns
+    -------
+    Optional[Publication]
+        The last publication, if it exists. If the collection is unordered,
+        this function returns None. If there is no last publication, as is the
+        case when the collection is empty, this function also returns None.
+
+    """
     if not collection.publication_schema.is_ordered:
-        return
+        return None
 
-    # the previous publication was just the last one added to collection.publications
     try:
-        previous_key = list(collection.publications)[-1]
+        key_of_last = list(collection.publications)[-1]
     except IndexError:
-        return
+        return None
 
-    return collection.publications[previous_key]
+    return collection.publications[key_of_last]
 
 
 def _make_publications(
-    publication_paths,
-    input_directory,
-    collections,
+    publication_paths: typing.Mapping[pathlib.Path, typing.Optional[pathlib.Path]],
+    root_directory: pathlib.Path,
+    collections: typing.MutableMapping[str, Collection],
     *,
-    callbacks,
-    vars,
-):
-    """Make the Publication objects.
+    callbacks: DiscoverCallbacks,
+    vars: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Given a collection of paths to publications, create Publication objects.
 
     Parameters
     ----------
     publication_paths : Mapping[Path, Union[Path, None]]
         Mapping from publication paths to the paths of the collections containing them
         (or ``None`` if the publication is part of the "default" collection.
-    input_directory : Path
-        Path to the root of the search.
-    collections : Mapping[str, Collection]
+    root_directory : Path
+        Path to the root directory containing all course materials. All publication keys
+        will be relative to this path.
+    collections : MutableMapping[str, Collection]
         A mapping from collection keys to Collection objects. The newly-created
         Publication objects will be added to these Collection objects in-place.
-    callbacks
+    callbacks: DiscoverCallbacks
         The callbacks to be invoked when interesting things happen.
     vars : Optional[dict]
-        A dictionary of extra variables to be used during interpolation.
+        A dictionary of extra variables to be used during interpolation of fields in
+        publication.yaml.
+
+    Returns
+    -------
+    None
+        This function has no return value. Instead, the created Publication
+        objects are added to the collections passed to this function in the
+        `collections` parameter.
 
     """
     if vars is None:
@@ -266,14 +272,14 @@ def _make_publications(
     for path, collection_path in publication_paths.items():
         if collection_path is None:
             collection_key = "default"
-            publication_key = str(path.relative_to(input_directory))
+            publication_key = str(path.relative_to(root_directory))
         else:
-            collection_key = str(collection_path.relative_to(input_directory))
+            collection_key = str(collection_path.relative_to(root_directory))
             publication_key = str(path.relative_to(collection_path))
 
         collection = collections[collection_key]
 
-        previous = _previous_publication(collection)
+        previous = _last_publication(collection)
 
         file_path = path / constants.PUBLICATION_FILE
         publication = read_publication_file(
@@ -288,8 +294,60 @@ def _make_publications(
         callbacks.on_publication(file_path)
 
 
-def _sort_dictionary(dct):
+def _sort_dictionary(dct) -> OrderedDict:
+    """Utility function that sorts a dictionary by its keys."""
     result = OrderedDict()
     for key in sorted(dct):
         result[key] = dct[key]
     return result
+
+# discover() ===========================================================================
+
+def discover(
+    root_directory: pathlib.Path,
+    skip_directories: Optional[typing.Collection[str]] = None,
+    callbacks: Optional[DiscoverCallbacks] = None,
+    vars: Optional[Dict[str, Any]] = None,
+) -> Universe:
+    """Discover the course materials in the filesystem.
+
+    Parameters
+    ----------
+    root_directory : Path
+        The path to the root directory that will be recursively searched.
+    skip_directories : Optional[Collection[str]]
+        A collection of directory names that should be skipped if discovered.
+        If None, no directories will be skipped.
+    callbacks : Optional[DiscoverCallbacks]
+        Callbacks to be invoked during the discovery. If omitted, no callbacks
+        are executed. See below for the possible callbacks and their arguments.
+    vars : Optional[dict]
+        A dictionary of user-defined variables to be available during
+        interpolation.
+
+    Returns
+    -------
+    Universe
+        The discovered course materials, contained in a :class:`Universe`
+        instance.
+
+    """
+    if callbacks is None:
+        callbacks = DiscoverCallbacks()
+
+    collection_paths, publication_paths = _search_for_collections_and_publications(
+        root_directory, skip_directories=skip_directories, callbacks=callbacks
+    )
+
+    publication_paths = _sort_dictionary(publication_paths)
+
+    collections = _make_collections(collection_paths, root_directory, callbacks)
+    _make_publications(
+        publication_paths,
+        root_directory,
+        collections,
+        callbacks=callbacks,
+        vars=vars,
+    )
+
+    return Universe(collections)
