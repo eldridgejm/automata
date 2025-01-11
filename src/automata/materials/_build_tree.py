@@ -1,4 +1,4 @@
-"""Provides build_tree(), which recursively builds a tree of materials."""
+"""Provides materials.build(), which recursively builds materials."""
 
 import datetime
 import dataclasses
