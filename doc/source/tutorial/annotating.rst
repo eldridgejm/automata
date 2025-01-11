@@ -1,5 +1,8 @@
+.. _convention:
+
 Annotating course materials
 ---------------------------
+
 
 In order for `automata` to automatically generate a course webpage from your
 materials, you must tell it where the materials are, when they should be

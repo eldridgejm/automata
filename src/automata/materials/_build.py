@@ -153,7 +153,7 @@ def _build_artifact(
 
 
 def build(
-    root: typing.Union[Universe, Collection, Publication, UnbuiltArtifact],
+    root: Universe | Collection | Publication | UnbuiltArtifact,
     *,
     ignore_release_time=False,
     ignore_ready=False,
@@ -167,10 +167,10 @@ def build(
 
     Parameters
     ----------
-    root : Union[Universe, Collection, Publication, UnbuiltArtifact]
+    root : Universe | Collection | Publication | UnbuiltArtifact
         The thing to build. Operates recursively, so if given a
-        :class:`Universe`, for instance, will build all of the artifacts
-        within.
+        universe, collection, or publication, it will build all of the
+        artifacts within.
     ignore_release_time : bool
         If ``True``, all artifacts will be built, even if their release time
         has not yet passed.

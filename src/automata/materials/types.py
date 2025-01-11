@@ -1,72 +1,4 @@
-"""This module provides types for representing materials in an `automata` course.
-
-Types for representing nodes in the materials hierarchy
--------------------------------------------------------
-
-`automata` conceptually organizes course materials into a hierarchy. At the
-bottom of the hierarchy are "artifacts" (files). Artifacts are grouped into
-"publications", which are in turn grouped into "collections". At the root of
-the hierarchy is the "universe", which contains all of the collections. The
-types in this module are used to represent the nodes in this hierarchy.
-
-Artifacts
-~~~~~~~~~
-
-There are three types of artifacts: :class:`UnbuiltArtifact`,
-:class:`BuiltArtifact`, and :class:`ExportedArtifact`. These represent artifacts
-at different stages of the build/export process.
-
-.. autoclass:: UnbuiltArtifact
-.. autoclass:: BuiltArtifact
-.. autoclass:: ExportedArtifact
-
-These three classes are all subclasses of :class:`Artifact`:
-
-.. autoclass:: Artifact
-
-Publications, Collections, and Universes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Artifacts are the "leaf" nodes in the materials hierarchy. On the other hand, the
-"internal" nodes of the hierarchy are represented by :class:`Publication`,
-:class:`Collection`, and :class:`Universe`. These classes are all containers for
-nodes of the next level down in the hierarchy. 
-
-The unique attributes of each of these classes are documented below. However, all
-three classes share the following attributes and methods:
-
-.. attribute:: ._children
-
-    The nodes directly under the node in question in the hierarchy. Their type will
-    depend on the class in question.
-
-.. method:: ._replace_children(new_children:)
-
-    Replaces the node's current children with new children, creating a new node.
-
-.. method:: ._deep_asdict()
-
-    Returns a dictionary of all of the node's attributes, including its
-    children. Operates recursively.
-
-.. method:: ._deep_fromdict(dct:)
-
-    Given a dictionary representation of the node, returns a new node. Round-trip
-    compatible with :meth:`_deep_asdict`.
-
-The unique attributes of each class are:
-
-.. autoclass:: Publication
-.. autoclass:: Collection
-.. autoclass:: Universe
-
-Types for schemas and dates
----------------------------
-
-.. autoclass:: PublicationSchema
-.. autoclass:: DateContext
-
-"""
+"""This module provides types for representing materials in an `automata` course."""
 
 import typing
 import pathlib
@@ -78,6 +10,7 @@ import dataclasses
 # These types represent nodes in the "materials hierarchy".
 
 # artifacts ----------------------------------------------------------------------------
+
 
 @dataclasses.dataclass
 class Artifact:
@@ -198,21 +131,33 @@ def _artifact_from_dict(
 
 
 class Publication(typing.NamedTuple):
-    """A publication.
+    """Represents a publication, which is a collection of artifacts.
+
+    For example, in a typical course with homework assignments, "Homework 01" might
+    be a publication, "Homework 02" would be another, and so on. Each publication
+    might contain one or more artifacts, such as a PDF file containing the homework
+    questions and another PDF file containing the solutions.
+
+    A publication can have user-defined metadata associated with it. For example, a
+    homework assignment might have a "due_date" key in its metadata, noting
+    when the assignment is due.
 
     Attributes
     ----------
     artifacts : Dict[str, Artifact]
-        The artifacts contained in the publication.
+        The artifacts in this publication. Maps artifact filenames to the
+        artifacts themselves.
     metadata: Dict[str, Any]
-        The metadata dictionary.
+        The metadata dictionary containing user-defined information about the
+        publication. For example, if the publication is a homework assignment,
+        this might contain its topic and due date.
 
     """
 
     metadata: typing.Mapping[str, typing.Any]
     artifacts: typing.Mapping[str, Artifact]
 
-    def _deep_asdict(self):
+    def _deep_asdict(self) -> dict:
         """A dictionary representation of the publication and its children."""
         return {
             "metadata": self.metadata,
@@ -222,7 +167,8 @@ class Publication(typing.NamedTuple):
         }
 
     @classmethod
-    def _deep_fromdict(cls, dct):
+    def _deep_fromdict(cls, dct) -> "Publication":
+        """Recursively constructs a Publication and its children from a dictionary."""
         return cls(
             metadata=dct["metadata"],
             artifacts={
@@ -231,20 +177,24 @@ class Publication(typing.NamedTuple):
         )
 
     @property
-    def _children(self):
+    def _children(
+        self,
+    ) -> typing.Mapping[str, Artifact]:
+        """The artifacts contained in the publication."""
         return self.artifacts
 
-    def _replace_children(self, new_children):
+    def _replace_children(self, new_children) -> "Publication":
+        """Make a new Publication with the same attributes but the given artifacts."""
         return self._replace(artifacts=new_children)
 
 
 class Collection(typing.NamedTuple):
-    """A collection.
+    """Represents a collection of publications.
 
     Attributes
     ----------
     publication_schema : PublicationSchema
-        The schema used to validate the publications within the collection.
+        A schema used to validate the publications within the collection.
     publications : Mapping[str, Publication]
         The publications contained in the collection.
 
@@ -253,7 +203,7 @@ class Collection(typing.NamedTuple):
     publication_schema: "PublicationSchema"
     publications: typing.Mapping[str, Publication]
 
-    def _deep_asdict(self):
+    def _deep_asdict(self) -> dict:
         """A dictionary representation of the collection and its children."""
         return {
             "publication_schema": self.publication_schema._asdict(),
@@ -263,7 +213,8 @@ class Collection(typing.NamedTuple):
         }
 
     @classmethod
-    def _deep_fromdict(cls, dct):
+    def _deep_fromdict(cls, dct) -> "Collection":
+        """Recursively constructs a Collection and its children from a dictionary."""
         return cls(
             publication_schema=PublicationSchema(**dct["publication_schema"]),
             publications={
@@ -273,21 +224,23 @@ class Collection(typing.NamedTuple):
         )
 
     @property
-    def _children(self):
+    def _children(self) -> typing.Mapping[str, Publication]:
+        """The publications contained in the collection."""
         return self.publications
 
-    def _replace_children(self, new_children):
+    def _replace_children(self, new_children) -> "Collection":
+        """Make a new Collection with the same attributes but the given publications."""
         return self._replace(publications=new_children)
 
 
 class Universe(typing.NamedTuple):
-    """Container of all collections.
+    """Container of all course materials.
 
     Attributes
     ----------
 
     collections : Dict[str, Collection]
-        The collections.
+        The collections. Mapping from collection name to :class:`Collection` instances.
 
     """
 
@@ -295,9 +248,11 @@ class Universe(typing.NamedTuple):
 
     @property
     def _children(self):
+        """The collections contained in the universe."""
         return self.collections
 
     def _replace_children(self, new_children):
+        """Make a new Universe with the same attributes but the given collections."""
         return self._replace(collections=new_children)
 
     def _deep_asdict(self):
@@ -308,15 +263,18 @@ class Universe(typing.NamedTuple):
 
     @classmethod
     def _deep_fromdict(cls, dct):
+        """Recursively constructs a Universe and its children from a dictionary."""
         return cls(
             collections={
                 k: Collection._deep_fromdict(d) for (k, d) in dct["collections"].items()
             },
         )
 
+
 # other ================================================================================
 
 # publication schema -------------------------------------------------------------------
+
 
 class PublicationSchema(typing.NamedTuple):
     """Represents a schema used to validate publications.
@@ -329,17 +287,17 @@ class PublicationSchema(typing.NamedTuple):
     ----------
     required_artifacts : typing.Collection[str]
         Names of artifacts that publications must contain.
-    optional_artifacts : typing.Collection[str], optional
+    optional_artifacts : Optional[typing.Collection[str]]
         Names of artifacts that publication are permitted to contain. Default: empty
         list.
-    metadata_schema : Mapping[str, Any], optional
+    metadata_schema : Optional[Mapping[str, Any]]
         A dictionary describing a schema used to validate publication metadata.
         In the style of the cerberus library
         (https://docs.python-cerberus.org/en/stable/). If None, no validation
         will be performed. Default: None.
-    allow_unspecified_artifacts : Optional[Boolean]
+    allow_unspecified_artifacts : Boolean, optional
         Is it permissible for a publication to have unknown artifacts? Default: False.
-    is_ordered : Optional[Boolean]
+    is_ordered : Boolean, optional
         Should the publications be considered ordered by their keys? Default: False
 
     Example
@@ -364,7 +322,9 @@ class PublicationSchema(typing.NamedTuple):
     allow_unspecified_artifacts: typing.Optional[bool] = False
     is_ordered: bool = False
 
+
 # date context -------------------------------------------------------------------------
+
 
 class DateContext(typing.NamedTuple):
     """a context used when resolving dates.
