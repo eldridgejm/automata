@@ -311,6 +311,33 @@ def discover(
 ) -> Universe:
     """Discover the course materials in the filesystem.
 
+    This function recursively searches down from the given root directory for
+    collections and publications defined by ``collection.yaml'' and
+    ``publication.yaml'' files, respectively. It then reads these files and
+    creates a :class:`Universe` object containing all information about the
+    discovered course materials.
+
+    All of the discovered collections are represented as :class:`Collection`
+    objects. All of the discovered publications are represented as
+    :class:`Publication` objects. All of the discovered artifacts are
+    represented as :class:`UnbuiltArtifact` objects.
+
+    The returned Universe also contains a "default" collection for publications
+    which are not part of any collection.
+
+    Each discovered collection is represented as a :class:`Collection` object
+    within the ``._children`` attribute of the Universe. The ``._children``
+    attribute is a mapping from collection keys to Collection objects. A
+    collection's key is the string form of its path relative to the input
+    directory.
+
+    Likewise, each discovered publication is represented as a
+    :class:`Publication` object within the ``._children`` attribute of the
+    Collection to which it belongs. The ``._children`` attribute of a
+    Collection is a mapping from publication keys to Publication objects. A
+    publication's key is the string form of its path relative to the
+    *collection* to which it belongs.
+
     Parameters
     ----------
     root_directory : Path
@@ -323,7 +350,8 @@ def discover(
         are executed. See below for the possible callbacks and their arguments.
     vars : Optional[dict]
         A dictionary of user-defined variables to be available during
-        interpolation.
+        interpolation. Passed to :func:`read_publication_file` and
+        :func:`read_collection_file`.
 
     Returns
     -------

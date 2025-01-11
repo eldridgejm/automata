@@ -22,13 +22,13 @@ collections, publications, and artifacts.
 .. autosummary::
    :nosignatures:
 
-   types.UnbuiltArtifact
-   types.BuiltArtifact
-   types.ExportedArtifact
-   types.Artifact
-   types.Publication
-   types.PublicationSchema
-   types.Collection
+   UnbuiltArtifact
+   BuiltArtifact
+   ExportedArtifact
+   Artifact
+   Publication
+   PublicationSchema
+   Collection
 
 **Core Functions**
 
