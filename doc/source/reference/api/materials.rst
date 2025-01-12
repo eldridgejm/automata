@@ -196,9 +196,10 @@ use the following functions:
 Exception types
 ---------------
 
-Because :mod:`automata.materials` is designed to be used as a library, it provides
-a number of exception types that can be raised in the course of its operation.
-These are all contained in the :mod:`automata.materials.exceptions` module.
+Because :mod:`automata.materials` is designed to be used as a library, it
+provides a number of exception types that can be used to isolate and handle
+errors that originate from within. These are all contained in the
+:mod:`automata.materials.exceptions` module.
 
 .. module:: automata.materials.exceptions
 

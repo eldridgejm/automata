@@ -1,9 +1,8 @@
 import datetime
-import shutil
 import pathlib
 from unittest.mock import Mock
 
-from pytest import raises, fixture
+from pytest import raises
 
 import automata.materials
 
@@ -17,8 +16,12 @@ def test_build_artifact_integration(default_example_course):
         .artifacts["solution.pdf"]
     )
 
+    assert isinstance(artifact, automata.materials.UnbuiltArtifact)
+
     # when
     result = automata.materials.build(artifact)
+
+    assert isinstance(result, automata.materials.BuiltArtifact)
 
     # then
     assert (
@@ -94,6 +97,8 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
         artifact, run=run, now=now, exists=exists, ignore_release_time=True
     )
 
+    assert isinstance(result, automata.materials.BuiltArtifact)
+
     # then
     assert result.path
     assert run.called
@@ -111,6 +116,8 @@ def test_build_artifact_when_recipe_is_none():
     # when
     result = automata.materials.build(artifact, run=run, exists=exists)
 
+    assert isinstance(result, automata.materials.BuiltArtifact)
+
     # then
     assert result.path
     assert not run.called
@@ -127,7 +134,7 @@ def test_build_artifact_when_recipe_is_none_raises_if_no_path():
 
     # when
     with raises(automata.materials.exceptions.BuildError):
-        result = automata.materials.build(artifact, run=run, exists=exists)
+        automata.materials.build(artifact, run=run, exists=exists)
 
 
 def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
@@ -164,6 +171,7 @@ def test_build_collection(default_example_course):
 
     # when
     built_universe = automata.materials.build(universe)
+    assert isinstance(built_universe, automata.materials.Universe)
 
     # then
     assert (
@@ -174,13 +182,10 @@ def test_build_collection(default_example_course):
         .publications["01-intro"]
         .artifacts["solution.pdf"]
     )
+
+    assert isinstance(build_result, automata.materials.BuiltArtifact)
+
     assert build_result.path
-    assert (
-        built_universe.collections["homeworks"]
-        .publications["01-intro"]
-        .artifacts["solution.pdf"]
-        .path
-    )
 
     # check that a deep copy is made
     del universe.collections["homeworks"]

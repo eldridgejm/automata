@@ -1,4 +1,5 @@
 import datetime
+import pathlib
 
 import automata.materials
 
@@ -18,7 +19,9 @@ def test_serialize_deserialize_universe_roundtrip():
             "due": datetime.datetime(2020, 2, 28, 23, 59, 0),
             "released": datetime.date(2020, 2, 28),
         },
-        artifacts={"homework": automata.materials.ExportedArtifact("foo/bar")},
+        artifacts={
+            "homework": automata.materials.ExportedArtifact("foo/bar")
+        },
     )
 
     original = automata.materials.Universe({"homeworks": collection})
@@ -40,7 +43,9 @@ def test_serialize_deserialize_built_publication_roundtrip():
             "released": datetime.date(2020, 2, 28),
         },
         artifacts={
-            "homework": automata.materials.BuiltArtifact(workdir=None, path="foo/bar")
+            "homework": automata.materials.BuiltArtifact(
+                workdir=pathlib.Path.cwd(), path="foo/bar"
+            )
         },
     )
 
@@ -69,7 +74,10 @@ def test_collection_as_dict():
         metadata={"name": "testing"},
         artifacts={
             "homework": automata.materials.UnbuiltArtifact(
-                workdir=None, path="homework.pdf", recipe="make", release_time=None
+                workdir=pathlib.Path.cwd(),
+                path="homework.pdf",
+                recipe="make",
+                release_time=None,
             ),
         },
     )

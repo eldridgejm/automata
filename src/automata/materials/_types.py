@@ -87,7 +87,7 @@ class ExportedArtifact(Artifact):
 
     """
 
-    path: pathlib.Path
+    path: str
 
 
 def _artifact_from_dict(
@@ -112,8 +112,10 @@ def _artifact_from_dict(
     """
     if "recipe" in dct:
         type_ = UnbuiltArtifact
+        dct['workdir'] = pathlib.Path(dct['workdir'])
     elif "returncode" in dct:
         type_ = BuiltArtifact # type: ignore
+        dct['workdir'] = pathlib.Path(dct['workdir'])
     else:
         type_ = ExportedArtifact # type: ignore
 

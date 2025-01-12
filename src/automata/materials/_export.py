@@ -62,7 +62,7 @@ def _export_artifact(
     else:
         shutil.copy(full_src, full_dst)
 
-    return ExportedArtifact(path=full_dst.relative_to(outdir))
+    return ExportedArtifact(path=str(full_dst.relative_to(outdir)))
 
 
 def export(

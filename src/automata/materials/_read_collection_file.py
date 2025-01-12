@@ -123,8 +123,8 @@ def read_collection_file(path: pathlib.Path, vars: Optional[Mapping[str, str]] =
     path : pathlib.Path
         Path to the ``collection.yaml`` file.
     vars : Optional[Mapping[str, str]]
-        A dictionary of variables available during interpolation. If None, no
-        variables will be made available.
+        A dictionary of variables available during interpolation through the
+        ``${vars}`` variable. If None, no variables will be made available.
 
     Returns
     -------

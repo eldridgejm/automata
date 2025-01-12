@@ -1,10 +1,8 @@
 import datetime
-import pathlib
-from textwrap import dedent
 
-from pytest import raises, fixture, mark
+from pytest import raises
 
-from automata.materials import discover
+from automata.materials import discover, UnbuiltArtifact
 from automata.materials.exceptions import DiscoveryError
 
 
@@ -71,14 +69,15 @@ def test_loads_artifacts(default_example_course):
     # when
     universe = discover(default_example_course.path)
 
-    # then
-    assert (
+    artifact = (
         universe.collections["homeworks"]
         .publications["01-intro"]
         .artifacts["solution.pdf"]
-        .recipe
-        == "touch solution.pdf"
     )
+
+    # then
+    assert isinstance(artifact, UnbuiltArtifact)
+    assert artifact.recipe == "touch solution.pdf"
 
 
 def test_loads_dates_as_dates(default_example_course):
@@ -101,13 +100,15 @@ def test_reads_ready(default_example_course):
     # when
     universe = discover(default_example_course.path)
 
-    # then
-    assert (
-        not universe.collections["homeworks"]
+    artifact = (
+        universe.collections["homeworks"]
         .publications["03-not_ready"]
         .artifacts["homework.pdf"]
-        .ready
     )
+
+    # then
+    assert isinstance(artifact, UnbuiltArtifact)
+    assert not artifact.ready
 
 
 def test_validates_collection_schema(temporary_course):
@@ -247,14 +248,15 @@ def test_key_used_for_path_if_path_not_provided(default_example_course):
     # when
     universe = discover(default_example_course.path)
 
-    # then
-    assert (
+    artifact = (
         universe.collections["homeworks"]
         .publications["01-intro"]
         .artifacts["homework.pdf"]
-        .path
-        == "homework.pdf"
     )
+
+    # then
+    assert isinstance(artifact, UnbuiltArtifact)
+    assert artifact.path == "homework.pdf"
 
 
 def test_sorts_publications_lexicographically_if_collection_is_ordered(
