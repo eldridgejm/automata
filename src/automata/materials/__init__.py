@@ -10,6 +10,8 @@ from ._types import (
     Publication,
     PublicationSchema,
     Universe,
+    serialize,
+    deserialize,
 )
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file

@@ -1,14 +1,13 @@
-import json
+"""Provides serialize() and deserialize() for textual representation of materials trees."""
+
+import dataclasses
 import datetime
+import json
 
 from ._types import Artifact, Publication, Collection, Universe
 
 
-# serialization
-# --------------------------------------------------------------------------------------
-
-
-def serialize(node):
+def serialize(node) -> str:
     """Serialize the universe/collection/publication/artifact to JSON.
 
     Parameters
@@ -23,18 +22,39 @@ def serialize(node):
 
     """
 
-    def converter(o):
+    def object_serializer(o):
+        """Generic serializer for unknown objects."""
         return str(o)
 
     if isinstance(node, Artifact):
-        dct = node._asdict()
+        dct = dataclasses.asdict(node)
     else:
         dct = node._deep_asdict()
 
-    return json.dumps(dct, default=converter, indent=4)
+    return json.dumps(dct, default=object_serializer, indent=4)
 
 
-def _convert_to_time(s):
+def _convert_to_time(s: str) -> datetime.date | datetime.datetime:
+    """Convert a string to a date or datetime object.
+
+    Parameters
+    ----------
+    s : str
+        The string to convert. See below for the expected format.
+
+    Returns
+    -------
+    datetime.date | datetime.datetime
+        The converted date or datetime object.
+
+    Notes
+    -----
+
+    The string must be in ISO 8601 format. The function will attempt to convert
+    the string to a date object first, and then to a datetime object if that
+    fails. If both fail, a ValueError is raised.
+
+    """
     converters = [datetime.date.fromisoformat, datetime.datetime.fromisoformat]
     for converter in converters:
         try:
@@ -45,7 +65,7 @@ def _convert_to_time(s):
         raise ValueError("Not a time.")
 
 
-def deserialize(s):
+def deserialize(s) -> Universe | Collection | Publication | Artifact:
     """Reconstruct a universe/collection/publication/artifact from JSON.
 
     Parameters
@@ -59,6 +79,7 @@ def deserialize(s):
         The reconstructed object; its type is inferred from the string.
 
     """
+
     # we need to pass a hook to json.loads in order to automatically convert
     # datestring to date/datetime objects
     def hook(pairs):
@@ -79,13 +100,10 @@ def deserialize(s):
     # infer what we're reconstructing
     if "collections" in dct:
         type_ = Universe
-        children_key = "collections"
     elif "publications" in dct:
         type_ = Collection
-        children_key = "publications"
     elif "artifacts" in dct:
         type_ = Publication
-        children_key = "artifacts"
     else:
         return _artifact_from_dict(dct)
 
