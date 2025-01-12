@@ -206,11 +206,12 @@ def build(
     Note
     ----
     If a publication or artifact is not yet released, either due to its release
-    time being in the future or because it is marked as not ready, its recipe will
-    not be run. If the root node is a publication or artifact that is not
-    built, the result of this function is None. If the root node is a collection
-    or universe, all of the unbuilt publications and artifacts within are
-    recursively removed from the tree.
+    time being in the future or because it is marked as not ready, its recipe
+    will not be run. If the root node is a publication or artifact that is not
+    built, the result of this function is None. If the root node is a
+    collection or universe, all of the unbuilt publications and artifacts
+    within are recursively removed from the tree, so that all leaf nodes in the
+    tree are in fact :class:`BuiltArtifact` instances.
 
     If an artifact is encountered that isn't an instance of :class:`UnbuiltArtifact`,
     as is instead an instance of :class:`BuiltArtifact` or :class:`ExportedArtifact`,

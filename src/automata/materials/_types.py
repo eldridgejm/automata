@@ -26,7 +26,8 @@ class UnbuiltArtifact(Artifact):
     workdir : pathlib.Path
         Absolute path to the working directory used to build the artifact.
     path : str
-        Path (relative to the workdir) of the path produced by the build.
+        Path (relative to the workdir) of the path produced by the build. The artifact
+        can be a single file, or it may be an entire directory.
     recipe : Optional[str]
         Command used to build the artifact. If None, no command is necessary.
     release_time: Union[datetime.datetime, None]
@@ -85,7 +86,7 @@ class ExportedArtifact(Artifact):
 
     """
 
-    path: str
+    path: pathlib.Path
 
 
 def _artifact_from_dict(
@@ -133,10 +134,11 @@ def _artifact_from_dict(
 class Publication(typing.NamedTuple):
     """Represents a publication, which is a collection of artifacts.
 
-    For example, in a typical course with homework assignments, "Homework 01" might
-    be a publication, "Homework 02" would be another, and so on. Each publication
-    might contain one or more artifacts, such as a PDF file containing the homework
-    questions and another PDF file containing the solutions.
+    For example, in a typical course with homework assignments, "Homework 01"
+    might be a publication, "Homework 02" would be another, and so on. Each
+    publication might contain one or more artifacts. For example, one artifact
+    in might be a PDF file containing the homework questions and another
+    artifact could be a PDF file containing the solutions.
 
     A publication can have user-defined metadata associated with it. For example, a
     homework assignment might have a "due_date" key in its metadata, noting

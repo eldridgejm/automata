@@ -69,11 +69,11 @@ Core types for representing course materials
 
 As described in :ref:`convention`, `automata` establishes a convention for
 organizing and annotating course materials. In this convention, individual
-files to be published are called *artifacts*. A group of related artifacts
-(such as the files for a single homework) are called a *publication*. A
-collection of publications is called a *collection*. Collections, publications,
-and artifacts are all defined in the filesystem using YAML files placed alongside
-the course materials they describe.
+files (or directories) to be published are called *artifacts*. A group of
+related artifacts (such as the files for a single homework) are called a
+*publication*. A collection of publications is called a *collection*.
+Collections, publications, and artifacts are all defined in the filesystem
+using YAML files placed alongside the course materials they describe.
 
 The :mod:`automata.materials` module defines classes for representing
 collections, publications, and artifacts in Python. Because `automata`'s
