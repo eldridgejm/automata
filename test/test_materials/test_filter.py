@@ -1,5 +1,6 @@
 import pathlib
 
+import automata.materials
 from automata.materials import discover, filter
 from automata.materials import UnbuiltArtifact
 
@@ -56,3 +57,17 @@ def test_preserves_nodes_without_children_by_default(default_example_course):
 
     # then
     assert "homeworks" in universe.collections
+
+
+def test_if_all_children_of_root_are_removed_then(default_example_course):
+    # when
+    universe = discover(default_example_course.path)
+
+    def keep(k, v):
+        return False
+
+    universe = filter(universe, keep)
+
+    # then
+    assert not universe.collections
+    assert isinstance(universe, automata.materials.Universe)
