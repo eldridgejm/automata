@@ -1,13 +1,12 @@
 """Provides read_collection_file(), which reads a Collection from a collection.yaml."""
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Mapping
 import pathlib
 
-import dictconfig
-import yaml
+import dictconfig # type: ignore
+import yaml # type: ignore
 
 from ._types import Collection, PublicationSchema
-
 from .exceptions import DiscoveryError
 
 # the dictconfig schema describing a valid collection file.
@@ -43,40 +42,6 @@ COLLECTION_FILE_SCHEMA = {
         }
     },
 }
-
-
-def read_collection_file(path, vars=None):
-    """Reads a :class:`types.Collection` from a ``collection.yaml`` file.
-
-    See the documentation for a description of the format of the file.
-
-    Parameters
-    ----------
-    path : pathlib.Path
-        Path to the ``collection.yaml`` file.
-    vars : Optional[dict]
-        A dictionary of variables available during interpolation. If None, no
-        variables will be made available.
-
-    Returns
-    -------
-    Collection
-        The collection object with no attached publications.
-
-    """
-    if vars is None:
-        vars = {}
-
-    with path.open() as fileobj:
-        raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
-
-    try:
-        resolved = _resolve_collection_file(raw_contents, {"vars": vars}, path)
-    except dictconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), path)
-
-    publication_schema = PublicationSchema(**resolved["publication_schema"])
-    return Collection(publication_schema=publication_schema, publications={})
 
 
 def _resolve_collection_file(
@@ -117,10 +82,27 @@ def _resolve_collection_file(
     return resolved
 
 
-def _validate_metadata_schema(metadata_schema, path):
+def _validate_metadata_schema(
+    metadata_schema: Optional[Mapping[str, str]], path: pathlib.Path
+):
     """Ensures that the publication metadata schema provided is valid.
 
-    Converts dictconfig exceptions into DiscoveryError exceptions.
+    If the function runs without raising an exception, the schema is valid.
+    Otherwise, it raises a DiscoveryError.
+
+    Parameters
+    ----------
+    metadata_schema : Optional[Mapping[str, str]]
+        The metadata schema to validate. If the schema is None, this function
+        automatically returns.
+    path : pathlib.Path
+        The path to the collection file being read. Used to format error messages.
+
+    Raises
+    ------
+    DiscoveryError
+        If the metadata schema is invalid.
+
     """
     if metadata_schema is None:
         return
@@ -129,3 +111,37 @@ def _validate_metadata_schema(metadata_schema, path):
         dictconfig.validate_schema({"type": "dict", **metadata_schema})
     except dictconfig.exceptions.InvalidSchemaError as exc:
         raise DiscoveryError(exc, path)
+
+
+def read_collection_file(path: pathlib.Path, vars: Optional[Mapping[str, str]] = None):
+    """Reads a :class:`types.Collection` from a ``collection.yaml`` file.
+
+    See the documentation for a description of the format of the file.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to the ``collection.yaml`` file.
+    vars : Optional[Mapping[str, str]]
+        A dictionary of variables available during interpolation. If None, no
+        variables will be made available.
+
+    Returns
+    -------
+    Collection
+        The collection object with no attached publications.
+
+    """
+    if vars is None:
+        vars = {}
+
+    with path.open() as fileobj:
+        raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
+
+    try:
+        resolved = _resolve_collection_file(raw_contents, {"vars": vars}, path)
+    except dictconfig.exceptions.ResolutionError as exc:
+        raise DiscoveryError(str(exc), path)
+
+    publication_schema = PublicationSchema(**resolved["publication_schema"])
+    return Collection(publication_schema=publication_schema, publications={})
