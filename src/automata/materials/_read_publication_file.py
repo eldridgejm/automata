@@ -1,16 +1,136 @@
 """Provides read_publication_file(), which reads a Publication from a publication.yaml."""
 
-from typing import Optional, Dict, Any
+import pathlib
+from typing import Optional, Dict, Any, Mapping, MutableMapping
 
-import dictconfig
-import yaml
+import dictconfig  # type: ignore
+import yaml  # type: ignore
 
-from ._types import UnbuiltArtifact, Publication, PublicationSchema
+from ._types import UnbuiltArtifact, Publication, PublicationSchema, Artifact
 
 from .exceptions import DiscoveryError
 
 
-def read_publication_file(path, publication_schema=None, vars=None, previous=None):
+def _make_publication_file_schema(
+    publication_schema: Optional[PublicationSchema],
+) -> dict:
+    """Construct a dictconfig schema for validating and resolving the publication file.
+
+    A function is necessary here in order to dynamically convert the
+    PublicationSchema object given as input into a dictconfig schema
+    dictionary.
+
+    Parameters
+    ----------
+    publication_schema : Optional[PublicationSchema]
+        The schema that describes the necessary artifacts of the publication
+        and what metadata it should have. If None, a default schema is assumed
+        in which only very basic validation is done (see below). Default: None.
+
+    Returns
+    -------
+    dict
+        The dictconfig schema for the publication file.
+
+    Notes
+    -----
+    If no publication schema is provided, a default schema is assumed in which
+    only very basic validation is done. Namely, the metadata schema and required/
+    optional artifacts are not enforced. See the :func:`validate` function for
+    more information.
+
+    """
+
+    if publication_schema is None:
+        publication_schema = PublicationSchema([], allow_unspecified_artifacts=True)
+
+    artifact_schema = {
+        "type": "dict",
+        "optional_keys": {
+            "path": {"type": "string", "nullable": True, "default": None},
+            "recipe": {"type": "string", "nullable": True, "default": None},
+            "ready": {"type": "boolean", "default": True},
+            "missing_ok": {"type": "boolean", "default": False},
+            "release_time": {"type": "datetime", "nullable": True, "default": None},
+        },
+    }
+
+    artifacts_schema: dict[str, Any] = {
+        "type": "dict",
+        "required_keys": {},
+        "optional_keys": {},
+    }
+
+    if publication_schema.required_artifacts is not None:
+        for artifact_key in publication_schema.required_artifacts:
+            artifacts_schema["required_keys"][artifact_key] = artifact_schema
+
+    if publication_schema.optional_artifacts is not None:
+        for artifact_key in publication_schema.optional_artifacts:
+            artifacts_schema["optional_keys"][artifact_key] = artifact_schema
+
+    if publication_schema.allow_unspecified_artifacts:
+        artifacts_schema["extra_keys_schema"] = artifact_schema
+
+    schema: dict[str, Any] = {
+        "type": "dict",
+        "required_keys": {"artifacts": artifacts_schema},
+        "optional_keys": {},
+    }
+
+    if publication_schema.metadata_schema is not None:
+        schema["optional_keys"]["metadata"] = {
+            "type": "dict",
+            **publication_schema.metadata_schema,
+        }
+    else:
+        schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
+
+    return schema
+
+
+def _resolve_publication_file(
+    raw_contents: Mapping[str, Any],
+    publication_schema: Optional[PublicationSchema],
+    external_vars: Mapping[str, Any],
+    path: pathlib.Path,
+) -> dict[str, Any]:
+    """Resolves (interpolates and parses) the raw publication file contents.
+
+    Parameters
+    ----------
+    raw_contents : Mapping[str, Any]
+        The raw dictionary loaded from the publication file.
+    publication_schema : Optional[PublicationSchema]
+        A :class:`PublicationSchema` object that describes the necessary artifacts
+        and metadata of the publication. If this is None, only very basic validation
+        is done. Default: None.
+    external_variables : Optional[dict]
+        A dictionary of external_variables passed to dictconfig and used during
+        interpolation.
+
+    Returns
+    -------
+    dict
+        The resolved dictionary.
+
+    """
+    schema = _make_publication_file_schema(publication_schema)
+
+    try:
+        return dictconfig.resolve(
+            raw_contents, schema, external_variables=external_vars
+        ) # type: ignore
+    except dictconfig.exceptions.ResolutionError as exc:
+        raise DiscoveryError(str(exc), path)
+
+
+def read_publication_file(
+    path: pathlib.Path,
+    publication_schema: Optional[PublicationSchema] = None,
+    vars: Optional[Mapping[str, Any]] = None,
+    previous: Optional[Publication] = None,
+):
     """Reads a :class:`types.Publication` from a ``publication.yaml`` file.
 
     Parameters
@@ -21,12 +141,14 @@ def read_publication_file(path, publication_schema=None, vars=None, previous=Non
         A schema that describes the necessary artifacts of the publication and
         what metadata it should have. If `None`, only very basic validation is
         done (see below). Default: None.
-    vars : Optional[dict]
-        A dictionary of external variables that will be available during
-        interpolation of the publication file. If None, no variables will be
-        available. Default: None.
+    vars : Optional[Mapping[str, Any]]
+        A dictionary of variables that will be available during interpolation
+        of the publication file through the ``${vars}`` variable. If None, no
+        variables will be available. Default: None.
     previous : Optional[Publication]
         The previous publication. If None, there is assumed to be no previous.
+        If provided, this will be available during interpolation through the
+        ``${previous}`` variable. Default: None.
 
     Returns
     -------
@@ -70,14 +192,16 @@ def read_publication_file(path, publication_schema=None, vars=None, previous=Non
 
     resolved: Dict[str, Any] = _resolve_publication_file(
         raw_contents, publication_schema, external_variables, path
-    )  # type: ignore
+    )
 
     # convert each artifact to an Artifact object
-    artifacts = {}
+    artifacts: MutableMapping[str, Artifact] = {}
     for key, definition in resolved["artifacts"].items():
         # if no file is provided, use the key
         if definition["path"] is None:
             definition["path"] = key
+
+        assert isinstance(key, str)
 
         artifacts[key] = UnbuiltArtifact(workdir=path.parent.absolute(), **definition)
 
@@ -87,94 +211,3 @@ def read_publication_file(path, publication_schema=None, vars=None, previous=Non
     )
 
     return publication
-
-
-def _make_publication_file_schema(
-    publication_schema: Optional[PublicationSchema],
-) -> dict:
-    """Construct a dictconfig schema for validating and resolving the publication file.
-
-    A function is necessary here in order to convert the PublicationSchema object
-    to a dictconfig schema dictionary.
-
-    """
-
-    if publication_schema is None:
-        publication_schema = PublicationSchema([], allow_unspecified_artifacts=True)
-
-    artifact_schema = {
-        "type": "dict",
-        "optional_keys": {
-            "path": {"type": "string", "nullable": True, "default": None},
-            "recipe": {"type": "string", "nullable": True, "default": None},
-            "ready": {"type": "boolean", "default": True},
-            "missing_ok": {"type": "boolean", "default": False},
-            "release_time": {"type": "datetime", "nullable": True, "default": None},
-        },
-    }
-
-    artifacts_schema = {
-        "type": "dict",
-        "required_keys": {},
-        "optional_keys": {},
-    }
-
-    if publication_schema.required_artifacts is not None:
-        for artifact in publication_schema.required_artifacts:
-            artifacts_schema["required_keys"][artifact] = artifact_schema
-
-    if publication_schema.optional_artifacts is not None:
-        for artifact in publication_schema.optional_artifacts:
-            artifacts_schema["optional_keys"][artifact] = artifact_schema
-
-    if publication_schema.allow_unspecified_artifacts:
-        artifacts_schema["extra_keys_schema"] = artifact_schema
-
-    schema = {
-        "type": "dict",
-        "required_keys": {"artifacts": artifacts_schema},
-        "optional_keys": {},
-    }
-
-    if publication_schema.metadata_schema is not None:
-        schema["optional_keys"]["metadata"] = {
-            "type": "dict",
-            **publication_schema.metadata_schema,
-        }
-    else:
-        schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
-
-    return schema
-
-
-def _resolve_publication_file(
-    raw_contents, publication_schema, external_variables, path
-):
-    """Resolves (interpolates and parses) the raw publication file contents.
-
-    Parameters
-    ----------
-    raw_contents : dict
-        The raw dictionary loaded from the publication file.
-    metadata_schema : Optional[dict]
-        A dictconfig schema for the "metadata" field of `raw_contents`. If this is
-        None, the schema passed to dictconfig will not have a "metadata" field,
-        and so it will not be interpolated/parsed (all leafs will be left as-is).
-    external_variables : Optional[dict]
-        A dictionary of external_variables passed to dictconfig and used during
-        interpolation. These are accessible under ${vars}
-
-    Returns
-    -------
-    dict
-        The resolved dictionary.
-
-    """
-    schema = _make_publication_file_schema(publication_schema)
-
-    try:
-        return dictconfig.resolve(
-            raw_contents, schema, external_variables=external_variables
-        )
-    except dictconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), path)
