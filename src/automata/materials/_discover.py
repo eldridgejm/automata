@@ -14,7 +14,7 @@ from ._types import (
 from .exceptions import DiscoveryError
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file
-from . import constants
+from automata import constants
 
 
 class DiscoverCallbacks:
