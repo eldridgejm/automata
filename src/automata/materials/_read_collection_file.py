@@ -1,12 +1,12 @@
-"""Provides read_collection_file(), which reads a Collection from a collection.yaml."""
+"""Provides read_collection_file(), which reads a Collection from a collection.yaml.""":
 
 from typing import Optional, Dict, Any, Mapping
 import pathlib
 
-import dictconfig # type: ignore
-import yaml # type: ignore
+import dictconfig  # type: ignore
+import yaml  # type: ignore
 
-from ._types import Collection, PublicationSchema
+from ._types import Collection, PublicationSchema, UnbuiltArtifact
 from .exceptions import DiscoveryError
 
 # the dictconfig schema describing a valid collection file.
@@ -114,7 +114,9 @@ def _validate_metadata_schema(
         raise DiscoveryError(exc, path)
 
 
-def read_collection_file(path: pathlib.Path, vars: Optional[Mapping[str, Any]] = None):
+def read_collection_file(
+    path: pathlib.Path, vars: Optional[Mapping[str, Any]] = None
+) -> Collection[UnbuiltArtifact]:
     """Reads a :class:`types.Collection` from a ``collection.yaml`` file.
 
     See the documentation for a description of the format of the file.

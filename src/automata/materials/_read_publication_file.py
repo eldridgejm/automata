@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any, Mapping, MutableMapping
 import dictconfig  # type: ignore
 import yaml  # type: ignore
 
-from ._types import UnbuiltArtifact, Publication, PublicationSchema, Artifact
+from ._types import UnbuiltArtifact, Publication, PublicationSchema
 
 from .exceptions import DiscoveryError
 
@@ -130,7 +130,7 @@ def read_publication_file(
     publication_schema: Optional[PublicationSchema] = None,
     vars: Optional[Mapping[str, Any]] = None,
     previous: Optional[Publication] = None,
-):
+) -> Publication[UnbuiltArtifact]:
     """Reads a :class:`types.Publication` from a ``publication.yaml`` file.
 
     Parameters
