@@ -2,7 +2,7 @@ import datetime
 
 from pytest import raises
 
-from automata.materials import discover, UnbuiltArtifact
+from automata.materials import discover
 from automata.materials.exceptions import DiscoveryError
 
 
@@ -76,7 +76,6 @@ def test_loads_artifacts(default_example_course):
     )
 
     # then
-    assert isinstance(artifact, UnbuiltArtifact)
     assert artifact.recipe == "touch solution.pdf"
 
 
@@ -107,7 +106,6 @@ def test_reads_ready(default_example_course):
     )
 
     # then
-    assert isinstance(artifact, UnbuiltArtifact)
     assert not artifact.ready
 
 
@@ -255,7 +253,6 @@ def test_key_used_for_path_if_path_not_provided(default_example_course):
     )
 
     # then
-    assert isinstance(artifact, UnbuiltArtifact)
     assert artifact.path == "homework.pdf"
 
 

@@ -2,6 +2,7 @@ import automata.materials
 from automata.materials import discover, filter
 from automata.materials import UnbuiltArtifact
 
+
 def test_basic(default_example_course):
     # when
     universe = discover(default_example_course.path)

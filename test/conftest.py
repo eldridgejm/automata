@@ -53,7 +53,7 @@ def temporary_course(tmpdir) -> CourseBuilder:
 
 
 @fixture
-def default_example_course(temporary_course):
+def default_example_course(temporary_course) -> CourseBuilder:
     """Creates a default example course with valid collections and publications."""
 
     temporary_course.create_collection(

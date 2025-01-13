@@ -2,7 +2,7 @@
 
 import pathlib
 import shutil
-from typing import Optional
+from typing import Optional, overload, cast
 
 from ._types import (
     BuiltArtifact,
@@ -65,12 +65,65 @@ def _export_artifact(
     return ExportedArtifact(path=str(full_dst.relative_to(outdir)))
 
 
-def export[NodeType: (Universe, Collection, Publication, BuiltArtifact)](
-    root: NodeType,
+# overloads for export() ---------------------------------------------------------------
+
+# These are necessary to provide type hints for the export() function. Standard
+# generics won't work here.
+
+
+@overload
+def export(
+    root: Universe[BuiltArtifact],
+    outdir: pathlib.Path,
+    prefix: str = ...,
+    callbacks: Optional[ExportCallbacks] = ...,
+) -> Universe[ExportedArtifact]: ...
+
+
+@overload
+def export(
+    root: Collection[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
     callbacks: Optional[ExportCallbacks] = None,
-) -> NodeType:
+) -> Collection[ExportedArtifact]: ...
+
+
+@overload
+def export(
+    root: Publication[BuiltArtifact],
+    outdir: pathlib.Path,
+    prefix: str = "",
+    callbacks: Optional[ExportCallbacks] = None,
+) -> Publication[ExportedArtifact]: ...
+
+
+@overload
+def export(
+    root: BuiltArtifact,
+    outdir: pathlib.Path,
+    prefix: str = "",
+    callbacks: Optional[ExportCallbacks] = None,
+) -> ExportedArtifact: ...
+
+
+# export() =============================================================================
+
+
+def export(
+    root: Universe[BuiltArtifact]
+    | Collection[BuiltArtifact]
+    | Publication[BuiltArtifact]
+    | BuiltArtifact,
+    outdir: pathlib.Path,
+    prefix: str = "",
+    callbacks: Optional[ExportCallbacks] = None,
+) -> (
+    Universe[ExportedArtifact]
+    | Collection[ExportedArtifact]
+    | Publication[ExportedArtifact]
+    | ExportedArtifact
+):
     """Export a universe/collection/publication/artifact by copying it.
 
     An artifact is typically a file, but it can also be a directory. This is
@@ -128,4 +181,11 @@ def export[NodeType: (Universe, Collection, Publication, BuiltArtifact)](
         assert isinstance(child, (Universe, Collection, Publication, BuiltArtifact))
         new_children[child_key] = export(child, outdir, new_prefix, callbacks)
 
-    return root._replace_children(new_children)
+    result = root._replace_children(new_children)
+    return cast(
+        Universe[ExportedArtifact]
+        | Collection[ExportedArtifact]
+        | Publication[ExportedArtifact]
+        | ExportedArtifact,
+        result,
+    )

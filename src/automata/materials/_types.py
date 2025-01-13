@@ -92,7 +92,7 @@ class ExportedArtifact(Artifact):
 
 def _artifact_from_dict(
     dct,
-) -> typing.Union[UnbuiltArtifact, BuiltArtifact, ExportedArtifact]:
+) -> UnbuiltArtifact | BuiltArtifact | ExportedArtifact:
     """Given a dictionary representing an artifact, converts it to the appropriate type.
 
     Works by inferring the artifact type (UnbuiltArtifact, BuiltArtifact, or
@@ -134,7 +134,14 @@ def _artifact_from_dict(
 #   ._deep_asdict(): returns a dictionary of all of the node's attributes.
 
 
-class Publication(typing.NamedTuple):
+class Publication[
+    ArtifactType: (
+        UnbuiltArtifact,
+        BuiltArtifact,
+        ExportedArtifact,
+        UnbuiltArtifact | BuiltArtifact | ExportedArtifact,
+    )
+](typing.NamedTuple):
     """Represents a publication, which is a collection of artifacts.
 
     For example, in a typical course with homework assignments, "Homework 01"
@@ -149,9 +156,6 @@ class Publication(typing.NamedTuple):
 
     Attributes
     ----------
-    artifacts : Dict[str, Artifact]
-        The artifacts in this publication. Maps artifact filenames to the
-        artifacts themselves.
     metadata: Dict[str, Any]
         The metadata dictionary containing user-defined information about the
         publication. For example, if the publication is a homework assignment,
@@ -160,7 +164,7 @@ class Publication(typing.NamedTuple):
     """
 
     metadata: typing.MutableMapping[str, typing.Any]
-    artifacts: typing.MutableMapping[str, Artifact]
+    artifacts: typing.MutableMapping[str, ArtifactType]
 
     def _deep_asdict(self) -> dict:
         """A dictionary representation of the publication and its children."""
@@ -174,17 +178,16 @@ class Publication(typing.NamedTuple):
     @classmethod
     def _deep_fromdict(cls, dct) -> "Publication":
         """Recursively constructs a Publication and its children from a dictionary."""
+        artifacts: list[tuple[str, ArtifactType]] = list(dct["artifacts"].items())
         return cls(
             metadata=dct["metadata"],
-            artifacts={
-                k: _artifact_from_dict(d) for (k, d) in dct["artifacts"].items()
-            },
+            artifacts={k: _artifact_from_dict(d) for (k, d) in artifacts},  # type: ignore
         )
 
     @property
     def _children(
         self,
-    ) -> typing.Mapping[str, Artifact]:
+    ) -> typing.Mapping[str, ArtifactType]:
         """The artifacts contained in the publication."""
         return self.artifacts
 
@@ -193,20 +196,25 @@ class Publication(typing.NamedTuple):
         return self._replace(artifacts=new_children)
 
 
-class Collection(typing.NamedTuple):
+class Collection[
+    ArtifactType: (
+        UnbuiltArtifact,
+        BuiltArtifact,
+        ExportedArtifact,
+        UnbuiltArtifact | BuiltArtifact | ExportedArtifact,
+    )
+](typing.NamedTuple):
     """Represents a collection of publications.
 
     Attributes
     ----------
     publication_schema : PublicationSchema
         A schema used to validate the publications within the collection.
-    publications : MutableMapping[str, Publication]
-        The publications contained in the collection.
 
     """
 
     publication_schema: "PublicationSchema"
-    publications: typing.MutableMapping[str, Publication]
+    publications: typing.MutableMapping[str, Publication[ArtifactType]]
 
     def _deep_asdict(self) -> dict:
         """A dictionary representation of the collection and its children."""
@@ -229,7 +237,7 @@ class Collection(typing.NamedTuple):
         )
 
     @property
-    def _children(self) -> typing.Mapping[str, Publication]:
+    def _children(self) -> typing.Mapping[str, Publication[ArtifactType]]:
         """The publications contained in the collection."""
         return self.publications
 
@@ -238,21 +246,20 @@ class Collection(typing.NamedTuple):
         return self._replace(publications=new_children)
 
 
-class Universe(typing.NamedTuple):
-    """Container of all course materials.
+class Universe[
+    ArtifactType: (
+        UnbuiltArtifact,
+        BuiltArtifact,
+        ExportedArtifact,
+        UnbuiltArtifact | BuiltArtifact | ExportedArtifact,
+    )
+](typing.NamedTuple):
+    """Container of all course materials."""
 
-    Attributes
-    ----------
-
-    collections : Dict[str, Collection]
-        The collections. Mapping from collection name to :class:`Collection` instances.
-
-    """
-
-    collections: typing.MutableMapping[str, Collection]
+    collections: typing.MutableMapping[str, Collection[ArtifactType]]
 
     @property
-    def _children(self):
+    def _children(self) -> typing.Mapping[str, Collection[ArtifactType]]:
         """The collections contained in the universe."""
         return self.collections
 

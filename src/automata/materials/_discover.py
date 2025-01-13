@@ -10,6 +10,7 @@ from ._types import (
     Publication,
     Universe,
     PublicationSchema,
+    UnbuiltArtifact
 )
 from .exceptions import DiscoveryError
 from ._read_collection_file import read_collection_file
@@ -308,7 +309,7 @@ def discover(
     skip_directories: Optional[typing.Collection[str]] = None,
     callbacks: Optional[DiscoverCallbacks] = None,
     vars: Optional[Dict[str, Any]] = None,
-) -> Universe:
+) -> Universe[UnbuiltArtifact]:
     """Discover the course materials in the filesystem.
 
     This function recursively searches down from the given root directory for

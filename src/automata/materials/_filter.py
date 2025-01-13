@@ -4,9 +4,12 @@ from ._types import (
     Universe,
     Collection,
     Publication,
+    UnbuiltArtifact,
+    BuiltArtifact,
+    ExportedArtifact,
     Artifact,
 )
-from typing import Optional, Callable
+from typing import Optional, Callable, overload, TypeVar
 
 
 class FilterCallbacks:
@@ -21,17 +24,85 @@ class FilterCallbacks:
         return key, node
 
 
-def filter[NodeType: (Universe, Collection, Publication, Artifact)](
-    root: NodeType,
+# overloads for filter() ---------------------------------------------------------------
+
+# The following overloads are used to provide type hints for the filter()
+# function. Standard generics won't work here because union types are too
+# loose.
+
+
+ArtifactType = TypeVar(
+    "ArtifactType",
+    UnbuiltArtifact,
+    BuiltArtifact,
+    ExportedArtifact,
+    UnbuiltArtifact | BuiltArtifact,
+    BuiltArtifact | ExportedArtifact,
+    UnbuiltArtifact | ExportedArtifact,
+    UnbuiltArtifact | BuiltArtifact | ExportedArtifact,
+)
+
+Predicate = Callable[[str, Universe | Collection | Publication | Artifact], bool]
+
+
+@overload
+def filter(
+    root: Universe[ArtifactType],
+    predicate: Predicate,
+    remove_empty_nodes: bool = ...,
+    callbacks: Optional[FilterCallbacks] = ...,
+) -> Universe[ArtifactType]: ...
+
+
+@overload
+def filter(
+    root: Collection[ArtifactType],
+    predicate: Predicate,
+    remove_empty_nodes: bool = ...,
+    callbacks: Optional[FilterCallbacks] = ...,
+) -> Collection[ArtifactType]: ...
+
+
+@overload
+def filter(
+    root: Publication[ArtifactType],
+    predicate: Predicate,
+    remove_empty_nodes: bool = ...,
+    callbacks: Optional[FilterCallbacks] = ...,
+) -> Publication[ArtifactType]: ...
+
+
+@overload
+def filter(
+    root: ArtifactType,
+    predicate: Predicate,
+    remove_empty_nodes: bool = ...,
+    callbacks: Optional[FilterCallbacks] = ...,
+) -> ArtifactType: ...
+
+
+# filter() =============================================================================
+
+
+def filter(
+    root: Universe[ArtifactType]
+    | Collection[ArtifactType]
+    | Publication[ArtifactType]
+    | Artifact,
     predicate: Callable[[str, Universe | Collection | Publication | Artifact], bool],
     remove_empty_nodes: bool = False,
     callbacks: Optional[FilterCallbacks] = None,
-) -> NodeType:
+) -> (
+    Universe[ArtifactType]
+    | Collection[ArtifactType]
+    | Publication[ArtifactType]
+    | Artifact
+):
     """Remove nodes from a Universe/Collection/Publication according to a predicate.
 
     Parameters
     ----------
-    root : Union[Universe, Collection, Publication, Artifact]
+    root : Universe | Collection | Publication | Artifact
         The root of the course materials tree whose nodes are to be filtered.
     predicate : Callable[[str, Union[Universe, Collection, Publication, Artifact]], bool]
         A function which takes in two arguments: the key of the node and the
@@ -46,7 +117,7 @@ def filter[NodeType: (Universe, Collection, Publication, Artifact)](
 
     Returns
     -------
-    type(root)
+    Universe | Collection | Publication | Artifact
         An object of the same type as the root, but with all filtered nodes
         removed. This is a new object, and the original root is unchanged.
 

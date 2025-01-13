@@ -18,11 +18,9 @@ def test_export(default_example_course, outdir):
     builts = automata.materials.build(discovered)
 
     # when
-    assert isinstance(builts, automata.materials.Universe)
     exported = automata.materials.export(builts, outdir)
 
     # then
-    assert isinstance(exported, automata.materials.Universe)
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
     assert not (outdir / "homeworks" / "02-python" / "solution.pdf").exists()
 
@@ -36,7 +34,6 @@ def test_artifact_not_copied_if_not_released(default_example_course, outdir):
     # given
     discovered = automata.materials.discover(default_example_course.path)
     built = automata.materials.build(discovered)
-    assert isinstance(built, automata.materials.Universe)
     publication = built.collections["homeworks"].publications["02-python"]
 
     # when
@@ -86,8 +83,7 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
 
     discovered = automata.materials.discover(temporary_course.path)
     built = automata.materials.build(discovered)
-    assert isinstance(built, automata.materials.Universe)
-    automata.materials.export(built, outdir)
+    _ = automata.materials.export(built, outdir)
 
     assert (outdir / "homeworks" / "01-testing" / "problems").is_dir()
     assert (outdir / "homeworks" / "01-testing" / "problems" / "one.pdf").is_file()

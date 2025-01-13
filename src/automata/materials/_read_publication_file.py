@@ -120,7 +120,7 @@ def _resolve_publication_file(
     try:
         return dictconfig.resolve(
             raw_contents, schema, external_variables=external_vars
-        ) # type: ignore
+        )  # type: ignore
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
@@ -194,8 +194,8 @@ def read_publication_file(
         raw_contents, publication_schema, external_variables, path
     )
 
-    # convert each artifact to an Artifact object
-    artifacts: MutableMapping[str, Artifact] = {}
+    # convert each artifact to an UnbuiltArtifact object
+    artifacts: MutableMapping[str, UnbuiltArtifact] = {}
     for key, definition in resolved["artifacts"].items():
         # if no file is provided, use the key
         if definition["path"] is None:
@@ -205,7 +205,7 @@ def read_publication_file(
 
         artifacts[key] = UnbuiltArtifact(workdir=path.parent.absolute(), **definition)
 
-    publication = Publication(
+    publication = Publication[UnbuiltArtifact](
         metadata=resolved["metadata"],
         artifacts=artifacts,
     )

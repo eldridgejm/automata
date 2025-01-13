@@ -4,7 +4,7 @@ import datetime
 import dataclasses
 import subprocess
 import pathlib
-import typing
+from typing import Optional, Union, cast, overload, TypedDict, Unpack, Any
 
 
 from ._types import (
@@ -27,9 +27,7 @@ class BuildCallbacks:
 
     """
 
-    def on_build(
-        self, key: str, node: typing.Union[Collection, Publication, UnbuiltArtifact]
-    ):
+    def on_build(self, key: str, node: Union[Collection, Publication, UnbuiltArtifact]):
         """Called when building a collection/publication/artifact.
 
         Parameters
@@ -42,10 +40,6 @@ class BuildCallbacks:
 
         """
         return key, node
-
-    def on_already_built(self, artifact: typing.Union[BuiltArtifact, ExportedArtifact]):
-        """Called when the artifact is already built and possibly exported."""
-        return artifact
 
     def on_too_soon(self, artifact: UnbuiltArtifact):
         """Called when it is too soon to release the artifact."""
@@ -77,7 +71,7 @@ def _build_artifact(
     verbose=False,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    callbacks: typing.Optional[BuildCallbacks] = None,
+    callbacks: Optional[BuildCallbacks] = None,
 ):
     """Build an artifact using its recipe.
 
@@ -164,17 +158,67 @@ def _build_artifact(
     return output
 
 
-def build[NodeType: (Universe, Collection, Publication, UnbuiltArtifact)](
-    root: NodeType,
+# overloads for build() ----------------------------------------------------------------
+
+# The following overloads are used to provide type hints for the build()
+# function. Standard generics won't work here, because the return type of
+# build() depends on the type of the input.
+
+
+class BuildOptions(TypedDict, total=False):
+    ignore_release_time: bool
+    ignore_ready: bool
+    verbose: bool
+    callbacks: Optional[BuildCallbacks]
+    run: Any
+    now: Any
+    exists: Any
+
+
+@overload
+def build(
+    root: Universe[UnbuiltArtifact], **kwargs: Unpack[BuildOptions]
+) -> Universe[BuiltArtifact]: ...
+
+
+@overload
+def build(
+    root: Collection[UnbuiltArtifact], **kwargs: Unpack[BuildOptions]
+) -> Collection[BuiltArtifact]: ...
+
+
+@overload
+def build(
+    root: Publication[UnbuiltArtifact], **kwargs: Unpack[BuildOptions]
+) -> Publication[BuiltArtifact]: ...
+
+
+@overload
+def build(root: UnbuiltArtifact, **kwargs: Unpack[BuildOptions]) -> BuiltArtifact: ...
+
+
+# build() ==============================================================================
+
+
+def build(
+    root: Universe[UnbuiltArtifact]
+    | Collection[UnbuiltArtifact]
+    | Publication[UnbuiltArtifact]
+    | UnbuiltArtifact,
     *,
     ignore_release_time: bool = False,
     ignore_ready: bool = False,
     verbose: bool = False,
+    callbacks: Optional[BuildCallbacks] = None,
     now=datetime.datetime.now,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    callbacks: typing.Optional[BuildCallbacks] = None,
-) -> NodeType:
+) -> (
+    Universe[BuiltArtifact]
+    | Collection[BuiltArtifact]
+    | Publication[BuiltArtifact]
+    | BuiltArtifact
+):
     """Build all artifacts contained under the given root node.
 
     Parameters
@@ -182,7 +226,8 @@ def build[NodeType: (Universe, Collection, Publication, UnbuiltArtifact)](
     root : Universe | Collection | Publication | UnbuiltArtifact
         The thing to build. Operates recursively, so if given a
         universe, collection, or publication, it will build all of the
-        artifacts within.
+        artifacts within. All of the artifacts must be instances of
+        :class:`UnbuiltArtifact`.
     ignore_release_time : bool
         If ``True``, all artifacts will be built, even if their release time
         has not yet passed.
@@ -214,9 +259,7 @@ def build[NodeType: (Universe, Collection, Publication, UnbuiltArtifact)](
     tree are in fact :class:`BuiltArtifact` instances.
 
     If an artifact is encountered that isn't an instance of :class:`UnbuiltArtifact`,
-    as is instead an instance of :class:`BuiltArtifact` or :class:`ExportedArtifact`,
-    the callback :meth:`BuildCallbacks.on_already_built` is called and the artifact
-    is not rebuilt.
+    an exception is raised.
 
     """
     if callbacks is None:
@@ -240,8 +283,7 @@ def build[NodeType: (Universe, Collection, Publication, UnbuiltArtifact)](
     for child_key, child in root._children.items():
         # check if it is already built, and skip it if so
         if isinstance(child, BuiltArtifact) or isinstance(child, ExportedArtifact):
-            callbacks.on_already_built(child)
-            continue
+            raise ValueError("Cannot build an already built artifact.")
 
         assert isinstance(child, (Collection, Publication, UnbuiltArtifact))
 
@@ -253,4 +295,10 @@ def build[NodeType: (Universe, Collection, Publication, UnbuiltArtifact)](
         if result is not None:
             new_children[child_key] = result
 
-    return root._replace_children(new_children)
+    result = root._replace_children(new_children)
+    return cast(
+        Universe[BuiltArtifact]
+        | Collection[BuiltArtifact]
+        | Publication[BuiltArtifact],
+        result,
+    )

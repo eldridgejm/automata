@@ -16,12 +16,8 @@ def test_build_artifact_integration(default_example_course):
         .artifacts["solution.pdf"]
     )
 
-    assert isinstance(artifact, automata.materials.UnbuiltArtifact)
-
     # when
     result = automata.materials.build(artifact)
-
-    assert isinstance(result, automata.materials.BuiltArtifact)
 
     # then
     assert (
@@ -97,8 +93,6 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
         artifact, run=run, now=now, exists=exists, ignore_release_time=True
     )
 
-    assert isinstance(result, automata.materials.BuiltArtifact)
-
     # then
     assert result.path
     assert run.called
@@ -115,8 +109,6 @@ def test_build_artifact_when_recipe_is_none():
 
     # when
     result = automata.materials.build(artifact, run=run, exists=exists)
-
-    assert isinstance(result, automata.materials.BuiltArtifact)
 
     # then
     assert result.path
@@ -171,7 +163,6 @@ def test_build_collection(default_example_course):
 
     # when
     built_universe = automata.materials.build(universe)
-    assert isinstance(built_universe, automata.materials.Universe)
 
     # then
     assert (
@@ -182,8 +173,6 @@ def test_build_collection(default_example_course):
         .publications["01-intro"]
         .artifacts["solution.pdf"]
     )
-
-    assert isinstance(build_result, automata.materials.BuiltArtifact)
 
     assert build_result.path
 
