@@ -164,8 +164,8 @@ def _build_artifact(
     return output
 
 
-def build(
-    root: Universe | Collection | Publication | UnbuiltArtifact,
+def build[NodeType: (Universe, Collection, Publication, UnbuiltArtifact)](
+    root: NodeType,
     *,
     ignore_release_time: bool = False,
     ignore_ready: bool = False,
@@ -174,7 +174,7 @@ def build(
     run=subprocess.run,
     exists=pathlib.Path.exists,
     callbacks: typing.Optional[BuildCallbacks] = None,
-):
+) -> NodeType:
     """Build all artifacts contained under the given root node.
 
     Parameters

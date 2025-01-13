@@ -65,12 +65,12 @@ def _export_artifact(
     return ExportedArtifact(path=str(full_dst.relative_to(outdir)))
 
 
-def export(
-    root: Universe | Collection | Publication | BuiltArtifact,
+def export[NodeType: (Universe, Collection, Publication, BuiltArtifact)](
+    root: NodeType,
     outdir: pathlib.Path,
     prefix: str = "",
     callbacks: Optional[ExportCallbacks] = None,
-):
+) -> NodeType:
     """Export a universe/collection/publication/artifact by copying it.
 
     An artifact is typically a file, but it can also be a directory. This is

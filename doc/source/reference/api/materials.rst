@@ -210,8 +210,3 @@ errors that originate from within. These are all contained in the
 
 
 .. module:: automata.materials.exceptions
-
-
-.. autoclass:: DateContext
-
-

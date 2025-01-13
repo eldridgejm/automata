@@ -1,5 +1,3 @@
-import pathlib
-
 import automata.materials
 from automata.materials import discover, filter
 from automata.materials import UnbuiltArtifact
@@ -63,7 +61,7 @@ def test_if_all_children_of_root_are_removed_then(default_example_course):
     # when
     universe = discover(default_example_course.path)
 
-    def keep(k, v):
+    def keep(*_):
         return False
 
     universe = filter(universe, keep)

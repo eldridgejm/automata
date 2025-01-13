@@ -55,7 +55,8 @@ def _resolve_collection_file(
         The raw dictionary loaded from the publication file.
     external_variables : Optional[dict]
         A dictionary of external_variables passed to dictconfig and used during
-        interpolation. These are accessible under ${vars}.
+        interpolation. The value associated with a key ``foo`` in this dictionary
+        is available as ``${foo}`` in the collection file.
     path : pathlib.Path
         The path to the collection file being read. Used to format error messages.
 
@@ -113,7 +114,7 @@ def _validate_metadata_schema(
         raise DiscoveryError(exc, path)
 
 
-def read_collection_file(path: pathlib.Path, vars: Optional[Mapping[str, str]] = None):
+def read_collection_file(path: pathlib.Path, vars: Optional[Mapping[str, Any]] = None):
     """Reads a :class:`types.Collection` from a ``collection.yaml`` file.
 
     See the documentation for a description of the format of the file.

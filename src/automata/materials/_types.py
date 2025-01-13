@@ -112,12 +112,12 @@ def _artifact_from_dict(
     """
     if "recipe" in dct:
         type_ = UnbuiltArtifact
-        dct['workdir'] = pathlib.Path(dct['workdir'])
+        dct["workdir"] = pathlib.Path(dct["workdir"])
     elif "returncode" in dct:
-        type_ = BuiltArtifact # type: ignore
-        dct['workdir'] = pathlib.Path(dct['workdir'])
+        type_ = BuiltArtifact  # type: ignore
+        dct["workdir"] = pathlib.Path(dct["workdir"])
     else:
-        type_ = ExportedArtifact # type: ignore
+        type_ = ExportedArtifact  # type: ignore
 
     return type_(**dct)
 
@@ -425,9 +425,9 @@ def deserialize(s: str) -> Universe | Collection | Publication | Artifact:
     if "collections" in dct:
         type_ = Universe
     elif "publications" in dct:
-        type_ = Collection # type: ignore
+        type_ = Collection  # type: ignore
     elif "artifacts" in dct:
-        type_ = Publication # type: ignore
+        type_ = Publication  # type: ignore
     else:
         return _artifact_from_dict(dct)
 

@@ -35,6 +35,7 @@ def test_on_valid_file(write_file):
     # then
     assert collection.publication_schema.required_artifacts == ["homework", "solution"]
     assert collection.publication_schema.optional_artifacts == ["template"]
+    assert isinstance(collection.publication_schema.metadata_schema, dict)
     assert (
         collection.publication_schema.metadata_schema["required_keys"]["name"]["type"]
         == "string"
@@ -76,6 +77,7 @@ def test_resolves(write_file):
         "template",
     ]
     assert collection.publication_schema.optional_artifacts == ["template"]
+    assert isinstance(collection.publication_schema.metadata_schema, dict)
     assert (
         collection.publication_schema.metadata_schema["required_keys"]["name"]["type"]
         == "string"

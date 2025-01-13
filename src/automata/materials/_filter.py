@@ -21,12 +21,12 @@ class FilterCallbacks:
         return key, node
 
 
-def filter(
-    root: Universe | Collection | Publication | Artifact,
+def filter[NodeType: (Universe, Collection, Publication, Artifact)](
+    root: NodeType,
     predicate: Callable[[str, Universe | Collection | Publication | Artifact], bool],
     remove_empty_nodes: bool = False,
     callbacks: Optional[FilterCallbacks] = None,
-):
+) -> NodeType:
     """Remove nodes from a Universe/Collection/Publication according to a predicate.
 
     Parameters

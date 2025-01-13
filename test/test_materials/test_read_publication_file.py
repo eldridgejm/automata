@@ -7,7 +7,7 @@ from automata.materials import (
     read_publication_file,
 )
 
-from automata.materials import PublicationSchema
+from automata.materials import PublicationSchema, UnbuiltArtifact
 
 from automata.materials.exceptions import DiscoveryError
 
@@ -41,6 +41,7 @@ def test_on_valid_file(write_file):
     assert publication.metadata["name"] == "Homework 01"
     assert isinstance(publication.metadata["due"], datetime.datetime)
     assert isinstance(publication.metadata["released"], datetime.date)
+    assert isinstance(publication.artifacts["homework"], UnbuiltArtifact)
     assert publication.artifacts["homework"].recipe == "make homework"
 
 
@@ -187,6 +188,7 @@ def test_with_relative_release_time(write_file):
 
     # then
     expected = publication.metadata["due"]
+    assert isinstance(publication.artifacts["solution"], UnbuiltArtifact)
     assert publication.artifacts["solution"].release_time == expected
 
 
@@ -216,7 +218,7 @@ def test_with_relative_release_date_but_no_time_raises(write_file):
 
     # then
     with raises(DiscoveryError):
-        publication = read_publication_file(path)
+        read_publication_file(path)
 
 
 def test_with_relative_release_time_after(write_file):
@@ -247,6 +249,7 @@ def test_with_relative_release_time_after(write_file):
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(days=1)
+    assert isinstance(publication.artifacts["solution"], UnbuiltArtifact)
     assert publication.artifacts["solution"].release_time == expected
 
 
@@ -278,6 +281,7 @@ def test_with_relative_release_time_after_hours(write_file):
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(hours=3)
+    assert isinstance(publication.artifacts["solution"], UnbuiltArtifact)
     assert publication.artifacts["solution"].release_time == expected
 
 
@@ -309,6 +313,7 @@ def test_with_relative_release_time_after_large(write_file):
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(days=11)
+    assert isinstance(publication.artifacts["solution"], UnbuiltArtifact)
     assert publication.artifacts["solution"].release_time == expected
 
 
@@ -340,6 +345,7 @@ def test_with_relative_release_time_after_large_hours(write_file):
 
     # then
     expected = publication.metadata["due"] + datetime.timedelta(hours=1000)
+    assert isinstance(publication.artifacts["solution"], UnbuiltArtifact)
     assert publication.artifacts["solution"].release_time == expected
 
 
@@ -371,6 +377,7 @@ def test_with_relative_release_date_before(write_file):
 
     # then
     expected = publication.metadata["due"] - datetime.timedelta(days=3)
+    assert isinstance(publication.artifacts["solution"], UnbuiltArtifact)
     assert publication.artifacts["solution"].release_time == expected
 
 
