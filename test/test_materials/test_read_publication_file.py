@@ -1,7 +1,7 @@
 from textwrap import dedent
 import datetime
 
-from pytest import raises, fixture, mark
+from pytest import raises
 
 from automata.materials import (
     read_publication_file,
@@ -468,7 +468,7 @@ def test_with_invalid_relative_date_raises(write_file):
 
     # when
     with raises(DiscoveryError):
-        publication = read_publication_file(path)
+        read_publication_file(path)
 
 
 def test_with_invalid_relative_date_variable_reference_raises(
@@ -498,7 +498,7 @@ def test_with_invalid_relative_date_variable_reference_raises(
 
     # when
     with raises(DiscoveryError):
-        publication = read_publication_file(path)
+        read_publication_file(path)
 
 
 def test_with_absolute_release_time(write_file):
@@ -658,4 +658,4 @@ def test_with_unknown_relative_field_raises(write_file):
 
     # when
     with raises(DiscoveryError):
-        publication = read_publication_file(path, publication_schema=schema)
+        read_publication_file(path, publication_schema=schema)
