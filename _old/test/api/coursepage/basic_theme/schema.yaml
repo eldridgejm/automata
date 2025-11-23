@@ -1,4 +1,0 @@
-type: dict
-required_keys:
-    page_title:
-        type: string

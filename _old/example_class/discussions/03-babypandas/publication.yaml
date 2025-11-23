@@ -1,9 +1,0 @@
-metadata:
-    topic: Tables
-    date: 2020-10-15
-    number: 3
-
-
-artifacts:
-    discussion.ipynb:
-        recipe: touch discussion.ipynb

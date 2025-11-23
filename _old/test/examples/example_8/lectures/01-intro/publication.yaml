@@ -1,8 +1,0 @@
-metadata:
-    name: Lecture 01
-    date: 2021-01-05 23:00:00
-
-artifacts:
-    template.zip:
-        recipe: touch template.zip
-        release_time: ${this.metadata.date}
