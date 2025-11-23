@@ -10,22 +10,21 @@ DEFAULT_THEME_URL = (
 )
 
 
-def _extract_zip_bytes(bytes, path):
+def _extract_zip_bytes(data: bytes, path: pathlib.Path) -> None:
     """Extracts a Bytes object containing a Zip file to the path."""
-    zipfile.ZipFile(io.BytesIO(bytes)).extractall(path=path)
+    zipfile.ZipFile(io.BytesIO(data)).extractall(path=path)
 
 
-def initialize(path):
+def initialize(path: pathlib.Path) -> None:
     """Creates a starter coursepage at the path.
 
     Parameters
     ----------
-    path : pathlib.Path
+    path
         Path to a directory that will contain the course page. If it doesn't exist, it
         will be created.
 
     """
-    path = pathlib.Path(path)
     path.mkdir(exist_ok=True, parents=True)
 
     print("Downloading default template...")

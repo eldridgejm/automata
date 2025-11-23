@@ -5,8 +5,9 @@ import dataclasses
 import datetime
 import pathlib
 import shutil
-import typing
+from collections.abc import Callable
 from functools import partial
+from typing import Any, NamedTuple
 
 import jinja2
 import markdown  # type: ignore
@@ -19,16 +20,16 @@ from . import elements, exceptions
 from ._util import load_yaml
 
 
-class RenderContext(typing.NamedTuple):
+class RenderContext(NamedTuple):
     """Information that might be useful during the rendering of pages."""
 
     input_path: pathlib.Path
     output_path: pathlib.Path
     theme_path: pathlib.Path
-    materials_path: typing.Optional[pathlib.Path]
-    materials: typing.Optional[automata.materials.Universe]
-    config: dict
-    vars: typing.Optional[dict]
+    materials_path: pathlib.Path | None
+    materials: automata.materials.Universe | None
+    config: dict[str, Any]
+    vars: dict[str, Any]
     now: datetime.datetime
 
 
@@ -210,20 +211,31 @@ def _render_pages(input_path, output_path, theme_path, context):
             fileobj.write(page_html)
 
 
-def build(
-    input_path,
-    output_path,
-    materials_path=None,
-    vars=None,
-    now=datetime.datetime.now,
-):
+def generate(
+    input_path: pathlib.Path,
+    output_path: pathlib.Path,
+    materials_path: pathlib.Path | None = None,
+    vars: dict[str, Any] | None = None,
+    now: Callable[[], datetime.datetime] = datetime.datetime.now,
+) -> None:
+    """Generate a static course website.
+
+    Parameters
+    ----------
+    input_path
+        Path to the source directory containing config.yaml, pages/, theme/, etc.
+    output_path
+        Path to the output directory where the generated site will be written.
+    materials_path
+        Optional path to a directory containing materials.json from automata.materials.
+    vars
+        Optional dictionary of variables accessible in templates as `vars`.
+    now
+        Callable returning the current datetime. Defaults to datetime.datetime.now.
+
+    """
     if vars is None:
         vars = {}
-
-    input_path = pathlib.Path(input_path)
-    output_path = pathlib.Path(output_path)
-    if materials_path is not None:
-        materials_path = pathlib.Path(materials_path)
 
     # create the output path, if it doesn't already exist
     output_path.mkdir(exist_ok=True)
