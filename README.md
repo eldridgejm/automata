@@ -11,14 +11,14 @@ uv sync --all-extras
 ## Development
 
 ```bash
-# Run tests
-uv run pytest
+# Run all checks (lint, typecheck, test, coverage)
+make checks
 
-# Type checking
-uv run mypy src
-
-# Linting
-uv run ruff check src
+# Or run individual checks:
+make lint       # Run ruff linter
+make typecheck  # Run mypy type checker
+make test       # Run pytest
+make coverage   # Run pytest with coverage report
 ```
 
 ## Usage

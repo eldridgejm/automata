@@ -90,7 +90,8 @@ def _is_publication(dirpath: pathlib.Path) -> bool:
 def _search_for_collections_and_publications(
     root_directory: pathlib.Path,
     skip_directories: Optional[typing.Collection[str]] = None,
-    callbacks: Optional[DiscoverCallbacks] = None,
+    *,
+    callbacks: DiscoverCallbacks,
 ):
     """Perform a BFS to find all collections and publications in the filesystem.
 
@@ -102,8 +103,7 @@ def _search_for_collections_and_publications(
         A collection of folder names that, if found, will be skipped over. If None,
         every folder is searched.
     callbacks: DiscoverCallbacks
-        Callbacks invoked when interesting things happen. If omitted, no callbacks
-        are invoked.
+        Callbacks invoked when interesting things happen.
 
     Returns
     -------
@@ -124,9 +124,6 @@ def _search_for_collections_and_publications(
     """
     if skip_directories is None:
         skip_directories = set()
-
-    if callbacks is None:
-        callbacks = DiscoverCallbacks()
 
     queue = deque([(root_directory, None)])
 

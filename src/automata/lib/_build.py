@@ -70,7 +70,7 @@ def _build_artifact(
     verbose=False,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    callbacks: Optional[BuildCallbacks] = None,
+    callbacks: BuildCallbacks,
 ):
     """Build an artifact using its recipe.
 
@@ -99,9 +99,6 @@ def _build_artifact(
         True.
 
     """
-    if callbacks is None:
-        callbacks = BuildCallbacks()
-
     output = BuiltArtifact(workdir=artifact.workdir, path=artifact.path)
 
     if (

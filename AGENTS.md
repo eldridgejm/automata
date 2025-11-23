@@ -161,11 +161,19 @@ artifacts:
 - **dictconfig**: Schema validation and variable interpolation (custom library)
 - **cerberus**: Metadata schema validation style
 
-### Testing
+### Testing and Quality Checks
 
-Run tests with pytest:
+Run all checks with:
 ```bash
-pytest test/
+make checks
+```
+
+Or run individual checks:
+```bash
+make lint       # Run ruff linter
+make typecheck  # Run mypy type checker
+make test       # Run pytest
+make coverage   # Run pytest with coverage report
 ```
 
 Tests use:
@@ -180,9 +188,9 @@ Using Nix (preferred):
 nix develop
 ```
 
-Or with pip:
+Or with uv:
 ```bash
-pip install -e .
+uv sync --all-extras
 ```
 
 ## Important Notes for Agents
