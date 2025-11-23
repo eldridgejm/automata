@@ -317,3 +317,76 @@ def test_external_vars_missing_raises_error(write_file):
     # when/then
     with raises(DiscoveryError):
         read_collection_file(path, vars={})
+
+
+# error message quality tests
+# --------------------------------------------------------------------------------------
+
+
+def test_error_message_includes_file_path(write_file):
+    """Test that discovery errors include the path to the problematic file."""
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.undefined}
+            """
+        ),
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        read_collection_file(path, vars={})
+
+    error_message = str(exc_info.value)
+    assert "collection.yaml" in error_message
+
+
+def test_error_message_includes_keypath_for_resolution_error(write_file):
+    """Test that resolution errors indicate which key failed."""
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: ${vars.missing_type}
+            """
+        ),
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        read_collection_file(path, vars={})
+
+    error_message = str(exc_info.value)
+    # Should indicate the keypath where the error occurred
+    assert (
+        "metadata_schema" in error_message
+        or "required_keys" in error_message
+        or "type" in error_message
+    )
+
+
+def test_error_message_for_schema_violation(write_file):
+    """Test that schema violations indicate what went wrong."""
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts: "not a list"
+            """
+        ),
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        read_collection_file(path)
+
+    error_message = str(exc_info.value)
+    assert "collection.yaml" in error_message
+    assert "required_artifacts" in error_message or "list" in error_message

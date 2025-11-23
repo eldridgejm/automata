@@ -847,3 +847,104 @@ def test_previous_publication_with_vars(write_file):
     # then
     assert publication.metadata["name"] == "CS101 - Homework 02"
     assert publication.metadata["follows"] == "CS101 - Homework 01"
+
+
+# error message quality tests
+# --------------------------------------------------------------------------------------
+
+
+def test_error_message_includes_file_path(write_file):
+    """Test that discovery errors include the path to the problematic file."""
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: ${vars.undefined_variable}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+            """
+        ),
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        read_publication_file(path, vars={})
+
+    error_message = str(exc_info.value)
+    assert "publication.yaml" in error_message
+
+
+def test_error_message_includes_keypath_for_resolution_error(write_file):
+    """Test that resolution errors indicate which key failed."""
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Test
+                nested:
+                    deep:
+                        value: ${vars.missing}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+            """
+        ),
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        read_publication_file(path, vars={})
+
+    error_message = str(exc_info.value)
+    # Should indicate the keypath where the error occurred
+    assert (
+        "metadata" in error_message
+        or "nested" in error_message
+        or "deep" in error_message
+    )
+
+
+def test_error_message_for_invalid_yaml_syntax(write_file):
+    """Test that YAML syntax errors are clearly reported."""
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Test
+                bad_indent:
+              wrong: indentation
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+            """
+        ),
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        read_publication_file(path)
+
+    error_message = str(exc_info.value)
+    assert "publication.yaml" in error_message
+
+
+def test_error_message_for_schema_violation(write_file):
+    """Test that schema violations indicate what went wrong."""
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Test
+            """
+        ),
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        read_publication_file(path)
+
+    error_message = str(exc_info.value)
+    assert "publication.yaml" in error_message
+    # Should indicate the missing required key
+    assert "artifacts" in error_message
