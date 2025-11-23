@@ -34,7 +34,7 @@ def _export_artifact(
     outdir: pathlib.Path,
     filename: str,
     callbacks: ExportCallbacks,
-):
+) -> ExportedArtifact:
     """Copies an artifact to another directory.
 
     Parameters

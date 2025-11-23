@@ -117,9 +117,9 @@ def _resolve_publication_file(
     schema = _make_publication_file_schema(publication_schema)
 
     try:
-        return dictconfig.resolve(
+        return dictconfig.resolve(  # type: ignore
             raw_contents, schema, external_variables=external_vars
-        )  # type: ignore
+        )
     except dictconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 

@@ -37,9 +37,6 @@ ArtifactType = TypeVar(
     UnbuiltArtifact,
     BuiltArtifact,
     ExportedArtifact,
-    UnbuiltArtifact | BuiltArtifact,
-    BuiltArtifact | ExportedArtifact,
-    UnbuiltArtifact | ExportedArtifact,
     UnbuiltArtifact | BuiltArtifact | ExportedArtifact,
 )
 
@@ -145,8 +142,11 @@ def filter(
         new_child = filter(
             child, predicate, remove_empty_nodes=remove_empty_nodes, callbacks=callbacks
         )
-        is_artifact = isinstance(new_child, Artifact)
-        if is_artifact or (not remove_empty_nodes) or new_child._children:
+        if (
+            isinstance(new_child, Artifact)
+            or (not remove_empty_nodes)
+            or new_child._children
+        ):
             new_children[child_key] = new_child
 
     new_children = {

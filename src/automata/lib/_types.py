@@ -274,7 +274,7 @@ class Universe[
         }
 
     @classmethod
-    def _deep_fromdict(cls, dct):
+    def _deep_fromdict(cls, dct) -> "Universe":
         """Recursively constructs a Universe and its children from a dictionary."""
         return cls(
             collections={
