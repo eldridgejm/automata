@@ -183,12 +183,7 @@ Tests use:
 
 ### Building and Environment
 
-Using Nix (preferred):
-```bash
-nix develop
-```
-
-Or with uv:
+With uv:
 ```bash
 uv sync --all-extras
 ```
