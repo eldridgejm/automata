@@ -1,4 +1,18 @@
-"""Generate a static site with the site generator."""
+"""Static site generation for course websites.
+
+This module provides the core site generation logic. The main entry point is
+:func:`generate`, which transforms a source directory containing markdown pages,
+a theme, and configuration into a static HTML website.
+
+Pipeline
+--------
+1. Load published materials from ``materials.json`` (if provided)
+2. Load and interpolate ``config.yaml`` (supports ``!include`` directives)
+3. Validate configuration against the theme's schema
+4. Render each markdown page: interpolate variables → convert to HTML → wrap in template
+5. Copy static assets from theme and ``static/`` directory
+
+"""
 
 import collections
 import dataclasses
@@ -67,9 +81,6 @@ def _load_materials(
     artifact from the website root: the ``output_path``. This function loads the
     artifacts and performs the update.
 
-    Some artifacts have ``None`` as their path. This signals that the artifact is
-    defined, but not yet released. This function leaves such paths as ``None``.
-
     Parameters
     ----------
     materials_path : pathlib.Path
@@ -94,12 +105,9 @@ def _load_materials(
 
     # we need to update their paths to be relative to output directory; this function
     # will do it for one artifact
-    def _update_path(artifact):
-        if artifact.path is None:
-            return artifact
-
+    def _update_path(artifact: automata.materials.ExportedArtifact):
         relative_path = materials_path.relative_to(output_path) / artifact.path
-        return dataclasses.replace(artifact, path=relative_path)
+        return dataclasses.replace(artifact, path=str(relative_path))
 
     # apply the function to all artifacts, modifying `materials`
     for collection in materials.collections.values():
@@ -110,15 +118,15 @@ def _load_materials(
     return materials
 
 
-def _load_config(
-    path: pathlib.Path, vars: dict[str, Any] | None = None
-) -> dict[str, Any]:
+def _load_config(path: pathlib.Path, vars: dict[str, Any]) -> dict[str, Any]:
     """Read the configuration from a yaml file, performing interpolation.
 
     Parameters
     ----------
-    path : pathlib.Path
+    path
         The path to the configuration file.
+    vars
+        Variables to make available during interpolation.
 
     Returns
     -------
@@ -141,9 +149,6 @@ def _load_config(
         announcements: !include announcements.yaml
 
     """
-    if vars is None:
-        vars = {}
-
     variables = {"vars": vars}
 
     dct = load_yaml(path)

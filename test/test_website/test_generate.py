@@ -1,4 +1,4 @@
-"""Basic tests for site generator build functionality."""
+"""Tests for site generator functionality."""
 
 import pathlib
 import shutil
@@ -197,3 +197,19 @@ def test_vars_available_in_config_file(demo):
 
     # then
     assert "Zaphod Beeblebrox" in demo.get_output("one.html")
+
+
+def test_raises_on_invalid_theme_config(demo):
+    """Test that invalid theme configuration raises RuntimeError."""
+    # given
+    demo.make_page("one.md", "hello")
+
+    # overwrite config without required page_title
+    with (demo.path / "config.yaml").open("w") as f:
+        f.write("theme:\n  not_page_title: foo\n")
+
+    # when/then
+    with raises(RuntimeError) as excinfo:
+        automata.website.generate(demo.path, demo.builddir)
+
+    assert "Invalid theme config" in str(excinfo.value)
