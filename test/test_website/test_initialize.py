@@ -4,7 +4,7 @@ import pathlib
 
 from pytest import fixture
 
-import automata._site_generator
+import automata.website
 
 
 @fixture
@@ -15,7 +15,7 @@ def output_directory(tmpdir):
 
 
 def test_initializes_coursepage(output_directory):
-    automata._site_generator.initialize(output_directory / "website")
+    automata.website.initialize(output_directory / "website")
 
     assert (output_directory / "website").exists()
     assert (output_directory / "website" / "theme" / "base.html").exists()

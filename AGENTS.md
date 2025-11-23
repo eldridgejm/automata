@@ -20,16 +20,23 @@ This repository uses **git worktrees**:
 src/automata/
 ├── __init__.py
 ├── constants.py              # Configuration constants
-└── lib/                      # Core library module
+├── materials/                # Core materials module
+│   ├── __init__.py           # Public API exports
+│   ├── _types.py             # Type definitions and hierarchy (~440 lines)
+│   ├── _discover.py          # Filesystem discovery logic (~380 lines)
+│   ├── _build.py             # Artifact building logic (~300 lines)
+│   ├── _export.py            # Artifact export/publication (~190 lines)
+│   ├── _filter.py            # Filtering/selection logic (~155 lines)
+│   ├── _read_collection_file.py   # YAML parsing for collections
+│   ├── _read_publication_file.py  # YAML parsing for publications
+│   └── exceptions.py         # Custom exceptions
+└── website/                  # Static site generator module
     ├── __init__.py           # Public API exports
-    ├── _types.py             # Type definitions and hierarchy (~440 lines)
-    ├── _discover.py          # Filesystem discovery logic (~380 lines)
-    ├── _build.py             # Artifact building logic (~300 lines)
-    ├── _export.py            # Artifact export/publication (~190 lines)
-    ├── _filter.py            # Filtering/selection logic (~155 lines)
-    ├── _read_collection_file.py   # YAML parsing for collections
-    ├── _read_publication_file.py  # YAML parsing for publications
-    └── exceptions.py         # Custom exceptions
+    ├── _build.py             # Site building logic
+    ├── _initialize.py        # Site initialization
+    ├── _util.py              # Utilities
+    ├── exceptions.py         # Custom exceptions
+    └── elements/             # Page element components
 
 test/                         # Comprehensive pytest test suite
 doc/                          # Sphinx documentation
@@ -231,7 +238,7 @@ uv sync --all-extras
 ### Main Functions
 
 ```python
-from automata.lib import discover, build, export, filter
+from automata.materials import discover, build, export, filter
 
 # Discover materials from filesystem
 universe: Universe[UnbuiltArtifact] = discover(
@@ -269,7 +276,7 @@ exported: Universe[ExportedArtifact] = export(
 ### Serialization
 
 ```python
-from automata.lib import serialize, deserialize
+from automata.materials import serialize, deserialize
 
 # Convert to JSON string
 json_str: str = serialize(universe)
