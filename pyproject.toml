@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "automata"
@@ -11,7 +11,42 @@ authors = [
 ]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.14"
 dependencies = [
-    "pyyaml", "jinja2", "markdown"
+    "pyyaml",
+    "jinja2",
+    "markdown",
+    "dictconfig @ git+https://github.com/eldridgejm/dictconfig.git@master",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "sphinx",
+    "sphinx-rtd-theme",
+    "ruff",
+    "mypy",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/automata"]
+
+[tool.ruff]
+line-length = 88
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+pythonpath = ["src"]

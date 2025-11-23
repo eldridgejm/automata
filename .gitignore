@@ -6,6 +6,8 @@ __pycache__/
 .DS_Store
 .claude
 _old
+.direnv
+.envrc
 
 # C extensions
 *.so
