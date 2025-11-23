@@ -178,10 +178,7 @@ def order_this_week_last(weeks, today):
 
 
 def order_weeks(element_config, weeks, today):
-    if "week_order" not in element_config:
-        week_order = "this_week_first"
-    else:
-        week_order = element_config["week_order"]
+    week_order = element_config.get("week_order", "this_week_first")
 
     return {
         "this_week_first": order_this_week_first,
