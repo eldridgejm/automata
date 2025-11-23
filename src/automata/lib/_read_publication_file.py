@@ -91,7 +91,8 @@ def _make_publication_file_schema(
 def _resolve_publication_file(
     raw_contents: smartconfig.types.ConfigurationDict,
     publication_schema: Optional[PublicationSchema],
-    external_vars: Mapping[str, Any],
+    vars: Optional[Mapping[str, Any]],
+    previous: Optional[Mapping[str, Any]],
     path: pathlib.Path,
 ) -> dict[str, Any]:
     """Resolves (interpolates and parses) the raw publication file contents.
@@ -104,9 +105,14 @@ def _resolve_publication_file(
         A :class:`PublicationSchema` object that describes the necessary artifacts
         and metadata of the publication. If this is None, only very basic validation
         is done. Default: None.
-    external_variables : Optional[dict]
-        A dictionary of external_variables passed to smartconfig and used during
-        interpolation.
+    vars : Optional[Mapping[str, Any]]
+        A dictionary of variables available during interpolation through the
+        ``${vars}`` variable.
+    previous : Optional[Mapping[str, Any]]
+        A dictionary representation of the previous publication, available during
+        interpolation through the ``${previous}`` variable.
+    path : pathlib.Path
+        The path to the publication file being read. Used to format error messages.
 
     Returns
     -------
@@ -116,12 +122,34 @@ def _resolve_publication_file(
     """
     schema = _make_publication_file_schema(publication_schema)
 
+    # Combine the configuration and external variables into a single dictionary.
+    # This avoids using global_variables, which can cause namespace pollution.
+    # References use ${this.key} for config values, ${vars.key} for external vars,
+    # and ${previous.key} for previous publication data.
+    combined: dict[str, Any] = {
+        "this": raw_contents,
+        "vars": vars if vars is not None else {},
+    }
+
+    combined_schema: dict[str, Any] = {
+        "type": "dict",
+        "required_keys": {
+            "this": schema,
+            "vars": {"type": "any"},
+        },
+        "optional_keys": {},
+    }
+
+    if previous is not None:
+        combined["previous"] = previous
+        combined_schema["optional_keys"]["previous"] = {"type": "any"}
+
     try:
-        return smartconfig.resolve(
-            raw_contents, schema, global_variables=external_vars, inject_root_as="this"
-        )
+        resolved = smartconfig.resolve(combined, combined_schema)
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
+
+    return resolved["this"]
 
 
 def read_publication_file(
@@ -184,13 +212,10 @@ def read_publication_file(
         except yaml.YAMLError as exc:
             raise DiscoveryError(str(exc), path)
 
-    external_variables = {"vars": vars}
-
-    if previous is not None:
-        external_variables["previous"] = previous._deep_asdict()
+    previous_dict = previous._deep_asdict() if previous is not None else None
 
     resolved: Dict[str, Any] = _resolve_publication_file(
-        raw_contents, publication_schema, external_variables, path
+        raw_contents, publication_schema, vars, previous_dict, path
     )
 
     # convert each artifact to an UnbuiltArtifact object

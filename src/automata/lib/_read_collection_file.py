@@ -46,7 +46,7 @@ COLLECTION_FILE_SCHEMA = {
 
 def _resolve_collection_file(
     raw_contents: smartconfig.types.ConfigurationDict,
-    external_variables: Optional[dict],
+    vars: Optional[Mapping[str, Any]],
     path: pathlib.Path,
 ) -> dict:
     """Resolves (interpolates and parses) the raw collection file contents.
@@ -55,10 +55,9 @@ def _resolve_collection_file(
     ----------
     raw_contents : smartconfig.types.ConfigurationDict
         The raw dictionary loaded from the publication file.
-    external_variables : Optional[dict]
-        A dictionary of external_variables passed to dictconfig and used during
-        interpolation. The value associated with a key ``foo`` in this dictionary
-        is available as ``${foo}`` in the collection file.
+    vars : Optional[Mapping[str, Any]]
+        A dictionary of variables available during interpolation through the
+        ``${vars}`` variable.
     path : pathlib.Path
         The path to the collection file being read. Used to format error messages.
 
@@ -73,19 +72,29 @@ def _resolve_collection_file(
         If the collection file is invalid.
 
     """
+    # Combine the configuration and external variables into a single dictionary.
+    # This avoids using global_variables, which can cause namespace pollution.
+    # References use ${this.key} for config values and ${vars.key} for external vars.
+    combined = {"this": raw_contents, "vars": vars if vars is not None else {}}
+
+    combined_schema = {
+        "type": "dict",
+        "required_keys": {
+            "this": COLLECTION_FILE_SCHEMA,
+            "vars": {"type": "any"},
+        },
+    }
+
     try:
-        resolved: Dict[str, Any] = smartconfig.resolve(
-            raw_contents,
-            COLLECTION_FILE_SCHEMA,
-            global_variables=external_variables,
-            inject_root_as="this",
-        )
+        resolved: Dict[str, Any] = smartconfig.resolve(combined, combined_schema)
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    _validate_metadata_schema(resolved["publication_schema"]["metadata_schema"], path)
+    _validate_metadata_schema(
+        resolved["this"]["publication_schema"]["metadata_schema"], path
+    )
 
-    return resolved
+    return resolved["this"]
 
 
 def _validate_metadata_schema(
@@ -147,7 +156,7 @@ def read_collection_file(
         raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
 
     try:
-        resolved = _resolve_collection_file(raw_contents, {"vars": vars}, path)
+        resolved = _resolve_collection_file(raw_contents, vars, path)
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 

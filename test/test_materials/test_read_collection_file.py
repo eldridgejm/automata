@@ -208,3 +208,112 @@ def test_raises_on_invalid_metadata_schema(write_file):
     # when then
     with raises(DiscoveryError):
         read_collection_file(path)
+
+
+# external variables
+# --------------------------------------------------------------------------------------
+
+
+def test_external_vars_simple_substitution(write_file):
+    """Test that external vars can be substituted into collection file."""
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.artifact_name}
+            """
+        ),
+    )
+
+    # when
+    collection = read_collection_file(path, vars={"artifact_name": "homework.pdf"})
+
+    # then
+    assert collection.publication_schema.required_artifacts == ["homework.pdf"]
+
+
+def test_external_vars_nested_substitution(write_file):
+    """Test that nested external vars can be substituted."""
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.course.primary_artifact}
+                    - ${vars.course.secondary_artifact}
+            """
+        ),
+    )
+
+    # when
+    collection = read_collection_file(
+        path,
+        vars={
+            "course": {
+                "primary_artifact": "homework.pdf",
+                "secondary_artifact": "solution.pdf",
+            }
+        },
+    )
+
+    # then
+    assert collection.publication_schema.required_artifacts == [
+        "homework.pdf",
+        "solution.pdf",
+    ]
+
+
+def test_external_vars_combined_with_this_reference(write_file):
+    """Test that external vars work alongside this references."""
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.primary}
+                    - ${this.publication_schema.optional_artifacts.0}
+
+                optional_artifacts:
+                    - ${vars.secondary}
+            """
+        ),
+    )
+
+    # when
+    collection = read_collection_file(
+        path,
+        vars={"primary": "homework.pdf", "secondary": "solution.pdf"},
+    )
+
+    # then
+    assert collection.publication_schema.required_artifacts == [
+        "homework.pdf",
+        "solution.pdf",
+    ]
+    assert collection.publication_schema.optional_artifacts == ["solution.pdf"]
+
+
+def test_external_vars_missing_raises_error(write_file):
+    """Test that referencing missing external vars raises an error."""
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.nonexistent}
+            """
+        ),
+    )
+
+    # when/then
+    with raises(DiscoveryError):
+        read_collection_file(path, vars={})

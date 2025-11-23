@@ -658,3 +658,192 @@ def test_with_unknown_relative_field_raises(write_file):
     # when
     with raises(DiscoveryError):
         read_publication_file(path, publication_schema=schema)
+
+
+# external variables
+# --------------------------------------------------------------------------------------
+
+
+def test_external_vars_simple_substitution(write_file):
+    """Test that external vars can be substituted into publication file."""
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: ${vars.hw_name}
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                    recipe: ${vars.build_command}
+            """
+        ),
+    )
+
+    # when
+    publication = read_publication_file(
+        path,
+        vars={"hw_name": "Homework 01", "build_command": "make homework"},
+    )
+
+    # then
+    assert publication.metadata["name"] == "Homework 01"
+    assert publication.artifacts["homework"].recipe == "make homework"
+
+
+def test_external_vars_nested_substitution(write_file):
+    """Test that nested external vars can be substituted."""
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: ${vars.course.assignment_name}
+                instructor: ${vars.course.instructor}
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+            """
+        ),
+    )
+
+    # when
+    publication = read_publication_file(
+        path,
+        vars={
+            "course": {
+                "assignment_name": "Final Project",
+                "instructor": "Dr. Smith",
+            }
+        },
+    )
+
+    # then
+    assert publication.metadata["name"] == "Final Project"
+    assert publication.metadata["instructor"] == "Dr. Smith"
+
+
+def test_external_vars_combined_with_this_reference(write_file):
+    """Test that external vars work alongside this references."""
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: ${vars.prefix} Assignment
+                full_name: ${this.metadata.name} - Advanced
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+            """
+        ),
+    )
+
+    # when
+    publication = read_publication_file(path, vars={"prefix": "CS101"})
+
+    # then
+    assert publication.metadata["name"] == "CS101 Assignment"
+    assert publication.metadata["full_name"] == "CS101 Assignment - Advanced"
+
+
+def test_external_vars_missing_raises_error(write_file):
+    """Test that referencing missing external vars raises an error."""
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: ${vars.nonexistent}
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+            """
+        ),
+    )
+
+    # when/then
+    with raises(DiscoveryError):
+        read_publication_file(path, vars={})
+
+
+# previous publication variable
+# --------------------------------------------------------------------------------------
+
+
+def test_previous_publication_metadata_reference(write_file):
+    """Test that previous publication metadata can be referenced."""
+    from automata.lib import Publication
+
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: Homework 02
+                previous_name: ${previous.metadata.name}
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+            """
+        ),
+    )
+
+    previous = Publication(
+        metadata={"name": "Homework 01", "due": datetime.date(2020, 9, 1)},
+        artifacts={},
+    )
+
+    # when
+    publication = read_publication_file(path, previous=previous)
+
+    # then
+    assert publication.metadata["name"] == "Homework 02"
+    assert publication.metadata["previous_name"] == "Homework 01"
+
+
+def test_previous_publication_with_vars(write_file):
+    """Test that previous and vars can be used together."""
+    from automata.lib import Publication
+
+    # given
+    path = write_file(
+        "publication.yaml",
+        contents=dedent(
+            """
+            metadata:
+                name: ${vars.course_code} - Homework 02
+                follows: ${previous.metadata.name}
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+            """
+        ),
+    )
+
+    previous = Publication(
+        metadata={"name": "CS101 - Homework 01"},
+        artifacts={},
+    )
+
+    # when
+    publication = read_publication_file(
+        path,
+        vars={"course_code": "CS101"},
+        previous=previous,
+    )
+
+    # then
+    assert publication.metadata["name"] == "CS101 - Homework 02"
+    assert publication.metadata["follows"] == "CS101 - Homework 01"
