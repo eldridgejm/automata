@@ -18,7 +18,7 @@ This repository uses **git worktrees**:
 src/automata/
 ├── __init__.py
 ├── constants.py              # Configuration constants
-└── materials/                # Core materials processing module
+└── lib/                      # Core library module
     ├── __init__.py           # Public API exports
     ├── _types.py             # Type definitions and hierarchy (~440 lines)
     ├── _discover.py          # Filesystem discovery logic (~380 lines)
@@ -226,7 +226,7 @@ pip install -e .
 ### Main Functions
 
 ```python
-from automata.materials import discover, build, export, filter
+from automata.lib import discover, build, export, filter
 
 # Discover materials from filesystem
 universe: Universe[UnbuiltArtifact] = discover(
@@ -264,7 +264,7 @@ exported: Universe[ExportedArtifact] = export(
 ### Serialization
 
 ```python
-from automata.materials import serialize, deserialize
+from automata.lib import serialize, deserialize
 
 # Convert to JSON string
 json_str: str = serialize(universe)

@@ -1,7 +1,7 @@
-:mod:`automata.materials` - a library for working with course materials
+:mod:`automata.lib` - a library for working with course materials
 =======================================================================
 
-.. automodule:: automata.materials
+.. automodule:: automata.lib
 
 This module may be useful to you if you want to work with your course materials
 in a programmatic way (perhaps even without using `automata` to build your
@@ -15,7 +15,7 @@ The functions and classes in this module are as follows:
 
 **Core Types**
 
-:mod:`automata.materials` defines a number of classes for representing course
+:mod:`automata.lib` defines a number of classes for representing course
 materials, following the convention described in the tutorial of grouping them into
 collections, publications, and artifacts.
 
@@ -34,7 +34,7 @@ collections, publications, and artifacts.
 
 These functions provide the core functionality of `automata`.
 
-.. module:: automata.materials
+.. module:: automata.lib
 .. autosummary::
    :nosignatures:
 
@@ -75,7 +75,7 @@ related artifacts (such as the files for a single homework) are called a
 Collections, publications, and artifacts are all defined in the filesystem
 using YAML files placed alongside the course materials they describe.
 
-The :mod:`automata.materials` module defines classes for representing
+The :mod:`automata.lib` module defines classes for representing
 collections, publications, and artifacts in Python. Because `automata`'s
 convention is *hierarchical* (with artifacts contained in publications, and
 publications contained in collections), a collection of course materials can be
@@ -136,12 +136,12 @@ a :class:`Universe` object:
 .. autoclass:: Universe
    :members: _asdict, _deep_asdict, _deep_fromdict, _children, _replace_children
 
-.. module:: automata.materials
+.. module:: automata.lib
 
 Discovering, filtering, building and exporting materials
 --------------------------------------------------------
 
-The four core functions in `automata.materials` are :func:`discover`,
+The four core functions in `automata.lib` are :func:`discover`,
 :func:`filter`, :func:`build`, and :func:`export`. These functions allow you to
 read course materials from the filesystem, filter them based on various criteria,
 build them (i.e., run any necessary build processes to generate artifacts), and
@@ -196,12 +196,12 @@ use the following functions:
 Exception types
 ---------------
 
-Because :mod:`automata.materials` is designed to be used as a library, it
+Because :mod:`automata.lib` is designed to be used as a library, it
 provides a number of exception types that can be used to isolate and handle
 errors that originate from within. These are all contained in the
-:mod:`automata.materials.exceptions` module.
+:mod:`automata.lib.exceptions` module.
 
-.. module:: automata.materials.exceptions
+.. module:: automata.lib.exceptions
 
 .. autoclass:: Error
 .. autoclass:: ValidationError
@@ -209,4 +209,4 @@ errors that originate from within. These are all contained in the
 .. autoclass:: BuildError
 
 
-.. module:: automata.materials.exceptions
+.. module:: automata.lib.exceptions

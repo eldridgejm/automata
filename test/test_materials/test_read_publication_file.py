@@ -3,13 +3,13 @@ import datetime
 
 from pytest import raises
 
-from automata.materials import (
+from automata.lib import (
     read_publication_file,
 )
 
-from automata.materials import PublicationSchema, UnbuiltArtifact
+from automata.lib import PublicationSchema, UnbuiltArtifact
 
-from automata.materials.exceptions import DiscoveryError
+from automata.lib.exceptions import DiscoveryError
 
 
 def test_on_valid_file(write_file):

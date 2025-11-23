@@ -5,5 +5,5 @@ API
    :maxdepth: 3
 
    api.rst
-   materials.rst
+   lib.rst
    website.rst

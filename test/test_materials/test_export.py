@@ -3,7 +3,7 @@ from textwrap import dedent
 
 from pytest import fixture
 
-import automata.materials
+import automata.lib
 
 @fixture
 def outdir(tmpdir):
@@ -14,11 +14,11 @@ def outdir(tmpdir):
 
 def test_export(default_example_course, outdir):
     # given
-    discovered = automata.materials.discover(default_example_course.path)
-    builts = automata.materials.build(discovered)
+    discovered = automata.lib.discover(default_example_course.path)
+    builts = automata.lib.build(discovered)
 
     # when
-    exported = automata.materials.export(builts, outdir)
+    exported = automata.lib.export(builts, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -32,12 +32,12 @@ def test_export(default_example_course, outdir):
 
 def test_artifact_not_copied_if_not_released(default_example_course, outdir):
     # given
-    discovered = automata.materials.discover(default_example_course.path)
-    built = automata.materials.build(discovered)
+    discovered = automata.lib.discover(default_example_course.path)
+    built = automata.lib.build(discovered)
     publication = built.collections["homeworks"].publications["02-python"]
 
     # when
-    automata.materials.export(built, outdir)
+    automata.lib.export(built, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -81,9 +81,9 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
     temporary_course.create_collection("homeworks", collection_yaml)
     temporary_course.create_publication("homeworks", "01-testing", publication_yaml)
 
-    discovered = automata.materials.discover(temporary_course.path)
-    built = automata.materials.build(discovered)
-    _ = automata.materials.export(built, outdir)
+    discovered = automata.lib.discover(temporary_course.path)
+    built = automata.lib.build(discovered)
+    _ = automata.lib.export(built, outdir)
 
     assert (outdir / "homeworks" / "01-testing" / "problems").is_dir()
     assert (outdir / "homeworks" / "01-testing" / "problems" / "one.pdf").is_file()
