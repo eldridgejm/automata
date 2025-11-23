@@ -1,13 +1,48 @@
 """Common utilities for element rendering."""
 
+from typing import Any, Callable, Mapping
+
 import jinja2
 import markdown  # type: ignore
 import smartconfig
+import smartconfig.types
 
+from ... import materials
 from .. import exceptions
+from .._types import RenderContext
 
 
-def render_element_template(template_name, context, extra_vars):
+def render_element_template(
+    template_name: str, context: RenderContext, extra_vars: Mapping[str, Any]
+) -> str:
+    """Render an element template with shared filters and variables.
+
+    Uses a filesystem loader rooted at ``context.theme_path / "elements"`` and
+    installs the standard element filters:
+
+    - ``evaluate``: render an inline template string using ``$(...)`` delimiters,
+      raising ``ElementError`` on undefined variables.
+    - ``markdown_to_html``: convert markdown to HTML.
+    - ``get_dotted_attr``: navigate dotted attribute/index paths on objects/mappings.
+
+    ``extra_vars`` are merged into the template context alongside the provided
+    ``context``.
+
+    Parameters
+    ----------
+    template_name
+        Name of the element template file (under ``theme_path / "elements"``). E.g.,
+        ``announcement_box.html``.
+    context
+        RenderContext providing theme path and page-level variables.
+    extra_vars
+        Additional variables to inject into the template render.
+
+    Returns
+    -------
+    str
+        Rendered HTML string.
+    """
     element_environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader(context.theme_path / "elements"),
         undefined=jinja2.StrictUndefined,
@@ -58,9 +93,40 @@ def render_element_template(template_name, context, extra_vars):
     return template.render(context=context, **extra_vars)
 
 
-def basic_element(template_filename, config_schema, extra_render_vars=None):
-    def element(context, element_config):
+def basic_element(
+    template_filename: str,
+    config_schema: smartconfig.types.Schema,
+    extra_render_vars: Callable[[RenderContext, Mapping[str, Any]], Mapping[str, Any]]
+    | None = None,
+) -> Callable[[RenderContext, smartconfig.types.ConfigurationDict], str]:
+    """Create an element renderer with config validation and optional extras.
+
+    Returns a callable that:
+    1. Validates ``element_config`` with ``smartconfig`` against ``config_schema``.
+    2. Computes any additional render vars via ``extra_render_vars``.
+    3. Renders ``template_filename`` with the validated config and extras.
+
+    Parameters
+    ----------
+    template_filename
+        Element template filename relative to the elements directory.
+    config_schema
+        Smartconfig schema used to validate the element config.
+    extra_render_vars
+        Optional callable to compute extra render variables from context/config.
+
+    Returns
+    -------
+    Callable[[RenderContext, Mapping[str, Any]], str]
+        A function that accepts a render context and element config, returning
+        rendered HTML as a string.
+    """
+
+    def element(
+        context: RenderContext, element_config: smartconfig.types.ConfigurationDict
+    ) -> str:
         element_config = smartconfig.resolve(element_config, config_schema)
+        assert isinstance(element_config, dict)
 
         if extra_render_vars is not None:
             extra_vars = extra_render_vars(context, element_config)
@@ -74,7 +140,34 @@ def basic_element(template_filename, config_schema, extra_render_vars=None):
     return element
 
 
-def is_something_missing(publication, requirements):
+def is_something_missing(
+    publication: materials.Publication, requirements: Mapping[str, list[str]]
+) -> bool:
+    """Return True when a publication lacks required artifacts/metadata.
+
+    Parameters
+    ----------
+    publication
+        Publication object whose metadata/artifacts are checked.
+    requirements
+        Dict containing lists for ``artifacts``, ``metadata``, and
+        ``non_null_metadata`` keys.
+
+    Returns
+    -------
+    bool
+        True if any required artifact/metadata is missing or null.
+
+    Examples
+    --------
+    requirements might be::
+
+        {
+            "artifacts": ["slides.pdf"],
+            "metadata": ["name"],
+            "non_null_metadata": ["due"],
+        }
+    """
     for artifact in requirements["artifacts"]:
         if artifact not in publication.artifacts:
             return True

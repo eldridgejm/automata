@@ -21,7 +21,7 @@ import pathlib
 import shutil
 from collections.abc import Callable
 from functools import partial
-from typing import Any, NamedTuple, cast
+from typing import Any, cast
 
 import jinja2
 import markdown  # type: ignore
@@ -31,44 +31,8 @@ import yaml  # type: ignore
 import automata.materials
 
 from . import elements, exceptions
+from ._types import RenderContext
 from ._util import load_yaml
-
-
-class RenderContext(NamedTuple):
-    """Context passed to page and element templates during rendering.
-
-    This context is available to all Jinja2 templates as individual variables
-    (e.g., ``${ config }``, ``${ materials }``, ``${ now }``).
-
-    Attributes
-    ----------
-    input_path
-        The source directory containing the site definition.
-    output_path
-        The directory where the generated site is written.
-    theme_path
-        Path to the theme directory (typically ``input_path / "theme"``).
-    materials_path
-        Path to the published materials directory, or None if not provided.
-    materials
-        The deserialized materials Universe, or None if not provided.
-    config
-        The parsed and interpolated configuration from ``config.yaml``.
-    vars
-        User-provided variables passed to the generator.
-    now
-        The current datetime at the time of generation.
-
-    """
-
-    input_path: pathlib.Path
-    output_path: pathlib.Path
-    theme_path: pathlib.Path
-    materials_path: pathlib.Path | None
-    materials: automata.materials.Universe | None
-    config: dict[str, Any]
-    vars: dict[str, Any]
-    now: datetime.datetime
 
 
 def _load_materials(
