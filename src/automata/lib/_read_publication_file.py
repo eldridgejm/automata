@@ -1,13 +1,12 @@
-"""Provides read_publication_file(), which reads a Publication from a publication.yaml."""
+"""Reads a Publication from a publication.yaml file."""
 
 import pathlib
-from typing import Optional, Dict, Any, Mapping, MutableMapping
+from typing import Any, Dict, Mapping, MutableMapping, Optional
 
 import dictconfig  # type: ignore
 import yaml  # type: ignore
 
-from ._types import UnbuiltArtifact, Publication, PublicationSchema
-
+from ._types import Publication, PublicationSchema, UnbuiltArtifact
 from .exceptions import DiscoveryError
 
 

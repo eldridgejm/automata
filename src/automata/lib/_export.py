@@ -2,17 +2,16 @@
 
 import pathlib
 import shutil
-from typing import Optional, overload, cast
+from typing import Optional, cast, overload
 
 from ._types import (
-    BuiltArtifact,
-    ExportedArtifact,
-    Universe,
-    Collection,
-    Publication,
     Artifact,
+    BuiltArtifact,
+    Collection,
+    ExportedArtifact,
+    Publication,
+    Universe,
 )
-
 
 # exporting
 # --------------------------------------------------------------------------------------

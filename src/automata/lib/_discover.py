@@ -1,21 +1,22 @@
 """Provides discover(), which searches the filesystem for materials."""
 
-from collections import deque, OrderedDict
-from typing import Optional, Dict, Any
-import typing
 import pathlib
+import typing
+from collections import OrderedDict, deque
+from typing import Any, Dict, Optional
 
+from automata import constants
+
+from ._read_collection_file import read_collection_file
+from ._read_publication_file import read_publication_file
 from ._types import (
     Collection,
     Publication,
-    Universe,
     PublicationSchema,
-    UnbuiltArtifact
+    UnbuiltArtifact,
+    Universe,
 )
 from .exceptions import DiscoveryError
-from ._read_collection_file import read_collection_file
-from ._read_publication_file import read_publication_file
-from automata import constants
 
 
 class DiscoverCallbacks:
@@ -107,7 +108,8 @@ def _search_for_collections_and_publications(
     Returns
     -------
     List[Path]
-        The path to every collection discovered. The "default" collection is not included.
+        The path to every collection discovered. The "default" collection is
+        not included.
     Mapping[Path, Union[Path, None]]
         A mapping whose keys are the paths to all discovered publications. The values
         are paths to the collections containing the publications. If a publication has
@@ -302,7 +304,9 @@ def _sort_dictionary(dct) -> OrderedDict:
         result[key] = dct[key]
     return result
 
+
 # discover() ===========================================================================
+
 
 def discover(
     root_directory: pathlib.Path,

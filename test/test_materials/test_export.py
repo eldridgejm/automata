@@ -5,6 +5,7 @@ from pytest import fixture
 
 import automata.lib
 
+
 @fixture
 def outdir(tmpdir):
     outdir = pathlib.Path(tmpdir) / "out"
@@ -71,7 +72,7 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
         """
         artifacts:
             problems/:
-                recipe: mkdir problems && touch problems/one.pdf && touch problems/two.pdf
+                recipe: mkdir problems && touch problems/{one,two}.pdf
         metadata:
             name: Homework
             date: 2021-10-05 23:59:00

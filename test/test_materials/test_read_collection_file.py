@@ -1,4 +1,5 @@
 from textwrap import dedent
+
 from pytest import raises
 
 from automata.lib import read_collection_file

@@ -1,7 +1,7 @@
 """Provides read_collection_file(), which reads a Collection from a collection.yaml."""
 
-from typing import Optional, Dict, Any, Mapping
 import pathlib
+from typing import Any, Dict, Mapping, Optional
 
 import dictconfig  # type: ignore
 import yaml  # type: ignore

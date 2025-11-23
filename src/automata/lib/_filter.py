@@ -1,15 +1,16 @@
 """Provides filter(), which selects materials according to a predicate."""
 
+from typing import Callable, Optional, TypeVar, overload
+
 from ._types import (
-    Universe,
+    Artifact,
+    BuiltArtifact,
     Collection,
+    ExportedArtifact,
     Publication,
     UnbuiltArtifact,
-    BuiltArtifact,
-    ExportedArtifact,
-    Artifact,
+    Universe,
 )
-from typing import Optional, Callable, overload, TypeVar
 
 
 class FilterCallbacks:
@@ -104,7 +105,7 @@ def filter(
     ----------
     root : Universe | Collection | Publication | Artifact
         The root of the course materials tree whose nodes are to be filtered.
-    predicate : Callable[[str, Union[Universe, Collection, Publication, Artifact]], bool]
+    predicate : Callable[[str, Universe | Collection | Publication | Artifact], bool]
         A function which takes in two arguments: the key of the node and the
         node itself, and returns True if the node should be kept.
     remove_empty_nodes : bool

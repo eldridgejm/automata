@@ -1,14 +1,13 @@
-from textwrap import dedent
 import datetime
+from textwrap import dedent
 
 from pytest import raises
 
 from automata.lib import (
+    PublicationSchema,
+    UnbuiltArtifact,
     read_publication_file,
 )
-
-from automata.lib import PublicationSchema, UnbuiltArtifact
-
 from automata.lib.exceptions import DiscoveryError
 
 

@@ -1,6 +1,5 @@
 import automata.lib
-from automata.lib import discover, filter
-from automata.lib import UnbuiltArtifact
+from automata.lib import UnbuiltArtifact, discover, filter
 
 
 def test_basic(default_example_course):

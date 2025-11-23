@@ -1,19 +1,18 @@
 """Provides build(), which recursively builds artifacts."""
 
-import datetime
 import dataclasses
-import subprocess
+import datetime
 import pathlib
-from typing import Optional, Union, cast, overload, TypedDict, Unpack, Any
-
+import subprocess
+from typing import Any, Optional, TypedDict, Union, Unpack, cast, overload
 
 from ._types import (
-    UnbuiltArtifact,
     BuiltArtifact,
-    ExportedArtifact,
-    Universe,
     Collection,
+    ExportedArtifact,
     Publication,
+    UnbuiltArtifact,
+    Universe,
 )
 from .exceptions import BuildError
 
