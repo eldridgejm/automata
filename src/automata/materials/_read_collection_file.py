@@ -1,4 +1,4 @@
-"""Provides read_collection_file(), which reads a Collection from a collection.yaml.""":
+"""Provides read_collection_file(), which reads a Collection from a collection.yaml."""
 
 from typing import Optional, Dict, Any, Mapping
 import pathlib
