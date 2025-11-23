@@ -213,3 +213,26 @@ def test_raises_on_invalid_theme_config(demo):
         automata.website.generate(demo.path, demo.builddir)
 
     assert "Invalid theme config" in str(excinfo.value)
+
+
+def test_config_includes_are_resolved_via_generate(demo):
+    """Ensure config.yaml !include directives are honored through generate."""
+    parts = demo.path / "config_parts"
+    parts.mkdir()
+    (parts / "theme.yaml").write_text("page_title: from include\n")
+    (parts / "announcement.yaml").write_text("content: Included announcement!\n")
+    with (demo.path / "config.yaml").open("w") as fileobj:
+        fileobj.write(
+            dedent(
+                """
+                theme: !include config_parts/theme.yaml
+                announcement: !include config_parts/announcement.yaml
+                """
+            )
+        )
+
+    demo.make_page("one.md", "${ config['announcement']['content'] }")
+
+    automata.website.generate(demo.path, demo.builddir)
+
+    assert "Included announcement!" in demo.get_output("one.html")

@@ -1,9 +1,12 @@
 """Utility functions for the site generator."""
 
+import pathlib
+from typing import Any
+
 import yaml  # type: ignore
 
 
-def load_yaml(path):
+def load_yaml(path: pathlib.Path) -> Any:
     """Read a YAML file. Supports including other yaml files.
 
     Parameters
