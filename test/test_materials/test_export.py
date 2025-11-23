@@ -1,7 +1,7 @@
 import pathlib
 from textwrap import dedent
 
-from pytest import fixture
+from pytest import fixture, raises
 
 import automata.lib
 
@@ -89,3 +89,23 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
     assert (outdir / "homeworks" / "01-testing" / "problems").is_dir()
     assert (outdir / "homeworks" / "01-testing" / "problems" / "one.pdf").is_file()
     assert (outdir / "homeworks" / "01-testing" / "problems" / "two.pdf").is_file()
+
+
+def test_export_raises_when_artifact_not_built(outdir):
+    """Test that export() raises ValueError when given an unbuilt artifact."""
+    # given: a publication containing an unbuilt artifact
+    unbuilt_artifact = automata.lib.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="touch foo.pdf",
+    )
+    publication = automata.lib.Publication(
+        metadata={},
+        artifacts={"foo.pdf": unbuilt_artifact},
+    )
+
+    # when/then: exporting should raise ValueError
+    with raises(ValueError) as exc_info:
+        automata.lib.export(publication, outdir)
+
+    assert "Cannot export an unbuilt artifact" in str(exc_info.value)

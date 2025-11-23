@@ -292,3 +292,25 @@ def test_build_error_message_includes_artifact_path(temporary_course):
 
     error_message = str(exc_info.value)
     assert "output/homework.pdf" in error_message
+
+
+def test_build_raises_when_artifact_already_built():
+    """Test that build() raises ValueError when given an already-built artifact."""
+    # given: a publication containing an already-built artifact
+    built_artifact = automata.lib.BuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        returncode=0,
+        stdout="",
+        stderr="",
+    )
+    publication = automata.lib.Publication(
+        metadata={},
+        artifacts={"foo.pdf": built_artifact},
+    )
+
+    # when/then: building should raise ValueError
+    with raises(ValueError) as exc_info:
+        automata.lib.build(publication)
+
+    assert "Cannot build an already built artifact" in str(exc_info.value)

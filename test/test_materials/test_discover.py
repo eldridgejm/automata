@@ -2,7 +2,7 @@ import datetime
 
 from pytest import raises
 
-from automata.lib import discover
+from automata.lib import DiscoverCallbacks, discover
 from automata.lib.exceptions import DiscoveryError
 
 
@@ -233,11 +233,17 @@ def test_uses_relative_paths_as_keys(temporary_course):
 
 
 def test_skip_directories(default_example_course):
-    # when
-    universe = discover(default_example_course.path, skip_directories={"textbook"})
+    # when we don't skip anything
+    universe = discover(default_example_course.path)
 
     # then
-    assert "textbook" not in universe.collections["default"].publications
+    assert "01-intro" in universe.collections["homeworks"].publications
+
+    # when we do skip a directory
+    universe = discover(default_example_course.path, skip_directories={"01-intro"})
+
+    # then
+    assert "01-intro" not in universe.collections["homeworks"].publications
 
 
 def test_key_used_for_path_if_path_not_provided(default_example_course):
@@ -556,3 +562,25 @@ def test_interpolates_vars_in_collection_metadata_schema(temporary_course):
     # then
     schema = universe.collections["homeworks"].publication_schema.metadata_schema
     assert schema["required_keys"]["name"]["type"] == "string"
+
+
+def test_skip_directories_invokes_callback(default_example_course):
+    """Test that the on_skip callback is invoked when directories are skipped."""
+    # given
+    skipped_paths = []
+
+    class TrackingCallbacks(DiscoverCallbacks):
+        def on_skip(self, path):
+            skipped_paths.append(path)
+            return path
+
+    # when
+    discover(
+        default_example_course.path,
+        skip_directories={"01-intro"},
+        callbacks=TrackingCallbacks(),
+    )
+
+    # then
+    assert len(skipped_paths) == 1
+    assert skipped_paths[0].name == "01-intro"

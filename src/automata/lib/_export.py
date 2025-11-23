@@ -177,7 +177,7 @@ def export(
         callbacks.on_export(child_key, child)
         new_prefix = str(pathlib.Path(prefix) / child_key)
 
-        assert isinstance(child, (Universe, Collection, Publication, BuiltArtifact))
+        assert isinstance(child, (Universe, Collection, Publication, Artifact))
         new_children[child_key] = export(child, outdir, new_prefix, callbacks)
 
     result = root._replace_children(new_children)

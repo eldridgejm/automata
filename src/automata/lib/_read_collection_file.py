@@ -158,10 +158,7 @@ def read_collection_file(
     with path.open() as fileobj:
         raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
 
-    try:
-        resolved = _resolve_collection_file(raw_contents, vars, path)
-    except smartconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), path)
+    resolved = _resolve_collection_file(raw_contents, vars, path)
 
     publication_schema = PublicationSchema(**resolved["publication_schema"])
     return Collection(publication_schema=publication_schema, publications={})
