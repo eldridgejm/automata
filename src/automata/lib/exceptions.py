@@ -5,10 +5,6 @@ class Error(Exception):
     """Generic error, and base class for all exceptions in this module."""
 
 
-class ValidationError(Error):
-    """The publication does not satisfy its schema."""
-
-
 class DiscoveryError(Error):
     """A configuration file is not valid.
 

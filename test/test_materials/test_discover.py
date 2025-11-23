@@ -144,7 +144,6 @@ def test_validates_publication_schema(temporary_course):
 
 
 def test_validates_publication_metadata_schema(temporary_course):
-
     # given a publication with metadata that doesn't match the schema in the
     # collection.yaml
     temporary_course.create_collection(
@@ -184,7 +183,6 @@ def test_validates_publication_metadata_schema(temporary_course):
 
 
 def test_raises_when_nested_collections_discovered(temporary_course):
-
     # given a collection "bar" nested in a collection "foo"
     BASIC_COLLECTION_YAML = """
         publication_schema:
@@ -415,7 +413,7 @@ def test_with_dates_relating_to_previous(temporary_course):
     )
 
 
-def test_interpolates_vars(temporary_course):
+def test_interpolates_vars_in_publication_file(temporary_course):
     # given
     vars = {
         "course": {
@@ -476,3 +474,85 @@ def test_interpolates_vars(temporary_course):
     assert universe.collections["homeworks"].publications["01-intro"].metadata[
         "due"
     ] == datetime.date(2020, 1, 1)
+
+
+def test_interpolates_vars_in_collection_file(temporary_course):
+    """Test that vars are interpolated in collection.yaml files during discovery."""
+    # given
+    vars = {
+        "artifacts": {
+            "primary": "homework.pdf",
+            "secondary": "solution.pdf",
+        }
+    }
+
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.artifacts.primary}
+                    - ${vars.artifacts.secondary}
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        """
+            metadata: {}
+            artifacts:
+                homework.pdf:
+                    recipe: touch homework.pdf
+                solution.pdf:
+                    recipe: touch solution.pdf
+        """,
+    )
+
+    # when
+    universe = discover(temporary_course.path, vars=vars)
+
+    # then
+    assert universe.collections["homeworks"].publication_schema.required_artifacts == [
+        "homework.pdf",
+        "solution.pdf",
+    ]
+
+
+def test_interpolates_vars_in_collection_metadata_schema(temporary_course):
+    """Test that vars can be used in collection metadata_schema."""
+    # given
+    vars = {"field_type": "string"}
+
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: ${vars.field_type}
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        """
+            metadata:
+                name: Homework 01
+            artifacts:
+                homework.pdf:
+                    recipe: touch homework.pdf
+        """,
+    )
+
+    # when
+    universe = discover(temporary_course.path, vars=vars)
+
+    # then
+    schema = universe.collections["homeworks"].publication_schema.metadata_schema
+    assert schema["required_keys"]["name"]["type"] == "string"

@@ -170,6 +170,7 @@ def _make_collections(
     collection_paths: typing.Collection[pathlib.Path],
     root_directory,
     callbacks: DiscoverCallbacks,
+    vars: Optional[Dict[str, Any]] = None,
 ) -> typing.MutableMapping[str, Collection]:
     """Given a collection of paths to collections, create Collection objects.
 
@@ -189,6 +190,9 @@ def _make_collections(
         will be relative to this path.
     callbacks
         The callbacks to be invoked when interesting things happen.
+    vars : Optional[dict]
+        A dictionary of extra variables to be used during interpolation of fields in
+        collection.yaml.
 
     Returns
     -------
@@ -201,7 +205,7 @@ def _make_collections(
     for path in collection_paths:
         file_path = path / constants.COLLECTION_FILE
 
-        collection = read_collection_file(file_path)
+        collection = read_collection_file(file_path, vars=vars)
 
         key = str(path.relative_to(root_directory))
         collections[key] = collection
@@ -374,7 +378,9 @@ def discover(
 
     publication_paths = _sort_dictionary(publication_paths)
 
-    collections = _make_collections(collection_paths, root_directory, callbacks)
+    collections = _make_collections(
+        collection_paths, root_directory, callbacks, vars=vars
+    )
     _make_publications(
         publication_paths,
         root_directory,
