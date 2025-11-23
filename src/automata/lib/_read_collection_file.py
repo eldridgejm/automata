@@ -1,7 +1,7 @@
 """Provides read_collection_file(), which reads a Collection from a collection.yaml."""
 
 import pathlib
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional, cast
 
 import smartconfig
 import yaml  # type: ignore
@@ -75,7 +75,10 @@ def _resolve_collection_file(
     # Combine the configuration and external variables into a single dictionary.
     # This avoids using global_variables, which can cause namespace pollution.
     # References use ${this.key} for config values and ${vars.key} for external vars.
-    combined = {"this": raw_contents, "vars": vars if vars is not None else {}}
+    combined = cast(
+        smartconfig.types.ConfigurationDict,
+        {"this": raw_contents, "vars": vars if vars is not None else {}},
+    )
 
     combined_schema = {
         "type": "dict",
@@ -94,7 +97,7 @@ def _resolve_collection_file(
         resolved["this"]["publication_schema"]["metadata_schema"], path
     )
 
-    return resolved["this"]
+    return cast(Dict[str, Any], resolved["this"])
 
 
 def _validate_metadata_schema(

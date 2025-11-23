@@ -1,7 +1,7 @@
 """Reads a Publication from a publication.yaml file."""
 
 import pathlib
-from typing import Any, Dict, Mapping, MutableMapping, Optional
+from typing import Any, Dict, Mapping, MutableMapping, Optional, cast
 
 import smartconfig
 import yaml  # type: ignore
@@ -126,7 +126,7 @@ def _resolve_publication_file(
     # This avoids using global_variables, which can cause namespace pollution.
     # References use ${this.key} for config values, ${vars.key} for external vars,
     # and ${previous.key} for previous publication data.
-    combined: dict[str, Any] = {
+    combined_dict: dict[str, Any] = {
         "this": raw_contents,
         "vars": vars if vars is not None else {},
     }
@@ -141,15 +141,17 @@ def _resolve_publication_file(
     }
 
     if previous is not None:
-        combined["previous"] = previous
+        combined_dict["previous"] = previous
         combined_schema["optional_keys"]["previous"] = {"type": "any"}
+
+    combined = cast(smartconfig.types.ConfigurationDict, combined_dict)
 
     try:
         resolved = smartconfig.resolve(combined, combined_schema)
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
-    return resolved["this"]
+    return cast(Dict[str, Any], resolved["this"])
 
 
 def read_publication_file(
@@ -194,16 +196,9 @@ def read_publication_file(
     of metadata. It should also have an "artifacts" key whose value is a
     dictionary mapping artifact names to artifact definitions.
 
-    Optionally, the file can have a "release_time" key providing a time at
-    which the publication should be considered released. It may also have
-    a "ready" key; if this is False, the publication will not be considered
-    released.
-
     If the ``publication_schema`` argument is not provided, only very basic
     validation is performed by this function. Namely, the metadata schema and
-    required/optional artifacts are not enforced. See the :func:`validate`
-    function for validating these aspects of the publication. If the schema is
-    provided, :func:`validate` is called as a convenience.
+    required/optional artifacts are not enforced.
 
     """
     with path.open() as fileobj:

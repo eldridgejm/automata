@@ -38,7 +38,7 @@ class UnbuiltArtifact(Artifact):
         Whether or not the artifact is ready for publication. Default: True.
     missing_ok : bool
         If True and no file exists at the above path after building, then no
-        error is raised and the result of the build is `None`. Default: True.
+        error is raised and the result of the build is `None`. Default: False.
 
     """
 
