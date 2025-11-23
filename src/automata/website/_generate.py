@@ -5,7 +5,7 @@ import dataclasses
 import datetime
 import pathlib
 import shutil
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from functools import partial
 from typing import Any, NamedTuple, cast
 
@@ -21,7 +21,31 @@ from ._util import load_yaml
 
 
 class RenderContext(NamedTuple):
-    """Information that might be useful during the rendering of pages."""
+    """Context passed to page and element templates during rendering.
+
+    This context is available to all Jinja2 templates as individual variables
+    (e.g., ``${ config }``, ``${ materials }``, ``${ now }``).
+
+    Attributes
+    ----------
+    input_path
+        The source directory containing the site definition.
+    output_path
+        The directory where the generated site is written.
+    theme_path
+        Path to the theme directory (typically ``input_path / "theme"``).
+    materials_path
+        Path to the published materials directory, or None if not provided.
+    materials
+        The deserialized materials Universe, or None if not provided.
+    config
+        The parsed and interpolated configuration from ``config.yaml``.
+    vars
+        User-provided variables passed to the generator.
+    now
+        The current datetime at the time of generation.
+
+    """
 
     input_path: pathlib.Path
     output_path: pathlib.Path
@@ -147,35 +171,19 @@ def _validate_theme_schema(input_path: pathlib.Path, config: dict[str, Any]) -> 
         raise RuntimeError(f"Invalid theme config: {exc}")
 
 
-def _find_input_pages(
-    input_path: pathlib.Path,
-) -> Iterator[tuple[str, pathlib.Path]]:
-    """Generate all page contents and their output paths.
-
-    Parameters
-    ----------
-    input_path
-        The path to the directory containing the pages.
-
-    Yields
-    ------
-    tuple[str, pathlib.Path]
-        The contents of the input page, along with the path to the page relative
-        to the input path.
-
-    """
-    for page_path in input_path.iterdir():
-        with page_path.open() as fileobj:
-            contents = fileobj.read()
-
-        relpath = page_path.relative_to(input_path)
-
-        yield contents, relpath
-
-
 def _interpolate(
     contents: str, variables: dict[str, Any], path: pathlib.Path | None = None
 ) -> str:
+    """Render a Jinja2 template string with the given variables.
+
+    Uses custom delimiters: ``${ }`` for variables, ``{% %}`` for blocks.
+
+    Raises
+    ------
+    PageError
+        If an undefined variable is accessed during rendering.
+
+    """
     template = jinja2.Template(
         contents,
         undefined=jinja2.StrictUndefined,
@@ -191,6 +199,7 @@ def _interpolate(
 
 
 def _to_html(contents: str) -> str:
+    """Convert markdown content to HTML with table-of-contents support."""
     return cast(str, markdown.markdown(contents, extensions=["toc"]))
 
 
@@ -200,7 +209,15 @@ def _render_pages(
     theme_path: pathlib.Path,
     context: RenderContext,
 ) -> None:
-    """Render each file in the input path into an HTML file in the output path."""
+    """Render each markdown page into an HTML file.
+
+    For each file in ``input_path``:
+    1. Interpolate Jinja2 variables (including elements)
+    2. Convert markdown to HTML
+    3. Wrap in the base template from the theme
+    4. Write to ``output_path`` with ``.html`` extension
+
+    """
     with (theme_path / "base.html").open() as fileobj:
         template = fileobj.read()
 
@@ -243,6 +260,22 @@ def generate(
 ) -> None:
     """Generate a static course website.
 
+    Reads the site definition from ``input_path`` and writes the generated
+    HTML files to ``output_path``. Pages are written as ``.html`` files, and
+    static assets from the theme and ``static/`` directory are copied over.
+
+    Expected input directory structure::
+
+        input_path/
+        ├── config.yaml      # Site configuration
+        ├── pages/           # Markdown pages (converted to HTML)
+        ├── static/          # Static assets (copied as-is)
+        └── theme/
+            ├── base.html    # Base template wrapping all pages
+            ├── schema.yaml  # Theme configuration schema
+            ├── style/       # CSS/JS (copied to output)
+            └── elements/    # Element HTML templates
+
     Parameters
     ----------
     input_path
@@ -251,8 +284,9 @@ def generate(
         Path to the output directory where the generated site will be written.
     materials_path
         Optional path to a directory containing materials.json from automata.materials.
+        If provided, materials are accessible in templates via ``${ materials }``.
     vars
-        Optional dictionary of variables accessible in templates as `vars`.
+        Optional dictionary of variables accessible in templates as ``${ vars }``.
     now
         Callable returning the current datetime. Defaults to datetime.datetime.now.
 
