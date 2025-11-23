@@ -3,12 +3,12 @@ from textwrap import dedent
 
 from pytest import raises
 
-from automata.lib import (
+from automata.materials import (
     PublicationSchema,
     UnbuiltArtifact,
     read_publication_file,
 )
-from automata.lib.exceptions import DiscoveryError
+from automata.materials.exceptions import DiscoveryError
 
 
 def test_on_valid_file(write_file):
@@ -781,7 +781,7 @@ def test_external_vars_missing_raises_error(write_file):
 
 def test_previous_publication_metadata_reference(write_file):
     """Test that previous publication metadata can be referenced."""
-    from automata.lib import Publication
+    from automata.materials import Publication
 
     # given
     path = write_file(
@@ -814,7 +814,7 @@ def test_previous_publication_metadata_reference(write_file):
 
 def test_previous_publication_with_vars(write_file):
     """Test that previous and vars can be used together."""
-    from automata.lib import Publication
+    from automata.materials import Publication
 
     # given
     path = write_file(

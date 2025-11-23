@@ -4,7 +4,7 @@ import datetime
 
 import smartconfig
 
-import automata.lib
+import automata.materials
 
 from ._common import is_something_missing, render_element_template
 
@@ -123,7 +123,7 @@ ONE_WEEK = datetime.timedelta(weeks=1)
 
 def _publication_within_week(start_date, date_key):
     def filter(key, node):
-        if not isinstance(node, automata.lib.Publication):
+        if not isinstance(node, automata.materials.Publication):
             return True
         else:
             date = node.metadata[date_key]
@@ -142,7 +142,7 @@ class Week:
         self.topic = topic
 
     def filter(self, collection, date_key):
-        return automata.lib.filter(
+        return automata.materials.filter(
             collection, _publication_within_week(self.start_date, date_key)
         )
 

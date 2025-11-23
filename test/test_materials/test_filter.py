@@ -1,5 +1,5 @@
-import automata.lib
-from automata.lib import UnbuiltArtifact, discover, filter
+import automata.materials
+from automata.materials import UnbuiltArtifact, discover, filter
 
 
 def test_basic(default_example_course):
@@ -68,4 +68,4 @@ def test_if_all_children_of_root_are_removed_then(default_example_course):
 
     # then
     assert not universe.collections
-    assert isinstance(universe, automata.lib.Universe)
+    assert isinstance(universe, automata.materials.Universe)

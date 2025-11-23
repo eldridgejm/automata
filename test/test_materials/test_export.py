@@ -3,7 +3,7 @@ from textwrap import dedent
 
 from pytest import fixture, raises
 
-import automata.lib
+import automata.materials
 
 
 @fixture
@@ -15,11 +15,11 @@ def outdir(tmpdir):
 
 def test_export(default_example_course, outdir):
     # given
-    discovered = automata.lib.discover(default_example_course.path)
-    builts = automata.lib.build(discovered)
+    discovered = automata.materials.discover(default_example_course.path)
+    builts = automata.materials.build(discovered)
 
     # when
-    exported = automata.lib.export(builts, outdir)
+    exported = automata.materials.export(builts, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -33,12 +33,12 @@ def test_export(default_example_course, outdir):
 
 def test_artifact_not_copied_if_not_released(default_example_course, outdir):
     # given
-    discovered = automata.lib.discover(default_example_course.path)
-    built = automata.lib.build(discovered)
+    discovered = automata.materials.discover(default_example_course.path)
+    built = automata.materials.build(discovered)
     publication = built.collections["homeworks"].publications["02-python"]
 
     # when
-    automata.lib.export(built, outdir)
+    automata.materials.export(built, outdir)
 
     # then
     assert (outdir / "homeworks" / "01-intro" / "homework.pdf").exists()
@@ -82,9 +82,9 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
     temporary_course.create_collection("homeworks", collection_yaml)
     temporary_course.create_publication("homeworks", "01-testing", publication_yaml)
 
-    discovered = automata.lib.discover(temporary_course.path)
-    built = automata.lib.build(discovered)
-    _ = automata.lib.export(built, outdir)
+    discovered = automata.materials.discover(temporary_course.path)
+    built = automata.materials.build(discovered)
+    _ = automata.materials.export(built, outdir)
 
     assert (outdir / "homeworks" / "01-testing" / "problems").is_dir()
     assert (outdir / "homeworks" / "01-testing" / "problems" / "one.pdf").is_file()
@@ -94,18 +94,18 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
 def test_export_raises_when_artifact_not_built(outdir):
     """Test that export() raises ValueError when given an unbuilt artifact."""
     # given: a publication containing an unbuilt artifact
-    unbuilt_artifact = automata.lib.UnbuiltArtifact(
+    unbuilt_artifact = automata.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="foo.pdf",
         recipe="touch foo.pdf",
     )
-    publication = automata.lib.Publication(
+    publication = automata.materials.Publication(
         metadata={},
         artifacts={"foo.pdf": unbuilt_artifact},
     )
 
     # when/then: exporting should raise ValueError
     with raises(ValueError) as exc_info:
-        automata.lib.export(publication, outdir)
+        automata.materials.export(publication, outdir)
 
     assert "Cannot export an unbuilt artifact" in str(exc_info.value)

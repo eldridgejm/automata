@@ -4,12 +4,12 @@ from unittest.mock import Mock
 
 from pytest import raises
 
-import automata.lib
+import automata.materials
 
 
 def test_build_artifact_integration(default_example_course):
     # given
-    universe = automata.lib.discover(default_example_course.path)
+    universe = automata.materials.discover(default_example_course.path)
     artifact = (
         universe.collections["homeworks"]
         .publications["01-intro"]
@@ -17,7 +17,7 @@ def test_build_artifact_integration(default_example_course):
     )
 
     # when
-    result = automata.lib.build(artifact)
+    result = automata.materials.build(artifact)
 
     # then
     assert (
@@ -30,7 +30,7 @@ def test_build_artifact_integration(default_example_course):
 
 def test_build_artifact_when_release_time_is_in_future():
     # given
-    artifact = automata.lib.UnbuiltArtifact(
+    artifact = automata.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="foo.pdf",
         recipe="echo hi",
@@ -43,7 +43,7 @@ def test_build_artifact_when_release_time_is_in_future():
     now = Mock(return_value=datetime.datetime(2020, 1, 1, 0, 0, 0))
 
     # when
-    result = automata.lib.build(artifact, run=run, now=now)
+    result = automata.materials.build(artifact, run=run, now=now)
 
     # then
     assert result is None
@@ -52,7 +52,7 @@ def test_build_artifact_when_release_time_is_in_future():
 
 def test_build_artifact_when_not_ready():
     # given
-    artifact = automata.lib.UnbuiltArtifact(
+    artifact = automata.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="foo.pdf",
         recipe="echo hi",
@@ -66,7 +66,7 @@ def test_build_artifact_when_not_ready():
     now = Mock(return_value=datetime.datetime(2020, 3, 1, 0, 0, 0))
 
     # when
-    result = automata.lib.build(artifact, run=run, now=now)
+    result = automata.materials.build(artifact, run=run, now=now)
 
     # then
     assert result is None
@@ -75,7 +75,7 @@ def test_build_artifact_when_not_ready():
 
 def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
     # given
-    artifact = automata.lib.UnbuiltArtifact(
+    artifact = automata.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="foo.pdf",
         recipe="echo hi",
@@ -89,7 +89,7 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
     exists = Mock(return_value=True)
 
     # when
-    result = automata.lib.build(
+    result = automata.materials.build(
         artifact, run=run, now=now, exists=exists, ignore_release_time=True
     )
 
@@ -100,7 +100,7 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
 
 def test_build_artifact_when_recipe_is_none():
     # given
-    artifact = automata.lib.UnbuiltArtifact(
+    artifact = automata.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None
     )
 
@@ -108,7 +108,7 @@ def test_build_artifact_when_recipe_is_none():
     exists = Mock(return_value=True)
 
     # when
-    result = automata.lib.build(artifact, run=run, exists=exists)
+    result = automata.materials.build(artifact, run=run, exists=exists)
 
     # then
     assert result.path
@@ -117,7 +117,7 @@ def test_build_artifact_when_recipe_is_none():
 
 def test_build_artifact_when_recipe_is_none_raises_if_no_path():
     # given
-    artifact = automata.lib.UnbuiltArtifact(
+    artifact = automata.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None
     )
 
@@ -125,13 +125,13 @@ def test_build_artifact_when_recipe_is_none_raises_if_no_path():
     exists = Mock(return_value=False)
 
     # when
-    with raises(automata.lib.exceptions.BuildError):
-        automata.lib.build(artifact, run=run, exists=exists)
+    with raises(automata.materials.exceptions.BuildError):
+        automata.materials.build(artifact, run=run, exists=exists)
 
 
 def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
     # given
-    artifact = automata.lib.UnbuiltArtifact(
+    artifact = automata.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(), path="foo.pdf", recipe=None, missing_ok=True
     )
 
@@ -139,13 +139,13 @@ def test_build_artifact_when_recipe_is_none_does_not_raise_if_missing_ok():
     exists = Mock(return_value=False)
 
     # when
-    result = automata.lib.build(artifact, run=run, exists=exists)
+    result = automata.materials.build(artifact, run=run, exists=exists)
     assert result is None
 
 
 def test_build_artifact_raises_if_no_file():
     # given
-    artifact = automata.lib.UnbuiltArtifact(
+    artifact = automata.materials.UnbuiltArtifact(
         workdir=pathlib.Path.cwd(), path="foo.pdf", recipe="touch bar"
     )
 
@@ -153,16 +153,16 @@ def test_build_artifact_raises_if_no_file():
     exists = Mock(return_value=False)
 
     # when
-    with raises(automata.lib.exceptions.BuildError):
-        automata.lib.build(artifact, run=run, exists=exists)
+    with raises(automata.materials.exceptions.BuildError):
+        automata.materials.build(artifact, run=run, exists=exists)
 
 
 def test_build_collection(default_example_course):
     # given
-    universe = automata.lib.discover(default_example_course.path)
+    universe = automata.materials.discover(default_example_course.path)
 
     # when
-    built_universe = automata.lib.build(universe)
+    built_universe = automata.materials.build(universe)
 
     # then
     assert (
@@ -221,10 +221,10 @@ def test_build_error_message_includes_stderr_on_recipe_failure(temporary_course)
         """,
     )
 
-    universe = automata.lib.discover(temporary_course.path)
+    universe = automata.materials.discover(temporary_course.path)
 
-    with raises(automata.lib.exceptions.BuildError) as exc_info:
-        automata.lib.build(universe)
+    with raises(automata.materials.exceptions.BuildError) as exc_info:
+        automata.materials.build(universe)
 
     error_message = str(exc_info.value)
     assert "custom error message from recipe" in error_message
@@ -252,10 +252,10 @@ def test_build_error_message_on_missing_artifact(temporary_course):
         """,
     )
 
-    universe = automata.lib.discover(temporary_course.path)
+    universe = automata.materials.discover(temporary_course.path)
 
-    with raises(automata.lib.exceptions.BuildError) as exc_info:
-        automata.lib.build(universe)
+    with raises(automata.materials.exceptions.BuildError) as exc_info:
+        automata.materials.build(universe)
 
     error_message = str(exc_info.value)
     assert "homework.pdf" in error_message
@@ -285,10 +285,10 @@ def test_build_error_message_includes_artifact_path(temporary_course):
         """,
     )
 
-    universe = automata.lib.discover(temporary_course.path)
+    universe = automata.materials.discover(temporary_course.path)
 
-    with raises(automata.lib.exceptions.BuildError) as exc_info:
-        automata.lib.build(universe)
+    with raises(automata.materials.exceptions.BuildError) as exc_info:
+        automata.materials.build(universe)
 
     error_message = str(exc_info.value)
     assert "output/homework.pdf" in error_message
@@ -297,20 +297,20 @@ def test_build_error_message_includes_artifact_path(temporary_course):
 def test_build_raises_when_artifact_already_built():
     """Test that build() raises ValueError when given an already-built artifact."""
     # given: a publication containing an already-built artifact
-    built_artifact = automata.lib.BuiltArtifact(
+    built_artifact = automata.materials.BuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="foo.pdf",
         returncode=0,
         stdout="",
         stderr="",
     )
-    publication = automata.lib.Publication(
+    publication = automata.materials.Publication(
         metadata={},
         artifacts={"foo.pdf": built_artifact},
     )
 
     # when/then: building should raise ValueError
     with raises(ValueError) as exc_info:
-        automata.lib.build(publication)
+        automata.materials.build(publication)
 
     assert "Cannot build an already built artifact" in str(exc_info.value)

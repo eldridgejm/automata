@@ -1,4 +1,4 @@
-"""Exceptions used in :mod:`automata.lib`."""
+"""Exceptions used in :mod:`automata.materials`."""
 
 
 class Error(Exception):

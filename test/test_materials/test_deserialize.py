@@ -1,32 +1,32 @@
 import datetime
 import pathlib
 
-import automata.lib
+import automata.materials
 
 
 def test_serialize_deserialize_universe_roundtrip():
     # given
-    collection = automata.lib.Collection(
-        publication_schema=automata.lib.PublicationSchema(
+    collection = automata.materials.Collection(
+        publication_schema=automata.materials.PublicationSchema(
             required_artifacts=["foo", "bar"]
         ),
         publications={},
     )
 
-    collection.publications["01-intro"] = automata.lib.Publication(
+    collection.publications["01-intro"] = automata.materials.Publication(
         metadata={
             "name": "testing",
             "due": datetime.datetime(2020, 2, 28, 23, 59, 0),
             "released": datetime.date(2020, 2, 28),
         },
-        artifacts={"homework": automata.lib.ExportedArtifact("foo/bar")},
+        artifacts={"homework": automata.materials.ExportedArtifact("foo/bar")},
     )
 
-    original = automata.lib.Universe({"homeworks": collection})
+    original = automata.materials.Universe({"homeworks": collection})
 
     # when
-    s = automata.lib.serialize(original)
-    result = automata.lib.deserialize(s)
+    s = automata.materials.serialize(original)
+    result = automata.materials.deserialize(s)
 
     # then
     assert original == result
@@ -34,22 +34,22 @@ def test_serialize_deserialize_universe_roundtrip():
 
 def test_serialize_deserialize_built_publication_roundtrip():
     # given
-    publication = automata.lib.Publication(
+    publication = automata.materials.Publication(
         metadata={
             "name": "testing",
             "due": datetime.datetime(2020, 2, 28, 23, 59, 0),
             "released": datetime.date(2020, 2, 28),
         },
         artifacts={
-            "homework": automata.lib.BuiltArtifact(
+            "homework": automata.materials.BuiltArtifact(
                 workdir=pathlib.Path.cwd(), path="foo/bar"
             )
         },
     )
 
     # when
-    s = automata.lib.serialize(publication)
-    result = automata.lib.deserialize(s)
+    s = automata.materials.serialize(publication)
+    result = automata.materials.deserialize(s)
 
     # then
     assert publication == result
@@ -61,17 +61,17 @@ def test_serialize_deserialize_built_publication_roundtrip():
 
 def test_collection_as_dict():
     # given
-    collection = automata.lib.Collection(
-        publication_schema=automata.lib.PublicationSchema(
+    collection = automata.materials.Collection(
+        publication_schema=automata.materials.PublicationSchema(
             required_artifacts=["foo", "bar"]
         ),
         publications={},
     )
 
-    collection.publications["01-intro"] = automata.lib.Publication(
+    collection.publications["01-intro"] = automata.materials.Publication(
         metadata={"name": "testing"},
         artifacts={
-            "homework": automata.lib.UnbuiltArtifact(
+            "homework": automata.materials.UnbuiltArtifact(
                 workdir=pathlib.Path.cwd(),
                 path="homework.pdf",
                 recipe="make",
@@ -93,13 +93,13 @@ def test_collection_as_dict():
 def test_serialize_deserialize_unbuilt_publication_roundtrip():
     """Test publications with UnbuiltArtifacts can be serialized and deserialized."""
     # given
-    publication = automata.lib.Publication(
+    publication = automata.materials.Publication(
         metadata={
             "name": "testing",
             "due": datetime.datetime(2020, 2, 28, 23, 59, 0),
         },
         artifacts={
-            "homework": automata.lib.UnbuiltArtifact(
+            "homework": automata.materials.UnbuiltArtifact(
                 workdir=pathlib.Path.cwd(),
                 path="homework.pdf",
                 recipe="make homework",
@@ -109,18 +109,18 @@ def test_serialize_deserialize_unbuilt_publication_roundtrip():
     )
 
     # when
-    s = automata.lib.serialize(publication)
-    result = automata.lib.deserialize(s)
+    s = automata.materials.serialize(publication)
+    result = automata.materials.deserialize(s)
 
     # then
     assert publication == result
-    assert isinstance(result.artifacts["homework"], automata.lib.UnbuiltArtifact)
+    assert isinstance(result.artifacts["homework"], automata.materials.UnbuiltArtifact)
 
 
 def test_serialize_deserialize_artifact_directly():
     """Test that artifacts can be serialized and deserialized directly (not wrapped)."""
     # given
-    artifact = automata.lib.BuiltArtifact(
+    artifact = automata.materials.BuiltArtifact(
         workdir=pathlib.Path.cwd(),
         path="homework.pdf",
         returncode=0,
@@ -129,35 +129,37 @@ def test_serialize_deserialize_artifact_directly():
     )
 
     # when
-    s = automata.lib.serialize(artifact)
-    result = automata.lib.deserialize(s)
+    s = automata.materials.serialize(artifact)
+    result = automata.materials.deserialize(s)
 
     # then
     assert artifact == result
-    assert isinstance(result, automata.lib.BuiltArtifact)
+    assert isinstance(result, automata.materials.BuiltArtifact)
 
 
 def test_serialize_deserialize_collection_directly():
     """Test that collections can be serialized and deserialized directly."""
     # given
-    collection = automata.lib.Collection(
-        publication_schema=automata.lib.PublicationSchema(
+    collection = automata.materials.Collection(
+        publication_schema=automata.materials.PublicationSchema(
             required_artifacts=["homework.pdf"],
         ),
         publications={
-            "01-intro": automata.lib.Publication(
+            "01-intro": automata.materials.Publication(
                 metadata={"name": "Intro"},
                 artifacts={
-                    "homework.pdf": automata.lib.ExportedArtifact(path="homework.pdf")
+                    "homework.pdf": automata.materials.ExportedArtifact(
+                        path="homework.pdf"
+                    )
                 },
             )
         },
     )
 
     # when
-    s = automata.lib.serialize(collection)
-    result = automata.lib.deserialize(s)
+    s = automata.materials.serialize(collection)
+    result = automata.materials.deserialize(s)
 
     # then
     assert collection == result
-    assert isinstance(result, automata.lib.Collection)
+    assert isinstance(result, automata.materials.Collection)

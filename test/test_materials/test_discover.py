@@ -2,8 +2,8 @@ import datetime
 
 from pytest import raises
 
-from automata.lib import DiscoverCallbacks, discover
-from automata.lib.exceptions import DiscoveryError
+from automata.materials import DiscoverCallbacks, discover
+from automata.materials.exceptions import DiscoveryError
 
 
 def test_finds_collections(default_example_course):
