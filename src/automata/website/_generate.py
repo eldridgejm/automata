@@ -5,9 +5,9 @@ import dataclasses
 import datetime
 import pathlib
 import shutil
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from functools import partial
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 import jinja2
 import markdown  # type: ignore
@@ -33,7 +33,9 @@ class RenderContext(NamedTuple):
     now: datetime.datetime
 
 
-def _load_materials(materials_path, output_path):
+def _load_materials(
+    materials_path: pathlib.Path, output_path: pathlib.Path
+) -> automata.materials.Universe:
     """Load artifacts from ``materials.json`` and update their paths.
 
     The artifacts in ``materials.json`` have a ``path`` attribute that gives
@@ -64,6 +66,8 @@ def _load_materials(materials_path, output_path):
     with (materials_path / "materials.json").open() as fileobj:
         materials = automata.materials.deserialize(fileobj.read())
 
+    assert isinstance(materials, automata.materials.Universe)
+
     # we need to update their paths to be relative to output directory; this function
     # will do it for one artifact
     def _update_path(artifact):
@@ -82,7 +86,9 @@ def _load_materials(materials_path, output_path):
     return materials
 
 
-def _load_config(path, vars=None):
+def _load_config(
+    path: pathlib.Path, vars: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Read the configuration from a yaml file, performing interpolation.
 
     Parameters
@@ -119,11 +125,19 @@ def _load_config(path, vars=None):
     dct = load_yaml(path)
 
     schema = {"type": "dict", "extra_keys_schema": {"type": "any"}}
-    return smartconfig.resolve(dct, schema=schema, global_variables=variables)
+    result = smartconfig.resolve(dct, schema=schema, global_variables=variables)
+    return cast(dict[str, Any], result)
 
 
-def _validate_theme_schema(input_path, config):
-    """Validate a config against the theme's schema."""
+def _validate_theme_schema(input_path: pathlib.Path, config: dict[str, Any]) -> None:
+    """Validate a config against the theme's schema.
+
+    Raises
+    ------
+    RuntimeError
+        If the config is invalid according to the theme's schema.
+
+    """
     with (input_path / "theme" / "schema.yaml").open() as fileobj:
         theme_schema = yaml.load(fileobj, Loader=yaml.Loader)
 
@@ -133,17 +147,19 @@ def _validate_theme_schema(input_path, config):
         raise RuntimeError(f"Invalid theme config: {exc}")
 
 
-def _find_input_pages(input_path):
+def _find_input_pages(
+    input_path: pathlib.Path,
+) -> Iterator[tuple[str, pathlib.Path]]:
     """Generate all page contents and their output paths.
 
     Parameters
     ----------
-    input_path : pathlib.Path
+    input_path
         The path to the directory containing the pages.
 
     Yields
     ------
-    (str, pathlib.Path)
+    tuple[str, pathlib.Path]
         The contents of the input page, along with the path to the page relative
         to the input path.
 
@@ -157,7 +173,9 @@ def _find_input_pages(input_path):
         yield contents, relpath
 
 
-def _interpolate(contents, variables, path=None):
+def _interpolate(
+    contents: str, variables: dict[str, Any], path: pathlib.Path | None = None
+) -> str:
     template = jinja2.Template(
         contents,
         undefined=jinja2.StrictUndefined,
@@ -172,17 +190,22 @@ def _interpolate(contents, variables, path=None):
         raise exceptions.PageError(f"Problem rendering {path}: {exc}")
 
 
-def _to_html(contents):
-    return markdown.markdown(contents, extensions=["toc"])
+def _to_html(contents: str) -> str:
+    return cast(str, markdown.markdown(contents, extensions=["toc"]))
 
 
-def _render_pages(input_path, output_path, theme_path, context):
+def _render_pages(
+    input_path: pathlib.Path,
+    output_path: pathlib.Path,
+    theme_path: pathlib.Path,
+    context: RenderContext,
+) -> None:
     """Render each file in the input path into an HTML file in the output path."""
     with (theme_path / "base.html").open() as fileobj:
         template = fileobj.read()
 
     _Elements = collections.namedtuple(
-        "Elements", ["announcement_box", "schedule", "listing", "people"]
+        "_Elements", ["announcement_box", "schedule", "listing", "people"]
     )
 
     elements_ = _Elements(
