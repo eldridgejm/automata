@@ -87,14 +87,14 @@ def _load_config(path: pathlib.Path, vars: dict[str, Any]) -> dict[str, Any]:
 
     Parameters
     ----------
-    path
+    path : pathlib.Path
         The path to the configuration file.
-    vars
+    vars : dict[str, Any]
         Variables to make available during interpolation.
 
     Returns
     -------
-    dict
+    dict[str, Any]
         The configuration dictionary.
 
     Note
@@ -247,16 +247,16 @@ def generate(
 
     Parameters
     ----------
-    input_path
+    input_path : pathlib.Path
         Path to the source directory containing config.yaml, pages/, theme/, etc.
-    output_path
+    output_path : pathlib.Path
         Path to the output directory where the generated site will be written.
-    materials_path
+    materials_path : pathlib.Path | None
         Optional path to a directory containing materials.json from automata.materials.
         If provided, materials are accessible in templates via ``${ materials }``.
-    vars
+    vars : dict[str, Any] | None
         Optional dictionary of variables accessible in templates as ``${ vars }``.
-    now
+    now : Callable[[], datetime.datetime]
         Callable returning the current datetime. Defaults to datetime.datetime.now.
 
     """

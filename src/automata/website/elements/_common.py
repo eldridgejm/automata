@@ -30,12 +30,12 @@ def render_element_template(
 
     Parameters
     ----------
-    template_name
+    template_name : str
         Name of the element template file (under ``theme_path / "elements"``). E.g.,
         ``announcement_box.html``.
-    context
+    context : RenderContext
         RenderContext providing theme path and page-level variables.
-    extra_vars
+    extra_vars : Mapping[str, Any]
         Additional variables to inject into the template render.
 
     Returns
@@ -108,16 +108,17 @@ def basic_element(
 
     Parameters
     ----------
-    template_filename
+    template_filename : str
         Element template filename relative to the elements directory.
-    config_schema
+    config_schema : smartconfig.types.Schema
         Smartconfig schema used to validate the element config.
-    extra_render_vars
-        Optional callable to compute extra render variables from context/config.
+    extra_render_vars : Callable | None
+        Optional callable ``(RenderContext, Mapping[str, Any]) -> Mapping[str, Any]``
+        to compute extra render variables from context/config.
 
     Returns
     -------
-    Callable[[RenderContext, Mapping[str, Any]], str]
+    Callable[[RenderContext, smartconfig.types.ConfigurationDict], str]
         A function that accepts a render context and element config, returning
         rendered HTML as a string.
     """
@@ -147,9 +148,9 @@ def is_something_missing(
 
     Parameters
     ----------
-    publication
+    publication : materials.Publication
         Publication object whose metadata/artifacts are checked.
-    requirements
+    requirements : Mapping[str, list[str]]
         Dict containing lists for ``artifacts``, ``metadata``, and
         ``non_null_metadata`` keys.
 

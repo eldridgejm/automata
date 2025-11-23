@@ -20,7 +20,7 @@ def initialize(path: pathlib.Path) -> None:
 
     Parameters
     ----------
-    path
+    path : pathlib.Path
         Path to a directory that will contain the course page. If it doesn't exist, it
         will be created.
 
