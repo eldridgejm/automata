@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 .direnv
 .DS_Store
+.claude
+_old
 
 # C extensions
 *.so
