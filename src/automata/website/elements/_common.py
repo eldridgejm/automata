@@ -7,10 +7,7 @@ import smartconfig
 from .. import exceptions
 
 
-def render_element_template(template_name, context, extra_vars=None):
-    if extra_vars is None:
-        extra_vars = {}
-
+def render_element_template(template_name, context, extra_vars):
     element_environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader(context.theme_path / "elements"),
         undefined=jinja2.StrictUndefined,
