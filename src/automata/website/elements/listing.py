@@ -109,7 +109,27 @@ SCHEMA = {
 def _listing_vars(
     context: RenderContext, element_config: Mapping[str, Any]
 ) -> Mapping[str, Any]:
-    """Compute render-time variables for the listing element."""
+    """Compute render-time variables for the listing element.
+
+    Extracts the specified collection from the materials universe and prepares
+    the publications for rendering. Publications are sorted by their keys
+    (typically publication identifiers like "01", "02", etc.) to ensure
+    consistent ordering in the table.
+
+    Parameters
+    ----------
+    context : RenderContext
+        The rendering context containing the materials universe.
+    element_config : Mapping[str, Any]
+        The resolved element configuration containing the ``collection`` key.
+
+    Returns
+    -------
+    Mapping[str, Any]
+        A dict with:
+        - ``publications``: List of Publication objects, sorted by key.
+        - ``is_something_missing``: Helper function for conditional rendering.
+    """
     assert context.materials is not None
     collections = context.materials.collections
     collection = collections[element_config["collection"]]

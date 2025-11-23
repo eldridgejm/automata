@@ -129,6 +129,8 @@ import automata.materials
 from .._types import RenderContext
 from ._common import is_something_missing, render_element_template
 
+# schemata -------------------------------------------------------------------
+
 _RESOURCES_SCHEMA = {
     "type": "list",
     "element_schema": {
@@ -238,45 +240,12 @@ _SCHEMA = {
 }
 
 
+# constants ------------------------------------------------------------------
+
 _ONE_WEEK = datetime.timedelta(weeks=1)
 
 
-def _is_publication_within_week_predicate(
-    start_date: datetime.date, date_key: str
-) -> Callable[[str, Any], bool]:
-    """Build a predicate that checks if a publication falls within a week.
-
-    Creates a filter function suitable for use with ``automata.materials.filter``
-    that returns True for publications whose release date falls within the
-    seven-day span starting from ``start_date``.
-
-    Parameters
-    ----------
-    start_date : datetime.date
-        The first day of the week (typically a Monday).
-    date_key : str
-        The metadata key containing the publication's date (e.g., "released").
-
-    Returns
-    -------
-    Callable[[str, Any], bool]
-        A predicate function that accepts a key and node, returning True if
-        the node is not a Publication or if the publication's date falls
-        within the week.
-    """
-
-    def predicate(key: str, node: Any) -> bool:
-        if not isinstance(node, automata.materials.Publication):
-            return True
-        else:
-            date_value = node.metadata[date_key]
-            if isinstance(date_value, datetime.datetime):
-                date_value = date_value.date()
-
-            date_value = cast(datetime.date, date_value)
-            return start_date <= date_value < start_date + _ONE_WEEK
-
-    return predicate
+# week class -----------------------------------------------------------------
 
 
 class _Week:
@@ -338,6 +307,47 @@ class _Week:
             the start of the following week.
         """
         return self.start_date <= date < self.start_date + _ONE_WEEK
+
+
+# week helpers ---------------------------------------------------------------
+
+
+def _is_publication_within_week_predicate(
+    start_date: datetime.date, date_key: str
+) -> Callable[[str, Any], bool]:
+    """Build a predicate that checks if a publication falls within a week.
+
+    Creates a filter function suitable for use with ``automata.materials.filter``
+    that returns True for publications whose release date falls within the
+    seven-day span starting from ``start_date``.
+
+    Parameters
+    ----------
+    start_date : datetime.date
+        The first day of the week (typically a Monday).
+    date_key : str
+        The metadata key containing the publication's date (e.g., "released").
+
+    Returns
+    -------
+    Callable[[str, Any], bool]
+        A predicate function that accepts a key and node, returning True if
+        the node is not a Publication or if the publication's date falls
+        within the week.
+    """
+
+    def predicate(key: str, node: Any) -> bool:
+        if not isinstance(node, automata.materials.Publication):
+            return True
+        else:
+            date_value = node.metadata[date_key]
+            if isinstance(date_value, datetime.datetime):
+                date_value = date_value.date()
+
+            date_value = cast(datetime.date, date_value)
+            return start_date <= date_value < start_date + _ONE_WEEK
+
+    return predicate
 
 
 def _generate_weeks(
@@ -458,6 +468,9 @@ def _order_weeks(
         "this_week_first": _order_this_week_first,
         "this_week_last": _order_this_week_last,
     }[week_order](weeks, today)
+
+
+# public API -----------------------------------------------------------------
 
 
 def schedule(
