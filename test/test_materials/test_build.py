@@ -193,3 +193,102 @@ def test_build_collection(default_example_course):
         "04-publication_not_released"
         not in built_universe.collections["homeworks"].publications
     )
+
+
+# build error message tests
+# --------------------------------------------------------------------------------------
+
+
+def test_build_error_message_includes_stderr_on_recipe_failure(temporary_course):
+    """Test that build errors include stderr output when a recipe fails."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts:
+                - homework.pdf
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        """
+        metadata: {}
+        artifacts:
+            homework.pdf:
+                recipe: echo "custom error message from recipe" >&2 && exit 1
+        """,
+    )
+
+    universe = automata.lib.discover(temporary_course.path)
+
+    with raises(automata.lib.exceptions.BuildError) as exc_info:
+        automata.lib.build(universe)
+
+    error_message = str(exc_info.value)
+    assert "custom error message from recipe" in error_message
+
+
+def test_build_error_message_on_missing_artifact(temporary_course):
+    """Test that build errors clearly indicate when an artifact file is missing."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts:
+                - homework.pdf
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        """
+        metadata: {}
+        artifacts:
+            homework.pdf:
+                recipe: echo "this does not create homework.pdf"
+        """,
+    )
+
+    universe = automata.lib.discover(temporary_course.path)
+
+    with raises(automata.lib.exceptions.BuildError) as exc_info:
+        automata.lib.build(universe)
+
+    error_message = str(exc_info.value)
+    assert "homework.pdf" in error_message
+    assert "does not exist" in error_message
+
+
+def test_build_error_message_includes_artifact_path(temporary_course):
+    """Test that build errors include the full path to the artifact."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts:
+                - output/homework.pdf
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        """
+        metadata: {}
+        artifacts:
+            output/homework.pdf:
+                path: output/homework.pdf
+                recipe: mkdir -p output && echo "not creating the file"
+        """,
+    )
+
+    universe = automata.lib.discover(temporary_course.path)
+
+    with raises(automata.lib.exceptions.BuildError) as exc_info:
+        automata.lib.build(universe)
+
+    error_message = str(exc_info.value)
+    assert "output/homework.pdf" in error_message

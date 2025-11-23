@@ -4,6 +4,8 @@
 
 **Automata** is a Python tool for automating the publication of course materials (homeworks, lectures, labs) with time-based release scheduling. It provides a pipeline for discovering, building, filtering, and exporting course content, as well as a static course website generator.
 
+PLAN.md contains an initial architecture plan that can be referenced for future module expansions.
+
 ### Current Development Status
 
 This repository uses **git worktrees**:
