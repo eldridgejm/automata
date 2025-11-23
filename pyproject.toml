@@ -16,7 +16,7 @@ dependencies = [
     "pyyaml",
     "jinja2",
     "markdown",
-    "dictconfig @ git+https://github.com/eldridgejm/dictconfig.git@master",
+    "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git",
 ]
 
 [dependency-groups]

@@ -3,7 +3,7 @@
 import pathlib
 from typing import Any, Dict, Mapping, Optional
 
-import dictconfig  # type: ignore
+import smartconfig
 import yaml  # type: ignore
 
 from ._types import Collection, PublicationSchema, UnbuiltArtifact
@@ -45,13 +45,15 @@ COLLECTION_FILE_SCHEMA = {
 
 
 def _resolve_collection_file(
-    raw_contents: dict, external_variables: Optional[dict], path: pathlib.Path
+    raw_contents: smartconfig.types.ConfigurationDict,
+    external_variables: Optional[dict],
+    path: pathlib.Path,
 ) -> dict:
     """Resolves (interpolates and parses) the raw collection file contents.
 
     Parameters
     ----------
-    raw_contents : dict
+    raw_contents : smartconfig.types.ConfigurationDict
         The raw dictionary loaded from the publication file.
     external_variables : Optional[dict]
         A dictionary of external_variables passed to dictconfig and used during
@@ -72,10 +74,13 @@ def _resolve_collection_file(
 
     """
     try:
-        resolved: Dict[str, Any] = dictconfig.resolve(
-            raw_contents, COLLECTION_FILE_SCHEMA, external_variables=external_variables
-        )  # type: ignore
-    except dictconfig.exceptions.ResolutionError as exc:
+        resolved: Dict[str, Any] = smartconfig.resolve(
+            raw_contents,
+            COLLECTION_FILE_SCHEMA,
+            global_variables=external_variables,
+            inject_root_as="this",
+        )
+    except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
     _validate_metadata_schema(resolved["publication_schema"]["metadata_schema"], path)
@@ -109,8 +114,8 @@ def _validate_metadata_schema(
         return
 
     try:
-        dictconfig.validate_schema({"type": "dict", **metadata_schema})
-    except dictconfig.exceptions.InvalidSchemaError as exc:
+        smartconfig.validate_schema({"type": "dict", **metadata_schema})
+    except smartconfig.exceptions.InvalidSchemaError as exc:
         raise DiscoveryError(exc, path)
 
 
@@ -143,7 +148,7 @@ def read_collection_file(
 
     try:
         resolved = _resolve_collection_file(raw_contents, {"vars": vars}, path)
-    except dictconfig.exceptions.ResolutionError as exc:
+    except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
     publication_schema = PublicationSchema(**resolved["publication_schema"])

@@ -3,7 +3,7 @@
 import pathlib
 from typing import Any, Dict, Mapping, MutableMapping, Optional
 
-import dictconfig  # type: ignore
+import smartconfig
 import yaml  # type: ignore
 
 from ._types import Publication, PublicationSchema, UnbuiltArtifact
@@ -13,10 +13,10 @@ from .exceptions import DiscoveryError
 def _make_publication_file_schema(
     publication_schema: Optional[PublicationSchema],
 ) -> dict:
-    """Construct a dictconfig schema for validating and resolving the publication file.
+    """Construct a smartconfig schema for validating and resolving the publication file.
 
     A function is necessary here in order to dynamically convert the
-    PublicationSchema object given as input into a dictconfig schema
+    PublicationSchema object given as input into a smartconfig schema
     dictionary.
 
     Parameters
@@ -29,7 +29,7 @@ def _make_publication_file_schema(
     Returns
     -------
     dict
-        The dictconfig schema for the publication file.
+        The smartconfig schema for the publication file.
 
     Notes
     -----
@@ -89,7 +89,7 @@ def _make_publication_file_schema(
 
 
 def _resolve_publication_file(
-    raw_contents: Mapping[str, Any],
+    raw_contents: smartconfig.types.ConfigurationDict,
     publication_schema: Optional[PublicationSchema],
     external_vars: Mapping[str, Any],
     path: pathlib.Path,
@@ -98,14 +98,14 @@ def _resolve_publication_file(
 
     Parameters
     ----------
-    raw_contents : Mapping[str, Any]
+    raw_contents : smartconfig.types.ConfigurationDict
         The raw dictionary loaded from the publication file.
     publication_schema : Optional[PublicationSchema]
         A :class:`PublicationSchema` object that describes the necessary artifacts
         and metadata of the publication. If this is None, only very basic validation
         is done. Default: None.
     external_variables : Optional[dict]
-        A dictionary of external_variables passed to dictconfig and used during
+        A dictionary of external_variables passed to smartconfig and used during
         interpolation.
 
     Returns
@@ -117,10 +117,10 @@ def _resolve_publication_file(
     schema = _make_publication_file_schema(publication_schema)
 
     try:
-        return dictconfig.resolve(  # type: ignore
-            raw_contents, schema, external_variables=external_vars
+        return smartconfig.resolve(
+            raw_contents, schema, global_variables=external_vars, inject_root_as="this"
         )
-    except dictconfig.exceptions.ResolutionError as exc:
+    except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
 
