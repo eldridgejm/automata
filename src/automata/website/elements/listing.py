@@ -56,54 +56,29 @@ Example YAML configuration
 
 from typing import Any, Mapping
 
+from smartconfig import Prototype
+
 from .._types import RenderContext
 from ._common import basic_element, is_something_missing
 
-COLUMN_SCHEMA = {
-    "type": "dict",
-    "required_keys": {
-        "cell_content": {"type": "string"},
-        "heading": {"type": "string"},
-    },
-    "optional_keys": {
-        "requires": {
-            "type": "dict",
-            "optional_keys": {
-                "artifacts": {
-                    "type": "list",
-                    "element_schema": {"type": "string"},
-                    "default": [],
-                },
-                "metadata": {
-                    "type": "list",
-                    "element_schema": {"type": "string"},
-                    "default": [],
-                },
-                "non_null_metadata": {
-                    "type": "list",
-                    "element_schema": {"type": "string"},
-                    "default": [],
-                },
-                "cell_content_if_missing": {
-                    "type": "string",
-                    "nullable": True,
-                    "default": None,
-                },
-            },
-            "default": None,
-            "nullable": True,
-        },
-    },
-}
 
-SCHEMA = {
-    "type": "dict",
-    "required_keys": {
-        "collection": {"type": "string"},
-        "columns": {"type": "list", "element_schema": COLUMN_SCHEMA},
-    },
-    "optional_keys": {"numbered": {"type": "boolean", "default": False}},
-}
+class Requires(Prototype):
+    artifacts: list[str] = []
+    metadata: list[str] = []
+    non_null_metadata: list[str] = []
+    cell_content_if_missing: str | None = None
+
+
+class Column(Prototype):
+    heading: str
+    cell_content: str
+    requires: Requires | None = None
+
+
+class Config(Prototype):
+    collection: str
+    columns: list[Column]
+    numbered: bool = False
 
 
 def _listing_vars(
@@ -139,4 +114,4 @@ def _listing_vars(
     return {"is_something_missing": is_something_missing, "publications": publications}
 
 
-listing = basic_element("listing.html", SCHEMA, _listing_vars)
+listing = basic_element("listing.html", Config._schema(), _listing_vars)

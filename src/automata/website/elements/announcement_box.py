@@ -25,13 +25,14 @@ Example YAML configuration
       urgent: true
 """
 
+from smartconfig import Prototype
+
 from ._common import basic_element
 
-SCHEMA = {
-    "type": "dict",
-    "required_keys": {"content": {"type": "string"}},
-    "optional_keys": {"urgent": {"type": "boolean", "default": False}},
-}
+
+class Config(Prototype):
+    content: str
+    urgent: bool = False
 
 
-announcement_box = basic_element("announcement_box.html", SCHEMA)
+announcement_box = basic_element("announcement_box.html", Config._schema())

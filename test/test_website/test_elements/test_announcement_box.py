@@ -25,6 +25,27 @@ def test_announcement_box_raises_on_unknown_variable(site):
         automata.website.generate(site.path, site.builddir)
 
 
+def test_announcement_box_defaults_to_non_urgent(site):
+    """Omitting urgent uses the Prototype default and renders non-urgent styling."""
+    site.make_page(
+        "default.md",
+        dedent(
+            """
+            ${ elements.announcement_box({
+                'content': 'Hello world'
+            }) }
+            """
+        ),
+    )
+
+    automata.website.generate(site.path, site.builddir)
+
+    output = site.get_output("default.html")
+    assert "Hello world" in output
+    assert 'class="announcement urgent"' not in output
+    assert 'class="announcement">' in output
+
+
 def test_announcement_box_renders_content_and_urgency(site):
     """Renders content and marks urgent announcements."""
     site.make_page(
