@@ -118,7 +118,7 @@ def _load_config(path: pathlib.Path, vars: dict[str, Any]) -> dict[str, Any]:
     dct = load_yaml(path)
 
     schema = {"type": "dict", "extra_keys_schema": {"type": "any"}}
-    result = smartconfig.resolve(dct, schema=schema, global_variables=variables)
+    result = smartconfig.resolve(dct, spec=schema, global_variables=variables)
     return cast(dict[str, Any], result)
 
 
