@@ -3,6 +3,9 @@
 import datetime
 from textwrap import dedent
 
+import pytest
+import smartconfig
+
 import automata.materials as materials
 import automata.website
 
@@ -248,3 +251,30 @@ def test_schedule_renders_week_announcements(site):
     output = site.get_output("schedule.html")
     assert "Urgent note" in output
     assert "alert-danger" in output
+
+
+def test_schedule_validates_schema(site):
+    """Missing required fields should raise during config resolution."""
+    now = datetime.datetime(2024, 1, 9, 12, 0, 0)
+    site.write_materials(make_universe(now))
+
+    site.make_page(
+        "schedule.md",
+        dedent(
+            """
+            ${ elements.schedule({
+                'week_topics': ['Intro'],
+                'first_week_start_date': vars.first_week_start_date
+            }) }
+            """
+        ),
+    )
+
+    with pytest.raises(smartconfig.exceptions.ResolutionError):
+        automata.website.generate(
+            site.path,
+            site.builddir,
+            materials_path=site.builddir / "published",
+            vars={"first_week_start_date": datetime.date(2024, 1, 8)},
+            now=lambda: now,
+        )

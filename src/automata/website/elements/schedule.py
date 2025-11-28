@@ -123,6 +123,7 @@ from typing import Any, Callable, Sequence, cast
 
 import smartconfig
 import smartconfig.types
+from smartconfig import NotRequired, Prototype
 
 import automata.materials
 
@@ -131,113 +132,59 @@ from ._common import is_something_missing, render_element_template
 
 # schemata -------------------------------------------------------------------
 
-_RESOURCES_SCHEMA = {
-    "type": "list",
-    "element_schema": {
-        "type": "dict",
-        "required_keys": {
-            "text": {"type": "string"},
-        },
-        "optional_keys": {
-            "title": {"type": "string", "nullable": True, "default": None},
-            "key_for_parts": {"type": "string"},
-            "requires": {
-                "type": "dict",
-                "optional_keys": {
-                    "artifacts": {
-                        "type": "list",
-                        "element_schema": {"type": "string"},
-                        "default": [],
-                    },
-                    "metadata": {
-                        "type": "list",
-                        "element_schema": {"type": "string"},
-                        "default": [],
-                    },
-                    "non_null_metadata": {
-                        "type": "list",
-                        "element_schema": {"type": "string"},
-                        "default": [],
-                    },
-                    "text_if_missing": {
-                        "type": "string",
-                        "nullable": True,
-                        "default": None,
-                    },
-                },
-                "default": None,
-                "nullable": True,
-            },
-        },
-    },
-}
 
-_SCHEMA = {
-    "type": "dict",
-    "required_keys": {
-        "week_topics": {"type": "list", "element_schema": {"type": "string"}},
-        "first_week_start_date": {"type": "date"},
-        "lecture": {
-            "type": "dict",
-            "required_keys": {
-                "collection": {"type": "string"},
-                "metadata_key_for_released": {"type": "string"},
-                "title": {"type": "string"},
-                "resources": _RESOURCES_SCHEMA,
-            },
-            "optional_keys": {},
-        },
-        "assignments": {
-            "type": "list",
-            "element_schema": {
-                "type": "dict",
-                "required_keys": {
-                    "collection": {"type": "string"},
-                    "metadata_key_for_released": {"type": "string"},
-                    "metadata_key_for_due": {"type": "string", "nullable": True},
-                    "title": {"type": "string"},
-                    "resources": _RESOURCES_SCHEMA,
-                },
-            },
-        },
-        "discussions": {
-            "type": "list",
-            "element_schema": {
-                "type": "dict",
-                "required_keys": {
-                    "collection": {"type": "string"},
-                    "metadata_key_for_released": {"type": "string"},
-                    "title": {"type": "string"},
-                    "resources": _RESOURCES_SCHEMA,
-                },
-            },
-        },
-    },
-    "optional_keys": {
-        "week_order": {
-            "type": "string",
-            "default": "this_week_first",
-        },
-        "exams": {
-            "type": "dict",
-            "extra_keys_schema": {"type": "date"},
-        },
-        "week_announcements": {
-            "type": "list",
-            "element_schema": {
-                "type": "dict",
-                "required_keys": {
-                    "week": {"type": "integer"},
-                    "content": {"type": "string"},
-                },
-                "optional_keys": {
-                    "urgent": {"type": "boolean", "default": False},
-                },
-            },
-        },
-        "first_week_number": {"type": "integer", "default": 1},
-    },
-}
+class Requires(Prototype):
+    artifacts: list[str] = []
+    metadata: list[str] = []
+    non_null_metadata: list[str] = []
+    text_if_missing: str | None = None
+
+
+class Resource(Prototype):
+    text: str
+    title: str | None = None
+    key_for_parts: NotRequired[str]
+    requires: Requires | None = None
+
+
+class LectureConfig(Prototype):
+    collection: str
+    metadata_key_for_released: str
+    title: str
+    resources: list[Resource]
+
+
+class AssignmentConfig(Prototype):
+    collection: str
+    metadata_key_for_released: str
+    metadata_key_for_due: str | None
+    title: str
+    resources: list[Resource]
+
+
+class DiscussionConfig(Prototype):
+    collection: str
+    metadata_key_for_released: str
+    title: str
+    resources: list[Resource]
+
+
+class WeekAnnouncement(Prototype):
+    week: int
+    content: str
+    urgent: bool = False
+
+
+class Config(Prototype):
+    week_topics: list[str]
+    first_week_start_date: datetime.date
+    lecture: LectureConfig
+    assignments: list[AssignmentConfig]
+    discussions: list[DiscussionConfig]
+    week_order: str = "this_week_first"
+    exams: NotRequired[dict[str, datetime.date]]
+    week_announcements: NotRequired[list[WeekAnnouncement]]
+    first_week_number: int = 1
 
 
 # constants ------------------------------------------------------------------
@@ -495,7 +442,7 @@ def schedule(
     str
         The rendered HTML string for the schedule element.
     """
-    element_config = smartconfig.resolve(element_config, _SCHEMA)
+    element_config = smartconfig.resolve(element_config, Config._schema())
     assert isinstance(element_config, dict)
 
     assert context.materials is not None
