@@ -33,7 +33,6 @@ import automata.materials
 from . import elements, exceptions
 from ._config import Config
 from ._types import RenderContext
-from ._util import load_yaml
 
 
 def _load_materials(output_path: pathlib.Path) -> automata.materials.Universe:
@@ -78,46 +77,6 @@ def _load_materials(output_path: pathlib.Path) -> automata.materials.Universe:
                 publication.artifacts[artifact_key] = _update_path(artifact)
 
     return materials
-
-
-def _load_config(path: pathlib.Path, vars: dict[str, Any]) -> dict[str, Any]:
-    """Read the configuration from a yaml file, performing interpolation.
-
-    Parameters
-    ----------
-    path : pathlib.Path
-        The path to the configuration file.
-    vars : dict[str, Any]
-        Variables to make available during interpolation.
-
-    Returns
-    -------
-    dict[str, Any]
-        The configuration dictionary.
-
-    Note
-    ----
-
-    This loader supports the ``!include`` tag, allowing the configuration file
-    to be split into several files. For instance:
-
-    .. code-block:: yaml
-
-        # config.yaml
-        template:
-            page_title: My Website
-
-        schedule: !include schedule.yaml
-        announcements: !include announcements.yaml
-
-    """
-    variables = {"vars": vars}
-
-    dct = load_yaml(path)
-
-    schema = {"type": "dict", "extra_keys_schema": {"type": "any"}}
-    result = smartconfig.resolve(dct, spec=schema, global_variables=variables)
-    return cast(dict[str, Any], result)
 
 
 def _validate_theme_schema(input_path: pathlib.Path, config: dict[str, Any]) -> None:
@@ -276,7 +235,7 @@ def generate(
     vars: dict[str, Any] | None = None,
     now: Callable[[], datetime.datetime] = datetime.datetime.now,
 ) -> None:
-    """Generate a static course website.
+    """Generate a static site from course materials.
 
     Expected input directory structure::
 
@@ -295,10 +254,10 @@ def generate(
         The website generation configuration.
     materials_path : pathlib.Path | None, optional
         Path to the directory containing ``materials.json``. By default, this is
-        ``output_path/materials``. If this path is provided and points to a directory
-        outside of ``output_path``, the directory will be copied to
-        ``output_path/materials``. In both cases, ``materials.json`` will be loaded and
-        the artifact paths updated to be relative to ``output_path``. Default is
+        ``<output_path>/materials``. If this path is provided and points to a directory
+        outside of the output path, the directory will be copied to
+        ``<output_path>/materials``. In both cases, ``materials.json`` will be loaded
+        and the artifact paths updated to be relative to ``output_path``. Default is
         ``None``.
 
     Raises
