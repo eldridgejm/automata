@@ -114,4 +114,4 @@ def _listing_vars(
     return {"is_something_missing": is_something_missing, "publications": publications}
 
 
-listing = basic_element("listing.html", Config._schema(), _listing_vars)
+element = basic_element("listing.html", Config._schema(), _listing_vars)

@@ -31,13 +31,12 @@ import yaml  # type: ignore
 import automata.materials
 
 from . import elements, exceptions
+from ._config import Config
 from ._types import RenderContext
 from ._util import load_yaml
 
 
-def _load_materials(
-    materials_path: pathlib.Path, output_path: pathlib.Path
-) -> automata.materials.Universe:
+def _load_materials(output_path: pathlib.Path) -> automata.materials.Universe:
     """Load artifacts from ``materials.json`` and update their paths.
 
     The artifacts in ``materials.json`` have a ``path`` attribute that gives
@@ -47,11 +46,9 @@ def _load_materials(
 
     Parameters
     ----------
-    materials_path : pathlib.Path
-        Path to the directory containing ``materials.json``.
     output_path : pathlib.Path
-        Path to the output directory. This should be a directory under the
-        output path.
+        Path to the output directory. The ``materials.json`` file is expected to be
+        located at ``<output_path>/materials/materials.json``.
 
     Returns
     -------
@@ -60,6 +57,7 @@ def _load_materials(
         to be relative to ``output_path``.
 
     """
+    materials_path = output_path / "materials"
 
     # read the universe
     with (materials_path / "materials.json").open() as fileobj:
@@ -135,7 +133,7 @@ def _validate_theme_schema(input_path: pathlib.Path, config: dict[str, Any]) -> 
         theme_schema = yaml.load(fileobj, Loader=yaml.Loader)
 
     try:
-        smartconfig.resolve(config["theme"], theme_schema)
+        smartconfig.resolve(config["config"], theme_schema)
     except smartconfig.exceptions.ResolutionError as exc:
         raise RuntimeError(f"Invalid theme config: {exc}")
 
@@ -195,10 +193,10 @@ def _render_pages(
     )
 
     elements_ = _Elements(
-        announcement_box=partial(elements.announcement_box, context),
-        schedule=partial(elements.schedule, context),
-        listing=partial(elements.listing, context),
-        people=partial(elements.people, context),
+        announcement_box=partial(elements.announcement_box.element, context),
+        schedule=partial(elements.schedule.element, context),
+        listing=partial(elements.listing.element, context),
+        people=partial(elements.people.element, context),
     )
 
     for input_page_abspath in input_path.iterdir():
@@ -220,63 +218,110 @@ def _render_pages(
             fileobj.write(page_html)
 
 
+def _ensure_materials_in_output_path(
+    output_path: pathlib.Path, materials_path: pathlib.Path | None
+):
+    """Ensures that the course materials are located under the output path.
+
+    There are three cases:
+
+        1. If ``materials_path`` is ``None`` or equal to ``<output_path>/materials``,
+        we expect that the materials are located there already. We check to make sure.
+        If they are missing, we raise automata.website.Error.
+
+        2. If ``materials_path`` is an absolute path outside of ``output_path``, we copy
+        the materials directory to ``<output_path>/materials``.
+
+        3. If ``materials_path`` is a relative path or an absolute path within
+        ``output_path`` (but not equal to ``<output_path>/materials``), we raise
+        automata.website.Error.
+
+    Parameters
+    ----------
+    output_path : pathlib.Path
+        Path to the output directory.
+    materials_path : pathlib.Path
+        Path to the materials directory.
+
+    Raises
+    ------
+    automata.website.Error
+        If the materials are missing or located in an invalid location.
+
+    """
+    expected_materials_path = output_path / "materials"
+
+    if materials_path is None or materials_path == expected_materials_path:
+        if not expected_materials_path.exists():
+            raise exceptions.Error(
+                f"Expected materials to be located at "
+                f"{expected_materials_path}, but they are missing."
+            )
+        return
+
+    if materials_path.is_absolute() and not materials_path.is_relative_to(output_path):
+        shutil.copytree(materials_path, expected_materials_path, dirs_exist_ok=True)
+        return
+
+    raise exceptions.Error(
+        f"Materials path {materials_path} is invalid. Materials must be located "
+        f"either at {expected_materials_path} or at an absolute path outside "
+        f"of the output directory."
+    )
+
+
 def generate(
-    input_path: pathlib.Path,
-    output_path: pathlib.Path,
+    config: Config,
     materials_path: pathlib.Path | None = None,
     vars: dict[str, Any] | None = None,
     now: Callable[[], datetime.datetime] = datetime.datetime.now,
 ) -> None:
     """Generate a static course website.
 
-    Reads the site definition from ``input_path`` and writes the generated
-    HTML files to ``output_path``. Pages are written as ``.html`` files, and
-    static assets from the theme and ``static/`` directory are copied over.
-
     Expected input directory structure::
 
         input_path/
-        ├── config.yaml      # Site configuration
-        ├── pages/           # Markdown pages (converted to HTML)
-        ├── static/          # Static assets (copied as-is)
+        ├── pages/              # Markdown pages (converted to HTML)
+        ├── static/             # Static assets (copied as-is)
         └── theme/
-            ├── base.html    # Base template wrapping all pages
-            ├── schema.yaml  # Theme configuration schema
-            ├── style/       # CSS/JS (copied to output)
-            └── elements/    # Element HTML templates
+            ├── base.html       # Base template wrapping all pages
+            ├── schema.yaml     # Theme configuration schema
+            ├── style/          # CSS/JS (copied to output)
+            └── elements/       # Element HTML templates
 
     Parameters
     ----------
-    input_path : pathlib.Path
-        Path to the source directory containing config.yaml, pages/, theme/, etc.
-    output_path : pathlib.Path
-        Path to the output directory where the generated site will be written.
-    materials_path : pathlib.Path | None
-        Optional path to a directory containing materials.json from automata.materials.
-        If provided, materials are accessible in templates via ``${ materials }``.
-    vars : dict[str, Any] | None
-        Optional dictionary of variables accessible in templates as ``${ vars }``.
-    now : Callable[[], datetime.datetime]
-        Callable returning the current datetime. Defaults to datetime.datetime.now.
+    config : Config
+        The website generation configuration.
+    materials_path : pathlib.Path | None, optional
+        Path to the directory containing ``materials.json``. By default, this is
+        ``output_path/materials``. If this path is provided and points to a directory
+        outside of ``output_path``, the directory will be copied to
+        ``output_path/materials``. In both cases, ``materials.json`` will be loaded and
+        the artifact paths updated to be relative to ``output_path``. Default is
+        ``None``.
+
+    Raises
+    ------
+    automata.website.Error
+        If there is an error during site generation.
 
     """
     if vars is None:
         vars = {}
 
+    input_path = pathlib.Path(config.input_path)
+    output_path = pathlib.Path(config.output_path)
+
     # create the output path, if it doesn't already exist
     output_path.mkdir(exist_ok=True)
 
-    # load the publications and update their paths
-    if materials_path is not None:
-        published = _load_materials(materials_path, output_path)
-    else:
-        published = None
+    _ensure_materials_in_output_path(output_path, materials_path)
 
-    # load the configuration file
-    config = _load_config(input_path / "config.yaml", vars=vars)
+    published = _load_materials(output_path)
 
     # validate the config against the theme's schema
-    _validate_theme_schema(input_path, config)
+    _validate_theme_schema(input_path, config.theme._as_dict())
 
     context = RenderContext(
         input_path=input_path,
@@ -284,7 +329,7 @@ def generate(
         theme_path=input_path / "theme",
         materials_path=materials_path,
         materials=published,
-        config=config,
+        config=config._as_dict(),
         vars=vars,
         now=now(),
     )

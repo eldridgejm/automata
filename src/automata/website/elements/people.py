@@ -72,4 +72,4 @@ class Config(Prototype):
 SCHEMA = Config._schema()
 
 
-people = basic_element("people.html", SCHEMA)
+element = basic_element("people.html", SCHEMA)

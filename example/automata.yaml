@@ -5,8 +5,20 @@ vars:
   start_date: "2025-09-22"
 
 website:
-  root: "website"
-  output: "website/build"
+  input_path: "website"
+  output_path: "website/build"
+  theme:
+    name: "default"
+    config:
+      short_title: ${ vars.course_name }
+      long_title: ${ vars.course_title }
+
+      navigation:
+          - text: 🗓️ Schedule
+            url: ./index.html
+
+          - text: ⚖️ Syllabus
+            url: ./syllabus.html
 
   elements:
     schedule:

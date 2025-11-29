@@ -420,7 +420,7 @@ def _order_weeks(
 # public API -----------------------------------------------------------------
 
 
-def schedule(
+def element(
     context: RenderContext, element_config: smartconfig.types.ConfigurationDict
 ) -> str:
     """Render the schedule element into HTML.
