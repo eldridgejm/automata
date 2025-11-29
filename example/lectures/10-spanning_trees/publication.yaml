@@ -1,0 +1,9 @@
+metadata:
+  number: 10
+  date: 2025-11-24
+  topic: "Spanning Trees"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 10: Spanning Trees" > slides.txt'
+    path: slides.txt

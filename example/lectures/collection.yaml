@@ -1,0 +1,11 @@
+publication_schema:
+  metadata_schema:
+    required_keys:
+      number: { type: integer }
+      date: { type: date }
+      topic: { type: string }
+
+  required_artifacts:
+    - slides.txt
+
+  is_ordered: true

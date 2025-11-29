@@ -1,0 +1,9 @@
+metadata:
+  number: 2
+  date: 2025-09-29
+  topic: "Time Complexity"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 2: Time Complexity" > slides.txt'
+    path: slides.txt

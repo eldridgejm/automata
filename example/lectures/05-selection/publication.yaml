@@ -1,0 +1,9 @@
+metadata:
+  number: 5
+  date: 2025-10-20
+  topic: "Selection"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 5: Selection" > slides.txt'
+    path: slides.txt

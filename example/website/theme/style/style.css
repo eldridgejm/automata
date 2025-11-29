@@ -1,0 +1,41 @@
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 20px;
+}
+
+nav a {
+    text-decoration: none;
+    color: #007bff;
+}
+
+/* Basic schedule styling */
+.schedule-week {
+    border: 1px solid #eee;
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.schedule-week h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    background-color: #f9f9f9;
+    padding: 5px 10px;
+}
+
+.schedule-item {
+    margin-bottom: 10px;
+}
+
+.resource-link {
+    display: inline-block;
+    margin-right: 10px;
+}

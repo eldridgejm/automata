@@ -1,0 +1,47 @@
+vars:
+  course_name: "DSC 40B"
+  course_title: "Theoretical Foundations of Data Science II"
+  term: "Fall 2025"
+  start_date: "2025-09-22"
+
+website:
+  root: "website"
+  output: "website/build"
+
+  elements:
+    schedule:
+      first_week_start_date: ${ vars.start_date }
+      first_week_number: 1
+      week_topics:
+        - Introduction
+        - Time Complexity
+        - Recurrences
+        - Sorting
+        - Selection
+        - Hashing
+        - Graph Theory
+        - BFS and DFS
+        - Shortest Paths
+        - Spanning Trees
+
+      lecture:
+        collection: lectures
+        metadata_key_for_released: date
+        title: "Lecture $( publication.metadata.number ) &mdash; $( publication.metadata.topic )"
+        resources:
+          - text: "[Slides](${ publication.artifacts['slides.txt'].path })"
+            requires:
+              artifacts: [slides.txt]
+
+      assignments:
+        - collection: homeworks
+          metadata_key_for_released: released
+          metadata_key_for_due: due
+          title: "Homework $( publication.metadata.number )"
+          resources:
+            - text: "[Problems](${ publication.artifacts['homework.txt'].path })"
+              requires:
+                artifacts: [homework.txt]
+            - text: "[Solutions](${ publication.artifacts['solution.txt'].path })"
+              requires:
+                artifacts: [solution.txt]

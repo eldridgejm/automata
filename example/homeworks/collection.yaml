@@ -1,0 +1,14 @@
+publication_schema:
+  metadata_schema:
+    required_keys:
+      number: { type: integer }
+      released: { type: datetime }
+      due: { type: datetime }
+
+  required_artifacts:
+    - homework.txt
+
+  optional_artifacts:
+    - solution.txt
+
+  is_ordered: true

@@ -1,6 +1,4 @@
-"""Shared type helpers for the website package (private)."""
-
-from __future__ import annotations
+"""Shared type helpers for the website package."""
 
 import datetime
 import pathlib

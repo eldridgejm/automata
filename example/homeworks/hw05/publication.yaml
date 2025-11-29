@@ -1,0 +1,14 @@
+metadata:
+  number: 5
+  released: 2025-10-20 12:00:00
+  due: 2025-10-27 23:59:00
+
+artifacts:
+  homework.txt:
+    recipe: echo "Problems for Homework 5" > homework.txt
+    path: homework.txt
+
+  solution.txt:
+    recipe: echo "Solutions for Homework 5" > solution.txt
+    path: solution.txt
+    ready: false

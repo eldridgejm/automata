@@ -1,0 +1,9 @@
+metadata:
+  number: 6
+  date: 2025-10-27
+  topic: "Hashing"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 6: Hashing" > slides.txt'
+    path: slides.txt
