@@ -7,7 +7,6 @@ import shutil
 import pytest
 
 import automata.materials
-import automata.website
 
 
 class SiteBuilder:
@@ -26,16 +25,7 @@ class SiteBuilder:
     """
 
     def __init__(self, path: pathlib.Path):
-        """Initialize a temporary site.
-
-        Creates the following directory structure:
-            path/
-            ├── _build/                  # Output directory
-            │   └── materials/
-            │       └── materials.json   # Empty materials universe
-            ├── pages/                   # Markdown pages directory
-            ├── static/                  # Static assets directory
-            └── theme/                   # Theme directory (copied from basic_theme)
+        """Initialize a temporary site in the given path.
 
         Parameters
         ----------
@@ -43,22 +33,19 @@ class SiteBuilder:
             Root directory for the test site.
 
         """
-        self.path = path
-        self.builddir = self.path / "_build"
-        self.builddir.mkdir()
-        (self.path / "pages").mkdir()
-        (self.path / "static").mkdir()
+        self.content_path = path / "content"
+        self.content_path.mkdir(parents=True)
 
-        # copy the theme into theme/
-        shutil.copytree(
-            pathlib.Path(__file__).parent / "basic_theme", self.path / "theme"
-        )
+        self.output_path = path / "_build"
+        self.output_path.mkdir()
+
+        self.materials_path = self.output_path / "materials"
 
         # write an empty materials.json to start
-        self.write_materials({"collections": {}})
+        self.write_materials_json({"collections": {}})
 
-    def make_page(self, name: str, content: str) -> None:
-        """Create a markdown page under pages/.
+    def make_page(self, filepath: str, content: str) -> None:
+        """Create a markdown page under content/.
 
         Parameters
         ----------
@@ -68,21 +55,8 @@ class SiteBuilder:
             Markdown content for the page.
 
         """
-        path = self.path / "pages" / name
-        path.write_text(content)
-
-    def make_theme_page(self, name: str, content: str) -> None:
-        """Create a theme page under theme/pages/.
-
-        Parameters
-        ----------
-        name : str
-            Filename of the theme page.
-        content : str
-            Page content.
-
-        """
-        path = self.path / "theme" / "pages" / name
+        path = self.content_path / filepath
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
 
     def use_example_materials(self, name: str = "basic_published") -> pathlib.Path:
@@ -101,30 +75,11 @@ class SiteBuilder:
 
         """
         src = pathlib.Path(__file__).parent / name
-        dst = self.builddir / "materials"
+        dst = self.output_path / "materials"
         shutil.copytree(src, dst, dirs_exist_ok=True)
         return dst
 
-    def use_example_theme(self, name: str) -> pathlib.Path:
-        """Replace theme/ with another theme fixture.
-
-        Parameters
-        ----------
-        name : str
-            Name of the theme directory in the test fixtures.
-
-        Returns
-        -------
-        pathlib.Path
-            Path to the theme directory.
-
-        """
-        src = pathlib.Path(__file__).parent / name
-        dst = self.path / "theme"
-        shutil.copytree(src, dst)
-        return dst
-
-    def get_output(self, name: str) -> str:
+    def get_output(self, filepath: str) -> str:
         """Read rendered output content from _build/.
 
         Parameters
@@ -138,9 +93,11 @@ class SiteBuilder:
             Contents of the output file.
 
         """
-        return (self.builddir / name).read_text()
+        return (self.output_path / filepath).read_text()
 
-    def write_materials(self, data: dict | automata.materials.Universe) -> pathlib.Path:
+    def write_materials_json(
+        self, data: dict | automata.materials.Universe
+    ) -> pathlib.Path:
         """Write materials.json from a raw dict or Universe.
 
         Parameters
@@ -160,7 +117,7 @@ class SiteBuilder:
         else:
             serialized = json.dumps(data)
 
-        dst = self.builddir / "materials"
+        dst = self.output_path / "materials"
         dst.mkdir(parents=True, exist_ok=True)
         with (dst / "materials.json").open("w") as fileobj:
             fileobj.write(serialized)
@@ -168,7 +125,7 @@ class SiteBuilder:
 
 
 @pytest.fixture
-def site(tmp_path) -> SiteBuilder:
+def tmpsite(tmp_path) -> SiteBuilder:
     """Provide a SiteBuilder instance in a temporary directory.
 
     Parameters
@@ -183,28 +140,3 @@ def site(tmp_path) -> SiteBuilder:
 
     """
     return SiteBuilder(pathlib.Path(tmp_path))
-
-
-@pytest.fixture
-def config(site):
-    """Provide a basic Config instance for website generation tests.
-
-    Parameters
-    ----------
-    site : SiteBuilder
-        The site builder fixture providing input/output paths.
-
-    Returns
-    -------
-    automata.website.Config
-        A Config object with basic theme configuration and no elements.
-
-    """
-    return automata.website.Config._from_dict(
-        {
-            "input_path": str(site.path),
-            "output_path": str(site.builddir),
-            "theme": {"name": "basic", "config": {"page_title": "Test Course"}},
-            "elements": {},
-        }
-    )
