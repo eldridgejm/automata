@@ -144,7 +144,7 @@ def test_uses_default_theme_if_none_specified(tmpsite):
 
 
 def test_override_theme_templates(tmpsite):
-    pass
+    assert 1 == 0
 
 
 """
