@@ -35,4 +35,4 @@ class Config(Prototype):
     urgent: bool = False
 
 
-element = basic_element("announcement_box.html", Config._schema())
+element = basic_element("elements/announcement_box.html", Config._schema())

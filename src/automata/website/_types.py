@@ -18,7 +18,9 @@ class RenderContext(NamedTuple):
     output_path: pathlib.Path
     materials: automata.materials.Universe
     vars: dict[str, Any]
+    element_configs: dict[str, dict[str, Any]]
     now: datetime.datetime
+    theme: "Theme"
 
 
 class Theme(NamedTuple):

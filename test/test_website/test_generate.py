@@ -199,28 +199,120 @@ def test_page_can_specify_template(tmpsite):
     assert "SIMPLE TEMPLATE" in tmpsite.get_output("one.html")
 
 
-"""
+def test_builtin_templates_can_be_extended_with_jinja_inheritance(tmpsite):
+    # given
+    tmpsite.make_page(
+        "one.md",
+        dedent(
+            """\
+            ---
+            template: custom.html
+            ---
+            HI THERE
+            """
+        ),
+    )
+
+    # the base template has a block named "footer" that we can override
+    customized_theme = automata.website.themes.default._replace(
+        template_overrides={
+            "custom.html": (
+                "{% extends 'base.html' %}"
+                "{% block footer %}"
+                "<footer>Custom footer content</footer>"
+                "{% endblock %}"
+            )
+        }
+    )
+
+    # when
+    automata.website.generate(
+        tmpsite.content_path, tmpsite.output_path, theme=customized_theme
+    )
+
+    # then
+    output = tmpsite.get_output("one.html")
+    assert "HI THERE" in output
+    assert "<footer>Custom footer content</footer>" in output
+
+
+def test_frontmatter_is_passed_to_base_template(tmpsite):
+    # given
+    tmpsite.make_page(
+        "one.md",
+        dedent(
+            """\
+            ---
+            title: My Custom Page Title
+            ---
+            My page is called ${ frontmatter.title }
+            """
+        ),
+    )
+
+    # when
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path)
+
+    # then
+    output = tmpsite.get_output("one.html")
+    assert "My page is called My Custom Page Title" in output
+
+
+def test_frontmatter_is_resolved_using_vars(tmpsite):
+    # given
+    tmpsite.make_page(
+        "one.md",
+        dedent(
+            """\
+            ---
+            title: ${ vars.page_title }
+            ---
+            My page is called ${ frontmatter.title }
+            """
+        ),
+    )
+
+    # when
+    automata.website.generate(
+        tmpsite.content_path,
+        tmpsite.output_path,
+        vars={"page_title": "Dynamically Generated Title"},
+    )
+
+    # then
+    output = tmpsite.get_output("one.html")
+    assert "My page is called Dynamically Generated Title" in output
+
+
+# elements =============================================================================
+
 
 def test_pages_have_access_to_element_configs(tmpsite):
     # given
-    site.make_page(
+    tmpsite.make_page(
         "one.md",
-        "${ elements.announcement_box(config['elements']['announcement_box']) }",
+        "${ elements.announcement_box(element_configs['announcement_box']) }",
     )
 
-    config = config._as_dict()
-    config["elements"]["announcement_box"] = {
-        "content": "This is a test",
-        "urgent": False,
+    element_configs = {
+        "announcement_box": {
+            "content": "This is a test",
+            "urgent": False,
+        }
     }
-    config = automata.website.Config._from_dict(config)
 
     # when
-    automata.website.generate(config)
+    automata.website.generate(
+        tmpsite.content_path,
+        tmpsite.output_path,
+        element_configs=element_configs,
+    )
 
     # then
-    assert "This is a test" in site.get_output("one.html")
+    assert "This is a test" in tmpsite.get_output("one.html")
 
+
+"""
 
 @mark.xfail
 def test_good_error_message_when_invalid_variable_in_element_config(tmpsite):
@@ -242,17 +334,6 @@ def test_good_error_message_when_invalid_variable_in_element_config(tmpsite):
         automata.website.generate(config)
 
     assert "this_doesnt_exist" in str(excinfo.value)
-
-
-def test_pages_are_rendered_in_base_template(tmpsite):
-    # given
-    site.make_page("one.md", "this is the page")
-
-    # when
-    automata.website.generate(config)
-
-    # then
-    assert "<html>" in site.get_output("one.html")
 
 
 def test_raises_if_an_unknown_variable_is_accessed_during_page_render(tmpsite):

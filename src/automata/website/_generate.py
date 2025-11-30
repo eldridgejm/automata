@@ -23,10 +23,11 @@ import shutil
 from collections.abc import Callable
 from functools import partial
 from types import ModuleType
-from typing import Any, Mapping, Optional, cast
+from typing import Any, Optional, cast
 
 import jinja2
 import markdown  # type: ignore
+import smartconfig
 import yaml
 
 import automata.materials
@@ -124,11 +125,12 @@ def _interpolate_using_template(
     theme: Theme,
     template_name: str,
     variables: dict[str, Any],
-    template_overrides: Mapping[str, str] | None,
 ) -> str:
     """Get a template string from the theme's templates module."""
-    if template_overrides is None:
+    if theme.template_overrides is None:
         template_overrides = {}
+    else:
+        template_overrides = theme.template_overrides
 
     load_from_module = jinja2.FunctionLoader(
         lambda name: _get_template_from_module(theme.templates, name)
@@ -207,6 +209,11 @@ def _render_page(
 
     frontmatter, page_contents = _strip_and_parse_yaml_frontmatter(raw_page_contents)
 
+    frontmatter = smartconfig.resolve(
+        {"this": frontmatter, **context._asdict()},
+        {"type": "dict", "extra_keys_schema": {"type": "any"}},
+    )["this"]
+
     _Elements = collections.namedtuple(
         "_Elements", ["announcement_box", "schedule", "listing", "people"]
     )
@@ -223,6 +230,7 @@ def _render_page(
         variables={
             "content": page_contents,
             "elements": elements_,
+            "frontmatter": frontmatter,
             **context._asdict(),
         },
         path=relative_path_to_page,
@@ -238,7 +246,6 @@ def _render_page(
         theme,
         template_name,
         {"body": body_html, **context._asdict()},
-        theme.template_overrides,
     )
 
     output_page_abspath = (output_root / relative_path_to_page).with_suffix(".html")
@@ -324,11 +331,15 @@ def generate(
     materials_path: Optional[pathlib.Path] = None,
     theme: Theme = themes.default,
     vars: dict[str, Any] | None = None,
+    element_configs: dict[str, Any] | None = None,
     now: Callable[[], datetime.datetime] = datetime.datetime.now,
 ) -> None:
     """Generate a static site from course materials."""
     if vars is None:
         vars = {}
+
+    if element_configs is None:
+        element_configs = {}
 
     output_path.mkdir(exist_ok=True)
 
@@ -345,7 +356,9 @@ def generate(
         output_path=output_path,
         materials=universe,
         vars=vars,
+        element_configs=element_configs,
         now=now(),
+        theme=theme,
     )
 
     _generate_from_content(content_path, output_path, theme, context)

@@ -1,5 +1,7 @@
 """Common utilities for element rendering."""
 
+import importlib.resources
+from types import ModuleType
 from typing import Any, Callable, Mapping
 
 import jinja2
@@ -12,8 +14,15 @@ from .. import exceptions
 from .._types import RenderContext
 
 
+def _get_template_from_module(templates: ModuleType, template_name: str) -> str:
+    """Get a template string from a module using importlib.resources."""
+    return importlib.resources.read_text(templates, template_name)
+
+
 def render_element_template(
-    template_name: str, context: RenderContext, extra_vars: Mapping[str, Any]
+    template_name: str,
+    context: RenderContext,
+    extra_vars: Mapping[str, Any],
 ) -> str:
     """Render an element template with shared filters and variables.
 
@@ -43,8 +52,21 @@ def render_element_template(
     str
         Rendered HTML string.
     """
+    if context.theme.template_overrides is None:
+        template_overrides = {}
+    else:
+        template_overrides = context.theme.template_overrides
+
+    load_from_module = jinja2.FunctionLoader(
+        lambda name: _get_template_from_module(context.theme.templates, name)
+    )
+
+    load_from_overrides = jinja2.DictLoader(template_overrides)
+
+    loader = jinja2.ChoiceLoader([load_from_overrides, load_from_module])
+
     element_environment = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(context.theme_path / "elements"),
+        loader=loader,
         undefined=jinja2.StrictUndefined,
         variable_start_string="${",
         variable_end_string="}",
