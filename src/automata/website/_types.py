@@ -3,7 +3,7 @@
 import datetime
 import pathlib
 from types import ModuleType
-from typing import Any, NamedTuple
+from typing import Any, Mapping, NamedTuple
 
 import smartconfig
 
@@ -25,3 +25,6 @@ class Theme(NamedTuple):
     templates: ModuleType
     static: ModuleType
     schema: smartconfig.types.Schema
+
+    template_overrides: Mapping[str, str] | None = None
+    static_overrides: Mapping[str, str | bytes] | None = None

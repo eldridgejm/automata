@@ -143,8 +143,24 @@ def test_uses_default_theme_if_none_specified(tmpsite):
     assert "html>" in tmpsite.get_output("one.html")
 
 
-def test_override_theme_templates(tmpsite):
-    assert 1 == 0
+def test_override_base_template(tmpsite):
+    # given
+    customized_themes = automata.website.themes.default._replace(
+        template_overrides={
+            "base.html": (
+                "<html><body>{% block content %}{% endblock %}TEST STRING</body></html>"
+            )
+        }
+    )
+    tmpsite.make_page("one.md", "this is the page")
+
+    # when
+    automata.website.generate(
+        tmpsite.content_path, tmpsite.output_path, theme=customized_themes
+    )
+
+    # then
+    assert "TEST STRING" in tmpsite.get_output("one.html")
 
 
 """

@@ -23,7 +23,7 @@ import shutil
 from collections.abc import Callable
 from functools import partial
 from types import ModuleType
-from typing import Any, Optional, cast
+from typing import Any, Mapping, Optional, cast
 
 import jinja2
 import markdown  # type: ignore
@@ -123,13 +123,22 @@ def _interpolate_using_template(
     theme: Theme,
     template_name: str,
     variables: dict[str, Any],
+    template_overrides: Mapping[str, str] | None,
 ) -> str:
     """Get a template string from the theme's templates module."""
+    if template_overrides is None:
+        template_overrides = {}
+
+    load_from_module = jinja2.FunctionLoader(
+        lambda name: _get_template_from_module(theme.templates, name)
+    )
+
+    load_from_overrides = jinja2.DictLoader(template_overrides)
+
+    loader = jinja2.ChoiceLoader([load_from_overrides, load_from_module])
 
     environment = jinja2.Environment(
-        loader=jinja2.FunctionLoader(
-            lambda name: _get_template_from_module(theme.templates, name)
-        ),
+        loader=loader,
         undefined=jinja2.StrictUndefined,
         variable_start_string="${",
         variable_end_string="}",
@@ -184,7 +193,10 @@ def _render_page(
     )
     body_html = _to_html(body_interpolated)
     page_html = _interpolate_using_template(
-        theme, "base.html", {"body": body_html, **context._asdict()}
+        theme,
+        "base.html",
+        {"body": body_html, **context._asdict()},
+        theme.template_overrides,
     )
 
     output_page_abspath = (output_root / relative_path_to_page).with_suffix(".html")
