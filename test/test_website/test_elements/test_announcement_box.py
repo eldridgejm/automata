@@ -7,9 +7,9 @@ import pytest
 import automata.website
 
 
-def test_announcement_box_raises_on_unknown_variable(site):
+def test_announcement_box_raises_on_unknown_variable(tmpsite):
     """Undefined variable in content triggers ElementError from evaluate filter."""
-    site.make_page(
+    tmpsite.make_page(
         "bad.md",
         dedent(
             """
@@ -22,12 +22,12 @@ def test_announcement_box_raises_on_unknown_variable(site):
     )
 
     with pytest.raises(automata.website.ElementError):
-        automata.website.generate(site.path, site.builddir)
+        automata.website.generate(tmpsite.content_path, tmpsite.output_path)
 
 
-def test_announcement_box_defaults_to_non_urgent(site):
+def test_announcement_box_defaults_to_non_urgent(tmpsite):
     """Omitting urgent uses the Prototype default and renders non-urgent styling."""
-    site.make_page(
+    tmpsite.make_page(
         "default.md",
         dedent(
             """
@@ -38,17 +38,17 @@ def test_announcement_box_defaults_to_non_urgent(site):
         ),
     )
 
-    automata.website.generate(site.path, site.builddir)
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path)
 
-    output = site.get_output("default.html")
+    output = tmpsite.get_output("default.html")
     assert "Hello world" in output
     assert 'class="announcement urgent"' not in output
     assert 'class="announcement">' in output
 
 
-def test_announcement_box_renders_content_and_urgency(site):
+def test_announcement_box_renders_content_and_urgency(tmpsite):
     """Renders content and marks urgent announcements."""
-    site.make_page(
+    tmpsite.make_page(
         "ok.md",
         dedent(
             """
@@ -60,8 +60,8 @@ def test_announcement_box_renders_content_and_urgency(site):
         ),
     )
 
-    automata.website.generate(site.path, site.builddir)
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path)
 
-    output = site.get_output("ok.html")
+    output = tmpsite.get_output("ok.html")
     assert "Hello world" in output
     assert 'class="announcement urgent"' in output

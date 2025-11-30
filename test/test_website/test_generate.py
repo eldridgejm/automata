@@ -312,6 +312,46 @@ def test_pages_have_access_to_element_configs(tmpsite):
     assert "This is a test" in tmpsite.get_output("one.html")
 
 
+def test_override_element_template(tmpsite):
+    # given
+    customized_theme = automata.website.themes.default._replace(
+        template_overrides={
+            "elements/announcement_box.html": (
+                "<div class='custom-announcement'>"
+                "${ element_config.content }"
+                " "
+                "CUSTOM TEMPLATE"
+                "</div>"
+            )
+        }
+    )
+
+    tmpsite.make_page(
+        "one.md",
+        "${ elements.announcement_box(element_configs['announcement_box']) }",
+    )
+
+    element_configs = {
+        "announcement_box": {
+            "content": "This is a test",
+            "urgent": False,
+        }
+    }
+
+    # when
+    automata.website.generate(
+        tmpsite.content_path,
+        tmpsite.output_path,
+        element_configs=element_configs,
+        theme=customized_theme,
+    )
+
+    # then
+    output = tmpsite.get_output("one.html")
+    assert "This is a test" in output
+    assert "CUSTOM TEMPLATE" in output
+
+
 """
 
 @mark.xfail
