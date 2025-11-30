@@ -2,6 +2,7 @@
 
 import datetime
 import pathlib
+from types import ModuleType
 from typing import Any, NamedTuple
 
 import smartconfig
@@ -21,6 +22,6 @@ class RenderContext(NamedTuple):
 
 
 class Theme(NamedTuple):
-    templates: pathlib.Path | list[pathlib.Path]
-    static: pathlib.Path | list[pathlib.Path]
+    templates: ModuleType
+    static: ModuleType
     schema: smartconfig.types.Schema
