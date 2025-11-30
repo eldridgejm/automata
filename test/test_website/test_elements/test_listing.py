@@ -8,8 +8,8 @@ import smartconfig
 import automata.website
 
 
-def test_listing_renders_publications_in_order(site):
-    site.make_page(
+def test_listing_renders_publications_in_order(tmpsite):
+    tmpsite.make_page(
         "listing.md",
         dedent(
             """
@@ -25,17 +25,17 @@ def test_listing_renders_publications_in_order(site):
             """
         ),
     )
-    materials_path = site.use_example_published()
+    materials_path = tmpsite.use_example_materials()
 
-    automata.website.generate(site.path, site.builddir, materials_path)
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path, materials_path)
 
-    output = site.get_output("listing.html")
+    output = tmpsite.get_output("listing.html")
     assert "Name" in output and "Due" in output
     assert output.index("Homework 01") < output.index("Homework 02")
 
 
-def test_listing_supports_numbered_rows(site):
-    site.make_page(
+def test_listing_supports_numbered_rows(tmpsite):
+    tmpsite.make_page(
         "listing.md",
         dedent(
             """
@@ -50,18 +50,18 @@ def test_listing_supports_numbered_rows(site):
             """
         ),
     )
-    materials_path = site.use_example_published()
+    materials_path = tmpsite.use_example_materials()
 
-    automata.website.generate(site.path, site.builddir, materials_path)
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path, materials_path)
 
-    output = site.get_output("listing.html")
+    output = tmpsite.get_output("listing.html")
     assert '<th scope="row"> 1' in output
     assert '<th scope="row"> 2' in output
 
 
-def test_listing_uses_fallback_when_requirements_missing(site):
+def test_listing_uses_fallback_when_requirements_missing(tmpsite):
     """Missing artifacts/metadata trigger fallback cell content via requires."""
-    materials_path = site.write_materials(
+    materials_path = tmpsite.write_materials_json(
         {
             "collections": {
                 "homeworks": {
@@ -82,7 +82,7 @@ def test_listing_uses_fallback_when_requirements_missing(site):
         }
     )
 
-    site.make_page(
+    tmpsite.make_page(
         "listing.md",
         dedent(
             """
@@ -105,15 +105,15 @@ def test_listing_uses_fallback_when_requirements_missing(site):
         ),
     )
 
-    automata.website.generate(site.path, site.builddir, materials_path)
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path, materials_path)
 
-    output = site.get_output("listing.html")
+    output = tmpsite.get_output("listing.html")
     assert "Missing info" in output
 
 
-def test_listing_requires_non_null_metadata(site):
+def test_listing_requires_non_null_metadata(tmpsite):
     """Fallback triggers when non-null metadata is missing (value is None)."""
-    materials_path = site.write_materials(
+    materials_path = tmpsite.write_materials_json(
         {
             "collections": {
                 "homeworks": {
@@ -136,7 +136,7 @@ def test_listing_requires_non_null_metadata(site):
         }
     )
 
-    site.make_page(
+    tmpsite.make_page(
         "listing.md",
         dedent(
             """
@@ -159,15 +159,15 @@ def test_listing_requires_non_null_metadata(site):
         ),
     )
 
-    automata.website.generate(site.path, site.builddir, materials_path)
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path, materials_path)
 
-    output = site.get_output("listing.html")
+    output = tmpsite.get_output("listing.html")
     assert "Due date missing" in output
 
 
-def test_listing_requires_missing_metadata_key(site):
+def test_listing_requires_missing_metadata_key(tmpsite):
     """Fallback triggers when required metadata key is absent."""
-    materials_path = site.write_materials(
+    materials_path = tmpsite.write_materials_json(
         {
             "collections": {
                 "homeworks": {
@@ -190,7 +190,7 @@ def test_listing_requires_missing_metadata_key(site):
         }
     )
 
-    site.make_page(
+    tmpsite.make_page(
         "listing.md",
         dedent(
             """
@@ -213,15 +213,15 @@ def test_listing_requires_missing_metadata_key(site):
         ),
     )
 
-    automata.website.generate(site.path, site.builddir, materials_path)
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path, materials_path)
 
-    output = site.get_output("listing.html")
+    output = tmpsite.get_output("listing.html")
     assert "Required metadata missing" in output
 
 
-def test_listing_validates_schema(site):
+def test_listing_validates_schema(tmpsite):
     # Missing required "columns" field should fail schema resolution.
-    site.make_page(
+    tmpsite.make_page(
         "listing.md",
         dedent(
             """
@@ -231,7 +231,9 @@ def test_listing_validates_schema(site):
             """
         ),
     )
-    materials_path = site.use_example_published()
+    materials_path = tmpsite.use_example_materials()
 
     with pytest.raises(smartconfig.exceptions.ResolutionError):
-        automata.website.generate(site.path, site.builddir, materials_path)
+        automata.website.generate(
+            tmpsite.content_path, tmpsite.output_path, materials_path
+        )
