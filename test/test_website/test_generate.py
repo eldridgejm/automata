@@ -143,6 +143,10 @@ def test_uses_default_theme_if_none_specified(tmpsite):
     assert "html>" in tmpsite.get_output("one.html")
 
 
+def test_override_theme_templates(tmpsite):
+    pass
+
+
 """
 
 def test_pages_have_access_to_element_configs(tmpsite):
