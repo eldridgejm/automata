@@ -8,9 +8,9 @@ import smartconfig
 import automata.website
 
 
-def test_people_renders_minimal_group(site):
+def test_people_renders_minimal_group(tmpsite):
     """Render a group with required fields only."""
-    site.make_page(
+    tmpsite.make_page(
         "people.md",
         dedent(
             """
@@ -23,17 +23,17 @@ def test_people_renders_minimal_group(site):
         ),
     )
 
-    automata.website.generate(site.path, site.builddir)
+    automata.website.generate(tmpsite.content_path, tmpsite.output_path)
 
-    output = site.get_output("people.html")
+    output = tmpsite.get_output("people.html")
     assert "Instructors" in output
     assert "Ada" in output
     assert "role" not in output  # optional fields omitted
 
 
-def test_people_validates_required_member_fields(site):
+def test_people_validates_required_member_fields(tmpsite):
     """Missing required member field triggers schema resolution error."""
-    site.make_page(
+    tmpsite.make_page(
         "people.md",
         dedent(
             """
@@ -47,4 +47,4 @@ def test_people_validates_required_member_fields(site):
     )
 
     with pytest.raises(smartconfig.exceptions.ResolutionError):
-        automata.website.generate(site.path, site.builddir)
+        automata.website.generate(tmpsite.content_path, tmpsite.output_path)

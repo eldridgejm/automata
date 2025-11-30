@@ -28,7 +28,7 @@ from typing import Any, Optional, cast
 import jinja2
 import markdown  # type: ignore
 import smartconfig
-import yaml
+import yaml  # type: ignore
 
 import automata.materials
 
@@ -127,10 +127,9 @@ def _interpolate_using_template(
     variables: dict[str, Any],
 ) -> str:
     """Get a template string from the theme's templates module."""
-    if theme.template_overrides is None:
-        template_overrides = {}
-    else:
-        template_overrides = theme.template_overrides
+    template_overrides: dict[str, str] = {}
+    if theme.template_overrides is not None:
+        template_overrides = dict(theme.template_overrides)
 
     load_from_module = jinja2.FunctionLoader(
         lambda name: _get_template_from_module(theme.templates, name)

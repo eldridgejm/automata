@@ -455,7 +455,7 @@ def element(
         this_week = None
 
     return render_element_template(
-        "schedule.html",
+        "elements/schedule.html",
         context,
         extra_vars=dict(
             element_config=element_config,

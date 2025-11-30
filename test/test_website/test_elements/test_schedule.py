@@ -68,12 +68,12 @@ def make_universe(now: datetime.datetime) -> materials.Universe:
     )
 
 
-def test_schedule_renders_current_and_future_weeks(site):
+def test_schedule_renders_current_and_future_weeks(tmpsite):
     """Render current/future weeks with resources, parts, and fallbacks."""
     now = datetime.datetime(2024, 1, 9, 12, 0, 0)
-    site.write_materials(make_universe(now))
+    tmpsite.write_materials_json(make_universe(now))
 
-    site.make_page(
+    tmpsite.make_page(
         "schedule.md",
         dedent(
             """
@@ -152,9 +152,9 @@ def test_schedule_renders_current_and_future_weeks(site):
     )
 
     automata.website.generate(
-        site.path,
-        site.builddir,
-        materials_path=site.builddir / "published",
+        tmpsite.content_path,
+        tmpsite.output_path,
+        materials_path=tmpsite.materials_path,
         vars={
             "first_week_start_date": datetime.date(2024, 1, 8),
             "midterm_date": datetime.date(2024, 1, 9),
@@ -162,19 +162,19 @@ def test_schedule_renders_current_and_future_weeks(site):
         now=lambda: now,
     )
 
-    output = site.get_output("schedule.html")
+    output = tmpsite.get_output("schedule.html")
     assert "This Week" in output and "future weeks" in output
     assert "No slides" in output  # requires + text_if_missing path
     assert "Part: Part A" in output  # key_for_parts branch
     assert "Solution coming soon" in output  # missing artifact fallback
 
 
-def test_schedule_handles_no_current_week_and_orders_last(site):
+def test_schedule_handles_no_current_week_and_orders_last(tmpsite):
     """Handle no current week, ordering with this_week_last, and skip separators."""
     now = datetime.datetime(2023, 12, 1, 12, 0, 0)
-    site.write_materials(make_universe(now=datetime.datetime(2024, 1, 8)))
+    tmpsite.write_materials_json(make_universe(now=datetime.datetime(2024, 1, 8)))
 
-    site.make_page(
+    tmpsite.make_page(
         "schedule.md",
         dedent(
             """
@@ -198,25 +198,25 @@ def test_schedule_handles_no_current_week_and_orders_last(site):
     )
 
     automata.website.generate(
-        site.path,
-        site.builddir,
-        materials_path=site.builddir / "published",
+        tmpsite.content_path,
+        tmpsite.output_path,
+        materials_path=tmpsite.materials_path,
         vars={"first_week_start_date": datetime.date(2024, 1, 8)},
         now=lambda: now,
     )
 
-    output = site.get_output("schedule.html")
+    output = tmpsite.get_output("schedule.html")
     assert "This Week" in output  # first week still labelled
     assert "future weeks" not in output  # this_week None path should skip separators
     assert output.index("Week 2") > output.index("This Week")  # ordered ascending
 
 
-def test_schedule_renders_week_announcements(site):
+def test_schedule_renders_week_announcements(tmpsite):
     """Render week-specific announcements with urgent styling."""
     now = datetime.datetime(2024, 1, 9, 12, 0, 0)
-    site.write_materials(make_universe(now))
+    tmpsite.write_materials_json(make_universe(now))
 
-    site.make_page(
+    tmpsite.make_page(
         "schedule.md",
         dedent(
             """
@@ -241,24 +241,24 @@ def test_schedule_renders_week_announcements(site):
     )
 
     automata.website.generate(
-        site.path,
-        site.builddir,
-        materials_path=site.builddir / "published",
+        tmpsite.content_path,
+        tmpsite.output_path,
+        materials_path=tmpsite.materials_path,
         vars={"first_week_start_date": datetime.date(2024, 1, 8)},
         now=lambda: now,
     )
 
-    output = site.get_output("schedule.html")
+    output = tmpsite.get_output("schedule.html")
     assert "Urgent note" in output
     assert "alert-danger" in output
 
 
-def test_schedule_validates_schema(site):
+def test_schedule_validates_schema(tmpsite):
     """Missing required fields should raise during config resolution."""
     now = datetime.datetime(2024, 1, 9, 12, 0, 0)
-    site.write_materials(make_universe(now))
+    tmpsite.write_materials_json(make_universe(now))
 
-    site.make_page(
+    tmpsite.make_page(
         "schedule.md",
         dedent(
             """
@@ -272,9 +272,9 @@ def test_schedule_validates_schema(site):
 
     with pytest.raises(smartconfig.exceptions.ResolutionError):
         automata.website.generate(
-            site.path,
-            site.builddir,
-            materials_path=site.builddir / "published",
+            tmpsite.content_path,
+            tmpsite.output_path,
+            materials_path=tmpsite.materials_path,
             vars={"first_week_start_date": datetime.date(2024, 1, 8)},
             now=lambda: now,
         )

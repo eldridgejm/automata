@@ -1,0 +1,15 @@
+{% for group in element_config['groups'] %}
+<div class="people-group">
+    <h2>${ group['name'] }</h2>
+    <ul>
+    {% for person in group['members'] %}
+        <li class="person">
+            <span class="name">${ person['name'] }</span>
+            {% if person.get('role') %}<span class="role">${ person['role'] }</span>{% endif %}
+            {% if person.get('website') %}<a class="website" href="${ person['website'] }">website</a>{% endif %}
+            {% if person.get('about') %}<p class="about">${ person['about'] }</p>{% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+{% endfor %}

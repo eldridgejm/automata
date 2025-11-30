@@ -52,10 +52,9 @@ def render_element_template(
     str
         Rendered HTML string.
     """
-    if context.theme.template_overrides is None:
-        template_overrides = {}
-    else:
-        template_overrides = context.theme.template_overrides
+    template_overrides: dict[str, str] = {}
+    if context.theme.template_overrides is not None:
+        template_overrides = dict(context.theme.template_overrides)
 
     load_from_module = jinja2.FunctionLoader(
         lambda name: _get_template_from_module(context.theme.templates, name)
