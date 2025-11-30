@@ -1,5 +1,7 @@
 """Tests for site generator functionality."""
 
+from textwrap import dedent
+
 from pytest import raises
 
 import automata.website
@@ -145,7 +147,7 @@ def test_uses_default_theme_if_none_specified(tmpsite):
 
 def test_override_base_template(tmpsite):
     # given
-    customized_themes = automata.website.themes.default._replace(
+    customized_theme = automata.website.themes.default._replace(
         template_overrides={
             "base.html": (
                 "<html><body>{% block content %}{% endblock %}TEST STRING</body></html>"
@@ -156,11 +158,45 @@ def test_override_base_template(tmpsite):
 
     # when
     automata.website.generate(
-        tmpsite.content_path, tmpsite.output_path, theme=customized_themes
+        tmpsite.content_path, tmpsite.output_path, theme=customized_theme
     )
 
     # then
     assert "TEST STRING" in tmpsite.get_output("one.html")
+
+
+def test_page_can_specify_template(tmpsite):
+    # given
+    tmpsite.make_page(
+        "one.md",
+        dedent(
+            """\
+            ---
+            template: simple.html
+            ---
+            this is the page
+            """
+        ),
+    )
+
+    customized_theme = automata.website.themes.default._replace(
+        template_overrides={
+            "simple.html": (
+                "<html><body>"
+                "SIMPLE TEMPLATE"
+                "{% block content %}{% endblock %}"
+                "</body></html>"
+            )
+        }
+    )
+
+    # when
+    automata.website.generate(
+        tmpsite.content_path, tmpsite.output_path, theme=customized_theme
+    )
+
+    # then
+    assert "SIMPLE TEMPLATE" in tmpsite.get_output("one.html")
 
 
 """

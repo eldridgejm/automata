@@ -27,6 +27,7 @@ from typing import Any, Mapping, Optional, cast
 
 import jinja2
 import markdown  # type: ignore
+import yaml
 
 import automata.materials
 
@@ -149,6 +150,39 @@ def _interpolate_using_template(
     return environment.get_template(template_name).render(**variables)
 
 
+def _strip_and_parse_yaml_frontmatter(
+    contents: str,
+) -> tuple[dict[str, Any], str]:
+    """Strip and parse YAML frontmatter from the start of a markdown file.
+
+    Parameters
+    ----------
+    contents : str
+        The full contents of the markdown file.
+
+    Returns
+    -------
+    tuple[dict[str, Any], str]
+        A tuple containing the parsed frontmatter as a dictionary and the remaining
+        markdown content as a string.
+
+    """
+    if contents.startswith("---"):
+        end_frontmatter_idx = contents.find("\n---", 3)
+        if end_frontmatter_idx != -1:
+            frontmatter_str = contents[3:end_frontmatter_idx].strip()
+            remaining_content = contents[end_frontmatter_idx + 4 :].lstrip()
+
+            frontmatter = yaml.safe_load(frontmatter_str)
+            if not isinstance(frontmatter, dict):
+                raise exceptions.PageError(
+                    "YAML frontmatter must be a mapping/dictionary."
+                )
+            return frontmatter, remaining_content
+
+    return {}, contents
+
+
 def _render_page(
     content_root: pathlib.Path,
     relative_path_to_page: pathlib.Path,
@@ -169,7 +203,9 @@ def _render_page(
 
     """
     with (content_root / relative_path_to_page).open() as fileobj:
-        input_page_contents = fileobj.read()
+        raw_page_contents = fileobj.read()
+
+    frontmatter, page_contents = _strip_and_parse_yaml_frontmatter(raw_page_contents)
 
     _Elements = collections.namedtuple(
         "_Elements", ["announcement_box", "schedule", "listing", "people"]
@@ -183,18 +219,24 @@ def _render_page(
     )
 
     body_interpolated = _interpolate(
-        input_page_contents,
+        page_contents,
         variables={
-            "content": input_page_contents,
+            "content": page_contents,
             "elements": elements_,
             **context._asdict(),
         },
         path=relative_path_to_page,
     )
     body_html = _to_html(body_interpolated)
+
+    if "template" in frontmatter:
+        template_name = frontmatter["template"]
+    else:
+        template_name = "base.html"
+
     page_html = _interpolate_using_template(
         theme,
-        "base.html",
+        template_name,
         {"body": body_html, **context._asdict()},
         theme.template_overrides,
     )
