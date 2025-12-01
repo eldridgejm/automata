@@ -1,5 +1,0 @@
-- [ ] Update generate tests to use the new arguments.
-- [ ] Design a minimal Theme class.
-- [ ] Remove _config.py
-- [ ] Update RenderContext
-- [ ] Update generate() to use the new arguments.
