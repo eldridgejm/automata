@@ -52,44 +52,14 @@ data/
 """
 
 import datetime
-import pathlib
 from typing import Any
 
+from ._config import Config
 from ._render import RenderContext, render_page_from_markdown
 
 
-def _render_content_into_website(
-    content_path: pathlib.Path,
-    website_path: pathlib.Path,
-    context: RenderContext,
-):
-    """Renders content from the content directory into the website output directory.
-
-    Markdown files are converted to HTML, while other files are copied as-is. Files are
-    processed recursively to preserve directory structure.
-
-    """
-
-    for path in content_path.rglob("*"):
-        relative_path = path.relative_to(content_path)
-        output_path = website_path / relative_path
-
-        if path.is_dir():
-            output_path.mkdir(parents=True, exist_ok=True)
-
-        elif path.suffix.lower() == ".md":
-            markdown_contents = path.read_text()
-            html_contents = render_page_from_markdown(markdown_contents, context)
-            output_path.with_suffix(".html").write_text(html_contents)
-        else:
-            # copy other files as-is
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(path.read_bytes())
-
-
 def generate(
-    content_path: pathlib.Path,
-    website_path: pathlib.Path,
+    config: Config,
     vars: dict[str, Any] | None = None,
     now: datetime.datetime | None = None,
 ):
@@ -104,4 +74,18 @@ def generate(
 
     context = RenderContext(now=now, vars=vars)
 
-    _render_content_into_website(content_path, website_path, context)
+    for path in config.content_directory.rglob("*"):
+        relative_path = path.relative_to(config.content_directory)
+        output_path = config.build_directory / relative_path
+
+        if path.is_dir():
+            output_path.mkdir(parents=True, exist_ok=True)
+
+        elif path.suffix.lower() == ".md":
+            markdown_contents = path.read_text()
+            html_contents = render_page_from_markdown(markdown_contents, context)
+            output_path.with_suffix(".html").write_text(html_contents)
+        else:
+            # copy other files as-is
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(path.read_bytes())

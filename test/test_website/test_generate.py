@@ -7,8 +7,13 @@ def test_converts_pages_from_markdown_to_html(tmpsite):
     # given
     tmpsite.make_page("one.md", "# This is a header\n**this is bold!**")
 
+    config = automata.website.Config(
+        content_directory=tmpsite.content_path,
+        build_directory=tmpsite.website_path,
+    )
+
     # when
-    automata.website.generate(tmpsite.content_path, tmpsite.website_path)
+    automata.website.generate(config)
 
     # then
     assert "This is a header</h1>" in tmpsite.get_output("one.html")
@@ -19,8 +24,13 @@ def test_converts_pages_from_markdown_to_html_recursively(tmpsite):
     tmpsite.make_page("index.md", "Home page")
     tmpsite.make_page("subdir/one.md", "# This is a header\n**this is bold!**")
 
+    config = automata.website.Config(
+        content_directory=tmpsite.content_path,
+        build_directory=tmpsite.website_path,
+    )
+
     # when
-    automata.website.generate(tmpsite.content_path, tmpsite.website_path)
+    automata.website.generate(config)
 
     # then
     assert "This is a header</h1>" in tmpsite.get_output("subdir/one.html")
@@ -32,8 +42,13 @@ def test_copies_files_from_content_to_output(tmpsite):
     # given
     tmpsite.make_page("data/tabular/one.txt", "This is a text file in a subdir.")
 
+    config = automata.website.Config(
+        content_directory=tmpsite.content_path,
+        build_directory=tmpsite.website_path,
+    )
+
     # when
-    automata.website.generate(tmpsite.content_path, tmpsite.website_path)
+    automata.website.generate(config)
 
     # then
     assert "This is a text file in a subdir." in tmpsite.get_output(
@@ -45,10 +60,13 @@ def test_vars_can_be_used_in_markdown_pages(tmpsite):
     # given
     tmpsite.make_page("index.md", "The value of 'foo' is ${ vars.foo }.")
 
-    # when
-    automata.website.generate(
-        tmpsite.content_path, tmpsite.website_path, vars={"foo": "bar"}
+    config = automata.website.Config(
+        content_directory=tmpsite.content_path,
+        build_directory=tmpsite.website_path,
     )
+
+    # when
+    automata.website.generate(config, vars={"foo": "bar"})
 
     # then
     assert "The value of 'foo' is bar." in tmpsite.get_output("index.html")

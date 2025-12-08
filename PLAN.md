@@ -5,8 +5,12 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Website abstraction (structure of the input and output)
 - [x] The RenderContext abstraction
 - [x] Low-level single page renderers (for use with, e.g., the practice problem generator)
-- [ ] generate() signature
-- [ ] Simple website generation (markdown to HTML)
+- [x] Config type
+- [x] generate() signature
+- [x] Simple website generation (markdown to HTML)
+- [ ] Convert HTML files as well?
+  - maybe they have frontmatter
+  - maybe they have a special extension, like `.html.unrendered`?
 - [ ] Page frontmatter
 - [ ] Base path handling
 - [ ] The "theme" abstraction
@@ -14,6 +18,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [ ] Theme overrides (templates and static files)
 - [ ] The "element" abstraction
 - [ ] Default configuration of elements
+- [ ] Website generation plugins
 
 ## Website abstraction
 
@@ -115,5 +120,30 @@ def render_page_from_html(
 
     """
     ...
+
+
+def generate(
+    site_config: Optional[Dict[str, Any]] = None,
+    vars: Optional[Dict[str, Any]] = None,
+    now: Optional[datetime.datetime] = None,
+) -> None:
+    """Generate a complete website from the given content and materials.
+
+    """
+    ...
+
+# ----
+
+config = automata.load_config("./automata.yaml")
+
+context = RenderContext.from_site_config(site_config, vars, now=None)
+
+render_page_from_markdown(
+    "# Hello, world!",
+    context
+)
+
+
+
 
 ```
