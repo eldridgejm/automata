@@ -16,8 +16,8 @@ def test_from_markdown_converts_markdown_to_html(tmpsite):
     # given
     markdown_content = "# Hello, world!"
     config = Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
     context = RenderContext(config=config)
 
@@ -37,8 +37,8 @@ def test_from_markdown_interpolates(tmpsite):
     # given
     markdown_content = "The value of 'foo' is ${ vars.foo }."
     config = Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
     context = RenderContext(config=config, vars={"foo": "bar"})
 
@@ -58,8 +58,8 @@ def test_from_markdown_raises_for_missing_variable(tmpsite):
     # given
     markdown_content = "The value of 'foo' is ${ foo }."
     config = Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
     context = RenderContext(config=config)
 
@@ -82,8 +82,8 @@ def test_from_html_interpolates(tmpsite):
     # given
     html_content = "<p>The value of 'foo' is ${ vars.foo }.</p>"
     config = Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
     context = RenderContext(config=config, vars={"foo": "bar"})
 
@@ -103,8 +103,8 @@ def test_from_html_raises_for_missing_variable(tmpsite):
     # given
     html_content = "<p>The value of 'foo' is ${ foo }.</p>"
     config = Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
     context = RenderContext(config=config)
 

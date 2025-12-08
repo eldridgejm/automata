@@ -8,8 +8,8 @@ def test_converts_pages_from_markdown_to_html(tmpsite):
     tmpsite.make_page("one.md", "# This is a header\n**this is bold!**")
 
     config = automata.website.Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -25,8 +25,8 @@ def test_converts_pages_from_markdown_to_html_recursively(tmpsite):
     tmpsite.make_page("subdir/one.md", "# This is a header\n**this is bold!**")
 
     config = automata.website.Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -43,8 +43,8 @@ def test_copies_files_from_content_to_output(tmpsite):
     tmpsite.make_page("data/tabular/one.txt", "This is a text file in a subdir.")
 
     config = automata.website.Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -61,8 +61,8 @@ def test_vars_can_be_used_in_markdown_pages(tmpsite):
     tmpsite.make_page("index.md", "The value of 'foo' is ${ vars.foo }.")
 
     config = automata.website.Config(
-        content_directory=tmpsite.content_path,
-        build_directory=tmpsite.website_path,
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
     )
 
     # when

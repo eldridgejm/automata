@@ -28,13 +28,13 @@ class SiteBuilder:
             Root directory for the test site.
 
         """
-        self.content_path = path / "content"
-        self.content_path.mkdir(parents=True)
+        self.content_directory = path / "content"
+        self.content_directory.mkdir(parents=True)
 
-        self.website_path = path / "_build"
-        self.website_path.mkdir()
+        self.build_directory = path / "_build"
+        self.build_directory.mkdir()
 
-        self.materials_path = self.website_path / "materials"
+        self.materials_directory = self.build_directory / "materials"
 
         # write an empty materials.json to start
         self.write_materials_json({"collections": {}})
@@ -50,7 +50,7 @@ class SiteBuilder:
             Markdown content for the page.
 
         """
-        path = self.content_path / filepath
+        path = self.content_directory / filepath
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
 
@@ -68,7 +68,7 @@ class SiteBuilder:
             Contents of the output file.
 
         """
-        return (self.website_path / filepath).read_text()
+        return (self.build_directory / filepath).read_text()
 
     def write_materials_json(
         self, data: dict | automata.materials.Universe
@@ -92,7 +92,7 @@ class SiteBuilder:
         else:
             serialized = json.dumps(data)
 
-        dst = self.website_path / "materials"
+        dst = self.build_directory / "materials"
         dst.mkdir(parents=True, exist_ok=True)
         with (dst / "materials.json").open("w") as fileobj:
             fileobj.write(serialized)
