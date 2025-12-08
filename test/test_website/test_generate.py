@@ -104,3 +104,72 @@ def test_vars_can_be_used_in_html_pages(tmpsite):
 
     # then
     assert "<p>The value of 'foo' is bar.</p>" in tmpsite.get_output("about.html")
+
+
+def test_files_with_raw_suffix_are_copied_with_raw_suffix_removed(tmpsite):
+    # given
+    tmpsite.make_page("data/sample.txt.NO_RENDER", "This is a raw text file.")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    assert "This is a raw text file." in tmpsite.get_output("data/sample.txt")
+
+
+def test_html_files_with_raw_suffix_are_not_rendered(tmpsite):
+    # given
+    tmpsite.make_page(
+        "info.html.NO_RENDER", "<h1>Info Page</h1><p>This is ${ vars.foo }.</p>"
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config, vars={"foo": "bar"})
+
+    # then
+    assert "<h1>Info Page</h1><p>This is ${ vars.foo }.</p>" in tmpsite.get_output(
+        "info.html"
+    )
+
+
+def test_markdown_files_with_raw_suffix_are_not_rendered(tmpsite):
+    # given
+    tmpsite.make_page("readme.md.NO_RENDER", "# Readme\nThis is ${ vars.foo }.")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config, vars={"foo": "bar"})
+
+    # then
+    assert "# Readme\nThis is ${ vars.foo }." in tmpsite.get_output("readme.md")
+
+
+def test_raw_suffix_of_none_means_nothing_is_renamed(tmpsite):
+    # given
+    tmpsite.make_page("data/sample.txt.NO_RENDER", "This is a raw text file.")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        no_render_suffix=None,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    assert "This is a raw text file." in tmpsite.get_output("data/sample.txt.NO_RENDER")

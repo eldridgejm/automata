@@ -8,3 +8,5 @@ class Config:
 
     content_directory: pathlib.Path
     build_directory: pathlib.Path
+
+    no_render_suffix: str | None = ".no_render"
