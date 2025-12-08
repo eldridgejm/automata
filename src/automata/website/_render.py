@@ -7,11 +7,14 @@ from typing import Any
 import jinja2
 import markdown
 
+from ._config import Config
+
 
 @dataclasses.dataclass
 class RenderContext:
     """Context available at the time of rendering."""
 
+    config: Config
     now: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)
     vars: dict[str, Any] = dataclasses.field(default_factory=dict)
 

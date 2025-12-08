@@ -72,7 +72,7 @@ def generate(
     if now is None:
         now = datetime.datetime.now()
 
-    context = RenderContext(now=now, vars=vars)
+    context = RenderContext(config=config, now=now, vars=vars)
 
     for path in config.content_directory.rglob("*"):
         relative_path = path.relative_to(config.content_directory)
