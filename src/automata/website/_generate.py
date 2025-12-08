@@ -55,7 +55,7 @@ import datetime
 from typing import Any
 
 from ._config import Config
-from ._render import RenderContext, render_page_from_markdown
+from ._render import RenderContext, render_page_from_html, render_page_from_markdown
 
 
 def generate(
@@ -82,9 +82,16 @@ def generate(
             output_path.mkdir(parents=True, exist_ok=True)
 
         elif path.suffix.lower() == ".md":
-            markdown_contents = path.read_text()
-            html_contents = render_page_from_markdown(markdown_contents, context)
-            output_path.with_suffix(".html").write_text(html_contents)
+            raw_markdown = path.read_text()
+            rendered_html = render_page_from_markdown(raw_markdown, context)
+            output_path.with_suffix(".html").write_text(rendered_html)
+        elif path.suffix.lower() == ".html":
+            raw_html = path.read_text()
+            rendered_html = render_page_from_html(
+                raw_html,
+                context,
+            )
+            output_path.write_text(rendered_html)
         else:
             # copy other files as-is
             output_path.parent.mkdir(parents=True, exist_ok=True)
