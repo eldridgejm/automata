@@ -11,7 +11,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Convert HTML files as well?
   - maybe they have frontmatter
   - maybe they have a special extension, like `.html.unrendered`?
-- [ ] Searching for materials in the build directory
+- [x] Searching for materials in the content directory
 - [ ] Page frontmatter
 - [ ] Base path handling
 - [ ] The "theme" abstraction

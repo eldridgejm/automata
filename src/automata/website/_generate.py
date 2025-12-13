@@ -32,6 +32,42 @@ def _load_materials(
     )
 
 
+def _render_and_write_markdown(
+    markdown_path: pathlib.Path, output_path: pathlib.Path, context: RenderContext
+) -> None:
+    raw_markdown = markdown_path.read_text()
+    rendered_html = render_page_from_markdown(raw_markdown, context)
+    output_path.with_suffix(".html").write_text(rendered_html)
+
+
+def _render_and_write_html(
+    html_path: pathlib.Path, output_path: pathlib.Path, context: RenderContext
+) -> None:
+    raw_html = html_path.read_text()
+    rendered_html = render_page_from_html(
+        raw_html,
+        context,
+    )
+    output_path.write_text(rendered_html)
+
+
+def _copy_file_to_output(
+    path: pathlib.Path, output_path: pathlib.Path, config: Config
+) -> None:
+    # if the file has a suffix designating that it is raw and should not be
+    # rendered, remove that suffix (but only if there are multiple suffixes).
+    # this means that a file named `data.csv.raw` will be copied to the output
+    # as `data.csv`, but a file named `image.raw` will be copied as `image.raw`
+    # (assuming `.raw` is the no_render_suffix)
+    if path.suffix.lower() == config.no_render_suffix and len(path.suffixes) > 1:
+        # remove .raw suffix
+        output_path = output_path.with_suffix("")
+
+    # copy other files as-is
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(path.read_bytes())
+
+
 def generate(
     config: Config,
     vars: dict[str, Any] | None = None,
@@ -75,7 +111,8 @@ def generate(
     This directory should be of the same format as produced by the
     :func:`automata.materials.export` function; namely, there should be a
     ``materials.json`` file in the root of the materials directory, along with
-    subdirectories containing the actual content files.
+    subdirectories containing the actual content files. If this materials directory
+    is not found, an error will be raised.
 
     Content and materials will be copied to the ``config.build_directory``, preserving
     the directory structure found in the content directory.
@@ -114,29 +151,8 @@ def generate(
         if path.is_dir():
             output_path.mkdir(parents=True, exist_ok=True)
         elif path.suffix.lower() == ".md":
-            raw_markdown = path.read_text()
-            rendered_html = render_page_from_markdown(raw_markdown, context)
-            output_path.with_suffix(".html").write_text(rendered_html)
+            _render_and_write_markdown(path, output_path, context)
         elif path.suffix.lower() == ".html":
-            raw_html = path.read_text()
-            rendered_html = render_page_from_html(
-                raw_html,
-                context,
-            )
-            output_path.write_text(rendered_html)
+            _render_and_write_html(path, output_path, context)
         else:
-            # if the file has a suffix designating that it is raw and should not be
-            # rendered, remove that suffix (but only if there are multiple suffixes).
-            # this means that a file named `data.csv.raw` will be copied to the output
-            # as `data.csv`, but a file named `image.raw` will be copied as `image.raw`
-            # (assuming `.raw` is the no_render_suffix)
-            if (
-                path.suffix.lower() == config.no_render_suffix
-                and len(path.suffixes) > 1
-            ):
-                # remove .raw suffix
-                output_path = output_path.with_suffix("")
-
-            # copy other files as-is
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(path.read_bytes())
+            _copy_file_to_output(path, output_path, config)
