@@ -2,6 +2,7 @@
 
 from pytest import raises
 
+from automata.materials import Universe
 from automata.website import (
     Config,
     RenderContext,
@@ -19,7 +20,7 @@ def test_from_markdown_converts_markdown_to_html(tmpsite):
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
-    context = RenderContext(config=config)
+    context = RenderContext(config=config, materials=Universe(collections={}))
 
     # when
     rendered_content = render_page_from_markdown(
@@ -40,7 +41,9 @@ def test_from_markdown_interpolates(tmpsite):
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
-    context = RenderContext(config=config, vars={"foo": "bar"})
+    context = RenderContext(
+        config=config, vars={"foo": "bar"}, materials=Universe(collections={})
+    )
 
     # when
     rendered_content = render_page_from_markdown(
@@ -61,7 +64,7 @@ def test_from_markdown_raises_for_missing_variable(tmpsite):
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
-    context = RenderContext(config=config)
+    context = RenderContext(config=config, materials=Universe(collections={}))
 
     # when / then
     with raises(Exception) as exc_info:
@@ -85,7 +88,9 @@ def test_from_html_interpolates(tmpsite):
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
-    context = RenderContext(config=config, vars={"foo": "bar"})
+    context = RenderContext(
+        config=config, vars={"foo": "bar"}, materials=Universe(collections={})
+    )
 
     # when
     rendered_content = render_page_from_html(
@@ -106,7 +111,7 @@ def test_from_html_raises_for_missing_variable(tmpsite):
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
-    context = RenderContext(config=config)
+    context = RenderContext(config=config, materials=Universe(collections={}))
 
     # when / then
     with raises(Exception) as exc_info:

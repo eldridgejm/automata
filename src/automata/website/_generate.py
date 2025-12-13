@@ -7,6 +7,7 @@ from typing import Any, cast
 from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
+from .exceptions import Error
 
 
 def _load_materials(
@@ -19,6 +20,13 @@ def _load_materials(
 
     """
     materials_json_path = materials_directory_path / "materials.json"
+
+    if not materials_directory_path.exists():
+        raise Error(f'Materials directory not found at "{materials_directory_path}".')
+
+    if not materials_json_path.exists():
+        raise Error(f'materials.json not found at "{materials_json_path}".')
+
     return cast(
         Universe[ExportedArtifact], deserialize(materials_json_path.read_text())
     )

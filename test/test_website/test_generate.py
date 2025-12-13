@@ -1,3 +1,7 @@
+import shutil
+
+from pytest import raises
+
 import automata.materials
 import automata.website
 
@@ -215,3 +219,58 @@ def test_materials_are_loaded_and_available_in_rendering_context(
     output = tmpsite.get_output("materials.html")
     assert "<li>homeworks</li>" in output
     assert "<li>default</li>" in output
+
+
+def test_exception_is_raised_if_materials_directory_missing(tmpsite):
+    # given
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # delete the materials directory to simulate it being missing
+    if tmpsite.materials_directory.exists():
+        shutil.rmtree(tmpsite.materials_directory)
+
+    tmpsite.make_page(
+        "materials.html",
+        "<ul>"
+        "{% for collection in materials.collections %}"
+        "<li>${ collection }</li>"
+        "{% endfor %}"
+        "</ul>",
+    )
+
+    # when / then
+    with raises(automata.website.exceptions.Error) as exc:
+        automata.website.generate(config)
+
+    assert "Materials directory not found at" in str(exc.value)
+
+
+def test_exception_is_raised_if_materials_json_missing(tmpsite):
+    # given
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # delete the materials.json to simulate it being missing
+    materials_json_path = tmpsite.materials_directory / "materials.json"
+    if materials_json_path.exists():
+        materials_json_path.unlink()
+
+    tmpsite.make_page(
+        "materials.html",
+        "<ul>"
+        "{% for collection in materials.collections %}"
+        "<li>${ collection }</li>"
+        "{% endfor %}"
+        "</ul>",
+    )
+
+    # when / then
+    with raises(automata.website.exceptions.Error) as exc:
+        automata.website.generate(config)
+
+    assert "materials.json not found at" in str(exc.value)
