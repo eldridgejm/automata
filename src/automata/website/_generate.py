@@ -1,61 +1,27 @@
-"""Generates a course website.
-
-Inputs and Outputs
-==================
-
-Input
------
-
-The website generator takes two main inputs:
-
-1.  **Content Directory**: A directory containing a hierarchy of markdown files, HTML,
-and other static assets. Markdown files will be converted to HTML, while HTML and binary
-files will be copied as-is to the output.
-
-2.  **Materials Directory**: The directory of course materials previously exported by
-`automata.materials.export()`. This directory is expected to contain a `materials.json`
-file at its root and will be copied to the output directory (if not already present).
-
-Website Structure
------------------
-
-The generator processes the input to produce a static website. For example, suppose the
-materials directory contains lecture notes and homework assignments, and the content
-directory contains:
-
-```
-content/
-    index.md
-    syllabus.md
-    data/
-        reviews.csv
-```
-
-The generated website will be structured similarly, with markdown files converted to
-HTML, and materials and static assets from the theme integrated:
-
-```
-materials/
-    materials.json
-    lectures/
-        ...
-    homeworks/
-        ...
-static/
-    style.css
-index.html
-syllabus.html
-data/
-    reviews.csv
-```
-
-"""
+"""Generates a course website."""
 
 import datetime
-from typing import Any
+import pathlib
+from typing import Any, cast
 
+from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
+
+
+def _load_materials(
+    materials_directory_path: pathlib.Path,
+) -> Universe[ExportedArtifact]:
+    """Loads the materials from the given path.
+
+    This looks for a ``materials.json`` file in the given path and loads the
+    materials universe from it.
+
+    """
+    materials_json_path = materials_directory_path / "materials.json"
+    return cast(
+        Universe[ExportedArtifact], deserialize(materials_json_path.read_text())
+    )
 
 
 def generate(
@@ -63,7 +29,60 @@ def generate(
     vars: dict[str, Any] | None = None,
     now: datetime.datetime | None = None,
 ):
-    """Generates a static website from course materials."""
+    """Generates a static website from course materials.
+
+    Parameters
+    ----------
+    config : Config
+        The configuration for the website generation. Contains information about
+        the location of the content and build directories, among other settings.
+        See :class:`Config` for more details.
+    vars : dict[str, Any], optional
+        A dictionary of variables to be used during rendering.
+    now : datetime.datetime, optional
+        The current date and time to be used during rendering.
+
+    Notes
+    -----
+
+    Build Process
+    ~~~~~~~~~~~~~
+
+    When called, this function will look for content in the
+    ``config.content_directory``. It is expected that this directory contains markdown
+    files (``.md``) and/or HTML files, and possibly other static assets (like images,
+    CSS files, etc.). The function will process each file as follows:
+
+    - Markdown files (``.md``) will be converted to HTML
+    - HTML files will be processed as-is
+    - Other files will be copied directly to the output directory without modification
+
+    Files with a suffix matching ``config.no_render_suffix`` (e.g., ``.raw``) will be
+    copied to the output directory with that suffix removed. This allows for raw
+    markdown and HTML files to be included in the output without rendering them.
+
+    This function assumes that course materials have already been exported and are
+    located in the content directory in a directory named
+    ``config.materials_directory_name`` (by default, this is ``materials``).
+    This directory should be of the same format as produced by the
+    :func:`automata.materials.export` function; namely, there should be a
+    ``materials.json`` file in the root of the materials directory, along with
+    subdirectories containing the actual content files.
+
+    Content and materials will be copied to the ``config.build_directory``, preserving
+    the directory structure found in the content directory.
+
+    Rendering Context
+    ~~~~~~~~~~~~~~~~~
+
+    During rendering, a context is created that contains information that may be useful
+    for templating. This context is represented by the :class:`RenderContext` class.
+    In particular, the ``vars`` parameter passed to this function will be made available
+    in the rendering context, allowing for dynamic content generation based on these
+    variables. The render context also includes a ``materials`` attribute that provides
+    access to the course materials, if applicable.
+
+    """
 
     # set default values for optional parameters
     if vars is None:
@@ -72,9 +91,15 @@ def generate(
     if now is None:
         now = datetime.datetime.now()
 
-    context = RenderContext(config=config, now=now, vars=vars)
+    materials_path = (
+        pathlib.Path(config.content_directory) / config.materials_directory_name
+    )
 
-    for path in config.content_directory.rglob("*"):
+    context = RenderContext(
+        config=config, materials=_load_materials(materials_path), now=now, vars=vars
+    )
+
+    for path in pathlib.Path(config.content_directory).rglob("*"):
         relative_path = path.relative_to(config.content_directory)
         output_path = config.build_directory / relative_path
 
@@ -93,7 +118,10 @@ def generate(
             output_path.write_text(rendered_html)
         else:
             # if the file has a suffix designating that it is raw and should not be
-            # rendered, remove that suffix (but only if there are multiple suffixes)
+            # rendered, remove that suffix (but only if there are multiple suffixes).
+            # this means that a file named `data.csv.raw` will be copied to the output
+            # as `data.csv`, but a file named `image.raw` will be copied as `image.raw`
+            # (assuming `.raw` is the no_render_suffix)
             if (
                 path.suffix.lower() == config.no_render_suffix
                 and len(path.suffixes) > 1

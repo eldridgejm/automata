@@ -8,9 +8,10 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Config type
 - [x] generate() signature
 - [x] Simple website generation (markdown to HTML)
-- [ ] Convert HTML files as well?
+- [x] Convert HTML files as well?
   - maybe they have frontmatter
   - maybe they have a special extension, like `.html.unrendered`?
+- [ ] Searching for materials in the build directory
 - [ ] Page frontmatter
 - [ ] Base path handling
 - [ ] The "theme" abstraction

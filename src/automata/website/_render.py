@@ -7,6 +7,7 @@ from typing import Any
 import jinja2
 import markdown
 
+from ..materials import ExportedArtifact, Universe
 from ._config import Config
 
 
@@ -15,6 +16,7 @@ class RenderContext:
     """Context available at the time of rendering."""
 
     config: Config
+    materials: Universe[ExportedArtifact]
     now: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)
     vars: dict[str, Any] = dataclasses.field(default_factory=dict)
 

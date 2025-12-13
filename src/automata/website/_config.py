@@ -1,12 +1,11 @@
-import dataclasses
-import pathlib
+import smartconfig
 
 
-@dataclasses.dataclass
-class Config:
+class Config(smartconfig.Prototype):
     """Configuration for the website."""
 
-    content_directory: pathlib.Path
-    build_directory: pathlib.Path
+    content_directory: str
+    materials_directory_name: str = "materials"
+    build_directory: str
 
     no_render_suffix: str | None = ".no_render"

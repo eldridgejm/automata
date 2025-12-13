@@ -34,7 +34,7 @@ class SiteBuilder:
         self.build_directory = path / "_build"
         self.build_directory.mkdir()
 
-        self.materials_directory = self.build_directory / "materials"
+        self.materials_directory = self.content_directory / "materials"
 
         # write an empty materials.json to start
         self.write_materials_json({"collections": {}})
@@ -92,8 +92,7 @@ class SiteBuilder:
         else:
             serialized = json.dumps(data)
 
-        dst = self.build_directory / "materials"
-        dst.mkdir(parents=True, exist_ok=True)
-        with (dst / "materials.json").open("w") as fileobj:
+        self.materials_directory.mkdir(parents=True, exist_ok=True)
+        with (self.materials_directory / "materials.json").open("w") as fileobj:
             fileobj.write(serialized)
-        return dst
+        return self.materials_directory

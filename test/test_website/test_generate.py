@@ -1,3 +1,4 @@
+import automata.materials
 import automata.website
 
 # basic page rendering =================================================================
@@ -173,3 +174,44 @@ def test_raw_suffix_of_none_means_nothing_is_renamed(tmpsite):
 
     # then
     assert "This is a raw text file." in tmpsite.get_output("data/sample.txt.NO_RENDER")
+
+
+# materials ============================================================================
+
+
+def test_materials_are_loaded_and_available_in_rendering_context(
+    tmpsite, default_example_course
+):
+    # given
+    universe = automata.materials.discover(
+        default_example_course.path,
+    )
+    universe = automata.materials.build(
+        universe, ignore_ready=True, ignore_release_time=True
+    )
+    universe = automata.materials.export(universe, tmpsite.materials_directory)
+    materials_json = automata.materials.serialize(universe)
+
+    (tmpsite.materials_directory / "materials.json").write_text(materials_json)
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    tmpsite.make_page(
+        "materials.html",
+        "<ul>"
+        "{% for collection in materials.collections %}"
+        "<li>${ collection }</li>"
+        "{% endfor %}"
+        "</ul>",
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("materials.html")
+    assert "<li>homeworks</li>" in output
+    assert "<li>default</li>" in output
