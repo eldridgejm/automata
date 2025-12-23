@@ -2,7 +2,7 @@
 
 import dataclasses
 import datetime
-from typing import Any
+from typing import Any, Callable
 
 import jinja2
 import markdown
@@ -44,7 +44,7 @@ def _interpolate(
 def render_page_from_markdown(
     markdown_content: str,
     context: RenderContext,
-    markdown_renderer=markdown.markdown,
+    markdown_renderer: Callable[[str], str] = markdown.markdown,
 ) -> str:
     """Renders a page from markdown.
 

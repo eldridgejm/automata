@@ -413,6 +413,26 @@ def test_invalid_yaml_raises_page_error(tmpsite):
     assert "bad.md" in str(exc.value)
 
 
+def test_invalid_frontmatter_key_raises_page_error(tmpsite):
+    """Test that invalid frontmatter keys raise an error."""
+    # given
+    tmpsite.make_page(
+        "bad_key.md",
+        "---\ninvalid_key: some value\nvars:\n  title: Test\n---\n\n# Content",
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when / then
+    with raises(automata.website.PageError) as exc:
+        automata.website.generate(config)
+
+    assert "bad_key.md" in str(exc.value)
+
+
 def test_empty_frontmatter(tmpsite):
     """Test that empty frontmatter block is handled correctly."""
     # given
