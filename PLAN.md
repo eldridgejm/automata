@@ -12,6 +12,7 @@ In this branch, we will implement the website feature "from scratch". We have al
   - maybe they have frontmatter
   - maybe they have a special extension, like `.html.unrendered`?
 - [x] Searching for materials in the content directory
+- [ ] Allow overriding markdown renderer
 - [ ] Page frontmatter
 - [ ] Base path handling
 - [ ] The "theme" abstraction
@@ -143,6 +144,9 @@ render_page_from_markdown(
     "# Hello, world!",
     context
 )
+
+
+render_from_markdown = lambda md: render_page_from_markdown(md, context, renderer=markdown.markdown)
 
 
 

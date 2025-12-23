@@ -2,7 +2,7 @@
 
 import datetime
 import pathlib
-from typing import Any, cast
+from typing import Any, Callable, cast
 
 from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
@@ -32,23 +32,15 @@ def _load_materials(
     )
 
 
-def _render_and_write_markdown(
-    markdown_path: pathlib.Path, output_path: pathlib.Path, context: RenderContext
+def _render_and_write(
+    input_path,
+    output_path,
+    renderer: Callable[[str, RenderContext], str],
+    context: RenderContext,
 ) -> None:
-    raw_markdown = markdown_path.read_text()
-    rendered_html = render_page_from_markdown(raw_markdown, context)
-    output_path.with_suffix(".html").write_text(rendered_html)
-
-
-def _render_and_write_html(
-    html_path: pathlib.Path, output_path: pathlib.Path, context: RenderContext
-) -> None:
-    raw_html = html_path.read_text()
-    rendered_html = render_page_from_html(
-        raw_html,
-        context,
-    )
-    output_path.write_text(rendered_html)
+    raw_content = input_path.read_text()
+    rendered_content = renderer(raw_content, context)
+    output_path.write_text(rendered_content)
 
 
 def _copy_file_to_output(
@@ -72,6 +64,8 @@ def generate(
     config: Config,
     vars: dict[str, Any] | None = None,
     now: datetime.datetime | None = None,
+    render_page_from_markdown=render_page_from_markdown,
+    render_page_from_html=render_page_from_html,
 ):
     """Generates a static website from course materials.
 
@@ -151,8 +145,9 @@ def generate(
         if path.is_dir():
             output_path.mkdir(parents=True, exist_ok=True)
         elif path.suffix.lower() == ".md":
-            _render_and_write_markdown(path, output_path, context)
+            output_path = output_path.with_suffix(".html")
+            _render_and_write(path, output_path, render_page_from_markdown, context)
         elif path.suffix.lower() == ".html":
-            _render_and_write_html(path, output_path, context)
+            _render_and_write(path, output_path, render_page_from_html, context)
         else:
             _copy_file_to_output(path, output_path, config)
