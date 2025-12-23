@@ -334,7 +334,7 @@ def test_frontmatter_in_markdown_page(tmpsite):
     # given
     tmpsite.make_page(
         "info.md",
-        "---\nvars:\n\ttitle: Info Page\n\tauthor: Test Author\n---\n\n"
+        "---\nvars:\n  title: Info Page\n  author: Test Author\n---\n\n"
         "# ${ frontmatter.vars.title }\n\nBy ${ frontmatter.vars.author }",
     )
 
@@ -356,7 +356,7 @@ def test_frontmatter_in_html_page(tmpsite):
     # given
     tmpsite.make_page(
         "info.html",
-        "---\nvars:\n\ttitle: Info Page\n\tauthor: Test Author\n---\n\n"
+        "---\nvars:\n  title: Info Page\n  author: Test Author\n---\n\n"
         "<h1>${ frontmatter.vars.title }</h1>\n<p>By ${ frontmatter.vars.author }</p>",
     )
 

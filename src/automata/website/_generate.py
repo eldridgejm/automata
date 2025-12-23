@@ -1,11 +1,13 @@
 """Generates a course website."""
 
+import dataclasses
 import datetime
 import pathlib
 from typing import Any, Callable, cast
 
 from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
+from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
 from .exceptions import Error
 
@@ -32,14 +34,22 @@ def _load_materials(
     )
 
 
-def _render_and_write(
+def _generate_single_page(
     input_path,
     output_path,
     renderer: Callable[[str, RenderContext], str],
     context: RenderContext,
 ) -> None:
     raw_content = input_path.read_text()
-    rendered_content = renderer(raw_content, context)
+
+    # Extract frontmatter from the content
+    frontmatter, content_without_frontmatter = read_frontmatter(raw_content)
+
+    # Create a new context with the frontmatter
+    context_with_frontmatter = dataclasses.replace(context, frontmatter=frontmatter)
+
+    # Render the content (without frontmatter)
+    rendered_content = renderer(content_without_frontmatter, context_with_frontmatter)
     output_path.write_text(rendered_content)
 
 
@@ -154,8 +164,8 @@ def generate(
             output_path.mkdir(parents=True, exist_ok=True)
         elif path.suffix.lower() == ".md":
             output_path = output_path.with_suffix(".html")
-            _render_and_write(path, output_path, render_page_from_markdown, context)
+            _generate_single_page(path, output_path, render_page_from_markdown, context)
         elif path.suffix.lower() == ".html":
-            _render_and_write(path, output_path, render_page_from_html, context)
+            _generate_single_page(path, output_path, render_page_from_html, context)
         else:
             _copy_file_to_output(path, output_path, config)

@@ -9,6 +9,7 @@ import markdown
 
 from ..materials import ExportedArtifact, Universe
 from ._config import Config
+from ._frontmatter import Frontmatter
 
 
 @dataclasses.dataclass
@@ -19,6 +20,9 @@ class RenderContext:
     materials: Universe[ExportedArtifact]
     now: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)
     vars: dict[str, Any] = dataclasses.field(default_factory=dict)
+    frontmatter: Frontmatter = dataclasses.field(
+        default_factory=lambda: Frontmatter(vars={})
+    )
 
 
 def _interpolate(
