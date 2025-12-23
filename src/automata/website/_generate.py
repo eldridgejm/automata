@@ -9,7 +9,7 @@ from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
 from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
-from .exceptions import Error
+from .exceptions import Error, PageError
 
 
 def _load_materials(
@@ -43,7 +43,11 @@ def _generate_single_page(
     raw_content = input_path.read_text()
 
     # Extract frontmatter from the content
-    frontmatter, content = read_frontmatter(raw_content)
+    try:
+        frontmatter, content = read_frontmatter(raw_content)
+    except Exception as e:
+        # Wrap any parsing errors with file path context
+        raise PageError(str(e), input_path) from e
 
     # Create a new context with the frontmatter
     context = dataclasses.replace(context, frontmatter=frontmatter)

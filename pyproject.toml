@@ -27,7 +27,8 @@ dev = [
     "ruff",
     "mypy",
     "pytest-cov>=7.0.0",
-    "types-Markdown"
+    "types-Markdown",
+    "types-PyYAML",
 ]
 
 [tool.hatch.metadata]

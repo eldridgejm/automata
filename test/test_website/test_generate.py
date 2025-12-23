@@ -372,3 +372,86 @@ def test_frontmatter_in_html_page(tmpsite):
     output = tmpsite.get_output("info.html")
     assert "<h1>Info Page</h1>" in output
     assert "<p>By Test Author</p>" in output
+
+
+def test_pages_without_frontmatter_still_work(tmpsite):
+    """Test backward compatibility - pages without frontmatter work as before."""
+    # given
+    tmpsite.make_page("legacy.md", "# Legacy Page\n\nNo frontmatter here.")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("legacy.html")
+    assert "Legacy Page</h1>" in output
+    assert "No frontmatter here" in output
+
+
+def test_invalid_yaml_raises_page_error(tmpsite):
+    """Test error handling for invalid YAML in frontmatter."""
+    # given
+    tmpsite.make_page(
+        "bad.md",
+        "---\nvars:\n  invalid: [unclosed list\n---\n\n# Content",
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when / then
+    with raises(automata.website.PageError) as exc:
+        automata.website.generate(config)
+
+    assert "bad.md" in str(exc.value)
+
+
+def test_empty_frontmatter(tmpsite):
+    """Test that empty frontmatter block is handled correctly."""
+    # given
+    tmpsite.make_page(
+        "empty.md",
+        "---\n---\n\n# Page with empty frontmatter",
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("empty.html")
+    assert "Page with empty frontmatter</h1>" in output
+
+
+def test_frontmatter_with_nested_vars_structures(tmpsite):
+    """Test that nested structures in vars work correctly."""
+    # given
+    tmpsite.make_page(
+        "nested.md",
+        "---\nvars:\n  metadata:\n    title: Nested Title\n    tags:\n"
+        "      - python\n      - tutorial\n---\n\n"
+        "# ${ frontmatter.vars.metadata.title }",
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("nested.html")
+    assert "Nested Title</h1>" in output
