@@ -43,13 +43,13 @@ def _generate_single_page(
     raw_content = input_path.read_text()
 
     # Extract frontmatter from the content
-    frontmatter, content_without_frontmatter = read_frontmatter(raw_content)
+    frontmatter, content = read_frontmatter(raw_content)
 
     # Create a new context with the frontmatter
-    context_with_frontmatter = dataclasses.replace(context, frontmatter=frontmatter)
+    context = dataclasses.replace(context, frontmatter=frontmatter)
 
     # Render the content (without frontmatter)
-    rendered_content = renderer(content_without_frontmatter, context_with_frontmatter)
+    rendered_content = renderer(content, context)
     output_path.write_text(rendered_content)
 
 
