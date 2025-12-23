@@ -143,6 +143,25 @@ def generate(
     variables. The render context also includes a ``materials`` attribute that provides
     access to the course materials, if applicable.
 
+    Frontmatter
+    ~~~~~~~~~~~
+
+    Pages can optionally include YAML frontmatter at the beginning of the file,
+    delimited by ``---``::
+
+        ---
+        vars:
+          title: "Page Title"
+          author: "Author Name"
+        ---
+
+        # Page content here
+
+    The only supported key in frontmatter is ``vars``, which should contain a dictionary
+    of page-specific variables. These variables are accessible in templates via the
+    ``frontmatter`` namespace (e.g., ``${ frontmatter.vars.title }``). Pages without
+    frontmatter work as normal.
+
     """
 
     # set default values for optional parameters
