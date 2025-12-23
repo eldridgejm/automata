@@ -18,6 +18,7 @@ class RenderContext:
 
     config: Config
     materials: Universe[ExportedArtifact]
+    url_for: Callable[[str], str]
     now: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)
     vars: dict[str, Any] = dataclasses.field(default_factory=dict)
     frontmatter: Frontmatter = dataclasses.field(

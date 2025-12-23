@@ -17,3 +17,6 @@ class Config(smartconfig.Prototype):
     # suffix indicating that a file should not be rendered. If None, all files
     # will be rendered.
     no_render_suffix: str | None = ".no_render"
+
+    # base path for the website (e.g., "/" or "/course/")
+    base_path: str = "/"

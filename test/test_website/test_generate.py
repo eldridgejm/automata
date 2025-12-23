@@ -475,3 +475,53 @@ def test_frontmatter_with_nested_vars_structures(tmpsite):
     # then
     output = tmpsite.get_output("nested.html")
     assert "Nested Title</h1>" in output
+
+
+# url_for ============================================================================
+
+
+def test_url_for_with_default_base_path(tmpsite):
+    """Test that url_for works correctly with the default base_path of '/'."""
+    # given
+    tmpsite.make_page(
+        "index.html",
+        '<a href="${ url_for("about.html") }">About</a>\n'
+        '<a href="${ url_for("docs/guide.html") }">Guide</a>',
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("index.html")
+    assert '<a href="/about.html">About</a>' in output
+    assert '<a href="/docs/guide.html">Guide</a>' in output
+
+
+def test_url_for_with_custom_base_path(tmpsite):
+    """Test that url_for correctly prepends a custom base_path."""
+    # given
+    tmpsite.make_page(
+        "index.html",
+        '<a href="${ url_for("about.html") }">About</a>\n'
+        '<a href="${ url_for("/contact.html") }">Contact</a>',
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        base_path="/course/",
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("index.html")
+    assert '<a href="/course/about.html">About</a>' in output
+    assert '<a href="/course/contact.html">Contact</a>' in output

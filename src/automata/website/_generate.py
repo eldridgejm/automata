@@ -74,6 +74,15 @@ def _copy_file_to_output(
     output_path.write_bytes(path.read_bytes())
 
 
+def _url_for_factory(base_path: str) -> Callable[[str], str]:
+    """Creates a url_for function that prepends the base path."""
+
+    def url_for(path: str) -> str:
+        return f"{base_path.rstrip('/')}/{path.lstrip('/')}"
+
+    return url_for
+
+
 def generate(
     config: Config,
     vars: dict[str, Any] | None = None,
@@ -143,6 +152,18 @@ def generate(
     variables. The render context also includes a ``materials`` attribute that provides
     access to the course materials, if applicable.
 
+    The context also provides a ``url_for`` function that can be used to generate URLs
+    that respect the site's ``base_path`` configuration. This is useful when a site is
+    deployed to a subdirectory rather than the root of a domain. For example::
+
+        <a href="${ url_for('about.html') }">About</a>
+
+    With the default ``base_path`` of ``"/"``, this generates ``/about.html``.
+    With a ``base_path`` of ``"/course/"``, this generates ``/course/about.html``.
+    The function automatically handles leading and trailing slashes, so both
+    ``url_for('about.html')`` and ``url_for('/about.html')`` produce the same
+    result.
+
     Frontmatter
     ~~~~~~~~~~~
 
@@ -176,7 +197,11 @@ def generate(
     )
 
     context = RenderContext(
-        config=config, materials=_load_materials(materials_path), now=now, vars=vars
+        config=config,
+        materials=_load_materials(materials_path),
+        url_for=_url_for_factory(config.base_path),
+        now=now,
+        vars=vars,
     )
 
     for path in pathlib.Path(config.content_directory).rglob("*"):
