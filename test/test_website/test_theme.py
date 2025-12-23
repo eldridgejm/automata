@@ -1,0 +1,149 @@
+import importlib
+import sys
+from pathlib import Path
+from types import ModuleType
+
+import pytest
+
+from automata.website._theme import Theme
+
+# from_directory ==============================================================
+
+
+def test_from_directory_reads_templates_and_static_files(tmp_path: Path) -> None:
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    static_dir = theme_dir / "static"
+
+    (templates_dir / "partials").mkdir(parents=True)
+    static_dir.mkdir(parents=True)
+
+    (templates_dir / "index.html").write_text("Index template")
+    (templates_dir / "partials" / "nav.html").write_text("Nav template")
+    (static_dir / "style.css").write_text("body { color: black; }")
+    (static_dir / "images").mkdir()
+    (static_dir / "images" / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.templates == {
+        "index.html": "Index template",
+        "partials/nav.html": "Nav template",
+    }
+    assert set(theme.static_files.keys()) == {"style.css", "images/logo.png"}
+    assert theme.static_files["style.css"].read_text() == "body { color: black; }"
+    assert theme.static_files["images/logo.png"].read_bytes() == b"\x89PNG\r\n\x1a\n"
+
+
+def test_from_directory_skips_hidden_files_and_directories(
+    tmp_path: Path,
+) -> None:
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    static_dir = theme_dir / "static"
+
+    (templates_dir / ".hidden").mkdir(parents=True)
+    static_dir.mkdir(parents=True)
+
+    (templates_dir / ".hidden.html").write_text("Hidden template")
+    (templates_dir / ".hidden" / "secret.html").write_text("Secret template")
+    (templates_dir / "visible.html").write_text("Visible template")
+
+    (static_dir / ".hidden.txt").write_text("Hidden static")
+    (static_dir / ".hidden").mkdir()
+    (static_dir / ".hidden" / "secret.txt").write_text("Secret static")
+    (static_dir / "visible.txt").write_text("Visible static")
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.templates == {"visible.html": "Visible template"}
+    assert set(theme.static_files.keys()) == {"visible.txt"}
+
+
+def test_from_directory_allows_missing_static_directory(tmp_path: Path) -> None:
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "index.html").write_text("Index template")
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.templates == {"index.html": "Index template"}
+    assert theme.static_files == {}
+
+
+def test_from_directory_requires_templates_directory(tmp_path: Path) -> None:
+    theme_dir = tmp_path / "theme"
+    theme_dir.mkdir()
+
+    with pytest.raises(ValueError):
+        Theme.from_directory(theme_dir)
+
+
+# from_module ================================================================
+
+
+@pytest.fixture
+def make_theme_package(tmp_path: Path):
+    """Create importable theme packages under a temp directory.
+
+    Adds the temp directory to sys.path during the fixture's lifetime and
+    restores sys.path after tests complete.
+    """
+    original_sys_path = list(sys.path)
+
+    def _make(name: str) -> ModuleType:
+        package_dir = tmp_path / name
+        package_dir.mkdir()
+        (package_dir / "__init__.py").write_text("")
+        if str(tmp_path) not in sys.path:
+            sys.path.insert(0, str(tmp_path))
+        importlib.invalidate_caches()
+        sys.modules.pop(name, None)
+        return importlib.import_module(name)
+
+    yield _make
+
+    sys.path[:] = original_sys_path
+
+
+def test_from_module_reads_templates_and_static_files(make_theme_package) -> None:
+    module = make_theme_package("themepkg")
+    templates_dir = Path(module.__file__).parent / "templates"
+    static_dir = Path(module.__file__).parent / "static_files"
+    templates_dir.mkdir()
+    static_dir.mkdir()
+
+    (templates_dir / "base.html").write_text("Base template")
+    (templates_dir / "partials").mkdir()
+    (templates_dir / "partials" / "nav.html").write_text("Nav template")
+    (static_dir / "style.css").write_text("body { color: black; }")
+    (static_dir / "logo.bin").write_bytes(b"\x00")
+
+    theme = Theme.from_module(module)
+
+    assert theme.templates == {
+        "base.html": "Base template",
+        "partials/nav.html": "Nav template",
+    }
+    assert set(theme.static_files.keys()) == {"style.css", "logo.bin"}
+    assert theme.static_files["style.css"].read_text() == "body { color: black; }"
+    assert theme.static_files["logo.bin"].read_bytes() == b"\x00"
+
+
+def test_from_module_requires_templates_package(make_theme_package) -> None:
+    module = make_theme_package("themepkg_missing_templates")
+    (Path(module.__file__).parent / "static_files").mkdir()
+
+    with pytest.raises(ValueError):
+        Theme.from_module(module)
+
+
+def test_from_module_allows_missing_static_files_package(make_theme_package) -> None:
+    module = make_theme_package("themepkg_missing_static")
+    (Path(module.__file__).parent / "templates").mkdir()
+
+    theme = Theme.from_module(module)
+
+    assert theme.templates == {}
+    assert theme.static_files == {}
