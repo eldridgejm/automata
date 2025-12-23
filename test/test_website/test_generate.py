@@ -274,3 +274,54 @@ def test_exception_is_raised_if_materials_json_missing(tmpsite):
         automata.website.generate(config)
 
     assert "materials.json not found at" in str(exc.value)
+
+
+# dependency injection =================================================================
+
+
+def test_custom_markdown_renderer_can_be_injected(tmpsite):
+    # given
+    tmpsite.make_page("test.md", "# Header\nContent")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # custom renderer that adds a marker
+    def custom_markdown_renderer(content, context):
+        return f"[CUSTOM_MARKDOWN]{content}[/CUSTOM_MARKDOWN]"
+
+    # when
+    automata.website.generate(
+        config, render_page_from_markdown=custom_markdown_renderer
+    )
+
+    # then
+    output = tmpsite.get_output("test.html")
+    assert "[CUSTOM_MARKDOWN]" in output
+    assert "[/CUSTOM_MARKDOWN]" in output
+    assert "# Header\nContent" in output
+
+
+def test_custom_html_renderer_can_be_injected(tmpsite):
+    # given
+    tmpsite.make_page("test.html", "<h1>Header</h1><p>Content</p>")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # custom renderer that adds a marker
+    def custom_html_renderer(content, context):
+        return f"[CUSTOM_HTML]{content}[/CUSTOM_HTML]"
+
+    # when
+    automata.website.generate(config, render_page_from_html=custom_html_renderer)
+
+    # then
+    output = tmpsite.get_output("test.html")
+    assert "[CUSTOM_HTML]" in output
+    assert "[/CUSTOM_HTML]" in output
+    assert "<h1>Header</h1><p>Content</p>" in output

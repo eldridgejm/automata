@@ -79,6 +79,14 @@ def generate(
         A dictionary of variables to be used during rendering.
     now : datetime.datetime, optional
         The current date and time to be used during rendering.
+    render_page_from_markdown : Callable[[str, RenderContext], str], optional
+        The function to use for rendering markdown pages. Takes raw markdown
+        content (str) and a render context, returns rendered HTML (str).
+        Defaults to :func:`render_page_from_markdown`.
+    render_page_from_html : Callable[[str, RenderContext], str], optional
+        The function to use for rendering HTML pages. Takes raw HTML content
+        (str) and a render context, returns rendered HTML (str). Defaults to
+        :func:`render_page_from_html`.
 
     Notes
     -----
