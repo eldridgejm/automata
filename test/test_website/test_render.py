@@ -76,6 +76,32 @@ def test_from_markdown_raises_for_missing_variable(tmpsite):
     assert "foo" in str(exc_info.value)
 
 
+def test_from_markdown_can_inject_custom_markdown_renderer(tmpsite):
+    """Tests that a custom markdown renderer can be injected."""
+
+    # given
+    markdown_content = "# Hello, world!"
+    config = Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+    context = RenderContext(config=config, materials=Universe(collections={}))
+
+    # custom markdown renderer that adds a marker
+    def custom_markdown_renderer(text):
+        return f"[CUSTOM]{text}[/CUSTOM]"
+
+    # when
+    rendered_content = render_page_from_markdown(
+        markdown_content, context, markdown_renderer=custom_markdown_renderer
+    )
+
+    # then
+    assert "[CUSTOM]" in rendered_content
+    assert "[/CUSTOM]" in rendered_content
+    assert "# Hello, world!" in rendered_content
+
+
 # html =================================================================================
 
 

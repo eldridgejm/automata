@@ -40,6 +40,7 @@ def _interpolate(
 def render_page_from_markdown(
     markdown_content: str,
     context: RenderContext,
+    markdown_renderer=markdown.markdown,
 ) -> str:
     """Renders a page from markdown.
 
@@ -51,6 +52,10 @@ def render_page_from_markdown(
     context : RenderContext
         The rendering context.
 
+    markdown_renderer : Callable[[str], str], optional
+        The function to use for rendering markdown to HTML. Should take markdown
+        content (str) and return HTML (str). Defaults to :func:`markdown.markdown`.
+
     Returns
     -------
     str
@@ -61,7 +66,7 @@ def render_page_from_markdown(
         context,
     )
 
-    return markdown.markdown(interpolated_markdown)
+    return markdown_renderer(interpolated_markdown)
 
 
 def render_page_from_html(

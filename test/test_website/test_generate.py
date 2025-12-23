@@ -325,3 +325,50 @@ def test_custom_html_renderer_can_be_injected(tmpsite):
     assert "[CUSTOM_HTML]" in output
     assert "[/CUSTOM_HTML]" in output
     assert "<h1>Header</h1><p>Content</p>" in output
+
+
+# frontmatter ==========================================================================
+
+
+def test_frontmatter_in_markdown_page(tmpsite):
+    # given
+    tmpsite.make_page(
+        "info.md",
+        "---\nvars:\n\ttitle: Info Page\n\tauthor: Test Author\n---\n\n"
+        "# ${ frontmatter.vars.title }\n\nBy ${ frontmatter.vars.author }",
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("info.html")
+    assert "<h1>Info Page</h1>" in output
+    assert "By Test Author" in output
+
+
+def test_frontmatter_in_html_page(tmpsite):
+    # given
+    tmpsite.make_page(
+        "info.html",
+        "---\nvars:\n\ttitle: Info Page\n\tauthor: Test Author\n---\n\n"
+        "<h1>${ frontmatter.vars.title }</h1>\n<p>By ${ frontmatter.vars.author }</p>",
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("info.html")
+    assert "<h1>Info Page</h1>" in output
+    assert "<p>By Test Author</p>" in output

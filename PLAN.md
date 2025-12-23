@@ -12,7 +12,7 @@ In this branch, we will implement the website feature "from scratch". We have al
   - maybe they have frontmatter
   - maybe they have a special extension, like `.html.unrendered`?
 - [x] Searching for materials in the content directory
-- [ ] Allow overriding markdown renderer
+- [x] Allow overriding markdown renderer
 - [ ] Page frontmatter
 - [ ] Base path handling
 - [ ] The "theme" abstraction
@@ -145,8 +145,17 @@ render_page_from_markdown(
     context
 )
 
+render_markdown_using_mistune = partial(
+    render_page_from_markdown,
+    renderer=mistune.create_markdown
+)
 
-render_from_markdown = lambda md: render_page_from_markdown(md, context, renderer=markdown.markdown)
+generate(
+    site_config=config.get("site", {}),
+    vars={},
+    now=None,
+    render_page_from_markdown=render_markdown_using_mistune,
+)
 
 
 
