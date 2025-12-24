@@ -525,3 +525,20 @@ def test_url_for_with_custom_base_path(tmpsite):
     output = tmpsite.get_output("index.html")
     assert '<a href="/course/about.html">About</a>' in output
     assert '<a href="/course/contact.html">Contact</a>' in output
+
+
+# themes ===============================================================================
+
+
+def test_generate_uses_default_theme_by_default(tmpsite):
+    tmpsite.make_page("index.md", "Home page")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    automata.website.generate(config)
+
+    # Expect default theme to add a recognizable marker to the rendered page.
+    assert 'data-automata-theme="default"' in tmpsite.get_output("index.html")

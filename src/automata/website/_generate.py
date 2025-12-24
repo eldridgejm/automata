@@ -9,7 +9,9 @@ from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
 from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
+from ._theme import Theme
 from .exceptions import Error, PageError
+from .themes import default as _default_theme
 
 
 def _load_materials(
@@ -35,24 +37,25 @@ def _load_materials(
 
 
 def _generate_single_page(
-    input_path,
-    output_path,
+    input_path: pathlib.Path,
+    output_path: pathlib.Path,
+    theme: Theme,
     renderer: Callable[[str, RenderContext], str],
     context: RenderContext,
 ) -> None:
     raw_content = input_path.read_text()
 
-    # Extract frontmatter from the content
+    # extract frontmatter from the content
     try:
         frontmatter, content = read_frontmatter(raw_content)
     except Exception as e:
         # Wrap any parsing errors with file path context
         raise PageError(str(e), input_path) from e
 
-    # Create a new context with the frontmatter
+    # create a new context with the frontmatter
     context = dataclasses.replace(context, frontmatter=frontmatter)
 
-    # Render the content (without frontmatter)
+    # render the content (without frontmatter)
     rendered_content = renderer(content, context)
     output_path.write_text(rendered_content)
 
@@ -194,6 +197,8 @@ def generate(
         vars=vars,
     )
 
+    theme = Theme.from_package(_default_theme)
+
     for path in pathlib.Path(config.content_directory).rglob("*"):
         relative_path = path.relative_to(config.content_directory)
         output_path = config.build_directory / relative_path
@@ -202,8 +207,12 @@ def generate(
             output_path.mkdir(parents=True, exist_ok=True)
         elif path.suffix.lower() == ".md":
             output_path = output_path.with_suffix(".html")
-            _generate_single_page(path, output_path, render_page_from_markdown, context)
+            _generate_single_page(
+                path, output_path, theme, render_page_from_markdown, context
+            )
         elif path.suffix.lower() == ".html":
-            _generate_single_page(path, output_path, render_page_from_html, context)
+            _generate_single_page(
+                path, output_path, theme, render_page_from_html, context
+            )
         else:
             _copy_file_to_output(path, output_path, config)
