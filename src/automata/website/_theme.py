@@ -1,3 +1,4 @@
+import importlib.metadata as metadata
 import importlib.resources
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
@@ -123,4 +124,10 @@ class Theme:
             The created Theme instance.
 
         """
-        ...
+        entry_points = metadata.entry_points()
+        entry_point = entry_points.select(group="automata.website.theme")[
+            entry_point_name
+        ]
+
+        module = entry_point.load()
+        return cls.from_package(module)

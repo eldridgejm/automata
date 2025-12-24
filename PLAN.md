@@ -157,7 +157,8 @@ generate(
     render_page_from_markdown=render_markdown_using_mistune,
 )
 
-
-
-
 ```
+
+# Themes
+
+Themes can provide templates, static files, and elements.

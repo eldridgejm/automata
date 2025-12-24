@@ -1,4 +1,5 @@
 import importlib
+import importlib.metadata as metadata
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -147,3 +148,62 @@ def test_from_package_allows_missing_static_package(make_theme_package) -> None:
 
     assert theme.templates == {}
     assert theme.static_files == {}
+
+
+@pytest.fixture
+def fake_entry_points(make_theme_package, monkeypatch):
+    pkg = make_theme_package("themepkg_entrypoint")
+    templates_dir = Path(pkg.__file__).parent / "templates"
+    templates_dir.mkdir()
+    (templates_dir / "base.html").write_text("Base template")
+
+    ep = metadata.EntryPoint(
+        name="test-theme",
+        value="themepkg_entrypoint",
+        group="automata.website.theme",
+    )
+
+    class FakeEntryPoints:
+        def __init__(self, items):
+            self._items = tuple(items)
+
+        def __iter__(self):
+            return iter(self._items)
+
+        def __len__(self):
+            return len(self._items)
+
+        def __getitem__(self, name):
+            for item in self._items:
+                if item.name == name:
+                    return item
+            raise KeyError(name)
+
+        def select(self, **params):
+            items = list(self._items)
+            if "group" in params:
+                items = [item for item in items if item.group == params["group"]]
+            if "name" in params:
+                items = [item for item in items if item.name == params["name"]]
+            return FakeEntryPoints(items)
+
+    def _fake_entry_points(*args, **kwargs):
+        entries = FakeEntryPoints([ep])
+        if kwargs:
+            return entries.select(**kwargs)
+        return entries
+
+    monkeypatch.setattr(metadata, "entry_points", _fake_entry_points)
+    return ep.name
+
+
+def test_from_entry_point_loads_theme(fake_entry_points) -> None:
+    theme = Theme.from_entry_point(fake_entry_points)
+
+    assert theme.templates == {"base.html": "Base template"}
+    assert theme.static_files == {}
+
+
+def test_from_entry_point_invalid_name_raises() -> None:
+    with pytest.raises(KeyError):
+        Theme.from_entry_point("nonexistent-theme")
