@@ -37,6 +37,9 @@ allow-direct-references = true
 [tool.hatch.build.targets.wheel]
 packages = ["src/automata"]
 
+[project.entry-points."automata.website.themes"]
+default = "automata.website.themes.default"
+
 [tool.ruff]
 line-length = 88
 src = ["src"]

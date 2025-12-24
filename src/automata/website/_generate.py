@@ -15,7 +15,6 @@ from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
 from ._theme import Theme
 from .exceptions import Error, PageError
-from .themes import default as _default_theme
 
 
 def _load_materials(
@@ -216,7 +215,7 @@ def generate(
         vars=vars,
     )
 
-    theme = Theme.from_package(_default_theme)
+    theme = Theme.from_entry_point("default")
     jinja_environment = jinja2.Environment(
         loader=jinja2.DictLoader(theme.templates),
         undefined=jinja2.StrictUndefined,

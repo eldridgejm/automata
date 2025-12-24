@@ -125,7 +125,7 @@ class Theme:
 
         """
         entry_points = metadata.entry_points()
-        entry_point = entry_points.select(group="automata.website.theme")[
+        entry_point = entry_points.select(group="automata.website.themes")[
             entry_point_name
         ]
 
