@@ -80,7 +80,7 @@ def test_from_directory_requires_templates_directory(tmp_path: Path) -> None:
         Theme.from_directory(theme_dir)
 
 
-# from_module ================================================================
+# from_package ================================================================
 
 
 @pytest.fixture
@@ -107,10 +107,10 @@ def make_theme_package(tmp_path: Path):
     sys.path[:] = original_sys_path
 
 
-def test_from_module_reads_templates_and_static_files(make_theme_package) -> None:
-    module = make_theme_package("themepkg")
-    templates_dir = Path(module.__file__).parent / "templates"
-    static_dir = Path(module.__file__).parent / "static_files"
+def test_from_package_reads_templates_and_static_files(make_theme_package) -> None:
+    pkg = make_theme_package("themepkg")
+    templates_dir = Path(pkg.__file__).parent / "templates"
+    static_dir = Path(pkg.__file__).parent / "static"
     templates_dir.mkdir()
     static_dir.mkdir()
 
@@ -120,7 +120,7 @@ def test_from_module_reads_templates_and_static_files(make_theme_package) -> Non
     (static_dir / "style.css").write_text("body { color: black; }")
     (static_dir / "logo.bin").write_bytes(b"\x00")
 
-    theme = Theme.from_module(module)
+    theme = Theme.from_package(pkg)
 
     assert theme.templates == {
         "base.html": "Base template",
@@ -131,19 +131,19 @@ def test_from_module_reads_templates_and_static_files(make_theme_package) -> Non
     assert theme.static_files["logo.bin"].read_bytes() == b"\x00"
 
 
-def test_from_module_requires_templates_package(make_theme_package) -> None:
-    module = make_theme_package("themepkg_missing_templates")
-    (Path(module.__file__).parent / "static_files").mkdir()
+def test_from_package_requires_templates_package(make_theme_package) -> None:
+    pkg = make_theme_package("themepkg_missing_templates")
+    (Path(pkg.__file__).parent / "static").mkdir()
 
     with pytest.raises(ValueError):
-        Theme.from_module(module)
+        Theme.from_package(pkg)
 
 
-def test_from_module_allows_missing_static_files_package(make_theme_package) -> None:
-    module = make_theme_package("themepkg_missing_static")
-    (Path(module.__file__).parent / "templates").mkdir()
+def test_from_package_allows_missing_static_package(make_theme_package) -> None:
+    pkg = make_theme_package("themepkg_missing_static")
+    (Path(pkg.__file__).parent / "templates").mkdir()
 
-    theme = Theme.from_module(module)
+    theme = Theme.from_package(pkg)
 
     assert theme.templates == {}
     assert theme.static_files == {}

@@ -2,7 +2,6 @@ import importlib.resources
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from types import ModuleType
-from typing import Callable
 
 
 @dataclass
@@ -16,17 +15,16 @@ class Theme:
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
 
     @classmethod
-    def from_module(cls, module: ModuleType) -> "Theme":
-        """Create a Theme instance from a theme module.
+    def from_package(cls, module: ModuleType) -> "Theme":
+        """Create a Theme instance from a theme package.
 
-        The module must contain a ``templates`` subpackage. If a
-        ``static_files`` subpackage exists, its files will be included as
-        static files.
+        The module must contain a ``templates`` subpackage. If a ``static``
+        subpackage exists, its files will be included as static files.
 
         Parameters
         ----------
         module : module
-            The theme module.
+            The theme package module.
 
         Returns
         -------
@@ -35,50 +33,7 @@ class Theme:
 
         """
         root = importlib.resources.files(module)
-        if not root.is_dir():
-            raise ValueError("Theme module is not a package directory.")
-
-        templates_dir = root / "templates"
-        if not templates_dir.is_dir():
-            raise ValueError('Theme module must contain a "templates" package.')
-
-        templates: dict[str, str] = {}
-        static_files: dict[str, str | bytes | Traversable] = {}
-
-        def _is_hidden(parts: list[str]) -> bool:
-            return any(part.startswith(".") for part in parts)
-
-        def _walk(
-            node: Traversable,
-            on_file: Callable[[str, Traversable], None],
-            rel_parts: list[str] | None = None,
-        ) -> None:
-            if rel_parts is None:
-                rel_parts = []
-
-            for entry in node.iterdir():
-                entry_parts = rel_parts + [entry.name]
-                if _is_hidden(entry_parts):
-                    continue
-                if entry.is_dir():
-                    _walk(entry, on_file, entry_parts)
-                else:
-                    key = "/".join(entry_parts)
-                    on_file(key, entry)
-
-        def _add_template(key: str, entry: Traversable) -> None:
-            templates[key] = entry.read_text()
-
-        def _add_static_file(key: str, entry: Traversable) -> None:
-            static_files[key] = entry
-
-        _walk(templates_dir, _add_template)
-
-        static_dir = root / "static_files"
-        if static_dir.is_dir():
-            _walk(static_dir, _add_static_file)
-
-        return cls(templates=templates, static_files=static_files)
+        return cls.from_directory(root)
 
     @classmethod
     def from_directory(cls, directory: Traversable) -> "Theme":
