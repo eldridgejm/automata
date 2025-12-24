@@ -1,0 +1,37 @@
+"""Announcement box element for displaying announcements.
+
+An announcement box is a page element that renders a highlighted box containing
+an announcement message. It is typically used to display important notices,
+updates, or time-sensitive information on a course website.
+
+Features
+--------
+- Supports markdown content for rich text formatting
+- Optional "urgent" flag to visually distinguish critical announcements
+
+Schema
+------
+content (str): The announcement text to display. Supports markdown.
+urgent (bool, optional): If True, the announcement is styled as urgent
+    (e.g., with a different color or icon). Defaults to False.
+
+Example YAML configuration
+--------------------------
+::
+
+    announcement_box:
+      content: |
+        **Midterm next week!** Review sessions available on Thursday.
+      urgent: true
+"""
+
+from automata.website.element_utils import basic_element
+from smartconfig import Prototype
+
+
+class Config(Prototype):
+    content: str
+    urgent: bool = False
+
+
+element = basic_element("elements/announcement_box.html", Config._schema())

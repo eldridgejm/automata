@@ -5,6 +5,8 @@ import datetime
 import pathlib
 from typing import Any, Callable, cast
 
+import jinja2
+
 from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
 from ._frontmatter import read_frontmatter
@@ -39,7 +41,7 @@ def _load_materials(
 def _generate_single_page(
     input_path: pathlib.Path,
     output_path: pathlib.Path,
-    theme: Theme,
+    jinja_environment: jinja2.Environment,
     renderer: Callable[[str, RenderContext], str],
     context: RenderContext,
 ) -> None:
@@ -57,7 +59,21 @@ def _generate_single_page(
 
     # render the content (without frontmatter)
     rendered_content = renderer(content, context)
-    output_path.write_text(rendered_content)
+
+    if "base.html" not in jinja_environment.list_templates():
+        raise Error('Theme templates must include "base.html".')
+
+    base_path = context.config.base_path
+    if not base_path.endswith("/"):
+        base_path = f"{base_path}/"
+
+    wrapped_content = jinja_environment.get_template("base.html").render(
+        **dataclasses.asdict(context),
+        base_url_path=base_path,
+        body=rendered_content,
+        content=rendered_content,
+    )
+    output_path.write_text(wrapped_content)
 
 
 def _copy_file_to_output(
@@ -198,6 +214,14 @@ def generate(
     )
 
     theme = Theme.from_package(_default_theme)
+    jinja_environment = jinja2.Environment(
+        loader=jinja2.DictLoader(theme.templates),
+        undefined=jinja2.StrictUndefined,
+        variable_start_string="${",
+        variable_end_string="}",
+        block_start_string="{%",
+        block_end_string="%}",
+    )
 
     for path in pathlib.Path(config.content_directory).rglob("*"):
         relative_path = path.relative_to(config.content_directory)
@@ -208,11 +232,15 @@ def generate(
         elif path.suffix.lower() == ".md":
             output_path = output_path.with_suffix(".html")
             _generate_single_page(
-                path, output_path, theme, render_page_from_markdown, context
+                path,
+                output_path,
+                jinja_environment,
+                render_page_from_markdown,
+                context,
             )
         elif path.suffix.lower() == ".html":
             _generate_single_page(
-                path, output_path, theme, render_page_from_html, context
+                path, output_path, jinja_environment, render_page_from_html, context
             )
         else:
             _copy_file_to_output(path, output_path, config)
