@@ -554,3 +554,32 @@ def test_generate_uses_default_theme_by_default(tmpsite):
 
     # Expect default theme to add a recognizable marker to the rendered page.
     assert 'data-automata-theme="default"' in tmpsite.get_output("index.html")
+
+
+def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
+    # given
+    tmpsite.make_page("index.md", "# Custom Theme Test")
+
+    # Create a custom theme directory
+    custom_theme_dir = tmp_path / "custom_theme"
+    templates_dir = custom_theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+
+    # Create a custom base.html template with a marker
+    (templates_dir / "base.html").write_text(
+        '<html><body data-custom-theme="yes">${ body }</body></html>'
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("index.html")
+    assert 'data-custom-theme="yes"' in output
+    assert "Custom Theme Test" in output

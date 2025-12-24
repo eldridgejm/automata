@@ -1,6 +1,15 @@
 import smartconfig
 
 
+class ThemeConfig(smartconfig.Prototype):
+    """Configuration for the website theme."""
+
+    # which theme to use. If this contains slashes, it is treated as a path to a
+    # custom theme directory. Otherwise, it is treated as the name of an entry
+    # point under the "automata.website.themes" group.
+    use: str = "default"
+
+
 class Config(smartconfig.Prototype):
     """Configuration for the website."""
 
@@ -20,3 +29,5 @@ class Config(smartconfig.Prototype):
 
     # base path for the website (e.g., "/" or "/course/")
     base_path: str = "/"
+
+    theme: ThemeConfig = ThemeConfig()

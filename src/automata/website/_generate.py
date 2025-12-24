@@ -190,6 +190,25 @@ def generate(
     ``frontmatter`` namespace (e.g., ``${ frontmatter.vars.title }``). Pages without
     frontmatter work as normal.
 
+    Themes
+    ~~~~~~
+
+    The website's appearance is controlled by themes specified via ``config.theme.use``.
+    Themes can be loaded in two ways:
+
+    1. **Entry Point Name** (default): If ``config.theme.use`` does not contain slashes,
+       it is treated as an entry point name in the ``"automata.website.themes"`` group.
+       The default theme is ``"default"``. Custom themes can be registered as entry
+       points in a package's ``pyproject.toml``::
+
+           [project.entry-points."automata.website.themes"]
+           my-theme = "my_package.themes.custom"
+
+    2. **Directory Path**: If ``config.theme.use`` contains slashes, it is treated as a
+       filesystem path to a theme directory. The directory must contain a ``templates/``
+       subdirectory with at least a ``base.html`` template, and optionally a ``static/``
+       subdirectory for static assets.
+
     """
 
     # set default values for optional parameters
@@ -215,7 +234,13 @@ def generate(
         vars=vars,
     )
 
-    theme = Theme.from_entry_point("default")
+    # Load theme based on config - either from entry point or directory path
+    if "/" in config.theme.use or "\\" in config.theme.use:
+        # Path to custom theme directory
+        theme = Theme.from_directory(pathlib.Path(config.theme.use))
+    else:
+        # Entry point name
+        theme = Theme.from_entry_point(config.theme.use)
     jinja_environment = jinja2.Environment(
         loader=jinja2.DictLoader(theme.templates),
         undefined=jinja2.StrictUndefined,
