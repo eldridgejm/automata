@@ -3,9 +3,11 @@
 import dataclasses
 import datetime
 import pathlib
+from functools import partial
 from typing import Any, Callable, cast
 
 import jinja2
+import markdown
 
 from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
@@ -97,8 +99,7 @@ def generate(
     config: Config,
     vars: dict[str, Any] | None = None,
     now: datetime.datetime | None = None,
-    render_page_from_markdown=render_page_from_markdown,
-    render_page_from_html=render_page_from_html,
+    render_markdown: Callable[[str], str] = markdown.markdown,
 ):
     """Generates a static website from course materials.
 
@@ -112,14 +113,11 @@ def generate(
         A dictionary of variables to be used during rendering.
     now : datetime.datetime, optional
         The current date and time to be used during rendering.
-    render_page_from_markdown : Callable[[str, RenderContext], str], optional
-        The function to use for rendering markdown pages. Takes raw markdown
-        content (str) and a render context, returns rendered HTML (str).
-        Defaults to :func:`render_page_from_markdown`.
-    render_page_from_html : Callable[[str, RenderContext], str], optional
-        The function to use for rendering HTML pages. Takes raw HTML content
-        (str) and a render context, returns rendered HTML (str). Defaults to
-        :func:`render_page_from_html`.
+    render_markdown : Callable[[str], str], optional
+        A function that converts markdown content to HTML. Should take markdown
+        text (str) and return HTML (str). Defaults to :func:`markdown.markdown`.
+        This allows for customization of the markdown rendering engine, such as
+        using a different markdown library or adding custom extensions.
 
     Notes
     -----
@@ -206,9 +204,14 @@ def generate(
         pathlib.Path(config.content_directory) / config.materials_directory_name
     )
 
+    # create url_for function based on config.base_path
+    def url_for(path: str) -> str:
+        return f"{config.base_path.rstrip('/')}/{path.lstrip('/')}"
+
     context = RenderContext(
         config=config,
         materials=_load_materials(materials_path),
+        url_for=url_for,
         now=now,
         vars=vars,
     )
@@ -235,7 +238,7 @@ def generate(
                 path,
                 output_path,
                 jinja_environment,
-                render_page_from_markdown,
+                partial(render_page_from_markdown, markdown_renderer=render_markdown),
                 context,
             )
         elif path.suffix.lower() == ".html":

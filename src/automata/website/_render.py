@@ -12,13 +12,6 @@ from ._config import Config
 from ._frontmatter import Frontmatter
 
 
-def DEFAULT_URL_FOR(path: str) -> str:
-    """A placeholder for the default URL generation function."""
-    # we need to know the base path from the config to implement this,
-    # and we will do that in RenderContext.__post_init__.
-    raise NotImplementedError("Default URL generation function is not set.")
-
-
 @dataclasses.dataclass
 class RenderContext:
     """Context available at the time of rendering."""
@@ -29,9 +22,8 @@ class RenderContext:
     # the course materials universe
     materials: Universe[ExportedArtifact]
 
-    # function to generate URLs for given paths. If None, a default
-    # function will be provided that prepends the base_path from the config.
-    url_for: Callable[[str], str] = DEFAULT_URL_FOR
+    # function to generate URLs for given paths
+    url_for: Callable[[str], str]
 
     # function that returns the current date and time
     now: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)
@@ -43,16 +35,6 @@ class RenderContext:
     frontmatter: Frontmatter = dataclasses.field(
         default_factory=lambda: Frontmatter(vars={})
     )
-
-    def __post_init__(self):
-        """Set the default url_for function."""
-
-        if self.url_for is DEFAULT_URL_FOR:
-
-            def url_for(path: str) -> str:
-                return f"{self.config.base_path.rstrip('/')}/{path.lstrip('/')}"
-
-            self.url_for = url_for
 
 
 def _interpolate(

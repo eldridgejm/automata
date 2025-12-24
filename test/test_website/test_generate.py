@@ -276,10 +276,48 @@ def test_exception_is_raised_if_materials_json_missing(tmpsite):
     assert "materials.json not found at" in str(exc.value)
 
 
-# dependency injection =================================================================
+# error handling =======================================================================
 
 
-def test_custom_markdown_renderer_can_be_injected(tmpsite):
+def test_missing_variable_in_markdown_page_raises_error(tmpsite):
+    """Test that missing variables in markdown pages raise an error."""
+    # given
+    tmpsite.make_page("test.md", "# Page\nThe value is ${ missing_var }.")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when / then
+    with raises(Exception) as exc_info:
+        automata.website.generate(config)
+
+    assert "missing_var" in str(exc_info.value)
+
+
+def test_missing_variable_in_html_page_raises_error(tmpsite):
+    """Test that missing variables in HTML pages raise an error."""
+    # given
+    tmpsite.make_page("test.html", "<p>The value is ${ missing_var }.</p>")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when / then
+    with raises(Exception) as exc_info:
+        automata.website.generate(config)
+
+    assert "missing_var" in str(exc_info.value)
+
+
+# customization ========================================================================
+
+
+def test_custom_markdown_engine_can_be_injected(tmpsite):
+    """Test that a custom markdown engine can be injected via render_markdown."""
     # given
     tmpsite.make_page("test.md", "# Header\nContent")
 
@@ -288,43 +326,17 @@ def test_custom_markdown_renderer_can_be_injected(tmpsite):
         build_directory=tmpsite.build_directory,
     )
 
-    # custom renderer that adds a marker
-    def custom_markdown_renderer(content, context):
-        return f"[CUSTOM_MARKDOWN]{content}[/CUSTOM_MARKDOWN]"
+    # custom markdown engine that adds a marker
+    def custom_markdown_engine(markdown_text):
+        return f"[CUSTOM]{markdown_text}[/CUSTOM]"
 
     # when
-    automata.website.generate(
-        config, render_page_from_markdown=custom_markdown_renderer
-    )
+    automata.website.generate(config, render_markdown=custom_markdown_engine)
 
     # then
     output = tmpsite.get_output("test.html")
-    assert "[CUSTOM_MARKDOWN]" in output
-    assert "[/CUSTOM_MARKDOWN]" in output
-    assert "# Header\nContent" in output
-
-
-def test_custom_html_renderer_can_be_injected(tmpsite):
-    # given
-    tmpsite.make_page("test.html", "<h1>Header</h1><p>Content</p>")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
-
-    # custom renderer that adds a marker
-    def custom_html_renderer(content, context):
-        return f"[CUSTOM_HTML]{content}[/CUSTOM_HTML]"
-
-    # when
-    automata.website.generate(config, render_page_from_html=custom_html_renderer)
-
-    # then
-    output = tmpsite.get_output("test.html")
-    assert "[CUSTOM_HTML]" in output
-    assert "[/CUSTOM_HTML]" in output
-    assert "<h1>Header</h1><p>Content</p>" in output
+    assert "[CUSTOM]" in output
+    assert "[/CUSTOM]" in output
 
 
 # frontmatter ==========================================================================
