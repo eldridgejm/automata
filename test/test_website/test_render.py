@@ -147,3 +147,28 @@ def test_from_html_raises_for_missing_variable(tmpsite):
         )
 
     assert "foo" in str(exc_info.value)
+
+
+# RenderContext
+
+
+def test_render_context_url_for_can_be_overridden(tmpsite):
+    # given
+    config = Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        base_path="/custom_base/",
+    )
+
+    def my_urlfor(path: str) -> str:
+        return f"/hello/{path.lstrip('/')}"
+
+    context = RenderContext(
+        config=config, materials=Universe(collections={}), url_for=my_urlfor
+    )
+
+    # when
+    url = context.url_for("path/to/resource")
+
+    # then
+    assert url == "/hello/path/to/resource"

@@ -74,15 +74,6 @@ def _copy_file_to_output(
     output_path.write_bytes(path.read_bytes())
 
 
-def _url_for_factory(base_path: str) -> Callable[[str], str]:
-    """Creates a url_for function that prepends the base path."""
-
-    def url_for(path: str) -> str:
-        return f"{base_path.rstrip('/')}/{path.lstrip('/')}"
-
-    return url_for
-
-
 def generate(
     config: Config,
     vars: dict[str, Any] | None = None,
@@ -199,7 +190,6 @@ def generate(
     context = RenderContext(
         config=config,
         materials=_load_materials(materials_path),
-        url_for=_url_for_factory(config.base_path),
         now=now,
         vars=vars,
     )
