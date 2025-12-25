@@ -9,6 +9,11 @@ class ThemeConfig(smartconfig.Prototype):
     # point under the "automata.website.themes" group.
     use: str = "default"
 
+    # path to a directory containing overrides. If specified, this directory should
+    # contain "templates" and/or "static" subdirectories with files that override
+    # those in the theme.
+    overrides: str | None = None
+
 
 class Config(smartconfig.Prototype):
     """Configuration for the website."""

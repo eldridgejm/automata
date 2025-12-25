@@ -37,16 +37,22 @@ class Theme:
         return cls.from_directory(root)
 
     @classmethod
-    def from_directory(cls, directory: Traversable) -> "Theme":
+    def from_directory(
+        cls, directory: Traversable, require_templates: bool = True
+    ) -> "Theme":
         """Create a Theme instance from a directory.
 
-        The directory must contain a `templates` subdirectory with template files
-        and a `static` subdirectory with static files.
+        The directory should contain a `templates` subdirectory with template files
+        and/or a `static` subdirectory with static files.
 
         Parameters
         ----------
         directory : Traversable
             The directory containing the theme files.
+        require_templates : bool, optional
+            If True, require the templates directory to exist.
+            If False, templates directory is optional (useful for overrides).
+            Defaults to True.
 
         Returns
         -------
@@ -58,7 +64,7 @@ class Theme:
             raise ValueError("Theme directory does not exist or is not a directory.")
 
         templates_dir = directory / "templates"
-        if not templates_dir.is_dir():
+        if require_templates and not templates_dir.is_dir():
             raise ValueError('Theme directory must contain a "templates" directory.')
 
         static_dir = directory / "static"
@@ -103,7 +109,8 @@ class Theme:
         def _add_static_file(key: str, entry: Traversable) -> None:
             static_files[key] = entry
 
-        _walk(templates_dir, _add_template)
+        if templates_dir.is_dir():
+            _walk(templates_dir, _add_template)
         if static_dir.is_dir():
             _walk(static_dir, _add_static_file)
 

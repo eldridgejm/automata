@@ -583,3 +583,74 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
     output = tmpsite.get_output("index.html")
     assert 'data-custom-theme="yes"' in output
     assert "Custom Theme Test" in output
+
+
+def test_generate_can_override_theme_template(tmpsite, tmp_path):
+    """Test that theme templates can be overridden."""
+    # given
+    tmpsite.make_page("index.md", "# Override Test")
+
+    # Create overrides directory with custom base.html
+    overrides_dir = tmp_path / "overrides"
+    templates_dir = overrides_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text(
+        '<html><body data-override="yes">${ body }</body></html>'
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use="default", overrides=str(overrides_dir)),
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("index.html")
+    assert 'data-override="yes"' in output
+    assert "Override Test" in output
+
+
+def test_generate_can_override_only_static_files(tmpsite, tmp_path):
+    """Test that only static files can be overridden without templates."""
+    # given
+    tmpsite.make_page("index.md", "# Static Override Test")
+
+    # Create overrides directory with ONLY static files (no templates)
+    overrides_dir = tmp_path / "overrides"
+    static_dir = overrides_dir / "static"
+    static_dir.mkdir(parents=True)
+    (static_dir / "custom.css").write_text("body { color: red; }")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use="default", overrides=str(overrides_dir)),
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then - verify the custom static file was copied to output
+    custom_css = tmpsite.get_output("custom.css")
+    assert "body { color: red; }" in custom_css
+
+
+def test_generate_copies_static_files_from_theme(tmpsite):
+    """Test that static files from the theme are copied to output."""
+    # given
+    tmpsite.make_page("index.md", "# Test Page")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then - verify default theme's static CSS file was copied
+    style_css = tmpsite.get_output("style/style.css")
+    assert "Default styling for Automata" in style_css

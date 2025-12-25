@@ -150,6 +150,9 @@ def test_from_package_allows_missing_static_package(make_theme_package) -> None:
     assert theme.static_files == {}
 
 
+# from_entry_point =====================================================================
+
+
 def test_default_entry_point_is_registered() -> None:
     """Test that the 'default' theme entry point is registered."""
     # Verify the entry point exists
@@ -166,3 +169,35 @@ def test_default_entry_point_is_registered() -> None:
     # Verify the theme has expected content
     assert "base.html" in theme.templates
     assert theme.templates["base.html"]  # Should have content
+
+
+# require_templates parameter ==========================================================
+
+
+def test_from_directory_requires_templates_directory_by_default(tmp_path) -> None:
+    """Test that from_directory requires templates/ when require_templates=True."""
+    # given
+    theme_dir = tmp_path / "theme"
+    theme_dir.mkdir()
+    # No templates directory at all
+
+    # when / then
+    with pytest.raises(ValueError, match="templates"):
+        Theme.from_directory(theme_dir)
+
+
+def test_from_directory_allows_missing_templates_when_not_required(tmp_path) -> None:
+    """Test that templates/ is optional when require_templates=False."""
+    # given
+    theme_dir = tmp_path / "theme"
+    theme_dir.mkdir()
+    static_dir = theme_dir / "static"
+    static_dir.mkdir()
+    (static_dir / "style.css").write_text("body {}")
+
+    # when
+    theme = Theme.from_directory(theme_dir, require_templates=False)
+
+    # then
+    assert theme.templates == {}
+    assert "style.css" in theme.static_files

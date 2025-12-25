@@ -209,6 +209,30 @@ def generate(
        subdirectory with at least a ``base.html`` template, and optionally a ``static/``
        subdirectory for static assets.
 
+    Theme Overrides
+    ^^^^^^^^^^^^^^^
+
+    Individual templates or static files can be overridden without creating a complete
+    custom theme by specifying ``config.theme.overrides``. This should be a path to a
+    directory containing ``templates/`` and/or ``static/`` subdirectories with files
+    that should override those in the base theme.
+
+    For example, to customize only the ``base.html`` template while using the default
+    theme::
+
+        overrides/
+        └── templates/
+            └── base.html
+
+        config = Config(
+            ...,
+            theme=ThemeConfig(use="default", overrides="./overrides")
+        )
+
+    Files in the overrides directory take precedence over those in the base theme.
+    Non-overridden files continue to use the base theme's versions. The overrides
+    directory can contain only templates, only static files, or both.
+
     """
 
     # set default values for optional parameters
@@ -241,6 +265,19 @@ def generate(
     else:
         # Entry point name
         theme = Theme.from_entry_point(config.theme.use)
+
+    # Apply overrides if specified
+    if config.theme.overrides is not None:
+        overrides_dir = pathlib.Path(config.theme.overrides)
+        if overrides_dir.exists():
+            # Allow override directories to have only static files
+            override_theme = Theme.from_directory(
+                overrides_dir, require_templates=False
+            )
+            # Merge overrides into base theme (overrides take precedence)
+            theme.templates.update(override_theme.templates)
+            theme.static_files.update(override_theme.static_files)
+
     jinja_environment = jinja2.Environment(
         loader=jinja2.DictLoader(theme.templates),
         undefined=jinja2.StrictUndefined,
@@ -249,6 +286,20 @@ def generate(
         block_start_string="{%",
         block_end_string="%}",
     )
+
+    # Copy theme static files to output
+    for static_path, static_content in theme.static_files.items():
+        output_path = pathlib.Path(config.build_directory) / static_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Handle different types of static content
+        if isinstance(static_content, bytes):
+            output_path.write_bytes(static_content)
+        elif isinstance(static_content, str):
+            output_path.write_text(static_content)
+        else:
+            # Traversable - read and write bytes
+            output_path.write_bytes(static_content.read_bytes())
 
     for path in pathlib.Path(config.content_directory).rglob("*"):
         relative_path = path.relative_to(config.content_directory)
