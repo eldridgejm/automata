@@ -13,7 +13,6 @@ Usage:
     python build_simple.py
 """
 
-import json
 import pathlib
 import sys
 
@@ -54,7 +53,7 @@ def main():
     print(f"  ✓ Found {total_collections} collections")
     print(f"  ✓ Found {total_publications} publications")
     print(f"  ✓ Found {total_artifacts} artifacts")
-    print(f"\n  Collections:")
+    print("\n  Collections:")
     for coll_name, collection in sorted(universe.collections.items()):
         print(f"    - {coll_name}: {len(collection.publications)} publications")
 
@@ -110,7 +109,7 @@ def main():
     print("Build Complete!")
     print("=" * 80)
     print(f"\nMaterials available at: {materials_export_dir}")
-    print(f"\nGenerated files:")
+    print("\nGenerated files:")
     print(f"  - materials.json: {materials_json_path}")
     for coll_name in sorted(exported.collections.keys()):
         coll_dir = materials_export_dir / coll_name

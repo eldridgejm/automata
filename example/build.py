@@ -58,11 +58,9 @@ def main():
     if config_path.exists():
         full_config = load_config(config_path)
         vars_dict = full_config.get("vars", {})
-        website_config = full_config.get("website", {})
         elements_config = full_config.get("website", {}).get("elements", {})
     else:
         vars_dict = {}
-        website_config = {}
         elements_config = {}
 
     website_content_dir = root_dir / "website"
@@ -158,7 +156,7 @@ def main():
 
     automata.website.generate(config)
 
-    print(f"  ✓ Generated website")
+    print("  ✓ Generated website")
 
     # Summary
     print("\n" + "=" * 80)
