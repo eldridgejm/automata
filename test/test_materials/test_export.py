@@ -72,7 +72,7 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
         """
         artifacts:
             problems/:
-                recipe: mkdir problems && touch problems/{one,two}.pdf
+                recipe: mkdir problems && touch problems/a.pdf problems/b.pdf
         metadata:
             name: Homework
             date: 2021-10-05 23:59:00
@@ -87,8 +87,8 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
     _ = automata.materials.export(built, outdir)
 
     assert (outdir / "homeworks" / "01-testing" / "problems").is_dir()
-    assert (outdir / "homeworks" / "01-testing" / "problems" / "one.pdf").is_file()
-    assert (outdir / "homeworks" / "01-testing" / "problems" / "two.pdf").is_file()
+    assert (outdir / "homeworks" / "01-testing" / "problems" / "a.pdf").is_file()
+    assert (outdir / "homeworks" / "01-testing" / "problems" / "b.pdf").is_file()
 
 
 def test_export_raises_when_artifact_not_built(outdir):
