@@ -2,7 +2,12 @@ import importlib.metadata as metadata
 import importlib.resources
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
-from typing import cast
+from typing import TYPE_CHECKING, cast
+
+import jinja2
+
+if TYPE_CHECKING:
+    from ._elements import Element
 
 
 @dataclass
@@ -14,6 +19,9 @@ class Theme:
     # the file at that path will be copied to the output. If the value is bytes or
     # a string, that content will be written to the output file.
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
+
+    # dictionary mapping element names to element functions
+    elements: dict[str, Element] = field(default_factory=dict)
 
     @classmethod
     def from_directory(
@@ -128,3 +136,13 @@ class Theme:
         else:
             root = importlib.resources.files(module)
             return cls.from_directory(root)
+
+    def create_jinja_environment(self) -> jinja2.Environment:
+        return jinja2.Environment(
+            loader=jinja2.DictLoader(self.templates),
+            undefined=jinja2.StrictUndefined,
+            variable_start_string="${",
+            variable_end_string="}",
+            block_start_string="{%",
+            block_end_string="%}",
+        )

@@ -829,3 +829,32 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
     assert tmpsite.get_output("string.txt") == "string content"
     assert tmpsite.get_output("bytes.bin") == "bytes content"
     assert tmpsite.get_output("traversable.txt") == "traversable content"
+
+
+# elements =============================================================================
+
+
+def test_generate_supports_theme_elements(tmpsite):
+    tmpsite.make_page(
+        "index.html",
+        '${ elements.simple({"label": "Hello"}) }',
+    )
+
+    def simple_element(config, context):
+        return f'<span data-element="simple">{config["label"]}</span>'
+
+    theme = automata.website.Theme(
+        templates={"base.html": "<html><body>${ body }</body></html>"},
+        elements={"simple": simple_element},
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use="extra"),
+    )
+
+    automata.website.generate(config, extra_themes={"extra": theme})
+
+    output = tmpsite.get_output("index.html")
+    assert '<span data-element="simple">Hello</span>' in output

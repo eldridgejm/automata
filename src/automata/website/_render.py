@@ -6,10 +6,12 @@ from typing import Any, Callable
 
 import jinja2
 import markdown
+import smartconfig
 
 from ..materials import ExportedArtifact, Universe
 from ._config import Config
 from ._frontmatter import Frontmatter
+from ._theme import Theme
 
 
 @dataclasses.dataclass
@@ -24,6 +26,14 @@ class RenderContext:
 
     # function to generate URLs for given paths
     url_for: Callable[[str], str]
+
+    # the theme being used to render the page
+    theme: Theme
+
+    # elements avaiable during rendering
+    elements: dict[
+        str, Callable[[smartconfig.types.Configuration, "RenderContext"], str]
+    ] = dataclasses.field(default_factory=dict)
 
     # function that returns the current date and time
     now: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)

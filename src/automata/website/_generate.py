@@ -11,6 +11,7 @@ import markdown
 
 from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
+from ._elements import bind_elements
 from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
 from ._theme import Theme
@@ -39,10 +40,10 @@ def _load_materials(
     )
 
 
-def _get_theme_and_jinja_environment(
+def _get_theme(
     config: Config,
     extra_themes: dict[str, Theme] | None = None,
-) -> tuple[Theme, jinja2.Environment]:
+) -> Theme:
     """Creates a Jinja2 environment from the theme configuration.
 
     Loads the theme based on config.theme.use (either from entry point or directory
@@ -87,16 +88,7 @@ def _get_theme_and_jinja_environment(
     if "base.html" not in theme.templates:
         raise ValueError('Theme templates must include a "base.html" file.')
 
-    jinja_environment = jinja2.Environment(
-        loader=jinja2.DictLoader(theme.templates),
-        undefined=jinja2.StrictUndefined,
-        variable_start_string="${",
-        variable_end_string="}",
-        block_start_string="{%",
-        block_end_string="%}",
-    )
-
-    return theme, jinja_environment
+    return theme
 
 
 def _copy_theme_static_files(theme: Theme, build_directory: pathlib.Path) -> None:
@@ -353,18 +345,21 @@ def generate(
     def url_for(path: str) -> str:
         return f"{config.base_path.rstrip('/')}/{path.lstrip('/')}"
 
+    theme = _get_theme(config, extra_themes=extra_themes)
+    jinja_environment = theme.create_jinja_environment()
+
+    _copy_theme_static_files(theme, pathlib.Path(config.build_directory))
+
     context = RenderContext(
         config=config,
         materials=_load_materials(materials_path),
         url_for=url_for,
+        theme=theme,
         now=now,
         vars=vars,
     )
 
-    theme, jinja_environment = _get_theme_and_jinja_environment(
-        config, extra_themes=extra_themes
-    )
-    _copy_theme_static_files(theme, pathlib.Path(config.build_directory))
+    context.elements = bind_elements(theme.elements, context)
 
     for path in pathlib.Path(config.content_directory).rglob("*"):
         relative_path = path.relative_to(config.content_directory)
