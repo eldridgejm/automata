@@ -78,7 +78,7 @@
                     {% else %}
                         Due
                     {% endif %}
-                    ${ due_time.strftime('%A, %b %d at %H:%M %p') if hasattr(due_time, 'strftime') else due_time }
+                    ${ due_time.strftime('%A, %b %d at %H:%M %p') }
                 </div>
                 {% endif %}
             {% endif %}

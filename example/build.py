@@ -58,7 +58,7 @@ def main():
 
     # Done
     print("\n" + "=" * 60)
-    print(f"Website built successfully!")
+    print("Website built successfully!")
     print(f"\nOpen {build_dir}/index.html in your browser")
     print()
 
