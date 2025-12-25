@@ -1,7 +1,6 @@
 import smartconfig
 
-from automata.website._elements import template_element
-from automata.website._render import RenderContext
+from automata.website import RenderContext, template_element
 
 
 class AnnouncementBoxSchema(smartconfig.Prototype):
