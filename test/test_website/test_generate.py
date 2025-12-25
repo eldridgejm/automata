@@ -798,7 +798,7 @@ def test_generate_copies_static_files_from_theme(tmpsite):
     assert "Default styling for Automata" in style_css
 
 
-def test_generate_handles_all_static_file_types(tmpsite, tmp_path, monkeypatch):
+def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
     """Test that generate() handles str, bytes, and Traversable static files."""
     # given
     tmpsite.make_page("index.md", "# Test Page")
@@ -817,21 +817,13 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path, monkeypatch):
         },
     )
 
-    # Monkeypatch Theme.from_entry_point to return our custom theme
-    def mock_from_entry_point(entry_point_name):
-        return theme
-
-    monkeypatch.setattr(
-        "automata.website.Theme.from_entry_point", mock_from_entry_point
-    )
-
     config = automata.website.Config(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
 
     # when
-    automata.website.generate(config)
+    automata.website.generate(config, extra_themes={"default": theme})
 
     # then - verify all three types were copied correctly
     assert tmpsite.get_output("string.txt") == "string content"

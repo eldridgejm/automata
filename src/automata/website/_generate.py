@@ -41,6 +41,7 @@ def _load_materials(
 
 def _get_theme_and_jinja_environment(
     config: Config,
+    extra_themes: dict[str, Theme] | None = None,
 ) -> tuple[Theme, jinja2.Environment]:
     """Creates a Jinja2 environment from the theme configuration.
 
@@ -65,8 +66,11 @@ def _get_theme_and_jinja_environment(
         # Path to custom theme directory
         theme = Theme.from_directory(pathlib.Path(config.theme.use))
     else:
-        # Entry point name
-        theme = Theme.from_entry_point(config.theme.use)
+        # Entry point name (extra themes take priority)
+        if extra_themes is not None and config.theme.use in extra_themes:
+            theme = extra_themes[config.theme.use]
+        else:
+            theme = Theme.from_entry_point(config.theme.use)
 
     # Apply overrides if specified
     if config.theme.overrides is not None:
@@ -184,6 +188,7 @@ def _copy_file_to_output(
 def generate(
     config: Config,
     vars: dict[str, Any] | None = None,
+    extra_themes: dict[str, Theme] | None = None,
     now: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown.markdown,
 ):
@@ -197,6 +202,9 @@ def generate(
         See :class:`Config` for more details.
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
+    extra_themes : dict[str, Theme], optional
+        A mapping of theme names to Theme instances that should be searched before
+        entry points when resolving config.theme.use.
     now : datetime.datetime, optional
         The current date and time to be used during rendering.
     render_markdown : Callable[[str], str], optional
@@ -301,6 +309,9 @@ def generate(
        subdirectory with at least a ``base.html`` template, and optionally a ``static/``
        subdirectory for static assets.
 
+    When ``extra_themes`` is provided to :func:`generate`, it is checked before entry
+    points when resolving ``config.theme.use``.
+
     Theme Overrides
     ^^^^^^^^^^^^^^^
 
@@ -350,7 +361,9 @@ def generate(
         vars=vars,
     )
 
-    theme, jinja_environment = _get_theme_and_jinja_environment(config)
+    theme, jinja_environment = _get_theme_and_jinja_environment(
+        config, extra_themes=extra_themes
+    )
     _copy_theme_static_files(theme, pathlib.Path(config.build_directory))
 
     for path in pathlib.Path(config.content_directory).rglob("*"):
