@@ -188,8 +188,7 @@ def _bind_elements_to_context(
     HTML strings.
     """
     return {
-        name: lambda config: element(config, context)
-        for name, element in elements.items()
+        name: partial(element, context=context) for name, element in elements.items()
     }
 
 
