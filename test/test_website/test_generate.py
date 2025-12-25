@@ -5,7 +5,6 @@ from pytest import raises
 
 import automata.materials
 import automata.website
-from automata.website._elements import template_element
 
 # basic page rendering =================================================================
 
@@ -837,6 +836,7 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
 
 
 def test_generate_supports_theme_elements(tmpsite):
+    """Test using a simple function as a theme element."""
     tmpsite.make_page(
         "index.html",
         '${ elements.simple({"label": "Hello"}) }',
@@ -872,9 +872,14 @@ def test_generate_with_template_element(tmpsite):
         label: str
         tone: str = "info"
 
-    @template_element(BadgeConfig, "badge.html")
-    def badge_element(config, context):
-        return {"suffix": f"{context.config.build_directory}"}
+    class BadgeElement(automata.website.TemplateElement):
+        """Template element implementation using the TemplateElement protocol."""
+
+        schema = BadgeConfig._schema()
+        template = "badge.html"
+
+        def template_vars(self, context, config):
+            return {"suffix": f"{context.config.build_directory}"}
 
     theme = automata.website.Theme(
         templates={
@@ -884,7 +889,7 @@ def test_generate_with_template_element(tmpsite):
                 "${ element_config.label }:${ suffix }</span>"
             ),
         },
-        elements={"badge": badge_element},
+        elements={"badge": BadgeElement()},
     )
 
     config = automata.website.Config(

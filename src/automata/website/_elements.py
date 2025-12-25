@@ -1,94 +1,78 @@
-from functools import wraps
-from typing import Callable, TypeAlias
+from abc import abstractmethod
+from typing import Any, Protocol
 
 import smartconfig
 
 from ._render import RenderContext
 
-Element: TypeAlias = Callable[[smartconfig.types.Configuration, RenderContext], str]
-"""A type alias for an element function.
 
-An element is a function that takes a configuration and a render context
-and returns a rendered string (usually HTML).
-"""
+class Element(Protocol):
+    @abstractmethod
+    def __call__(
+        self,
+        config: smartconfig.types.Configuration,
+        context: RenderContext,
+    ) -> str: ...
 
 
-def element(
-    schema: smartconfig.types.Schema | type[smartconfig.Prototype],
-):
-    """Decorator for a basic element.
+class BasicElement(Element, Protocol):
+    """An Element that does basic configuration resolution and validation.
 
-    This decorator checks and resolves the configuration against the provided
-    schema before passing it to the decorated function.
-
-    Parameters
-    ----------
-    schema : smartconfig.types.Schema | type[smartconfig.Prototype]
-        The schema to validate the configuration against.
-
-    Returns
-    -------
-    Callable
-        A decorator that transforms a function into an ``Element``.
+    Subclasses should provide the ``schema`` attribute and implement the ``render``
+    method.
 
     """
-    if isinstance(schema, smartconfig.Prototype):
-        schema = schema._schema()
 
-    def decorator(func):
-        @wraps(func)
-        def wrapper(config, context: RenderContext):
-            resolved_config = smartconfig.resolve(config, schema)
-            return func(resolved_config, context)
+    schema: smartconfig.types.Schema | None
 
-        return wrapper
+    def __call__(
+        self,
+        config: smartconfig.types.Configuration,
+        context: RenderContext,
+    ) -> str:
+        if self.schema is not None:
+            config = smartconfig.resolve(config, self.schema)
+        return self.render(config, context)
 
-    return decorator
+    @abstractmethod
+    def render(
+        self,
+        config: smartconfig.types.Configuration,
+        context: RenderContext,
+    ) -> str: ...
 
 
-def template_element(
-    schema: smartconfig.types.Schema | type[smartconfig.Prototype],
-    template_name: str,
-):
-    """Decorator for a template-based element.
+class TemplateElement(BasicElement, Protocol):
+    """An Element that renders a Jinja2 template.
 
-    This decorator resolves the configuration against the provided schema, and
-    then renders the specified Jinja2 template.
+    Subclasses should provide both the ``schema`` attribute and the ``template``
+    attribute. They may optionally override the ``template_vars`` method to provide
+    additional variables to the template context.
 
-    The decorated function should accept the resolved configuration and a
-    render context, and return a dictionary of extra variables to pass to the
-    template.
-
-    Parameters
-    ----------
-    schema : smartconfig.types.Schema | type[smartconfig.Prototype]
-        The schema to validate the configuration against.
-    template_name : str
-        The name of the Jinja2 template to render.
-
-    Returns
-    -------
-    Callable
-        A decorator that transforms a function into an ``Element``.
+    This inherits from BasicElement, so configuration resolution and validation
+    is handled automatically.
 
     """
-    if isinstance(schema, smartconfig.Prototype):
-        schema = schema._schema()
 
-    def decorator(func):
-        @element(schema)
-        def wrapper(
-            config: smartconfig.types.Configuration, context: RenderContext
-        ) -> str:
-            extra_vars = func(config, context)
-            jinja_environment = context.theme.create_jinja_environment()
-            template = jinja_environment.get_template(template_name)
-            return template.render(
-                element_config=config,
-                context=context,
-                **extra_vars,
-            )
+    template: str
 
-        return wrapper
+    def template_vars(
+        self,
+        context: RenderContext,
+        config: smartconfig.types.Configuration,
+    ) -> dict[str, Any]:
+        return {}
 
-    return decorator
+    def render(
+        self,
+        config: smartconfig.types.Configuration,
+        context: RenderContext,
+    ) -> str:
+        jinja_env = context.theme.create_jinja_environment()
+        template = jinja_env.get_template(self.template)
+        extra_vars = self.template_vars(context, config)
+        return template.render(
+            element_config=config,
+            context=context,
+            **extra_vars,
+        )

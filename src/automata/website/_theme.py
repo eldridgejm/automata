@@ -2,6 +2,7 @@ import hashlib
 import importlib.metadata as metadata
 import importlib.resources
 import importlib.util
+import sys
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from typing import TYPE_CHECKING, cast
@@ -218,7 +219,15 @@ def _load_elements_from_directory(
             raise ValueError(f"Unable to load elements package at {init_path}.")
 
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+
+        sys.modules[module_name] = module
+
+        try:
+            spec.loader.exec_module(module)
+        except Exception:
+            # Clean up sys.modules if loading fails
+            sys.modules.pop(module_name, None)
+            raise
 
     if hasattr(module, "elements"):
         elements = module.elements

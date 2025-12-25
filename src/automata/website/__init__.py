@@ -2,7 +2,7 @@
 
 from . import exceptions
 from ._config import Config, ThemeConfig
-from ._elements import element, template_element
+from ._elements import BasicElement, Element, TemplateElement
 from ._frontmatter import Frontmatter
 from ._generate import generate
 from ._render import RenderContext
@@ -16,8 +16,9 @@ __all__ = [
     "Theme",
     "Frontmatter",
     "PageError",
-    "element",
-    "template_element",
+    "Element",
+    "BasicElement",
+    "TemplateElement",
     "generate",
     "exceptions",
 ]
