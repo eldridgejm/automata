@@ -1,0 +1,39 @@
+{% macro display_cell(publication, column) %}
+    {% set is_missing = is_something_missing(publication, column.requires) %}
+
+    {% if is_missing and column.requires.cell_content_if_missing is not none %}
+        ${ evaluate(column.requires.cell_content_if_missing, publication) }
+    {% else %}
+        ${ evaluate(column.cell_content, publication) }
+    {% endif %}
+{% endmacro %}
+
+<div class="listing">
+    <table class="table">
+        <thead>
+            <tr>
+            {% if element_config.numbered %}
+                <th scope="col">#</th>
+            {% endif %}
+            {% for column in element_config.columns %}
+                <th scope="col">${ column.heading }</th>
+            {% endfor %}
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for publication in publications %}
+            <tr>
+                {% if element_config.numbered %}
+                <th scope="row">${ loop.index }</th>
+                {% endif %}
+                {% for column in element_config.columns %}
+                <td>
+                    ${ display_cell(publication, column) }
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
