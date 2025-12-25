@@ -313,7 +313,7 @@ def test_missing_variable_in_html_page_raises_error(tmpsite):
     assert "missing_var" in str(exc_info.value)
 
 
-# customization ========================================================================
+# dependency injection =================================================================
 
 
 def test_custom_markdown_engine_can_be_injected(tmpsite):
@@ -583,6 +583,26 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
     output = tmpsite.get_output("index.html")
     assert 'data-custom-theme="yes"' in output
     assert "Custom Theme Test" in output
+
+
+def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
+    # given
+    tmpsite.make_page("index.md", "# Missing Base")
+
+    custom_theme_dir = tmp_path / "custom_theme"
+    templates_dir = custom_theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "index.html").write_text("<html>${ body }</html>")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
+    )
+
+    # when / then
+    with raises(ValueError, match="base.html"):
+        automata.website.generate(config)
 
 
 def test_generate_can_override_theme_template(tmpsite, tmp_path):

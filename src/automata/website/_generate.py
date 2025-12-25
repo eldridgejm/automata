@@ -39,7 +39,9 @@ def _load_materials(
     )
 
 
-def _make_jinja_env_from_theme(config: Config) -> tuple[Theme, jinja2.Environment]:
+def _get_theme_and_jinja_environment(
+    config: Config,
+) -> tuple[Theme, jinja2.Environment]:
     """Creates a Jinja2 environment from the theme configuration.
 
     Loads the theme based on config.theme.use (either from entry point or directory
@@ -77,6 +79,9 @@ def _make_jinja_env_from_theme(config: Config) -> tuple[Theme, jinja2.Environmen
             # Merge overrides into base theme (overrides take precedence)
             theme.templates.update(override_theme.templates)
             theme.static_files.update(override_theme.static_files)
+
+    if "base.html" not in theme.templates:
+        raise ValueError('Theme templates must include a "base.html" file.')
 
     jinja_environment = jinja2.Environment(
         loader=jinja2.DictLoader(theme.templates),
@@ -344,7 +349,7 @@ def generate(
         vars=vars,
     )
 
-    theme, jinja_environment = _make_jinja_env_from_theme(config)
+    theme, jinja_environment = _get_theme_and_jinja_environment(config)
     _copy_theme_static_files(theme, pathlib.Path(config.build_directory))
 
     for path in pathlib.Path(config.content_directory).rglob("*"):
