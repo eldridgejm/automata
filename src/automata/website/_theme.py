@@ -1,5 +1,7 @@
+import hashlib
 import importlib.metadata as metadata
 import importlib.resources
+import importlib.util
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from typing import TYPE_CHECKING, cast
@@ -29,21 +31,36 @@ class Theme:
     ) -> "Theme":
         """Create a Theme instance from a directory.
 
-        The directory must contain a `templates` subdirectory with template files
-        and a `static` subdirectory with static files.
+        The directory must contain a ``templates/`` subdirectory with template
+        files (unless ``require_templates`` is False). It may optionally contain
+        a ``static/`` subdirectory with static files and an ``elements/``
+        subdirectory containing a Python package.
+
+        If the ``elements/`` directory is present, it must contain an
+        ``__init__.py`` file that defines an ``elements`` variable. This
+        variable must be a dictionary mapping element names to ``Element``
+        instances.
 
         Parameters
         ----------
         directory : Traversable
             The directory containing the theme files.
         require_templates : bool, optional
-            If True (default), the directory must contain a templates/
-            subdirectory. If False, templates/ is optional.
+            If True (default), the directory must contain a ``templates/``
+            subdirectory. If False, ``templates/`` is optional.
 
         Returns
         -------
         Theme
             The created Theme instance.
+
+        Raises
+        ------
+        ValueError
+            If the directory does not exist, if ``require_templates`` is True
+            and the ``templates/`` directory is missing, or if the
+            ``elements/`` package is invalid (e.g. missing ``__init__.py``
+            or valid ``elements`` dictionary).
 
         """
         if not directory.is_dir():
@@ -57,6 +74,7 @@ class Theme:
 
         templates: dict[str, str] = {}
         static_files: dict[str, str | bytes | Traversable] = {}
+        elements: dict[str, "Element"] = {}
 
         def _is_hidden(parts: list[str]) -> bool:
             return any(part.startswith(".") for part in parts)
@@ -100,7 +118,15 @@ class Theme:
         if static_dir.is_dir():
             _walk(static_dir, _add_static_file)
 
-        return cls(templates=templates, static_files=static_files)
+        elements_dir = directory / "elements"
+        if elements_dir.is_dir():
+            elements = _load_elements_from_directory(elements_dir)
+
+        return cls(
+            templates=templates,
+            static_files=static_files,
+            elements=elements,
+        )
 
     @classmethod
     def from_entry_point(cls, entry_point_name: str) -> "Theme":
@@ -146,3 +172,64 @@ class Theme:
             block_start_string="{%",
             block_end_string="%}",
         )
+
+
+def _load_elements_from_directory(
+    elements_dir: Traversable,
+) -> dict[str, "Element"]:
+    """Load elements from a directory.
+
+    The directory must be a Python package (containing an ``__init__.py`` file)
+    and must define an ``elements`` variable that is a dictionary mapping
+    element names to Element instances.
+
+    Parameters
+    ----------
+    elements_dir : Traversable
+        The directory containing the elements package.
+
+    Returns
+    -------
+    dict[str, Element]
+        A dictionary mapping element names to Element instances.
+
+    Raises
+    ------
+    ValueError
+        If the elements package cannot be loaded or does not define a
+        valid ``elements`` variable.
+
+    """
+    init_file = elements_dir / "__init__.py"
+    if not init_file.is_file():
+        return {}
+
+    with importlib.resources.as_file(elements_dir) as elements_path:
+        digest = hashlib.sha256(str(elements_path).encode("utf-8")).hexdigest()[:12]
+        module_name = f"automata.website.theme_elements_{digest}"
+        init_path = elements_path / "__init__.py"
+
+        spec = importlib.util.spec_from_file_location(
+            module_name,
+            init_path,
+            submodule_search_locations=[str(elements_path)],
+        )
+        if spec is None or spec.loader is None:
+            raise ValueError(f"Unable to load elements package at {init_path}.")
+
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+    if hasattr(module, "elements"):
+        elements = module.elements
+    else:
+        raise ValueError(
+            f"Elements package at {init_file} must define an `elements` variable."
+        )
+
+    if not isinstance(elements, dict):
+        raise ValueError(
+            f"Elements package at {init_file} must return a dict of elements."
+        )
+
+    return elements
