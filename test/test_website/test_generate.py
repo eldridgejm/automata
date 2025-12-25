@@ -654,3 +654,44 @@ def test_generate_copies_static_files_from_theme(tmpsite):
     # then - verify default theme's static CSS file was copied
     style_css = tmpsite.get_output("style/style.css")
     assert "Default styling for Automata" in style_css
+
+
+def test_generate_handles_all_static_file_types(tmpsite, tmp_path, monkeypatch):
+    """Test that generate() handles str, bytes, and Traversable static files."""
+    # given
+    tmpsite.make_page("index.md", "# Test Page")
+
+    # Create a file to use as Traversable (Path objects have read_bytes())
+    traversable_file = tmp_path / "traversable.txt"
+    traversable_file.write_bytes(b"traversable content")
+
+    # Create a theme with all three types of static files
+    theme = automata.website.Theme(
+        templates={"base.html": "<html><body>${ content }</body></html>"},
+        static_files={
+            "string.txt": "string content",
+            "bytes.bin": b"bytes content",
+            "traversable.txt": traversable_file,
+        },
+    )
+
+    # Monkeypatch Theme.from_entry_point to return our custom theme
+    def mock_from_entry_point(entry_point_name):
+        return theme
+
+    monkeypatch.setattr(
+        "automata.website.Theme.from_entry_point", mock_from_entry_point
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then - verify all three types were copied correctly
+    assert tmpsite.get_output("string.txt") == "string content"
+    assert tmpsite.get_output("bytes.bin") == "bytes content"
+    assert tmpsite.get_output("traversable.txt") == "traversable content"

@@ -5,12 +5,14 @@ from ._config import Config, ThemeConfig
 from ._frontmatter import Frontmatter
 from ._generate import generate
 from ._render import RenderContext
+from ._theme import Theme
 from .exceptions import PageError
 
 __all__ = [
     "RenderContext",
     "Config",
     "ThemeConfig",
+    "Theme",
     "Frontmatter",
     "PageError",
     "generate",

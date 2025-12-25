@@ -1,8 +1,5 @@
-import importlib
 import importlib.metadata as metadata
-import sys
 from pathlib import Path
-from types import ModuleType
 
 import pytest
 
@@ -79,75 +76,6 @@ def test_from_directory_requires_templates_directory(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         Theme.from_directory(theme_dir)
-
-
-# from_package ================================================================
-
-
-@pytest.fixture
-def make_theme_package(tmp_path: Path):
-    """Create importable theme packages under a temp directory.
-
-    Adds the temp directory to sys.path during the fixture's lifetime and
-    restores sys.path after tests complete.
-    """
-    original_sys_path = list(sys.path)
-
-    def _make(name: str) -> ModuleType:
-        package_dir = tmp_path / name
-        package_dir.mkdir()
-        (package_dir / "__init__.py").write_text("")
-        if str(tmp_path) not in sys.path:
-            sys.path.insert(0, str(tmp_path))
-        importlib.invalidate_caches()
-        sys.modules.pop(name, None)
-        return importlib.import_module(name)
-
-    yield _make
-
-    sys.path[:] = original_sys_path
-
-
-def test_from_package_reads_templates_and_static_files(make_theme_package) -> None:
-    pkg = make_theme_package("themepkg")
-    templates_dir = Path(pkg.__file__).parent / "templates"
-    static_dir = Path(pkg.__file__).parent / "static"
-    templates_dir.mkdir()
-    static_dir.mkdir()
-
-    (templates_dir / "base.html").write_text("Base template")
-    (templates_dir / "partials").mkdir()
-    (templates_dir / "partials" / "nav.html").write_text("Nav template")
-    (static_dir / "style.css").write_text("body { color: black; }")
-    (static_dir / "logo.bin").write_bytes(b"\x00")
-
-    theme = Theme.from_package(pkg)
-
-    assert theme.templates == {
-        "base.html": "Base template",
-        "partials/nav.html": "Nav template",
-    }
-    assert set(theme.static_files.keys()) == {"style.css", "logo.bin"}
-    assert theme.static_files["style.css"].read_text() == "body { color: black; }"
-    assert theme.static_files["logo.bin"].read_bytes() == b"\x00"
-
-
-def test_from_package_requires_templates_package(make_theme_package) -> None:
-    pkg = make_theme_package("themepkg_missing_templates")
-    (Path(pkg.__file__).parent / "static").mkdir()
-
-    with pytest.raises(ValueError):
-        Theme.from_package(pkg)
-
-
-def test_from_package_allows_missing_static_package(make_theme_package) -> None:
-    pkg = make_theme_package("themepkg_missing_static")
-    (Path(pkg.__file__).parent / "templates").mkdir()
-
-    theme = Theme.from_package(pkg)
-
-    assert theme.templates == {}
-    assert theme.static_files == {}
 
 
 # from_entry_point =====================================================================

@@ -2,7 +2,7 @@ import importlib.metadata as metadata
 import importlib.resources
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
-from types import ModuleType
+from typing import cast
 
 
 @dataclass
@@ -16,43 +16,21 @@ class Theme:
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
 
     @classmethod
-    def from_package(cls, module: ModuleType) -> "Theme":
-        """Create a Theme instance from a theme package.
-
-        The module must contain a ``templates`` subpackage. If a ``static``
-        subpackage exists, its files will be included as static files.
-
-        Parameters
-        ----------
-        module : module
-            The theme package module.
-
-        Returns
-        -------
-        Theme
-            The created Theme instance.
-
-        """
-        root = importlib.resources.files(module)
-        return cls.from_directory(root)
-
-    @classmethod
     def from_directory(
         cls, directory: Traversable, require_templates: bool = True
     ) -> "Theme":
         """Create a Theme instance from a directory.
 
-        The directory should contain a `templates` subdirectory with template files
-        and/or a `static` subdirectory with static files.
+        The directory must contain a `templates` subdirectory with template files
+        and a `static` subdirectory with static files.
 
         Parameters
         ----------
         directory : Traversable
             The directory containing the theme files.
         require_templates : bool, optional
-            If True, require the templates directory to exist.
-            If False, templates directory is optional (useful for overrides).
-            Defaults to True.
+            If True (default), the directory must contain a templates/
+            subdirectory. If False, templates/ is optional.
 
         Returns
         -------
@@ -120,6 +98,14 @@ class Theme:
     def from_entry_point(cls, entry_point_name: str) -> "Theme":
         """Create a Theme instance from an entry point.
 
+        The entry point should refer to a module that either:
+        1. Exports a ``theme`` attribute containing a Theme instance, or
+        2. Is a package with ``templates/`` and optionally ``static/`` directories.
+
+        If the module has a ``theme`` attribute, it will be used. Otherwise,
+        the module will be treated as a theme package and loaded from its
+        ``templates/`` and ``static/`` directories.
+
         Parameters
         ----------
         entry_point_name : str
@@ -137,4 +123,8 @@ class Theme:
         ]
 
         module = entry_point.load()
-        return cls.from_package(module)
+        if hasattr(module, "theme"):
+            return cast(Theme, module.theme)
+        else:
+            root = importlib.resources.files(module)
+            return cls.from_directory(root)
