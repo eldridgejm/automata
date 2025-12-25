@@ -1,4 +1,4 @@
-.PHONY: lint typecheck test coverage checks
+.PHONY: lint typecheck test coverage checks fix
 
 checks: lint typecheck test coverage
 
@@ -13,3 +13,6 @@ test:
 
 coverage:
 	uv run pytest --cov=src --cov-report=term-missing
+
+fix:
+	uv run ruff check --fix

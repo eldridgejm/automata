@@ -8,10 +8,11 @@ from typing import Any, Callable, cast
 
 import jinja2
 import markdown
+import smartconfig
 
 from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
-from ._elements import bind_elements
+from ._elements import Element
 from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
 from ._theme import Theme
@@ -175,6 +176,21 @@ def _copy_file_to_output(
     # copy other files as-is
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(path.read_bytes())
+
+
+def _bind_elements_to_context(
+    elements: dict[str, Element],
+    context: RenderContext,
+) -> dict[str, Callable[[smartconfig.types.Configuration], str]]:
+    """Bind elements to the given rendering context.
+
+    This function returns a dictionary mapping element names to their rendered
+    HTML strings.
+    """
+    return {
+        name: lambda config: element(config, context)
+        for name, element in elements.items()
+    }
 
 
 def generate(
@@ -359,7 +375,7 @@ def generate(
         vars=vars,
     )
 
-    context.elements = bind_elements(theme.elements, context)
+    context.elements = _bind_elements_to_context(theme.elements, context)
 
     for path in pathlib.Path(config.content_directory).rglob("*"):
         relative_path = path.relative_to(config.content_directory)

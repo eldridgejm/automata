@@ -1,9 +1,11 @@
 import shutil
 
+import smartconfig
 from pytest import raises
 
 import automata.materials
 import automata.website
+from automata.website._elements import template_element
 
 # basic page rendering =================================================================
 
@@ -858,3 +860,41 @@ def test_generate_supports_theme_elements(tmpsite):
 
     output = tmpsite.get_output("index.html")
     assert '<span data-element="simple">Hello</span>' in output
+
+
+def test_generate_with_template_element(tmpsite):
+    tmpsite.make_page(
+        "index.html",
+        '${ elements.badge({"label": "Welcome", "tone": "warning"}) }',
+    )
+
+    class BadgeConfig(smartconfig.Prototype):
+        label: str
+        tone: str = "info"
+
+    @template_element(BadgeConfig, "badge.html")
+    def badge_element(config, context):
+        return {"suffix": f"{context.config.build_directory}"}
+
+    theme = automata.website.Theme(
+        templates={
+            "base.html": "<html><body>${ body }</body></html>",
+            "badge.html": (
+                '<span class="badge ${ element_config.tone }">'
+                "${ element_config.label }:${ suffix }</span>"
+            ),
+        },
+        elements={"badge": badge_element},
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use="extra"),
+    )
+
+    automata.website.generate(config, extra_themes={"extra": theme})
+
+    output = tmpsite.get_output("index.html")
+    assert '<span class="badge warning">Welcome:' in output
+    assert str(tmpsite.build_directory) in output

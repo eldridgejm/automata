@@ -30,10 +30,11 @@ class RenderContext:
     # the theme being used to render the page
     theme: Theme
 
-    # elements avaiable during rendering
-    elements: dict[
-        str, Callable[[smartconfig.types.Configuration, "RenderContext"], str]
-    ] = dataclasses.field(default_factory=dict)
+    # elements avaiable during rendering. These should be already bound to the render
+    # context, so that they only require one argument: the element configuration.
+    elements: dict[str, Callable[[smartconfig.types.Configuration], str]] = (
+        dataclasses.field(default_factory=dict)
+    )
 
     # function that returns the current date and time
     now: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)
