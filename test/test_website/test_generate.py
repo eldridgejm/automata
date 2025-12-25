@@ -725,6 +725,36 @@ def test_generate_can_override_theme_template(tmpsite, tmp_path):
     assert "Override Test" in output
 
 
+def test_generate_overrides_template_can_extend_base(tmpsite, tmp_path):
+    # given
+    tmpsite.make_page(
+        "index.md",
+        "---\ntemplate: layout.html\n---\nHello from override",
+    )
+
+    overrides_dir = tmp_path / "overrides"
+    templates_dir = overrides_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "layout.html").write_text(
+        '{% extends "base.html" %}{% block body %}Override:${ body }{% endblock %}'
+    )
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use="default", overrides=str(overrides_dir)),
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("index.html")
+    assert 'data-automata-theme="default"' in output
+    assert "Override:" in output
+    assert "Hello from override" in output
+
+
 def test_generate_can_override_only_static_files(tmpsite, tmp_path):
     """Test that only static files can be overridden without templates."""
     # given
