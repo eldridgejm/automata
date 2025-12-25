@@ -39,6 +39,87 @@ def _load_materials(
     )
 
 
+def _make_jinja_env_from_theme(config: Config) -> tuple[Theme, jinja2.Environment]:
+    """Creates a Jinja2 environment from the theme configuration.
+
+    Loads the theme based on config.theme.use (either from entry point or directory
+    path), applies any overrides from config.theme.overrides, and creates a Jinja2
+    environment with the theme's templates.
+
+    Parameters
+    ----------
+    config : Config
+        The configuration containing theme settings.
+
+    Returns
+    -------
+    tuple[Theme, jinja2.Environment]
+        A tuple of (theme, jinja_environment). The theme is returned so that
+        its static files can be copied to the output directory.
+
+    """
+    # Load theme based on config - either from entry point or directory path
+    if "/" in config.theme.use or "\\" in config.theme.use:
+        # Path to custom theme directory
+        theme = Theme.from_directory(pathlib.Path(config.theme.use))
+    else:
+        # Entry point name
+        theme = Theme.from_entry_point(config.theme.use)
+
+    # Apply overrides if specified
+    if config.theme.overrides is not None:
+        overrides_dir = pathlib.Path(config.theme.overrides)
+        if overrides_dir.exists():
+            # Allow override directories to have only static files
+            override_theme = Theme.from_directory(
+                overrides_dir, require_templates=False
+            )
+            # Merge overrides into base theme (overrides take precedence)
+            theme.templates.update(override_theme.templates)
+            theme.static_files.update(override_theme.static_files)
+
+    jinja_environment = jinja2.Environment(
+        loader=jinja2.DictLoader(theme.templates),
+        undefined=jinja2.StrictUndefined,
+        variable_start_string="${",
+        variable_end_string="}",
+        block_start_string="{%",
+        block_end_string="%}",
+    )
+
+    return theme, jinja_environment
+
+
+def _copy_theme_static_files(theme: Theme, build_directory: pathlib.Path) -> None:
+    """Copies static files from the theme to the build directory.
+
+    Handles three types of static file content:
+    - str: written as text
+    - bytes: written as binary
+    - Traversable (or any object with read_bytes()): read then written as binary
+
+    Parameters
+    ----------
+    theme : Theme
+        The theme containing static files to copy.
+    build_directory : pathlib.Path
+        The directory to copy static files to.
+
+    """
+    for static_path, static_content in theme.static_files.items():
+        output_path = build_directory / static_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Handle different types of static content
+        if isinstance(static_content, bytes):
+            output_path.write_bytes(static_content)
+        elif isinstance(static_content, str):
+            output_path.write_text(static_content)
+        else:
+            # Traversable - read and write bytes
+            output_path.write_bytes(static_content.read_bytes())
+
+
 def _generate_single_page(
     input_path: pathlib.Path,
     output_path: pathlib.Path,
@@ -204,6 +285,11 @@ def generate(
            [project.entry-points."automata.website.themes"]
            my-theme = "my_package.themes.custom"
 
+       The referenced module can either export a ``theme`` variable containing a
+       ``Theme`` instance, or it can be a package with ``templates/`` and optionally
+       ``static/`` subdirectories. If a ``theme`` variable is present, it will be used;
+       otherwise, the module's resources will be loaded automatically.
+
     2. **Directory Path**: If ``config.theme.use`` contains slashes, it is treated as a
        filesystem path to a theme directory. The directory must contain a ``templates/``
        subdirectory with at least a ``base.html`` template, and optionally a ``static/``
@@ -258,48 +344,8 @@ def generate(
         vars=vars,
     )
 
-    # Load theme based on config - either from entry point or directory path
-    if "/" in config.theme.use or "\\" in config.theme.use:
-        # Path to custom theme directory
-        theme = Theme.from_directory(pathlib.Path(config.theme.use))
-    else:
-        # Entry point name
-        theme = Theme.from_entry_point(config.theme.use)
-
-    # Apply overrides if specified
-    if config.theme.overrides is not None:
-        overrides_dir = pathlib.Path(config.theme.overrides)
-        if overrides_dir.exists():
-            # Allow override directories to have only static files
-            override_theme = Theme.from_directory(
-                overrides_dir, require_templates=False
-            )
-            # Merge overrides into base theme (overrides take precedence)
-            theme.templates.update(override_theme.templates)
-            theme.static_files.update(override_theme.static_files)
-
-    jinja_environment = jinja2.Environment(
-        loader=jinja2.DictLoader(theme.templates),
-        undefined=jinja2.StrictUndefined,
-        variable_start_string="${",
-        variable_end_string="}",
-        block_start_string="{%",
-        block_end_string="%}",
-    )
-
-    # Copy theme static files to output
-    for static_path, static_content in theme.static_files.items():
-        output_path = pathlib.Path(config.build_directory) / static_path
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Handle different types of static content
-        if isinstance(static_content, bytes):
-            output_path.write_bytes(static_content)
-        elif isinstance(static_content, str):
-            output_path.write_text(static_content)
-        else:
-            # Traversable - read and write bytes
-            output_path.write_bytes(static_content.read_bytes())
+    theme, jinja_environment = _make_jinja_env_from_theme(config)
+    _copy_theme_static_files(theme, pathlib.Path(config.build_directory))
 
     for path in pathlib.Path(config.content_directory).rglob("*"):
         relative_path = path.relative_to(config.content_directory)

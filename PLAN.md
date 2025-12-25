@@ -15,8 +15,8 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Allow overriding markdown renderer
 - [x] Page frontmatter
 - [x] Base path handling
-- [ ] The "theme" abstraction
-- [ ] Theme plugins as entry points
+- [x] The "theme" abstraction
+- [x] Theme plugins as entry points
 - [ ] Theme overrides (templates and static files)
 - [ ] The "element" abstraction
 - [ ] Default configuration of elements
