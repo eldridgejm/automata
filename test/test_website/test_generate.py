@@ -585,6 +585,61 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
     assert "Custom Theme Test" in output
 
 
+def test_generate_uses_frontmatter_template(tmpsite, tmp_path):
+    # given
+    tmpsite.make_page(
+        "index.md",
+        "---\ntemplate: alt.html\n---\nHello from alt template",
+    )
+
+    custom_theme_dir = tmp_path / "custom_theme"
+    templates_dir = custom_theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+
+    (templates_dir / "base.html").write_text("<html><body>BASE:${ body }</body></html>")
+    (templates_dir / "alt.html").write_text("<html><body>ALT:${ body }</body></html>")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then
+    output = tmpsite.get_output("index.html")
+    assert "ALT:" in output
+    assert "Hello from alt template" in output
+    assert "BASE:" not in output
+
+
+def test_generate_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
+    # given
+    tmpsite.make_page(
+        "index.md",
+        "---\ntemplate: missing.html\n---\nHello",
+    )
+
+    custom_theme_dir = tmp_path / "custom_theme"
+    templates_dir = custom_theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html><body>${ body }</body></html>")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
+    )
+
+    # when / then
+    with raises(automata.website.PageError, match="missing.html") as exc_info:
+        automata.website.generate(config)
+
+    assert exc_info.value.path == tmpsite.content_directory / "index.md"
+
+
 def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
     # given
     tmpsite.make_page("index.md", "# Missing Base")

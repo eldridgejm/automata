@@ -7,7 +7,12 @@ from smartconfig import Prototype, resolve
 class Frontmatter(Prototype):
     """Frontmatter for a website page."""
 
-    vars: dict[str, Any]
+    # a dictionary of variables that can be used during rendering. these can be
+    # any serializable values.
+    vars: dict[str, Any] = {}
+
+    # the template that will be used to render the page
+    template: str = "base.html"
 
 
 def _parse_yaml_frontmatter(

@@ -147,14 +147,15 @@ def _generate_single_page(
     # render the content (without frontmatter)
     rendered_content = renderer(content, context)
 
-    if "base.html" not in jinja_environment.list_templates():
-        raise Error('Theme templates must include "base.html".')
-
     base_path = context.config.base_path
     if not base_path.endswith("/"):
         base_path = f"{base_path}/"
 
-    wrapped_content = jinja_environment.get_template("base.html").render(
+    template_name = context.frontmatter.template
+    if template_name not in jinja_environment.list_templates():
+        raise PageError(f'Template "{template_name}" not found.', input_path)
+
+    wrapped_content = jinja_environment.get_template(template_name).render(
         **dataclasses.asdict(context),
         base_url_path=base_path,
         body=rendered_content,
