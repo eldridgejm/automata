@@ -9,7 +9,7 @@ import markdown
 import smartconfig
 
 from ..materials import ExportedArtifact, Universe
-from ._config import Config
+from ._config import WebsiteConfig
 from ._frontmatter import Frontmatter
 from ._theme import Theme
 
@@ -19,7 +19,7 @@ class RenderContext:
     """Context available at the time of rendering."""
 
     # website configuration
-    config: Config
+    website_config: WebsiteConfig
 
     # the course materials universe
     materials: Universe[ExportedArtifact]

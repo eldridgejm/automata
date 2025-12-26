@@ -3,14 +3,14 @@ from smartconfig.types import ConfigurationDict
 
 from automata.materials import ExportedArtifact, Universe
 from automata.website import BasicElement, RenderContext
-from automata.website._config import Config
+from automata.website._config import WebsiteConfig
 from automata.website._theme import Theme
 
 
 @fixture
 def render_context():
     """A minimal render context for testing."""
-    config = Config(
+    config = WebsiteConfig(
         content_directory=".",
         build_directory=".",
     )
@@ -18,7 +18,7 @@ def render_context():
     theme = Theme(templates={})
 
     return RenderContext(
-        config=config,
+        website_config=config,
         materials=materials,
         url_for=lambda x: x,
         theme=theme,

@@ -9,7 +9,7 @@ import automata.website
 
 @fixture
 def config(tmpsite):
-    return automata.website.Config(
+    return automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(
@@ -204,7 +204,7 @@ def test_exception_is_raised_if_materials_directory_missing(tmpsite, config):
     )
 
     # when / then
-    with raises(automata.website.exceptions.Error) as exc:
+    with raises(automata.website.exceptions.WebsiteError) as exc:
         automata.website.generate(config)
 
     assert "Materials directory not found at" in str(exc.value)
@@ -228,7 +228,7 @@ def test_exception_is_raised_if_materials_json_missing(tmpsite, config):
     )
 
     # when / then
-    with raises(automata.website.exceptions.Error) as exc:
+    with raises(automata.website.exceptions.WebsiteError) as exc:
         automata.website.generate(config)
 
     assert "materials.json not found at" in str(exc.value)
@@ -464,7 +464,7 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
         '<html><body data-custom-theme="yes">${ body }</body></html>'
     )
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
@@ -499,7 +499,7 @@ def test_generate_supports_template_inheritance(tmpsite, tmp_path):
         '{% extends "base.html" %}{% block body %}Layout:${ body }{% endblock %}'
     )
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
@@ -530,7 +530,7 @@ def test_generate_uses_frontmatter_template(tmpsite, tmp_path):
     (templates_dir / "base.html").write_text("<html><body>BASE:${ body }</body></html>")
     (templates_dir / "alt.html").write_text("<html><body>ALT:${ body }</body></html>")
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
@@ -558,7 +558,7 @@ def test_generate_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
     templates_dir.mkdir(parents=True)
     (templates_dir / "base.html").write_text("<html><body>${ body }</body></html>")
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
@@ -580,7 +580,7 @@ def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
     templates_dir.mkdir(parents=True)
     (templates_dir / "index.html").write_text("<html>${ body }</html>")
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(use=str(custom_theme_dir)),
@@ -629,7 +629,7 @@ def test_generate_overrides_template_can_extend_base(tmpsite, tmp_path):
         '{% extends "base.html" %}{% block body %}Override:${ body }{% endblock %}'
     )
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(
@@ -664,7 +664,7 @@ def test_generate_can_override_only_static_files(tmpsite, tmp_path):
     static_dir.mkdir(parents=True)
     (static_dir / "custom.css").write_text("body { color: red; }")
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(
@@ -745,7 +745,7 @@ def test_generate_supports_theme_elements(tmpsite):
         elements={"simple": simple_element},
     )
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(use="extra"),
@@ -774,7 +774,7 @@ def test_generate_with_template_element(tmpsite):
         template = "badge.html"
 
         def template_vars(self, context, config):
-            return {"suffix": f"{context.config.build_directory}"}
+            return {"suffix": f"{context.website_config.build_directory}"}
 
     theme = automata.website.Theme(
         templates={
@@ -787,7 +787,7 @@ def test_generate_with_template_element(tmpsite):
         elements={"badge": BadgeElement()},
     )
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(use="extra"),
@@ -820,7 +820,7 @@ def test_generate_validates_theme_config_against_schema(tmp_path, tmpsite):
 
     tmpsite.make_page("index.md", "# Home")
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(
@@ -852,7 +852,7 @@ def test_generate_raises_on_invalid_theme_config(tmp_path, tmpsite):
 
     tmpsite.make_page("index.md", "# Home")
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(
@@ -862,7 +862,9 @@ def test_generate_raises_on_invalid_theme_config(tmp_path, tmpsite):
     )
 
     # Should raise Error with descriptive message
-    with raises(automata.website.exceptions.Error, match="Invalid theme configuration"):
+    with raises(
+        automata.website.exceptions.WebsiteError, match="Invalid theme configuration"
+    ):
         automata.website.generate(config)
 
 
@@ -878,7 +880,7 @@ def test_generate_skips_validation_when_schema_is_none(tmp_path, tmpsite):
     # No schema.json file - theme has no schema
 
     # Theme has no schema, so any config should be allowed
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(
@@ -916,7 +918,7 @@ def test_generate_updates_config_with_resolved_theme_config(tmp_path, tmpsite):
 
     tmpsite.make_page("index.md", "# Home")
 
-    config = automata.website.Config(
+    config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(

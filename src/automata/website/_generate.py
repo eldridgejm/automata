@@ -13,12 +13,12 @@ import smartconfig.exceptions
 import smartconfig.types
 
 from ..materials import ExportedArtifact, Universe, deserialize
-from ._config import Config
+from ._config import WebsiteConfig
 from ._elements import Element
 from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
 from ._theme import Theme
-from .exceptions import Error, PageError
+from .exceptions import PageError, WebsiteError
 
 
 def _resolve_theme_config(
@@ -41,7 +41,7 @@ def _resolve_theme_config(
 
     Raises
     ------
-    Error
+    WebsiteError
         If the configuration does not match the schema.
 
     """
@@ -51,7 +51,7 @@ def _resolve_theme_config(
     try:
         return smartconfig.resolve(theme_config, schema)
     except smartconfig.exceptions.ResolutionError as exc:
-        raise Error(f"Invalid theme configuration: {exc}") from exc
+        raise WebsiteError(f"Invalid theme configuration: {exc}") from exc
 
 
 def _load_materials(
@@ -66,10 +66,12 @@ def _load_materials(
     materials_json_path = materials_directory_path / "materials.json"
 
     if not materials_directory_path.exists():
-        raise Error(f'Materials directory not found at "{materials_directory_path}".')
+        raise WebsiteError(
+            f'Materials directory not found at "{materials_directory_path}".'
+        )
 
     if not materials_json_path.exists():
-        raise Error(f'materials.json not found at "{materials_json_path}".')
+        raise WebsiteError(f'materials.json not found at "{materials_json_path}".')
 
     return cast(
         Universe[ExportedArtifact], deserialize(materials_json_path.read_text())
@@ -77,7 +79,7 @@ def _load_materials(
 
 
 def _get_theme(
-    config: Config,
+    config: WebsiteConfig,
     extra_themes: dict[str, Theme] | None = None,
 ) -> Theme:
     """Creates a Jinja2 environment from the theme configuration.
@@ -88,7 +90,7 @@ def _get_theme(
 
     Parameters
     ----------
-    config : Config
+    config : WebsiteConfig
         The configuration containing theme settings.
 
     Returns
@@ -179,7 +181,7 @@ def _generate_single_page(
     # render the content (without frontmatter)
     rendered_content = renderer(content, context)
 
-    base_path = context.config.base_path
+    base_path = context.website_config.base_path
     if not base_path.endswith("/"):
         base_path = f"{base_path}/"
 
@@ -197,7 +199,7 @@ def _generate_single_page(
 
 
 def _copy_file_to_output(
-    path: pathlib.Path, output_path: pathlib.Path, config: Config
+    path: pathlib.Path, output_path: pathlib.Path, config: WebsiteConfig
 ) -> None:
     # if the file has a suffix designating that it is raw and should not be
     # rendered, remove that suffix (but only if there are multiple suffixes).
@@ -228,7 +230,7 @@ def _bind_elements_to_context(
 
 
 def generate(
-    config: Config,
+    config: WebsiteConfig,
     vars: dict[str, Any] | None = None,
     extra_themes: dict[str, Theme] | None = None,
     now: datetime.datetime | None = None,
@@ -238,10 +240,10 @@ def generate(
 
     Parameters
     ----------
-    config : Config
+    config : WebsiteConfig
         The configuration for the website generation. Contains information about
         the location of the content and build directories, among other settings.
-        See :class:`Config` for more details.
+        See :class:`WebsiteConfig` for more details.
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
     extra_themes : dict[str, Theme], optional
@@ -369,7 +371,7 @@ def generate(
         └── templates/
             └── base.html
 
-        config = Config(
+        config = WebsiteConfig(
             ...,
             theme=ThemeConfig(use="default", overrides="./overrides")
         )
@@ -408,7 +410,7 @@ def generate(
     _copy_theme_static_files(theme, pathlib.Path(config.build_directory))
 
     context = RenderContext(
-        config=config,
+        website_config=config,
         materials=_load_materials(materials_path),
         url_for=url_for,
         theme=theme,

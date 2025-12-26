@@ -20,7 +20,7 @@ class ThemeConfig(smartconfig.Prototype):
     config: dict[str, Any] = {}
 
 
-class Config(smartconfig.Prototype):
+class WebsiteConfig(smartconfig.Prototype):
     """Configuration for the website."""
 
     # path to the directory containing the pages and materials

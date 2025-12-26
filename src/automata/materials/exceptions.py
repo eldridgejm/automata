@@ -1,11 +1,13 @@
 """Exceptions used in :mod:`automata.materials`."""
 
+from ..exceptions import Error as _Error
 
-class Error(Exception):
+
+class MaterialsError(_Error):
     """Generic error, and base class for all exceptions in this module."""
 
 
-class DiscoveryError(Error):
+class DiscoveryError(MaterialsError):
     """A configuration file is not valid.
 
     The string representation of this exception will contain the error message
@@ -28,5 +30,5 @@ class DiscoveryError(Error):
         return f"Error reading {self.path}: {self.msg}"
 
 
-class BuildError(Error):
+class BuildError(MaterialsError):
     """Problem while building the artifact."""

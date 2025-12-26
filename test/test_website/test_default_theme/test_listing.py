@@ -7,7 +7,7 @@ import automata.website
 
 @fixture
 def config(tmpsite):
-    return automata.website.Config(
+    return automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
         theme=automata.website.ThemeConfig(

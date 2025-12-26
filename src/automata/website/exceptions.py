@@ -1,11 +1,13 @@
 import pathlib
 
+from ..exceptions import Error as _Error
 
-class Error(Exception):
+
+class WebsiteError(_Error):
     """Base class for exceptions in this module."""
 
 
-class PageError(Error):
+class PageError(WebsiteError):
     """Exception raised for errors during page processing.
 
     This includes errors during frontmatter parsing, rendering, or other
