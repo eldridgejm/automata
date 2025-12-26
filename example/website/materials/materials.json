@@ -1,0 +1,306 @@
+{
+    "collections": {
+        "lectures": {
+            "publication_schema": {
+                "required_artifacts": [
+                    "slides.txt"
+                ],
+                "optional_artifacts": [],
+                "metadata_schema": {
+                    "required_keys": {
+                        "number": {
+                            "type": "integer"
+                        },
+                        "topic": {
+                            "type": "string"
+                        },
+                        "date": {
+                            "type": "date"
+                        }
+                    }
+                },
+                "allow_unspecified_artifacts": false,
+                "is_ordered": true
+            },
+            "publications": {
+                "01-introduction": {
+                    "metadata": {
+                        "number": 1,
+                        "topic": "Introduction",
+                        "date": "2025-09-22"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/01-introduction/slides.txt"
+                        }
+                    }
+                },
+                "02-time_complexity": {
+                    "metadata": {
+                        "number": 2,
+                        "topic": "Time Complexity",
+                        "date": "2025-09-29"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/02-time_complexity/slides.txt"
+                        }
+                    }
+                },
+                "03-recurrences": {
+                    "metadata": {
+                        "number": 3,
+                        "topic": "Recurrences",
+                        "date": "2025-10-06"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/03-recurrences/slides.txt"
+                        }
+                    }
+                },
+                "04-sorting": {
+                    "metadata": {
+                        "number": 4,
+                        "topic": "Sorting",
+                        "date": "2025-10-13"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/04-sorting/slides.txt"
+                        }
+                    }
+                },
+                "05-selection": {
+                    "metadata": {
+                        "number": 5,
+                        "topic": "Selection",
+                        "date": "2025-10-20"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/05-selection/slides.txt"
+                        }
+                    }
+                },
+                "06-hashing": {
+                    "metadata": {
+                        "number": 6,
+                        "topic": "Hashing",
+                        "date": "2025-10-27"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/06-hashing/slides.txt"
+                        }
+                    }
+                },
+                "07-graph_theory": {
+                    "metadata": {
+                        "number": 7,
+                        "topic": "Graph Theory",
+                        "date": "2025-11-03"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/07-graph_theory/slides.txt"
+                        }
+                    }
+                },
+                "08-bfs_and_dfs": {
+                    "metadata": {
+                        "number": 8,
+                        "topic": "BFS and DFS",
+                        "date": "2025-11-10"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/08-bfs_and_dfs/slides.txt"
+                        }
+                    }
+                },
+                "09-shortest_paths": {
+                    "metadata": {
+                        "number": 9,
+                        "topic": "Shortest Paths",
+                        "date": "2025-11-17"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/09-shortest_paths/slides.txt"
+                        }
+                    }
+                },
+                "10-spanning_trees": {
+                    "metadata": {
+                        "number": 10,
+                        "topic": "Spanning Trees",
+                        "date": "2025-11-24"
+                    },
+                    "artifacts": {
+                        "slides.txt": {
+                            "path": "lectures/10-spanning_trees/slides.txt"
+                        }
+                    }
+                }
+            }
+        },
+        "homeworks": {
+            "publication_schema": {
+                "required_artifacts": [
+                    "homework.txt"
+                ],
+                "optional_artifacts": [
+                    "solution.txt"
+                ],
+                "metadata_schema": {
+                    "required_keys": {
+                        "number": {
+                            "type": "integer"
+                        },
+                        "released": {
+                            "type": "datetime"
+                        },
+                        "due": {
+                            "type": "datetime"
+                        }
+                    }
+                },
+                "allow_unspecified_artifacts": false,
+                "is_ordered": true
+            },
+            "publications": {
+                "hw01": {
+                    "metadata": {
+                        "number": 1,
+                        "released": "2025-09-22 12:00:00",
+                        "due": "2025-09-29 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw01/homework.txt"
+                        }
+                    }
+                },
+                "hw02": {
+                    "metadata": {
+                        "number": 2,
+                        "released": "2025-09-29 12:00:00",
+                        "due": "2025-10-06 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw02/homework.txt"
+                        }
+                    }
+                },
+                "hw03": {
+                    "metadata": {
+                        "number": 3,
+                        "released": "2025-10-06 12:00:00",
+                        "due": "2025-10-13 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw03/homework.txt"
+                        }
+                    }
+                },
+                "hw04": {
+                    "metadata": {
+                        "number": 4,
+                        "released": "2025-10-13 12:00:00",
+                        "due": "2025-10-20 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw04/homework.txt"
+                        }
+                    }
+                },
+                "hw05": {
+                    "metadata": {
+                        "number": 5,
+                        "released": "2025-10-20 12:00:00",
+                        "due": "2025-10-27 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw05/homework.txt"
+                        }
+                    }
+                },
+                "hw06": {
+                    "metadata": {
+                        "number": 6,
+                        "released": "2025-10-27 12:00:00",
+                        "due": "2025-11-03 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw06/homework.txt"
+                        }
+                    }
+                },
+                "hw07": {
+                    "metadata": {
+                        "number": 7,
+                        "released": "2025-11-03 12:00:00",
+                        "due": "2025-11-10 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw07/homework.txt"
+                        }
+                    }
+                },
+                "hw08": {
+                    "metadata": {
+                        "number": 8,
+                        "released": "2025-11-10 12:00:00",
+                        "due": "2025-11-17 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw08/homework.txt"
+                        }
+                    }
+                },
+                "hw09": {
+                    "metadata": {
+                        "number": 9,
+                        "released": "2025-11-17 12:00:00",
+                        "due": "2025-11-24 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw09/homework.txt"
+                        }
+                    }
+                },
+                "hw10": {
+                    "metadata": {
+                        "number": 10,
+                        "released": "2025-11-24 12:00:00",
+                        "due": "2025-12-01 23:59:00"
+                    },
+                    "artifacts": {
+                        "homework.txt": {
+                            "path": "homeworks/hw10/homework.txt"
+                        }
+                    }
+                }
+            }
+        },
+        "default": {
+            "publication_schema": {
+                "required_artifacts": [],
+                "optional_artifacts": null,
+                "metadata_schema": null,
+                "allow_unspecified_artifacts": true,
+                "is_ordered": false
+            },
+            "publications": {}
+        }
+    }
+}

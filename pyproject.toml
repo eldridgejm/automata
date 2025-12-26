@@ -17,7 +17,11 @@ dependencies = [
     "jinja2",
     "markdown",
     "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git",
+    "typer",
 ]
+
+[project.scripts]
+automata = "automata.cli:main"
 
 [dependency-groups]
 dev = [
