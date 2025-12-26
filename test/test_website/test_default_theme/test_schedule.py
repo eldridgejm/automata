@@ -1,10 +1,28 @@
 """Tests for the schedule element."""
 
+from pytest import fixture
+
 import automata.materials
 import automata.website
 
 
-def test_schedule_element_renders_basic_week(tmpsite):
+@fixture
+def config(tmpsite):
+    return automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use="default",
+            config={
+                "short_title": "DSC 40B",
+                "long_title": "Theoretical Foundations of Data Science II",
+                "navigation": [],
+            },
+        ),
+    )
+
+
+def test_schedule_element_renders_basic_week(tmpsite, config):
     """Test rendering a basic schedule with one week."""
     # given: empty materials for now
     tmpsite.write_materials_json(
@@ -42,11 +60,6 @@ def test_schedule_element_renders_basic_week(tmpsite):
         """,
     )
 
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
-
     # when
     automata.website.generate(config)
 
@@ -56,7 +69,7 @@ def test_schedule_element_renders_basic_week(tmpsite):
     assert "Introduction" in output
 
 
-def test_schedule_element_renders_multiple_weeks(tmpsite):
+def test_schedule_element_renders_multiple_weeks(tmpsite, config):
     """Test rendering multiple weeks with topics."""
     # given
     tmpsite.write_materials_json(
@@ -92,11 +105,6 @@ def test_schedule_element_renders_multiple_weeks(tmpsite):
             "discussions": []
         }) }
         """,
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when

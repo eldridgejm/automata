@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-automata-theme="default">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -29,6 +29,7 @@
         </head>
 
         <body>
+            {% block body %}
             <!-- responsive sidebar code comes from https://stackoverflow.com/a/48477019 -->
             <div class="container-fluid h-100">
                 <div class="nav row wrapper min-vh-100 flex-column flex-sm-row">
@@ -61,5 +62,6 @@
                     </main>
                 </div>
             </div>
+            {% endblock %}
         </body>
 </html>

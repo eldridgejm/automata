@@ -1,22 +1,34 @@
 import shutil
 
 import smartconfig
-from pytest import raises
+from pytest import fixture, raises
 
 import automata.materials
 import automata.website
 
+
+@fixture
+def config(tmpsite):
+    return automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use="default",
+            config={
+                "short_title": "DSC 40B",
+                "long_title": "Theoretical Foundations of Data Science II",
+                "navigation": [],
+            },
+        ),
+    )
+
+
 # basic page rendering =================================================================
 
 
-def test_converts_pages_from_markdown_to_html(tmpsite):
+def test_converts_pages_from_markdown_to_html(tmpsite, config):
     # given
     tmpsite.make_page("one.md", "# This is a header\n**this is bold!**")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config)
@@ -25,15 +37,10 @@ def test_converts_pages_from_markdown_to_html(tmpsite):
     assert "This is a header</h1>" in tmpsite.get_output("one.html")
 
 
-def test_converts_pages_from_markdown_to_html_recursively(tmpsite):
+def test_converts_pages_from_markdown_to_html_recursively(tmpsite, config):
     # given
     tmpsite.make_page("index.md", "Home page")
     tmpsite.make_page("subdir/one.md", "# This is a header\n**this is bold!**")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config)
@@ -44,15 +51,10 @@ def test_converts_pages_from_markdown_to_html_recursively(tmpsite):
     assert "Home page" in tmpsite.get_output("index.html")
 
 
-def tests_renders_html_pages(tmpsite):
+def tests_renders_html_pages(tmpsite, config):
     # given
     tmpsite.make_page(
         "about.html", "<h1>About this site</h1><p>This site is great.</p>"
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -62,14 +64,9 @@ def tests_renders_html_pages(tmpsite):
     assert "<h1>About this site</h1>" in tmpsite.get_output("about.html")
 
 
-def test_copies_files_from_content_to_output(tmpsite):
+def test_copies_files_from_content_to_output(tmpsite, config):
     # given
     tmpsite.make_page("data/tabular/one.txt", "This is a text file in a subdir.")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config)
@@ -80,14 +77,9 @@ def test_copies_files_from_content_to_output(tmpsite):
     )
 
 
-def test_vars_can_be_used_in_markdown_pages(tmpsite):
+def test_vars_can_be_used_in_markdown_pages(tmpsite, config):
     # given
     tmpsite.make_page("index.md", "The value of 'foo' is ${ vars.foo }.")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config, vars={"foo": "bar"})
@@ -96,14 +88,9 @@ def test_vars_can_be_used_in_markdown_pages(tmpsite):
     assert "The value of 'foo' is bar." in tmpsite.get_output("index.html")
 
 
-def test_vars_can_be_used_in_html_pages(tmpsite):
+def test_vars_can_be_used_in_html_pages(tmpsite, config):
     # given
     tmpsite.make_page("about.html", "<p>The value of 'foo' is ${ vars.foo }.</p>")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config, vars={"foo": "bar"})
@@ -112,14 +99,11 @@ def test_vars_can_be_used_in_html_pages(tmpsite):
     assert "<p>The value of 'foo' is bar.</p>" in tmpsite.get_output("about.html")
 
 
-def test_files_with_raw_suffix_are_copied_with_raw_suffix_removed(tmpsite):
+def test_files_with_no_render_suffix_are_copied_with_no_render_suffix_removed(
+    tmpsite, config
+):
     # given
     tmpsite.make_page("data/sample.txt.NO_RENDER", "This is a raw text file.")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config)
@@ -128,15 +112,10 @@ def test_files_with_raw_suffix_are_copied_with_raw_suffix_removed(tmpsite):
     assert "This is a raw text file." in tmpsite.get_output("data/sample.txt")
 
 
-def test_html_files_with_raw_suffix_are_not_rendered(tmpsite):
+def test_html_files_with_no_render_suffix_are_not_rendered(tmpsite, config):
     # given
     tmpsite.make_page(
         "info.html.NO_RENDER", "<h1>Info Page</h1><p>This is ${ vars.foo }.</p>"
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -148,14 +127,9 @@ def test_html_files_with_raw_suffix_are_not_rendered(tmpsite):
     )
 
 
-def test_markdown_files_with_raw_suffix_are_not_rendered(tmpsite):
+def test_markdown_files_with_no_render_suffix_are_not_rendered(tmpsite, config):
     # given
     tmpsite.make_page("readme.md.NO_RENDER", "# Readme\nThis is ${ vars.foo }.")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config, vars={"foo": "bar"})
@@ -164,15 +138,11 @@ def test_markdown_files_with_raw_suffix_are_not_rendered(tmpsite):
     assert "# Readme\nThis is ${ vars.foo }." in tmpsite.get_output("readme.md")
 
 
-def test_raw_suffix_of_none_means_nothing_is_renamed(tmpsite):
+def test_no_render_suffix_of_none_means_nothing_is_renamed(tmpsite, config):
     # given
     tmpsite.make_page("data/sample.txt.NO_RENDER", "This is a raw text file.")
 
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        no_render_suffix=None,
-    )
+    config.no_render_suffix = None
 
     # when
     automata.website.generate(config)
@@ -184,8 +154,8 @@ def test_raw_suffix_of_none_means_nothing_is_renamed(tmpsite):
 # materials ============================================================================
 
 
-def test_materials_are_loaded_and_available_in_rendering_context(
-    tmpsite, default_example_course
+def test_materials_are_loaded_and_available_in_rendering_contex(
+    tmpsite, default_example_course, config
 ):
     # given
     universe = automata.materials.discover(
@@ -198,11 +168,6 @@ def test_materials_are_loaded_and_available_in_rendering_context(
     materials_json = automata.materials.serialize(universe)
 
     (tmpsite.materials_directory / "materials.json").write_text(materials_json)
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     tmpsite.make_page(
         "materials.html",
@@ -222,12 +187,8 @@ def test_materials_are_loaded_and_available_in_rendering_context(
     assert "<li>default</li>" in output
 
 
-def test_exception_is_raised_if_materials_directory_missing(tmpsite):
+def test_exception_is_raised_if_materials_directory_missing(tmpsite, config):
     # given
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # delete the materials directory to simulate it being missing
     if tmpsite.materials_directory.exists():
@@ -249,12 +210,8 @@ def test_exception_is_raised_if_materials_directory_missing(tmpsite):
     assert "Materials directory not found at" in str(exc.value)
 
 
-def test_exception_is_raised_if_materials_json_missing(tmpsite):
+def test_exception_is_raised_if_materials_json_missing(tmpsite, config):
     # given
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # delete the materials.json to simulate it being missing
     materials_json_path = tmpsite.materials_directory / "materials.json"
@@ -280,15 +237,10 @@ def test_exception_is_raised_if_materials_json_missing(tmpsite):
 # error handling =======================================================================
 
 
-def test_missing_variable_in_markdown_page_raises_error(tmpsite):
+def test_missing_variable_in_markdown_page_raises_error(tmpsite, config):
     """Test that missing variables in markdown pages raise an error."""
     # given
     tmpsite.make_page("test.md", "# Page\nThe value is ${ missing_var }.")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when / then
     with raises(Exception) as exc_info:
@@ -297,15 +249,10 @@ def test_missing_variable_in_markdown_page_raises_error(tmpsite):
     assert "missing_var" in str(exc_info.value)
 
 
-def test_missing_variable_in_html_page_raises_error(tmpsite):
+def test_missing_variable_in_html_page_raises_error(tmpsite, config):
     """Test that missing variables in HTML pages raise an error."""
     # given
     tmpsite.make_page("test.html", "<p>The value is ${ missing_var }.</p>")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when / then
     with raises(Exception) as exc_info:
@@ -317,15 +264,10 @@ def test_missing_variable_in_html_page_raises_error(tmpsite):
 # dependency injection =================================================================
 
 
-def test_custom_markdown_engine_can_be_injected(tmpsite):
+def test_custom_markdown_engine_can_be_injected(tmpsite, config):
     """Test that a custom markdown engine can be injected via render_markdown."""
     # given
     tmpsite.make_page("test.md", "# Header\nContent")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # custom markdown engine that adds a marker
     def custom_markdown_engine(markdown_text):
@@ -343,17 +285,12 @@ def test_custom_markdown_engine_can_be_injected(tmpsite):
 # frontmatter ==========================================================================
 
 
-def test_frontmatter_in_markdown_page(tmpsite):
+def test_frontmatter_in_markdown_page(tmpsite, config):
     # given
     tmpsite.make_page(
         "info.md",
         "---\nvars:\n  title: Info Page\n  author: Test Author\n---\n\n"
         "# ${ frontmatter.vars.title }\n\nBy ${ frontmatter.vars.author }",
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -365,17 +302,12 @@ def test_frontmatter_in_markdown_page(tmpsite):
     assert "By Test Author" in output
 
 
-def test_frontmatter_in_html_page(tmpsite):
+def test_frontmatter_in_html_page(tmpsite, config):
     # given
     tmpsite.make_page(
         "info.html",
         "---\nvars:\n  title: Info Page\n  author: Test Author\n---\n\n"
         "<h1>${ frontmatter.vars.title }</h1>\n<p>By ${ frontmatter.vars.author }</p>",
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -387,15 +319,10 @@ def test_frontmatter_in_html_page(tmpsite):
     assert "<p>By Test Author</p>" in output
 
 
-def test_pages_without_frontmatter_still_work(tmpsite):
+def test_pages_without_frontmatter_still_work(tmpsite, config):
     """Test backward compatibility - pages without frontmatter work as before."""
     # given
     tmpsite.make_page("legacy.md", "# Legacy Page\n\nNo frontmatter here.")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config)
@@ -406,17 +333,12 @@ def test_pages_without_frontmatter_still_work(tmpsite):
     assert "No frontmatter here" in output
 
 
-def test_invalid_yaml_raises_page_error(tmpsite):
+def test_invalid_yaml_raises_page_error(tmpsite, config):
     """Test error handling for invalid YAML in frontmatter."""
     # given
     tmpsite.make_page(
         "bad.md",
         "---\nvars:\n  invalid: [unclosed list\n---\n\n# Content",
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when / then
@@ -426,17 +348,12 @@ def test_invalid_yaml_raises_page_error(tmpsite):
     assert "bad.md" in str(exc.value)
 
 
-def test_invalid_frontmatter_key_raises_page_error(tmpsite):
+def test_invalid_frontmatter_key_raises_page_error(tmpsite, config):
     """Test that invalid frontmatter keys raise an error."""
     # given
     tmpsite.make_page(
         "bad_key.md",
         "---\ninvalid_key: some value\nvars:\n  title: Test\n---\n\n# Content",
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when / then
@@ -446,17 +363,12 @@ def test_invalid_frontmatter_key_raises_page_error(tmpsite):
     assert "bad_key.md" in str(exc.value)
 
 
-def test_empty_frontmatter(tmpsite):
+def test_empty_frontmatter(tmpsite, config):
     """Test that empty frontmatter block is handled correctly."""
     # given
     tmpsite.make_page(
         "empty.md",
         "---\n---\n\n# Page with empty frontmatter",
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -467,7 +379,7 @@ def test_empty_frontmatter(tmpsite):
     assert "Page with empty frontmatter</h1>" in output
 
 
-def test_frontmatter_with_nested_vars_structures(tmpsite):
+def test_frontmatter_with_nested_vars_structures(tmpsite, config):
     """Test that nested structures in vars work correctly."""
     # given
     tmpsite.make_page(
@@ -475,11 +387,6 @@ def test_frontmatter_with_nested_vars_structures(tmpsite):
         "---\nvars:\n  metadata:\n    title: Nested Title\n    tags:\n"
         "      - python\n      - tutorial\n---\n\n"
         "# ${ frontmatter.vars.metadata.title }",
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -493,18 +400,13 @@ def test_frontmatter_with_nested_vars_structures(tmpsite):
 # url_for ============================================================================
 
 
-def test_url_for_with_default_base_path(tmpsite):
+def test_url_for_with_default_base_path(tmpsite, config):
     """Test that url_for works correctly with the default base_path of '/'."""
     # given
     tmpsite.make_page(
         "index.html",
         '<a href="${ url_for("about.html") }">About</a>\n'
         '<a href="${ url_for("docs/guide.html") }">Guide</a>',
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when
@@ -516,7 +418,7 @@ def test_url_for_with_default_base_path(tmpsite):
     assert '<a href="/docs/guide.html">Guide</a>' in output
 
 
-def test_url_for_with_custom_base_path(tmpsite):
+def test_url_for_with_custom_base_path(tmpsite, config):
     """Test that url_for correctly prepends a custom base_path."""
     # given
     tmpsite.make_page(
@@ -525,11 +427,7 @@ def test_url_for_with_custom_base_path(tmpsite):
         '<a href="${ url_for("/contact.html") }">Contact</a>',
     )
 
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        base_path="/course/",
-    )
+    config.base_path = "/course"
 
     # when
     automata.website.generate(config)
@@ -543,13 +441,8 @@ def test_url_for_with_custom_base_path(tmpsite):
 # themes ===============================================================================
 
 
-def test_generate_uses_default_theme_by_default(tmpsite):
+def test_generate_uses_default_theme_by_default(tmpsite, config):
     tmpsite.make_page("index.md", "Home page")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     automata.website.generate(config)
 
@@ -743,7 +636,15 @@ def test_generate_overrides_template_can_extend_base(tmpsite, tmp_path):
     config = automata.website.Config(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
-        theme=automata.website.ThemeConfig(use="default", overrides=str(overrides_dir)),
+        theme=automata.website.ThemeConfig(
+            use="default",
+            overrides=str(overrides_dir),
+            config={
+                "short_title": "DSC 40B",
+                "long_title": "Theoretical Foundations of Data Science II",
+                "navigation": [],
+            },
+        ),
     )
 
     # when
@@ -770,7 +671,15 @@ def test_generate_can_override_only_static_files(tmpsite, tmp_path):
     config = automata.website.Config(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
-        theme=automata.website.ThemeConfig(use="default", overrides=str(overrides_dir)),
+        theme=automata.website.ThemeConfig(
+            use="default",
+            overrides=str(overrides_dir),
+            config={
+                "short_title": "DSC 40B",
+                "long_title": "Theoretical Foundations of Data Science II",
+                "navigation": [],
+            },
+        ),
     )
 
     # when
@@ -781,25 +690,20 @@ def test_generate_can_override_only_static_files(tmpsite, tmp_path):
     assert "body { color: red; }" in custom_css
 
 
-def test_generate_copies_static_files_from_theme(tmpsite):
+def test_generate_copies_static_files_from_theme(tmpsite, config):
     """Test that static files from the theme are copied to output."""
     # given
     tmpsite.make_page("index.md", "# Test Page")
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
 
     # when
     automata.website.generate(config)
 
     # then - verify default theme's static CSS file was copied
     style_css = tmpsite.get_output("style/style.css")
-    assert "Default styling for Automata" in style_css
+    assert "styles for automata's default theme" in style_css
 
 
-def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
+def test_generate_handles_all_static_file_types(tmpsite, tmp_path, config):
     """Test that generate() handles str, bytes, and Traversable static files."""
     # given
     tmpsite.make_page("index.md", "# Test Page")
@@ -816,11 +720,6 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
             "bytes.bin": b"bytes content",
             "traversable.txt": traversable_file,
         },
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when

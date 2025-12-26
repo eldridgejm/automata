@@ -1,7 +1,25 @@
+from pytest import fixture
+
 import automata.website
 
 
-def test_people_element_renders_single_group(tmpsite):
+@fixture
+def config(tmpsite):
+    return automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use="default",
+            config={
+                "short_title": "DSC 40B",
+                "long_title": "Theoretical Foundations of Data Science II",
+                "navigation": [],
+            },
+        ),
+    )
+
+
+def test_people_element_renders_single_group(tmpsite, config):
     """Test rendering a single group with one person."""
     # given
     tmpsite.make_page(
@@ -24,11 +42,6 @@ def test_people_element_renders_single_group(tmpsite):
         """,
     )
 
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
-
     # when
     automata.website.generate(config)
 
@@ -42,7 +55,7 @@ def test_people_element_renders_single_group(tmpsite):
     assert "Alice is an expert in algorithms." in output
 
 
-def test_people_element_renders_multiple_groups(tmpsite):
+def test_people_element_renders_multiple_groups(tmpsite, config):
     """Test rendering multiple groups with multiple people."""
     # given
     tmpsite.make_page(
@@ -66,11 +79,6 @@ def test_people_element_renders_multiple_groups(tmpsite):
         """,
     )
 
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
-
     # when
     automata.website.generate(config)
 
@@ -83,7 +91,7 @@ def test_people_element_renders_multiple_groups(tmpsite):
     assert "Charlie Brown" in output
 
 
-def test_people_element_person_without_optional_fields(tmpsite):
+def test_people_element_person_without_optional_fields(tmpsite, config):
     """Test rendering a person with only required fields."""
     # given
     tmpsite.make_page(
@@ -100,11 +108,6 @@ def test_people_element_person_without_optional_fields(tmpsite):
         """,
     )
 
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
-
     # when
     automata.website.generate(config)
 
@@ -114,7 +117,7 @@ def test_people_element_person_without_optional_fields(tmpsite):
     assert "<h2>Students</h2>" in output
 
 
-def test_people_element_person_with_website_creates_link(tmpsite):
+def test_people_element_person_with_website_creates_link(tmpsite, config):
     """Test that person with website gets a linked name."""
     # given
     tmpsite.make_page(
@@ -131,11 +134,6 @@ def test_people_element_person_with_website_creates_link(tmpsite):
         """,
     )
 
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-    )
-
     # when
     automata.website.generate(config)
 
@@ -144,7 +142,7 @@ def test_people_element_person_with_website_creates_link(tmpsite):
     assert '<a href="https://john.example.com">John Doe</a>' in output
 
 
-def test_people_element_displays_photo_when_provided(tmpsite):
+def test_people_element_displays_photo_when_provided(tmpsite, config):
     """Test that photo is displayed when provided."""
     # given
     tmpsite.make_page(
@@ -159,11 +157,6 @@ def test_people_element_displays_photo_when_provided(tmpsite):
             }
         ]) }
         """,
-    )
-
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
     )
 
     # when
