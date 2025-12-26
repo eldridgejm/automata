@@ -81,6 +81,7 @@ def _load_materials(
 def _get_theme(
     config: WebsiteConfig,
     extra_themes: dict[str, Theme] | None = None,
+    cwd: pathlib.Path | None = None,
 ) -> Theme:
     """Creates a Jinja2 environment from the theme configuration.
 
@@ -92,18 +93,24 @@ def _get_theme(
     ----------
     config : WebsiteConfig
         The configuration containing theme settings.
+    extra_themes : dict[str, Theme], optional
+        Extra themes to search before entry points.
+    cwd : pathlib.Path, optional
+        Working directory for resolving relative paths. If None, uses current directory.
 
     Returns
     -------
-    tuple[Theme, jinja2.Environment]
-        A tuple of (theme, jinja_environment). The theme is returned so that
-        its static files can be copied to the output directory.
+    Theme
+        The theme to use for rendering.
 
     """
+    if cwd is None:
+        cwd = pathlib.Path.cwd()
+
     # Load theme based on config - either from entry point or directory path
     if "/" in config.theme.use or "\\" in config.theme.use:
-        # Path to custom theme directory
-        theme = Theme.from_directory(pathlib.Path(config.theme.use))
+        # Path to custom theme directory (resolve relative to cwd)
+        theme = Theme.from_directory(cwd / config.theme.use)
     else:
         # Entry point name (extra themes take priority)
         if extra_themes is not None and config.theme.use in extra_themes:
@@ -113,7 +120,7 @@ def _get_theme(
 
     # Apply overrides if specified
     if config.theme.overrides is not None:
-        overrides_dir = pathlib.Path(config.theme.overrides)
+        overrides_dir = cwd / config.theme.overrides
         if overrides_dir.exists():
             # Allow override directories to have only static files
             override_theme = Theme.from_directory(
@@ -235,6 +242,7 @@ def generate(
     extra_themes: dict[str, Theme] | None = None,
     now: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown.markdown,
+    cwd: pathlib.Path | None = None,
 ):
     """Generates a static website from course materials.
 
@@ -256,6 +264,11 @@ def generate(
         text (str) and return HTML (str). Defaults to :func:`markdown.markdown`.
         This allows for customization of the markdown rendering engine, such as
         using a different markdown library or adding custom extensions.
+    cwd : pathlib.Path, optional
+        Working directory for resolving relative paths in config. All relative paths
+        in the configuration (content_directory, build_directory, theme paths) will
+        be resolved relative to this directory. If None, uses the current working
+        directory. Absolute paths in config are used as-is regardless of cwd.
 
     Notes
     -----
@@ -389,15 +402,19 @@ def generate(
     if now is None:
         now = datetime.datetime.now()
 
-    materials_path = (
-        pathlib.Path(config.content_directory) / config.materials_directory_name
-    )
+    if cwd is None:
+        cwd = pathlib.Path.cwd()
+
+    # Resolve paths relative to cwd (absolute paths are unchanged)
+    content_directory = cwd / config.content_directory
+    build_directory = cwd / config.build_directory
+    materials_path = content_directory / config.materials_directory_name
 
     # create url_for function based on config.base_path
     def url_for(path: str) -> str:
         return f"{config.base_path.rstrip('/')}/{path.lstrip('/')}"
 
-    theme = _get_theme(config, extra_themes=extra_themes)
+    theme = _get_theme(config, extra_themes=extra_themes, cwd=cwd)
 
     # Resolve and validate theme configuration
     config.theme.config = _resolve_theme_config(
@@ -407,7 +424,7 @@ def generate(
 
     jinja_environment = theme.create_jinja_environment()
 
-    _copy_theme_static_files(theme, pathlib.Path(config.build_directory))
+    _copy_theme_static_files(theme, build_directory)
 
     context = RenderContext(
         website_config=config,
@@ -420,9 +437,9 @@ def generate(
 
     context.elements = _bind_elements_to_context(theme.elements, context)
 
-    for path in pathlib.Path(config.content_directory).rglob("*"):
-        relative_path = path.relative_to(config.content_directory)
-        output_path = config.build_directory / relative_path
+    for path in content_directory.rglob("*"):
+        relative_path = path.relative_to(content_directory)
+        output_path = build_directory / relative_path
 
         if path.is_dir():
             output_path.mkdir(parents=True, exist_ok=True)

@@ -1,12 +1,14 @@
 import typer
 
+from . import _build
+
 app = typer.Typer()
 
 
 @app.command()
 def build():
     """Build course materials."""
-    print("Hello world")
+    _build.build()
 
 
 @app.command()
