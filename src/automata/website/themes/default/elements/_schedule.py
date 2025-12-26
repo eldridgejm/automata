@@ -3,12 +3,10 @@
 import datetime
 from typing import Any, cast
 
-import jinja2
 import smartconfig
 
 import automata.materials
-from automata.website import TemplateElement
-from automata.website._render import RenderContext
+from automata.website import RenderContext, TemplateElement
 
 
 class Week:
@@ -38,15 +36,11 @@ class Week:
 
             return bool(self.start_date <= date_value < end_date)
 
-        return automata.materials.filter(
-            collection, predicate=_publication_within_week
-        )
+        return automata.materials.filter(collection, predicate=_publication_within_week)
 
     def contains(self, date: datetime.date) -> bool:
         """Check if a date falls within this week."""
-        return self.start_date <= date < self.start_date + datetime.timedelta(
-            weeks=1
-        )
+        return self.start_date <= date < self.start_date + datetime.timedelta(weeks=1)
 
 
 class ResourceConfig(smartconfig.Prototype):
@@ -130,6 +124,8 @@ class Schedule(TemplateElement):
         config: smartconfig.types.Configuration,
     ) -> dict[str, Any]:
         """Provide additional template variables."""
+        tvars = super().template_vars(context, config)
+
         config_dict = cast(dict[str, Any], config)
 
         # Generate weeks
@@ -145,50 +141,14 @@ class Schedule(TemplateElement):
                 this_week = week
                 break
 
-        # Helper function to check if something is missing
-        def is_something_missing(publication: Any, requirements: Any) -> bool:
-            """Check if a publication is missing required artifacts or metadata."""
-            if requirements is None:
-                return False
+        tvars.update(
+            {
+                "weeks": weeks,
+                "this_week": this_week,
+            }
+        )
 
-            # Check for missing artifacts
-            for artifact in requirements.get("artifacts", []):
-                if artifact not in publication.artifacts:
-                    return True
-
-            # Check for missing metadata
-            for metadata_key in requirements.get("metadata", []):
-                if metadata_key not in publication.metadata:
-                    return True
-
-            # Check for null metadata
-            for metadata_key in requirements.get("non_null_metadata", []):
-                if (
-                    metadata_key not in publication.metadata
-                    or publication.metadata[metadata_key] is None
-                ):
-                    return True
-
-            return False
-
-        # Helper function to evaluate template strings
-        def evaluate(template_str: str, **kwargs: Any) -> str:
-            """Evaluate a Jinja2 template string."""
-            try:
-                template = jinja2.Template(
-                    template_str,
-                    undefined=jinja2.StrictUndefined,
-                )
-                return template.render(context=context, **kwargs)
-            except jinja2.UndefinedError as exc:
-                raise Exception(f"Error evaluating template: {exc}")
-
-        return {
-            "weeks": weeks,
-            "this_week": this_week,
-            "is_something_missing": is_something_missing,
-            "evaluate": evaluate,
-        }
+        return tvars
 
     def _generate_weeks(self, config: dict[str, Any]) -> list[Week]:
         """Generate Week objects from configuration."""
@@ -200,8 +160,7 @@ class Schedule(TemplateElement):
             week = Week(
                 number=first_week_number + i,
                 topic=topic,
-                start_date=first_week_start_date
-                + datetime.timedelta(weeks=i),
+                start_date=first_week_start_date + datetime.timedelta(weeks=i),
             )
             weeks.append(week)
 

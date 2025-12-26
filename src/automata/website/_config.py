@@ -1,3 +1,5 @@
+from typing import Any
+
 import smartconfig
 
 
@@ -13,6 +15,9 @@ class ThemeConfig(smartconfig.Prototype):
     # contain "templates" and/or "static" subdirectories with files that override
     # those in the theme.
     overrides: str | None = None
+
+    # additional configuration options to pass to the theme
+    config: dict[str, Any] = {}
 
 
 class Config(smartconfig.Prototype):

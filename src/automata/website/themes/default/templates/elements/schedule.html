@@ -10,7 +10,7 @@
     <li class="schedule-resource">
         {% if resource_config.title is not none %}
             <span class="schedule-resource-title">
-                ${ evaluate(resource_config.title, publication=publication) }
+                ${ resolve(resource_config.title, {'publication': publication}) }
             </span>
         {% endif %}
 
@@ -23,13 +23,13 @@
                     {% set parts = publication.metadata.get(resource_config.key_for_parts, []) %}
                     {% for part in parts %}
                         <li>
-                            ${ evaluate(resource_config.text, part=part, publication=publication) }
+                            ${ resolve(resource_config.text, {'part': part, 'publication': publication}) }
                         </li>
                     {% endfor %}
                     </ol>
                 </div>
             {% else %}
-                ${ evaluate(resource_config.text, publication=publication) }
+                ${ resolve(resource_config.text, {'publication': publication}) }
             {% endif %}
         {% endif %}
     </li>
@@ -39,7 +39,7 @@
 {% macro display_lecture(lecture, lecture_config, last) %}
     <div class="schedule-lecture ${ 'last' if last }">
         <h3 class="schedule-week-component-title">
-            ${ evaluate(lecture_config.title, publication=lecture) }
+            ${ resolve(lecture_config.title, {'publication': lecture}) }
         </h3>
         <div class="schedule-lecture-resources">
             <ul class="schedule-lecture-resources">
@@ -60,7 +60,7 @@
     {% for key, assignment in week_assignments.publications.items() | sort(attribute='0') %}
         <div class="list-group-item">
             <h3 class="schedule-week-component-title">
-                ${ evaluate(assignment_config.title, publication=assignment) }
+                ${ resolve(assignment_config.title, {'publication': assignment}) }
             </h3>
             <div class="schedule-assignment-resources">
                 <ul class="schedule-assignment-resources" style="list-style: none">
@@ -95,7 +95,7 @@
     {% for key, discussion in week_discussions.publications.items() | sort(attribute='0') %}
         <div class="list-group-item">
             <h3 class="schedule-week-component-title">
-                ${ evaluate(discussion_config.title, publication=discussion) }
+                ${ resolve(discussion_config.title, {'publication': discussion}) }
             </h3>
             <div class="schedule-discussion-resources">
                 <ul class="schedule-discussion-resources">
@@ -157,7 +157,7 @@
         {% set class = "alert-primary" %}
         {% endif %}
         <div class="alert ${ class } schedule-announcement">
-            <p>${ evaluate(announcement_config.content) }</p>
+            <p>${ resolve(announcement_config.content) }</p>
         </div>
         {% endif %}
         {% endfor %}

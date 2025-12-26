@@ -2,9 +2,9 @@
     {% set is_missing = is_something_missing(publication, column.requires) %}
 
     {% if is_missing and column.requires.cell_content_if_missing is not none %}
-        ${ evaluate(column.requires.cell_content_if_missing, publication) }
+        ${ resolve(column.requires.cell_content_if_missing, {'publication': publication}) }
     {% else %}
-        ${ evaluate(column.cell_content, publication) }
+        ${ resolve(column.cell_content, {'publication': publication}) }
     {% endif %}
 {% endmacro %}
 

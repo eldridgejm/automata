@@ -1,8 +1,11 @@
 from abc import abstractmethod
+from dataclasses import asdict
 from typing import Any, Protocol
 
+import jinja2
 import smartconfig
 
+from ..materials import Publication
 from ._render import RenderContext
 
 
@@ -42,6 +45,49 @@ class BasicElement(Element, Protocol):
     ) -> str: ...
 
 
+# Helper function to evaluate template strings
+def _resolve(template_str: str, vars: dict[str, Any] | None = None) -> str:
+    """Evaluate a Jinja2 template string with variables available."""
+    if vars is None:
+        vars = {}
+
+    try:
+        template = jinja2.Template(
+            template_str,
+            undefined=jinja2.StrictUndefined,
+        )
+        return template.render(**vars)
+    except jinja2.UndefinedError as exc:
+        raise Exception(f"Error evaluating template: {exc}")
+
+
+# Helper function to check if something is missing
+def _is_something_missing(publication: Publication, requirements) -> bool:
+    """Check if a publication is missing required artifacts or metadata."""
+    if requirements is None:
+        return False
+
+    # Check for missing artifacts
+    for artifact in requirements.get("artifacts", []):
+        if artifact not in publication.artifacts:
+            return True
+
+    # Check for missing metadata
+    for metadata_key in requirements.get("metadata", []):
+        if metadata_key not in publication.metadata:
+            return True
+
+    # Check for null metadata
+    for metadata_key in requirements.get("non_null_metadata", []):
+        if (
+            metadata_key not in publication.metadata
+            or publication.metadata[metadata_key] is None
+        ):
+            return True
+
+    return False
+
+
 class TemplateElement(BasicElement, Protocol):
     """An Element that renders a Jinja2 template.
 
@@ -61,7 +107,11 @@ class TemplateElement(BasicElement, Protocol):
         context: RenderContext,
         config: smartconfig.types.Configuration,
     ) -> dict[str, Any]:
-        return {}
+        return {
+            "resolve": _resolve,
+            "is_something_missing": _is_something_missing,
+            **asdict(context),
+        }
 
     def render(
         self,

@@ -31,7 +31,7 @@ def main():
 
     built = automata.materials.build(universe, ignore_release_time=True)
 
-    materials_dir = root_dir / "website" / "materials"
+    materials_dir = root_dir / "website" / "content" / "materials"
     materials_dir.mkdir(parents=True, exist_ok=True)
 
     exported = automata.materials.export(built, outdir=materials_dir)
@@ -48,8 +48,16 @@ def main():
     build_dir = root_dir / "_build"
 
     config = automata.website.Config(
-        content_directory=root_dir / "website",
+        content_directory=root_dir / "website/content",
         build_directory=build_dir,
+        theme=automata.website.ThemeConfig(
+            use="default",
+            config={
+                "short_title": "Example Course",
+                "long_title": "An Example Course Website",
+                "navigation": [],
+            },
+        ),
     )
 
     automata.website.generate(config)
@@ -71,5 +79,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nError: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
