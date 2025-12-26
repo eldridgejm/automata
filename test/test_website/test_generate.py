@@ -591,7 +591,7 @@ def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
         automata.website.generate(config)
 
 
-def test_generate_can_override_theme_template(tmpsite, tmp_path):
+def test_generate_can_override_theme_template(tmpsite, tmp_path, config):
     """Test that theme templates can be overridden."""
     # given
     tmpsite.make_page("index.md", "# Override Test")
@@ -604,11 +604,7 @@ def test_generate_can_override_theme_template(tmpsite, tmp_path):
         '<html><body data-override="yes">${ body }</body></html>'
     )
 
-    config = automata.website.Config(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        theme=automata.website.ThemeConfig(use="default", overrides=str(overrides_dir)),
-    )
+    config.theme.overrides = str(overrides_dir)
 
     # when
     automata.website.generate(config)
@@ -802,3 +798,136 @@ def test_generate_with_template_element(tmpsite):
     output = tmpsite.get_output("index.html")
     assert '<span class="badge warning">Welcome:' in output
     assert str(tmpsite.build_directory) in output
+
+
+# theme config validation ==========================================================
+
+
+def test_generate_validates_theme_config_against_schema(tmp_path, tmpsite):
+    """Test that generate() validates theme config and applies defaults."""
+    # Create a theme directory with a schema
+    theme_dir = tmp_path / "custom_theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html>${ body }</html>")
+
+    # Schema with required and optional keys
+    (theme_dir / "schema.json").write_text(
+        '{"type": "dict", "required_keys": {"site_name": {"type": "string"}}, '
+        '"optional_keys": {"show_footer": {"type": "boolean", "default": true}, '
+        '"copyright_year": {"type": "integer", "default": 2024}}}'
+    )
+
+    tmpsite.make_page("index.md", "# Home")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use=str(theme_dir), config={"site_name": "My Site"}
+        ),
+    )
+
+    # This should succeed and apply defaults
+    automata.website.generate(config)
+
+    # Verify config was updated with defaults
+    assert config.theme.config["site_name"] == "My Site"
+    assert config.theme.config["show_footer"] is True
+    assert config.theme.config["copyright_year"] == 2024
+
+
+def test_generate_raises_on_invalid_theme_config(tmp_path, tmpsite):
+    """Test that generate() raises Error when config doesn't match schema."""
+    # Create a theme directory with a schema
+    theme_dir = tmp_path / "custom_theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html>${ body }</html>")
+
+    # Schema requiring site_name
+    (theme_dir / "schema.json").write_text(
+        '{"type": "dict", "required_keys": {"site_name": {"type": "string"}}}'
+    )
+
+    tmpsite.make_page("index.md", "# Home")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use=str(theme_dir),
+            config={},  # Missing required site_name
+        ),
+    )
+
+    # Should raise Error with descriptive message
+    with raises(automata.website.exceptions.Error, match="Invalid theme configuration"):
+        automata.website.generate(config)
+
+
+def test_generate_skips_validation_when_schema_is_none(tmp_path, tmpsite):
+    """Test that generate() allows any config when theme has no schema."""
+    tmpsite.make_page("index.md", "# Home")
+
+    # Create a custom theme without a schema
+    theme_dir = tmp_path / "custom_theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html>${ body }</html>")
+    # No schema.json file - theme has no schema
+
+    # Theme has no schema, so any config should be allowed
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use=str(theme_dir),
+            config={
+                "arbitrary_key": "arbitrary_value",
+                "another_key": 123,
+            },
+        ),
+    )
+
+    # This should succeed without validation
+    automata.website.generate(config)
+
+    # Config should remain unchanged (no defaults applied since no schema)
+    assert config.theme.config["arbitrary_key"] == "arbitrary_value"
+    assert config.theme.config["another_key"] == 123
+
+
+def test_generate_updates_config_with_resolved_theme_config(tmp_path, tmpsite):
+    """Test that resolved config with defaults is in config.theme.config."""
+    # Create a theme directory with a schema that has defaults
+    theme_dir = tmp_path / "custom_theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html>${ body }</html>")
+
+    # Schema with multiple defaults
+    (theme_dir / "schema.json").write_text(
+        '{"type": "dict", "optional_keys": {'
+        '"title": {"type": "string", "default": "Default Title"}, '
+        '"count": {"type": "integer", "default": 42}, '
+        '"enabled": {"type": "boolean", "default": false}}}'
+    )
+
+    tmpsite.make_page("index.md", "# Home")
+
+    config = automata.website.Config(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use=str(theme_dir),
+            config={},  # No values provided, should all use defaults
+        ),
+    )
+
+    automata.website.generate(config)
+
+    # All defaults should be applied to config.theme.config
+    assert config.theme.config["title"] == "Default Title"
+    assert config.theme.config["count"] == 42
+    assert config.theme.config["enabled"] is False

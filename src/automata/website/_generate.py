@@ -9,6 +9,8 @@ from typing import Any, Callable, cast
 import jinja2
 import markdown
 import smartconfig
+import smartconfig.exceptions
+import smartconfig.types
 
 from ..materials import ExportedArtifact, Universe, deserialize
 from ._config import Config
@@ -17,6 +19,39 @@ from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
 from ._theme import Theme
 from .exceptions import Error, PageError
+
+
+def _resolve_theme_config(
+    theme_config: dict[str, Any],
+    schema: smartconfig.types.Schema | None,
+) -> dict[str, Any]:
+    """Resolve and validate theme configuration against schema.
+
+    Parameters
+    ----------
+    theme_config : dict[str, Any]
+        The raw theme configuration dictionary.
+    schema : smartconfig.types.Schema | None
+        The smartconfig schema to validate against. If None, no validation is performed.
+
+    Returns
+    -------
+    dict[str, Any]
+        The resolved configuration with defaults applied.
+
+    Raises
+    ------
+    Error
+        If the configuration does not match the schema.
+
+    """
+    if schema is None:
+        return theme_config
+
+    try:
+        return smartconfig.resolve(theme_config, schema)
+    except smartconfig.exceptions.ResolutionError as exc:
+        raise Error(f"Invalid theme configuration: {exc}") from exc
 
 
 def _load_materials(
@@ -361,6 +396,13 @@ def generate(
         return f"{config.base_path.rstrip('/')}/{path.lstrip('/')}"
 
     theme = _get_theme(config, extra_themes=extra_themes)
+
+    # Resolve and validate theme configuration
+    config.theme.config = _resolve_theme_config(
+        theme_config=config.theme.config,
+        schema=theme.schema,
+    )
+
     jinja_environment = theme.create_jinja_environment()
 
     _copy_theme_static_files(theme, pathlib.Path(config.build_directory))

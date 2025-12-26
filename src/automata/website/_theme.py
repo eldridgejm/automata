@@ -2,12 +2,15 @@ import hashlib
 import importlib.metadata as metadata
 import importlib.resources
 import importlib.util
+import json
 import sys
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from typing import TYPE_CHECKING, cast
 
 import jinja2
+import smartconfig.exceptions
+import smartconfig.types
 
 if TYPE_CHECKING:
     from ._elements import Element
@@ -25,6 +28,9 @@ class Theme:
 
     # dictionary mapping element names to element functions
     elements: dict[str, Element] = field(default_factory=dict)
+
+    # optional smartconfig schema for theme configuration validation
+    schema: smartconfig.types.Schema | None = None
 
     @classmethod
     def from_directory(
@@ -123,10 +129,26 @@ class Theme:
         if elements_dir.is_dir():
             elements = _load_elements_from_directory(elements_dir)
 
+        # Load schema from schema.json if present
+        schema_file = directory / "schema.json"
+        schema: smartconfig.types.Schema | None = None
+
+        if schema_file.is_file():
+            try:
+                schema_content = schema_file.read_text()
+                schema = json.loads(schema_content)
+                # Validate it's a valid smartconfig schema
+                smartconfig.validate_schema(schema)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON in schema.json: {e}")
+            except smartconfig.exceptions.InvalidSchemaError as e:
+                raise ValueError(f"Theme configuration schema is invalid: {e}")
+
         return cls(
             templates=templates,
             static_files=static_files,
             elements=elements,
+            schema=schema,
         )
 
     @classmethod

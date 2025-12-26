@@ -150,3 +150,68 @@ def test_from_directory_allows_missing_templates_when_not_required(tmp_path) -> 
     # then
     assert theme.templates == {}
     assert "style.css" in theme.static_files
+
+
+# schema.json loading ==========================================================
+
+
+def test_from_directory_loads_schema_from_schema_json(tmp_path: Path) -> None:
+    """Test that Theme.from_directory() loads schema from schema.json if present."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    schema = {
+        "type": "dict",
+        "required_keys": {"title": {"type": "string"}},
+        "optional_keys": {"subtitle": {"type": "string", "default": "Default"}},
+    }
+    (theme_dir / "schema.json").write_text(
+        '{"type": "dict", "required_keys": {"title": {"type": "string"}}, '
+        '"optional_keys": {"subtitle": {"type": "string", "default": "Default"}}}'
+    )
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.schema == schema
+
+
+def test_from_directory_allows_missing_schema_json(tmp_path: Path) -> None:
+    """Test that Theme.from_directory() sets schema=None when schema.json is missing."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.schema is None
+
+
+def test_from_directory_raises_on_invalid_json_in_schema_json(tmp_path: Path) -> None:
+    """Test that Theme.from_directory() raises ValueError for malformed JSON."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    # Invalid JSON - missing closing brace
+    (theme_dir / "schema.json").write_text('{"type": "dict"')
+
+    with pytest.raises(ValueError, match="Invalid JSON in schema.json"):
+        Theme.from_directory(theme_dir)
+
+
+def test_from_directory_raises_on_invalid_schema_in_schema_json(tmp_path: Path) -> None:
+    """Test that Theme.from_directory() raises ValueError for invalid schema."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    # Valid JSON but invalid smartconfig schema - missing required 'type' field
+    (theme_dir / "schema.json").write_text('{"invalid_key": "value"}')
+
+    with pytest.raises(ValueError, match="Theme configuration schema is invalid"):
+        Theme.from_directory(theme_dir)
