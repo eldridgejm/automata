@@ -1,0 +1,13 @@
+publication_schema:
+  metadata_schema:
+    required_keys:
+      number: { type: integer }
+      released: { type: datetime }
+      due: { type: datetime }
+      topic: { type: string }
+
+  required_artifacts:
+    - lab.txt
+    - starter.txt
+
+  is_ordered: true

@@ -1,0 +1,12 @@
+metadata:
+  number: 14
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Advanced Sorting Algorithms"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 14: Advanced Sorting Algorithms" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 14: Advanced Sorting Algorithms\n\nMerge sort, Quick sort, and more!" > slides.md'
+    path: slides.md

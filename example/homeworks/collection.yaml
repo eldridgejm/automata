@@ -4,11 +4,10 @@ publication_schema:
       number: { type: integer }
       released: { type: datetime }
       due: { type: datetime }
+      topic: { type: string }
 
   required_artifacts:
     - homework.txt
-
-  optional_artifacts:
     - solution.txt
 
   is_ordered: true

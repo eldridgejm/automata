@@ -16,7 +16,8 @@ dependencies = [
     "pyyaml",
     "jinja2",
     "markdown",
-    "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git",
+    "mistune",
+    "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git@0.4.0",
     "typer",
 ]
 
@@ -33,6 +34,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "types-Markdown",
     "types-PyYAML",
+    "beautifulsoup4",
 ]
 
 [tool.hatch.metadata]
@@ -60,3 +62,7 @@ mypy_path = "src"
 [tool.pytest.ini_options]
 testpaths = ["test"]
 pythonpath = ["src"]
+markers = [
+  "integration: tests that hit external systems (db, network, etc.)",
+]
+addopts = "-m 'not integration'"

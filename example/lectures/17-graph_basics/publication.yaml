@@ -1,0 +1,12 @@
+metadata:
+  number: 17
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Graph Representations"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 17: Graph Representations" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 17: Graph Representations\n\nAdjacency lists and matrices!" > slides.md'
+    path: slides.md

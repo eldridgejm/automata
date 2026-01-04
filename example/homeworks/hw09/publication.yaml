@@ -2,6 +2,7 @@ metadata:
   number: 9
   released: 2025-11-17 12:00:00
   due: 2025-11-24 23:59:00
+  topic: Spanning Trees
 
 artifacts:
   homework.txt:

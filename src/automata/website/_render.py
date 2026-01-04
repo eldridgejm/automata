@@ -36,8 +36,10 @@ class RenderContext:
         dataclasses.field(default_factory=dict)
     )
 
-    # function that returns the current date and time
-    now: datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)
+    # the current date and time
+    current_time: datetime.datetime = dataclasses.field(
+        default_factory=datetime.datetime.now
+    )
 
     # variables available for interpolation in the content
     vars: dict[str, Any] = dataclasses.field(default_factory=dict)

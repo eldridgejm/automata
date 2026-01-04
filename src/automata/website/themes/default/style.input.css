@@ -1,0 +1,27 @@
+/* styles for automata's default theme */
+/* this file is processed by tailwindcss */
+
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Set dark mode using classes; tailwind's default is a media query */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Override typography plugin link styles */
+.prose a {
+  @apply text-blue-500 dark:text-sky-400 no-underline;
+}
+
+.prose a:hover {
+  @apply text-blue-700 dark:text-sky-600 underline;
+}
+
+/* Override typography plugin heading styles */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  @apply font-semibold;
+}

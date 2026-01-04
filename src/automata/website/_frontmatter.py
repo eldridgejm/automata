@@ -12,7 +12,7 @@ class Frontmatter(Prototype):
     vars: dict[str, Any] = {}
 
     # the template that will be used to render the page
-    template: str = "base.html"
+    template: str = "page.html"
 
 
 def _parse_yaml_frontmatter(

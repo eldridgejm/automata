@@ -1,0 +1,12 @@
+<span>
+    {% set common_classes = "border px-2.5 py-1 rounded-lg text-sm font-semibold " + element_config.text_class %}
+    {%- if context.current_time.date() <= element_config.date -%}
+    <span class="text-white bg-red-500 border-red-800 dark:bg-red-500 dark:border-red-400 ${ common_classes }">
+        ${ resolve(element_config.text_before) }
+    </span>
+    {%- else -%}
+    <span class="text-gray-600 dark:text-gray-300 bg-gray-400/50 border-gray-400 ${ common_classes }">
+        ${ resolve(element_config.text_after) }
+    </span>
+    {% endif %}
+</span>

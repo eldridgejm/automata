@@ -459,9 +459,9 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
     templates_dir = custom_theme_dir / "templates"
     templates_dir.mkdir(parents=True)
 
-    # Create a custom base.html template with a marker
-    (templates_dir / "base.html").write_text(
-        '<html><body data-custom-theme="yes">${ body }</body></html>'
+    # Create a custom page.html template with a marker
+    (templates_dir / "page.html").write_text(
+        '<html><body data-custom-theme="yes">${ content }</body></html>'
     )
 
     config = automata.website.WebsiteConfig(
@@ -490,13 +490,13 @@ def test_generate_supports_template_inheritance(tmpsite, tmp_path):
     templates_dir = custom_theme_dir / "templates"
     templates_dir.mkdir(parents=True)
 
-    (templates_dir / "base.html").write_text(
+    (templates_dir / "page.html").write_text(
         "<html><body><header>Header</header>"
         "{% block body %}{% endblock %}"
         "<footer>Footer</footer></body></html>"
     )
     (templates_dir / "layout.html").write_text(
-        '{% extends "base.html" %}{% block body %}Layout:${ body }{% endblock %}'
+        '{% extends "page.html" %}{% block body %}Layout:${ content }{% endblock %}'
     )
 
     config = automata.website.WebsiteConfig(
@@ -527,8 +527,12 @@ def test_generate_uses_frontmatter_template(tmpsite, tmp_path):
     templates_dir = custom_theme_dir / "templates"
     templates_dir.mkdir(parents=True)
 
-    (templates_dir / "base.html").write_text("<html><body>BASE:${ body }</body></html>")
-    (templates_dir / "alt.html").write_text("<html><body>ALT:${ body }</body></html>")
+    (templates_dir / "page.html").write_text(
+        "<html><body>BASE:${ content }</body></html>"
+    )
+    (templates_dir / "alt.html").write_text(
+        "<html><body>ALT:${ content }</body></html>"
+    )
 
     config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
@@ -556,7 +560,7 @@ def test_generate_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
     custom_theme_dir = tmp_path / "custom_theme"
     templates_dir = custom_theme_dir / "templates"
     templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html><body>${ body }</body></html>")
+    (templates_dir / "page.html").write_text("<html><body>${ content }</body></html>")
 
     config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
@@ -578,7 +582,7 @@ def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
     custom_theme_dir = tmp_path / "custom_theme"
     templates_dir = custom_theme_dir / "templates"
     templates_dir.mkdir(parents=True)
-    (templates_dir / "index.html").write_text("<html>${ body }</html>")
+    (templates_dir / "index.html").write_text("<html>${ content }</html>")
 
     config = automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
@@ -587,7 +591,7 @@ def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
     )
 
     # when / then
-    with raises(ValueError, match="base.html"):
+    with raises(ValueError, match="page.html"):
         automata.website.generate(config)
 
 
@@ -596,12 +600,12 @@ def test_generate_can_override_theme_template(tmpsite, tmp_path, config):
     # given
     tmpsite.make_page("index.md", "# Override Test")
 
-    # Create overrides directory with custom base.html
+    # Create overrides directory with custom page.html
     overrides_dir = tmp_path / "overrides"
     templates_dir = overrides_dir / "templates"
     templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text(
-        '<html><body data-override="yes">${ body }</body></html>'
+    (templates_dir / "page.html").write_text(
+        '<html><body data-override="yes">${ content }</body></html>'
     )
 
     config.theme.overrides = str(overrides_dir)
@@ -615,7 +619,7 @@ def test_generate_can_override_theme_template(tmpsite, tmp_path, config):
     assert "Override Test" in output
 
 
-def test_generate_overrides_template_can_extend_base(tmpsite, tmp_path):
+def test_generate_overrides_template_can_extend_builtin_template(tmpsite, tmp_path):
     # given
     tmpsite.make_page(
         "index.md",
@@ -626,7 +630,7 @@ def test_generate_overrides_template_can_extend_base(tmpsite, tmp_path):
     templates_dir = overrides_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "layout.html").write_text(
-        '{% extends "base.html" %}{% block body %}Override:${ body }{% endblock %}'
+        '{% extends "base.html" %}{% block main %}Override:${ content }{% endblock %}'
     )
 
     config = automata.website.WebsiteConfig(
@@ -695,8 +699,8 @@ def test_generate_copies_static_files_from_theme(tmpsite, config):
     automata.website.generate(config)
 
     # then - verify default theme's static CSS file was copied
-    style_css = tmpsite.get_output("style/style.css")
-    assert "styles for automata's default theme" in style_css
+    style_css = tmpsite.get_output("static/style.css")
+    assert "tailwindcss" in style_css  # default theme uses Tailwind CSS
 
 
 def test_generate_handles_all_static_file_types(tmpsite, tmp_path, config):
@@ -710,7 +714,7 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path, config):
 
     # Create a theme with all three types of static files
     theme = automata.website.Theme(
-        templates={"base.html": "<html><body>${ content }</body></html>"},
+        templates={"page.html": "<html><body>${ content }</body></html>"},
         static_files={
             "string.txt": "string content",
             "bytes.bin": b"bytes content",
@@ -741,7 +745,7 @@ def test_generate_supports_theme_elements(tmpsite):
         return f'<span data-element="simple">{config["label"]}</span>'
 
     theme = automata.website.Theme(
-        templates={"base.html": "<html><body>${ body }</body></html>"},
+        templates={"page.html": "<html><body>${ content }</body></html>"},
         elements={"simple": simple_element},
     )
 
@@ -778,7 +782,7 @@ def test_generate_with_template_element(tmpsite):
 
     theme = automata.website.Theme(
         templates={
-            "base.html": "<html><body>${ body }</body></html>",
+            "page.html": "<html><body>${ content }</body></html>",
             "badge.html": (
                 '<span class="badge ${ element_config.tone }">'
                 "${ element_config.label }:${ suffix }</span>"
@@ -809,7 +813,7 @@ def test_generate_validates_theme_config_against_schema(tmp_path, tmpsite):
     theme_dir = tmp_path / "custom_theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html>${ body }</html>")
+    (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
     # Schema with required and optional keys
     (theme_dir / "schema.json").write_text(
@@ -843,7 +847,7 @@ def test_generate_raises_on_invalid_theme_config(tmp_path, tmpsite):
     theme_dir = tmp_path / "custom_theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html>${ body }</html>")
+    (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
     # Schema requiring site_name
     (theme_dir / "schema.json").write_text(
@@ -876,7 +880,7 @@ def test_generate_skips_validation_when_schema_is_none(tmp_path, tmpsite):
     theme_dir = tmp_path / "custom_theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html>${ body }</html>")
+    (templates_dir / "page.html").write_text("<html>${ content }</html>")
     # No schema.json file - theme has no schema
 
     # Theme has no schema, so any config should be allowed
@@ -906,7 +910,7 @@ def test_generate_updates_config_with_resolved_theme_config(tmp_path, tmpsite):
     theme_dir = tmp_path / "custom_theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html>${ body }</html>")
+    (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
     # Schema with multiple defaults
     (theme_dir / "schema.json").write_text(

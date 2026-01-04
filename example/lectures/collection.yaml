@@ -4,8 +4,27 @@ publication_schema:
       number: { type: integer }
       date: { type: date }
       topic: { type: string }
+    optional_keys:
+      videos:
+        type: list
+        element_schema:
+          type: dict
+          required_keys:
+            title: { type: string }
+            url:
+              type: string
+      reading:
+        type: dict
+        required_keys:
+          title: { type: string }
+        optional_keys:
+          url:
+            type: string
+            default: null
+            nullable: true
 
   required_artifacts:
     - slides.txt
+    - slides.md
 
   is_ordered: true

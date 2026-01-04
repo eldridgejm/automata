@@ -1,0 +1,12 @@
+metadata:
+  number: 16
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Hash Functions and Collision Resolution"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 16: Hash Functions and Collision Resolution" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 16: Hash Functions and Collision Resolution\n\nDeep dive into hashing!" > slides.md'
+    path: slides.md

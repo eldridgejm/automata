@@ -1,0 +1,15 @@
+metadata:
+  number: 6
+  released: 2025-10-28 12:00:00
+  due: 2025-11-01 23:59:00
+  topic: Hash Tables
+
+artifacts:
+  lab.txt:
+    recipe: 'echo "Lab 6: Hash Tables" > lab.txt'
+    path: lab.txt
+
+  starter.txt:
+    recipe: 'echo "Starter code for Lab 6" > starter.txt'
+    path: starter.txt
+    ready: true

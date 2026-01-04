@@ -1,0 +1,12 @@
+metadata:
+  number: 19
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Dijkstra's Algorithm"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 19: Dijkstras Algorithm" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 19: Dijkstras Algorithm" > slides.md'
+    path: slides.md

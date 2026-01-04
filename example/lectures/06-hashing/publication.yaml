@@ -1,9 +1,12 @@
 metadata:
   number: 6
-  date: 2025-10-27
+  date: first monday, wednesday after ${ previous.metadata.date }
   topic: "Hashing"
 
 artifacts:
   slides.txt:
     recipe: 'echo "Slides for Lecture 6: Hashing" > slides.txt'
     path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 6: Hashing\n\nWelcome back!" > slides.md'
+    path: slides.md

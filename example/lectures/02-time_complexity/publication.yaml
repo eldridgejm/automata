@@ -1,9 +1,12 @@
 metadata:
   number: 2
-  date: 2025-09-29
+  date: first tuesday, thursday after ${ previous.metadata.date }
   topic: "Time Complexity"
 
 artifacts:
   slides.txt:
     recipe: 'echo "Slides for Lecture 2: Time Complexity" > slides.txt'
     path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 2: Time Complexity\n\nWelcome back!" > slides.md'
+    path: slides.md

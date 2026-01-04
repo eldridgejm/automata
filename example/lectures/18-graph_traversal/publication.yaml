@@ -1,0 +1,12 @@
+metadata:
+  number: 18
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Graph Traversal Applications"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 18: Graph Traversal Applications" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 18: Graph Traversal Applications\n\nPractical uses of BFS and DFS!" > slides.md'
+    path: slides.md

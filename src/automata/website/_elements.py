@@ -1,8 +1,10 @@
 from abc import abstractmethod
 from dataclasses import asdict
+from functools import partial
 from typing import Any, Protocol
 
 import jinja2
+import markdown
 import smartconfig
 
 from ..materials import Publication
@@ -35,6 +37,7 @@ class BasicElement(Element, Protocol):
     ) -> str:
         if self.schema is not None:
             config = smartconfig.resolve(config, self.schema)
+        config = self.extra_resolution(config, context)
         return self.render(config, context)
 
     @abstractmethod
@@ -44,17 +47,55 @@ class BasicElement(Element, Protocol):
         context: RenderContext,
     ) -> str: ...
 
+    def extra_resolution(
+        self,
+        config: smartconfig.types.Configuration,
+        context: RenderContext,
+    ) -> smartconfig.types.Configuration:
+        """Perform any extra resolution/validation on the resolved configuration.
+
+        Parameters
+        ----------
+        config : smartconfig.types.Configuration
+            The resolved configuration for this element.
+        context : RenderContext
+            The rendering context.
+
+        Returns
+        -------
+        smartconfig.types.Configuration
+            The further resolved/validated configuration.
+
+        """
+        return config
+
 
 # Helper function to evaluate template strings
-def _resolve(template_str: str, vars: dict[str, Any] | None = None) -> str:
+def _resolve(
+    context: RenderContext, template_str: str, extra_vars: dict[str, Any] | None = None
+) -> str:
     """Evaluate a Jinja2 template string with variables available."""
-    if vars is None:
-        vars = {}
+    if extra_vars is None:
+        extra_vars = {}
+
+    # Check if template_str is actually undefined
+    if isinstance(template_str, jinja2.Undefined):
+        raise ValueError(
+            f"Cannot resolve undefined template string. "
+            f"The template variable is undefined: {template_str._undefined_name}"
+        )
+
+    vars = asdict(context)
+    vars = {**vars, **extra_vars}
 
     try:
         template = jinja2.Template(
             template_str,
             undefined=jinja2.StrictUndefined,
+            variable_start_string="${",
+            variable_end_string="}",
+            block_start_string="{%",
+            block_end_string="%}",
         )
         return template.render(**vars)
     except jinja2.UndefinedError as exc:
@@ -88,6 +129,15 @@ def _is_something_missing(publication: Publication, requirements) -> bool:
     return False
 
 
+def _md_to_html(md_text: str) -> str:
+    """Convert markdown text to HTML."""
+    md_text = md_text.strip()
+    html = markdown.markdown(md_text).strip()
+    if html.startswith("<p>") and html.endswith("</p>"):
+        html = html[3:-4]
+    return html
+
+
 class TemplateElement(BasicElement, Protocol):
     """An Element that renders a Jinja2 template.
 
@@ -108,9 +158,18 @@ class TemplateElement(BasicElement, Protocol):
         config: smartconfig.types.Configuration,
     ) -> dict[str, Any]:
         return {
-            "resolve": _resolve,
+            "resolve": partial(_resolve, context),
             "is_something_missing": _is_something_missing,
             **asdict(context),
+        }
+
+    def template_filters(
+        self,
+        context: RenderContext,
+        config: smartconfig.types.Configuration,
+    ) -> dict[str, Any]:
+        return {
+            "md_to_html": _md_to_html,
         }
 
     def render(
@@ -119,6 +178,10 @@ class TemplateElement(BasicElement, Protocol):
         context: RenderContext,
     ) -> str:
         jinja_env = context.theme.create_jinja_environment()
+
+        filters = self.template_filters(context, config)
+        jinja_env.filters.update(**filters)
+
         template = jinja_env.get_template(self.template)
         extra_vars = self.template_vars(context, config)
         return template.render(

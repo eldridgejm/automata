@@ -2,6 +2,7 @@ metadata:
   number: 1
   released: 2025-09-22 12:00:00
   due: 2025-09-29 23:59:00
+  topic: Time Complexity
 
 artifacts:
   homework.txt:
@@ -11,4 +12,4 @@ artifacts:
   solution.txt:
     recipe: echo "Solutions for Homework 1" > solution.txt
     path: solution.txt
-    ready: false
+    ready: true

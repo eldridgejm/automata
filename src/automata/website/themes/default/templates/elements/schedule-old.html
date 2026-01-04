@@ -1,0 +1,146 @@
+{% macro display_resource(resource_config, publication) %}
+    {% set resource_text = resolve(resource_config.text, {'publication': publication}) | md_to_html %}
+
+    {% if resource_text.strip() %}
+    <li class="schedule-resource">
+        {% if resource_config.title is not none %}
+            <span class="schedule-resource-title">
+                ${ resolve(resource_config.title, {'publication': publication}) | md_to_html }
+            </span>
+        {% endif %}
+
+        ${ resolve(resource_config.text, {'publication': publication}) | md_to_html }
+    </li>
+    {% endif %}
+{% endmacro %}
+
+{% macro display_primary_section(week, config) %}
+    {% set items = week.filter(
+        context.materials.collections[config.collection],
+        config.metadata_key_for_released
+    ) %}
+
+    {% for key, publication in items.publications.items() | sort(attribute='0', reverse=true) %}
+    <div class="schedule-lecture ${ 'last' if loop.last }">
+        <h3 class="schedule-week-component-title">
+            ${ resolve(config.title, {'publication': publication}) }
+        </h3>
+        <div class="schedule-lecture-resources">
+            <ul class="schedule-lecture-resources">
+            {% for resource_config in config.resources %}
+                ${ display_resource(resource_config, publication) }
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endfor %}
+{% endmacro %}
+
+{% macro display_secondary_section(week, config) %}
+    {% set items = week.filter(
+        context.materials.collections[config.collection],
+        config.metadata_key_for_released
+    ) %}
+
+    {% for key, publication in items.publications.items() | sort(attribute='0') %}
+        <div class="list-group-item">
+            <h3 class="schedule-week-component-title">
+                ${ resolve(config.title, {'publication': publication}) }
+            </h3>
+            <div class="schedule-assignment-resources">
+                <ul class="schedule-assignment-resources" style="list-style: none">
+                {% for resource_config in config.resources %}
+                    ${ display_resource(resource_config, publication) }
+                {% endfor %}
+                </ul>
+            </div>
+            {% if config.metadata_key_for_due %}
+                {% set due_time = publication.metadata.get(config.metadata_key_for_due) %}
+                {% if due_time %}
+                <div class="badge badge-pill ${ 'badge-danger' if context.current_time < due_time else 'badge-light' }">
+                    {% if context.current_time > due_time %}
+                        Was due
+                    {% else %}
+                        Due
+                    {% endif %}
+                    ${ due_time.strftime('%A, %b %d at %H:%M %p') }
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endmacro %}
+
+<div class="schedule">
+{% for week in weeks %}
+    {% if this_week is not none %}
+        {% if week.number == this_week.number + 1 %}
+            <div class="schedule-separator">
+                future weeks
+            </div>
+        {% endif %}
+
+        {% if week.number == this_week.number - 1 %}
+            <div class="schedule-separator">
+                past weeks
+            </div>
+        {% endif %}
+    {% endif %}
+
+    {% set is_in_future = week.start_date > context.current_time.date() %}
+
+    <div class="schedule-week ${ 'schedule-week-future' if is_in_future }">
+        <div class="schedule-week-title">
+            <h1 class="schedule-week-title-number">
+                {% if loop.first %}
+                This Week
+                {% else %}
+                Week ${ week.number }
+                {% endif %}
+            </h1>
+            <h2 class="schedule-week-title-topic">${ week.topic }</h2>
+
+            {% if element_config.get('events') %}
+                {% set event = element_config.events %}
+                {% if week.contains(event.date) %}
+                <div class="badge badge-pill badge-danger">
+                    ${ event.title } on ${ event.date.strftime('%A, %b %d') }
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        {% if element_config.get('announcements') %}
+            {% for announcement_config in element_config.announcements %}
+                {% if announcement_config.week == week.number %}
+                    {% if announcement_config.urgent %}
+                        {% set class = "alert-danger" %}
+                    {% else %}
+                        {% set class = "alert-primary" %}
+                    {% endif %}
+                    <div class="alert ${ class } schedule-announcement">
+                    <p>${ resolve(announcement_config.content) }</p>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+
+        {% if not is_in_future %}
+        <div class="row">
+            <div class="col-md-7">
+                {% for config in element_config.primary_content %}
+                ${ display_primary_section(week, config) }
+                {% endfor %}
+            </div>
+            <div class="col-md-5">
+                <div class="list-group">
+                    {% for config in element_config.secondary_content %}
+                    ${ display_secondary_section(week, config) }
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endfor %}
+</div>

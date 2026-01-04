@@ -40,10 +40,10 @@ def test_build_artifact_when_release_time_is_in_future():
     proc = Mock()
     proc.returncode = 0
     run = Mock(return_value=proc)
-    now = Mock(return_value=datetime.datetime(2020, 1, 1, 0, 0, 0))
+    current_time = datetime.datetime(2020, 1, 1, 0, 0, 0)
 
     # when
-    result = automata.materials.build(artifact, run=run, now=now)
+    result = automata.materials.build(artifact, run=run, current_time=current_time)
 
     # then
     assert result is None
@@ -63,10 +63,10 @@ def test_build_artifact_when_not_ready():
     proc = Mock()
     proc.returncode = 0
     run = Mock(return_value=proc)
-    now = Mock(return_value=datetime.datetime(2020, 3, 1, 0, 0, 0))
+    current_time = datetime.datetime(2020, 3, 1, 0, 0, 0)
 
     # when
-    result = automata.materials.build(artifact, run=run, now=now)
+    result = automata.materials.build(artifact, run=run, current_time=current_time)
 
     # then
     assert result is None
@@ -85,12 +85,16 @@ def test_build_artifact_when_release_time_is_in_future_ignore_release_time():
     proc = Mock()
     proc.returncode = 0
     run = Mock(return_value=proc)
-    now = Mock(return_value=datetime.datetime(2020, 1, 1, 0, 0, 0))
+    current_time = datetime.datetime(2020, 1, 1, 0, 0, 0)
     exists = Mock(return_value=True)
 
     # when
     result = automata.materials.build(
-        artifact, run=run, now=now, exists=exists, ignore_release_time=True
+        artifact,
+        run=run,
+        current_time=current_time,
+        exists=exists,
+        ignore_release_time=True,
     )
 
     # then

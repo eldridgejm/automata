@@ -3,6 +3,7 @@
 import dataclasses
 import datetime
 import pathlib
+import shutil
 from functools import partial
 from typing import Any, Callable, cast
 
@@ -130,8 +131,8 @@ def _get_theme(
             theme.templates.update(override_theme.templates)
             theme.static_files.update(override_theme.static_files)
 
-    if "base.html" not in theme.templates:
-        raise ValueError('Theme templates must include a "base.html" file.')
+    if "page.html" not in theme.templates:
+        raise ValueError('Theme templates must include a "page.html" file.')
 
     return theme
 
@@ -199,7 +200,6 @@ def _generate_single_page(
     wrapped_content = jinja_environment.get_template(template_name).render(
         **dataclasses.asdict(context),
         base_url_path=base_path,
-        body=rendered_content,
         content=rendered_content,
     )
     output_path.write_text(wrapped_content)
@@ -236,11 +236,53 @@ def _bind_elements_to_context(
     }
 
 
+def _fix_artifact_paths(
+    materials: Universe[ExportedArtifact],
+    url_for: Callable[[str], str],
+) -> None:
+    """Fixes the path attribute so that it takes into account the website's base path.
+
+    This helper function simply applies `url_for` to each artifact's path.
+
+    Parameters
+    ----------
+    materials : Universe[ExportedArtifact]
+        The materials universe containing artifacts.
+    url_for : Callable[[str], str]
+        A function that generates URLs based on paths.
+
+    """
+    for collection in materials.collections.values():
+        for publication in collection.publications.values():
+            for artifact in publication.artifacts.values():
+                artifact.path = url_for(str(artifact.path))
+
+
+def _paths_outside_materials_directory(
+    content_directory: pathlib.Path,
+    materials_path: pathlib.Path,
+):
+    """Yields all paths in content_directory that are not in the materials directory."""
+    for dirpath, dirnames, filenames in content_directory.walk(top_down=True):
+        dirpath = pathlib.Path(dirpath)
+
+        # skip the materials directory itself
+        if dirpath == materials_path:
+            dirnames.clear()  # don't recurse into materials
+            continue
+
+        for dirname in dirnames:
+            yield dirpath / dirname
+
+        for filename in filenames:
+            yield dirpath / filename
+
+
 def generate(
     config: WebsiteConfig,
     vars: dict[str, Any] | None = None,
     extra_themes: dict[str, Theme] | None = None,
-    now: datetime.datetime | None = None,
+    current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown.markdown,
     cwd: pathlib.Path | None = None,
 ):
@@ -257,7 +299,7 @@ def generate(
     extra_themes : dict[str, Theme], optional
         A mapping of theme names to Theme instances that should be searched before
         entry points when resolving config.theme.use.
-    now : datetime.datetime, optional
+    current_time : datetime.datetime, optional
         The current date and time to be used during rendering.
     render_markdown : Callable[[str], str], optional
         A function that converts markdown content to HTML. Should take markdown
@@ -399,16 +441,16 @@ def generate(
     if vars is None:
         vars = {}
 
-    if now is None:
-        now = datetime.datetime.now()
+    if current_time is None:
+        current_time = datetime.datetime.now()
 
     if cwd is None:
         cwd = pathlib.Path.cwd()
 
     # Resolve paths relative to cwd (absolute paths are unchanged)
-    content_directory = cwd / config.content_directory
-    build_directory = cwd / config.build_directory
-    materials_path = content_directory / config.materials_directory_name
+    content_dirpath = cwd / config.content_directory
+    materials_dirpath = content_dirpath / config.materials_directory_name
+    build_dirpath = cwd / config.build_directory
 
     # create url_for function based on config.base_path
     def url_for(path: str) -> str:
@@ -424,22 +466,25 @@ def generate(
 
     jinja_environment = theme.create_jinja_environment()
 
-    _copy_theme_static_files(theme, build_directory)
+    _copy_theme_static_files(theme, build_dirpath)
+
+    materials = _load_materials(materials_dirpath)
+    _fix_artifact_paths(materials, url_for)
 
     context = RenderContext(
         website_config=config,
-        materials=_load_materials(materials_path),
+        materials=materials,
         url_for=url_for,
         theme=theme,
-        now=now,
+        current_time=current_time,
         vars=vars,
     )
 
     context.elements = _bind_elements_to_context(theme.elements, context)
 
-    for path in content_directory.rglob("*"):
-        relative_path = path.relative_to(content_directory)
-        output_path = build_directory / relative_path
+    for path in _paths_outside_materials_directory(content_dirpath, materials_dirpath):
+        relative_path = path.relative_to(content_dirpath)
+        output_path = build_dirpath / relative_path
 
         if path.is_dir():
             output_path.mkdir(parents=True, exist_ok=True)
@@ -458,3 +503,12 @@ def generate(
             )
         else:
             _copy_file_to_output(path, output_path, config)
+
+    # copy the built materials
+    materials_output_path = build_dirpath / config.materials_directory_name
+    materials_output_path.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(
+        materials_dirpath,
+        materials_output_path,
+        dirs_exist_ok=True,
+    )

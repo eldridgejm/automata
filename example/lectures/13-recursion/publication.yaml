@@ -1,0 +1,12 @@
+metadata:
+  number: 13
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Recursion and Recurrence Relations"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 13: Recursion and Recurrence Relations" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 13: Recursion and Recurrence Relations\n\nRecursive thinking!" > slides.md'
+    path: slides.md

@@ -1,0 +1,15 @@
+metadata:
+  number: 3
+  released: 2025-10-07 12:00:00
+  due: 2025-10-11 23:59:00
+  topic: Sorting Algorithms
+
+artifacts:
+  lab.txt:
+    recipe: 'echo "Lab 3: Sorting Algorithms" > lab.txt'
+    path: lab.txt
+
+  starter.txt:
+    recipe: 'echo "Starter code for Lab 3" > starter.txt'
+    path: starter.txt
+    ready: true

@@ -1,0 +1,157 @@
+first_week_start_date: "2025-09-20"
+week_order: this_week_first
+
+week_topics:
+  - Introduction and Basics
+  - Data Structures
+  - Algorithms I
+  - Algorithms II
+  - Dynamic Programming
+  - Graphs I
+  - Graphs II
+  - Advanced Topics
+  - Machine Learning
+  - Optimization
+  - Final Exams
+
+events:
+  - name: Midterm 01 Review Session
+    date: "2025-10-18"
+  - name: Midterm 01
+    date: "2025-10-20"
+
+announcements:
+  - week: Null
+    content: |
+      This should appear in the latest week.
+
+  - week: 2
+    urgent: true
+    content: |
+      *Hello!* Welcome to the class.
+
+      Here is a [link](https://example.com) for you to check out.
+
+
+primary_activity_collections:
+  - collection: lectures
+    for_each_publication:
+      start_displaying_on:
+        __raw__: "${ publication.metadata.date }"
+      title:
+        __raw__: "Lecture ${ publication.metadata.number } - ${ publication.metadata.topic }"
+      resources:
+        - type: artifact_links
+          title: Slides
+          icon: projector
+          links:
+            - text: Text
+              artifact: slides.txt
+            - text: Markdown
+              artifact: slides.md
+
+        - type: markdown
+          title: Reading
+          icon: book-open
+          markdown:
+            __raw__: |
+              {% if "reading" in publication.metadata %}
+                {% if publication.metadata.reading.url %}
+                  [${ publication.metadata.reading.title }](${ publication.metadata.reading.url })
+                {% else %}
+                  ${ publication.metadata.reading.title }
+                {% endif %}
+              {% endif %}
+
+        - type: links
+          title: References
+          icon: link
+          links:
+            - text: "Hello"
+              url: "https://example.com/hello"
+            - text: "World"
+              url: "https://example.com/world"
+
+        - type: metadata_links
+          title: Videos
+          icon: film
+          metadata_key_for_links: videos
+          for_each_link:
+            text:
+              __raw__: "${ link.title }"
+            url:
+              __raw__: "${ link.url }"
+
+        - type: artifact_links
+          links:
+            - text: Instructions
+              artifact: lecture.txt
+            - text: Code Examples
+              artifact: examples.txt
+
+
+
+secondary_activity_collections:
+  - collection: homeworks
+    for_each_publication:
+      start_displaying_on:
+        __raw__: "${ publication.metadata.released }"
+      due_datetime:
+        __raw__:
+          "${ publication.metadata.due }"
+      title:
+        __raw__:  "Homework ${ publication.metadata.number }"
+      resources:
+        - type: artifact_links
+          links:
+            - text: Instructions
+              artifact: homework.txt
+            - text: Solution
+              artifact: solution.txt
+
+  - collection: labs
+    for_each_publication:
+      start_displaying_on:
+        __raw__: "2 days before ${ publication.metadata.released }"
+      due_datetime:
+        __raw__:
+          "${ publication.metadata.due }"
+      title: Lab
+      resources:
+        - type: markdown
+          markdown:
+            __raw__ : |
+              [Instructions](${ publication.artifacts["lab.txt"].path }) and
+              [Starter Code](${ publication.artifacts["starter.txt"].path })
+
+extra_primary_activities:
+  - title: Exam Review Session
+    start_displaying_on: "2025-10-18"
+    resources:
+      - type: markdown
+        markdown: |
+          Join us for a review session before the midterm exam!
+          We will cover key topics and answer your questions.
+          However, we won't have food.
+      - type: html
+        html:
+          __raw__: |
+            ${ elements.button({
+                "label": "Join Review Session",
+                "url": "https://example.com/review-session",
+            })}
+
+
+extra_secondary_activities:
+  - title: Extra Credit
+    start_displaying_on: "2025-10-22"
+    due_datetime: "2025-10-31 23:59:00"
+    resources:
+      - type: markdown
+        markdown: |
+          Complete the following optional exercise for extra credit:
+
+          1. Implement a sorting algorithm of your choice.
+          2. Analyze its time complexity.
+
+          Submit your code and analysis to the course portal by the end of the week.

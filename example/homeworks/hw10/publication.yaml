@@ -1,7 +1,8 @@
 metadata:
   number: 10
   released: 2025-11-24 12:00:00
-  due: 2025-12-01 23:59:00
+  due: 2026-12-01 23:59:00
+  topic: Dynamic Programming
 
 artifacts:
   homework.txt:

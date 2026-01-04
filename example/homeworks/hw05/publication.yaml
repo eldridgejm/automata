@@ -2,6 +2,7 @@ metadata:
   number: 5
   released: 2025-10-20 12:00:00
   due: 2025-10-27 23:59:00
+  topic: Hashing
 
 artifacts:
   homework.txt:

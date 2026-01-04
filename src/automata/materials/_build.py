@@ -66,7 +66,7 @@ def _build_artifact(
     *,
     ignore_release_time=False,
     ignore_ready=False,
-    now=datetime.datetime.now,
+    current_time: datetime.datetime | None = None,
     verbose=False,
     run=subprocess.run,
     exists=pathlib.Path.exists,
@@ -87,9 +87,9 @@ def _build_artifact(
     ignore_ready : bool
         If True, the readiness of an artifact will be ignored, and it will
         be built anyways. Default: False.
-    now : Callable[[], datetime.datetime]
-        A function which returns the current time. Default: datetime.datetime.now.
-        This can be used to mock the current time for testing.
+    current_time : datetime.datetime | None
+        The current time to use for release time comparisons.
+        Default: None (uses system time).
 
     Returns
     -------
@@ -99,12 +99,15 @@ def _build_artifact(
         True.
 
     """
+    if current_time is None:
+        current_time = datetime.datetime.now()
+
     output = BuiltArtifact(workdir=artifact.workdir, path=artifact.path)
 
     if (
         not ignore_release_time
         and artifact.release_time is not None
-        and artifact.release_time > now()
+        and artifact.release_time > current_time
     ):
         callbacks.on_too_soon(artifact)
         return None
@@ -167,7 +170,7 @@ class BuildOptions(TypedDict, total=False):
     verbose: bool
     callbacks: Optional[BuildCallbacks]
     run: Any
-    now: Any
+    current_time: Optional[datetime.datetime]
     exists: Any
 
 
@@ -206,7 +209,7 @@ def build(
     ignore_ready: bool = False,
     verbose: bool = False,
     callbacks: Optional[BuildCallbacks] = None,
-    now=datetime.datetime.now,
+    current_time: datetime.datetime | None = None,
     run=subprocess.run,
     exists=pathlib.Path.exists,
 ) -> (
@@ -264,7 +267,7 @@ def build(
     kwargs = dict(
         ignore_release_time=ignore_release_time,
         ignore_ready=ignore_ready,
-        now=now,
+        current_time=current_time,
         run=run,
         verbose=verbose,
         exists=exists,

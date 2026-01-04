@@ -1,0 +1,12 @@
+metadata:
+  number: 12
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Lists, Stacks, and Queues"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 12: Lists, Stacks, and Queues" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 12: Lists, Stacks, and Queues\n\nBasic data structures!" > slides.md'
+    path: slides.md

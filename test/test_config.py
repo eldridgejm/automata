@@ -206,3 +206,42 @@ def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
         config.website.theme.config["long_title"]
         == "Introduction to Data Science - Fall 2025"
     )
+
+
+def test_read_config_with_include(tmp_path: Path) -> None:
+    """Test that read_config can include external files."""
+    # Create the included file
+    vars_file = tmp_path / "vars.yaml"
+    vars_file.write_text(
+        dedent(
+            """
+            course_name: "DSC 101"
+            semester: "Fall 2025"
+            """
+        )
+    )
+
+    # Create the main config file
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        dedent(
+            """
+            vars:
+              __include__: vars.yaml
+
+            website:
+              content_directory: "./content"
+              build_directory: "./build"
+              theme:
+                use: "default"
+                config:
+                  short_title: ${ vars.course_name }
+            """
+        )
+    )
+
+    config = read_config(config_file)
+
+    assert config.vars["course_name"] == "DSC 101"
+    assert config.vars["semester"] == "Fall 2025"
+    assert config.website.theme.config["short_title"] == "DSC 101"

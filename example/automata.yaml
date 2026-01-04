@@ -4,9 +4,14 @@ vars:
   term: "Fall 2025"
   start_date: "2025-09-22"
 
+  schedule_config:
+    __include__: "website/schedule.yaml"
+
 website:
   content_directory: "website/content"
   build_directory: "_build"
+  base_path: "."
+
   theme:
     use: "default"
     config:
@@ -14,8 +19,12 @@ website:
       long_title: ${ vars.course_title }
 
       navigation:
-          - text: 🗓️ Schedule
-            url: ./index.html
+          - text: |
+              <i data-lucide="home" class="mr-2 text-slate-400"></i>
+              Home
+            url: index.html
 
-          - text: ⚖️ Syllabus
-            url: ./syllabus.html
+          - text: |
+              <i data-lucide="scale" class="mr-2 text-slate-400"></i>
+              Syllabus
+            url: syllabus.html

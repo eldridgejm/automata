@@ -1,0 +1,12 @@
+metadata:
+  number: 11
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Python and Programming Basics"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 11: Python and Programming Basics" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 11: Python and Programming Basics\n\nFundamentals of programming!" > slides.md'
+    path: slides.md

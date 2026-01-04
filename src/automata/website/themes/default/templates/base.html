@@ -1,67 +1,87 @@
-<!doctype html>
-<html lang="en" data-automata-theme="default">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!DOCTYPE html>
+<html lang="en">
+<head data-automata-theme="default">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>${ website_config.theme.config.short_title }</title>
+    <link href="${ url_for('static/style.css') }" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
 
-        <!-- Do not cache this page -->
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <meta http-equiv="Pragma" content="no-cache" />
-        <meta http-equiv="Expires" content="0" />
+    <!-- Mobile menu button -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-50">
+        <button id="mobile-menu-button" class="py-5 pl-4 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+            <i data-lucide="menu" class="w-6 h-5"></i>
+        </button>
+    </div>
 
-        <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-        <link rel="stylesheet" href="./style/style.css">
-
-        <!-- Optional JavaScript -->
-        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
-
-        <!-- Emoji -->
-        <link href="https://emoji-css.afeld.me/emoji.css" rel="stylesheet">
-
-        <!-- Fonts -->
-        <link href="https://fonts.googleapis.com/css?family=Be+Vietnam+Pro&display=swap" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-
-        <title>${ website_config.theme.config['short_title'] }</title>
-        </head>
-
-        <body>
-            {% block body %}
-            <!-- responsive sidebar code comes from https://stackoverflow.com/a/48477019 -->
-            <div class="container-fluid h-100">
-                <div class="nav row wrapper min-vh-100 flex-column flex-sm-row">
-                    <aside class="col-12 col-sm-3 p-0 bg-light flex-shrink-1">
-                        <nav class="navbar navbar-expand-sm navbar-light bg-light align-items-end flex-sm-column flex-row">
-                            <a class="navbar-brand" href="#"><i class="fa fa-bullseye fa-fw"></i>${ website_config.theme.config.short_title }</a>
-                            <a href class="navbar-toggler" data-toggle="collapse" data-target=".sidebar">
-                                <span class="navbar-toggler-icon"></span>
-                            </a>
-                            <div class="collapse navbar-collapse sidebar">
-                                <ul class="flex-column navbar-nav w-100 justify-content-between">
-                                    {% for element in website_config.theme.config.navigation %}
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="${ element.url }"><span class="">${ element.text }</span></a>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </nav>
-                    </aside>
-                    <main class="col bg-faded main-content">
-
-                        <div class="site-title">
-                            <h1>${ website_config.theme.config.short_title } &ndash; ${ website_config.theme.config.long_title }</h1>
-                            <hr>
-                        </div>
+    <!-- Overlay for mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black opacity-60 dark:opacity-70 z-30 hidden"></div>
 
 
-                        ${ body }
-                    </main>
-                </div>
-            </div>
-            {% endblock %}
-        </body>
+    <div class="flex min-h-screen">
+        <!-- Left Navigation Column -->
+        {% include 'parts/nav.html' with context %}
+
+        <!-- Main Content Column -->
+        {% block main %}
+            ${ content }
+        {% endblock %}
+    </div>
+
+    <script>
+        // Restore saved theme on page load
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else if (savedTheme === 'light') {
+            document.documentElement.classList.remove('dark');
+        }
+
+        // Dark mode toggle
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const themeText = document.getElementById('theme-text');
+
+        // Update button to reflect current theme
+        function updateThemeButton() {
+            const isDark = document.documentElement.classList.contains('dark');
+            themeIcon.textContent = isDark ? '☀' : '☾';
+            themeText.textContent = isDark ? 'Light' : 'Dark';
+        }
+
+        // Initialize button state
+        updateThemeButton();
+
+        // Toggle theme on button click
+        themeToggleBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+
+            updateThemeButton();
+        });
+
+        // Mobile menu toggle
+        const menuButton = document.getElementById('mobile-menu-button');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+
+        menuButton.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        });
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+
+</body>
 </html>

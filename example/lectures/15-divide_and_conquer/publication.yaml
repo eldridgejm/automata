@@ -1,0 +1,12 @@
+metadata:
+  number: 15
+  date: first monday, wednesday after ${ previous.metadata.date }
+  topic: "Divide and Conquer"
+
+artifacts:
+  slides.txt:
+    recipe: 'echo "Slides for Lecture 15: Divide and Conquer" > slides.txt'
+    path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 15: Divide and Conquer\n\nBreaking problems down!" > slides.md'
+    path: slides.md

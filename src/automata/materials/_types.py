@@ -134,6 +134,7 @@ def _artifact_from_dict(
 #   ._deep_asdict(): returns a dictionary of all of the node's attributes.
 
 
+@dataclasses.dataclass
 class Publication[
     ArtifactType: (
         UnbuiltArtifact,
@@ -141,7 +142,7 @@ class Publication[
         ExportedArtifact,
         UnbuiltArtifact | BuiltArtifact | ExportedArtifact,
     )
-](typing.NamedTuple):
+]:
     """Represents a publication, which is a collection of artifacts.
 
     For example, in a typical course with homework assignments, "Homework 01"
@@ -193,9 +194,10 @@ class Publication[
 
     def _replace_children(self, new_children) -> "Publication":
         """Make a new Publication with the same attributes but the given artifacts."""
-        return self._replace(artifacts=new_children)
+        return dataclasses.replace(self, artifacts=new_children)
 
 
+@dataclasses.dataclass
 class Collection[
     ArtifactType: (
         UnbuiltArtifact,
@@ -203,7 +205,7 @@ class Collection[
         ExportedArtifact,
         UnbuiltArtifact | BuiltArtifact | ExportedArtifact,
     )
-](typing.NamedTuple):
+]:
     """Represents a collection of publications.
 
     Attributes
@@ -243,9 +245,10 @@ class Collection[
 
     def _replace_children(self, new_children) -> "Collection":
         """Make a new Collection with the same attributes but the given publications."""
-        return self._replace(publications=new_children)
+        return dataclasses.replace(self, publications=new_children)
 
 
+@dataclasses.dataclass
 class Universe[
     ArtifactType: (
         UnbuiltArtifact,
@@ -253,7 +256,7 @@ class Universe[
         ExportedArtifact,
         UnbuiltArtifact | BuiltArtifact | ExportedArtifact,
     )
-](typing.NamedTuple):
+]:
     """Container of all course materials."""
 
     collections: typing.MutableMapping[str, Collection[ArtifactType]]
@@ -265,7 +268,7 @@ class Universe[
 
     def _replace_children(self, new_children):
         """Make a new Universe with the same attributes but the given collections."""
-        return self._replace(collections=new_children)
+        return dataclasses.replace(self, collections=new_children)
 
     def _deep_asdict(self):
         """A dictionary representation of the universe and its children."""

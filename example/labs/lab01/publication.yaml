@@ -1,0 +1,15 @@
+metadata:
+  number: 1
+  released: 2025-09-23 12:00:00
+  due: 2025-09-27 23:59:00
+  topic: Python Basics
+
+artifacts:
+  lab.txt:
+    recipe: 'echo "Lab 1: Python Basics" > lab.txt'
+    path: lab.txt
+
+  starter.txt:
+    recipe: 'echo "Starter code for Lab 1" > starter.txt'
+    path: starter.txt
+    ready: true

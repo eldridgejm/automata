@@ -1,9 +1,22 @@
 metadata:
   number: 1
-  date: 2025-09-22
+  date: 2025-09-23
   topic: "Introduction"
+  reading:
+    title: "Introduction to Automata Theory"
+    url: "https://example.com/intro-to-automata"
+  videos:
+    - title: "**Lecture** *1* Video"
+      url: "https://example.com/lecture1-video"
+    - title: "Lecture 1 Supplementary"
+      url: "https://example.com/lecture1-supplementary"
+    - title: "Lecture 1 Extra"
+      url: "https://example.com/lecture1-extra"
 
 artifacts:
   slides.txt:
     recipe: 'echo "Slides for Lecture 1: Introduction" > slides.txt'
     path: slides.txt
+  slides.md:
+    recipe: 'echo "# Lecture 1: Introduction\n\nWelcome to the course!" > slides.md'
+    path: slides.md

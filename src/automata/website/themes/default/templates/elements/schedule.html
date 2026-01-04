@@ -1,193 +1,278 @@
-{% macro display_resource(resource_config, publication) %}
-    {% set is_missing = is_something_missing(publication, resource_config.requires) %}
-    {% set skip = false %}
+{# ============================================================================== #}
+{# Resource rendering macros                                                      #}
+{# ============================================================================== #}
 
-    {% if is_missing and resource_config.requires and resource_config.requires.get('text_if_missing') is none %}
-        {% set skip = true %}
-    {% endif %}
-
-    {% if not skip %}
-    <li class="schedule-resource">
-        {% if resource_config.title is not none %}
-            <span class="schedule-resource-title">
-                ${ resolve(resource_config.title, {'publication': publication}) }
-            </span>
+{% macro resource_wrapper(resource, content, alignment='items-center') %}
+    {# Common wrapper for all resource types - handles title and container #}
+    {% if content %}
+    <div class="flex flex-row ${ alignment }">
+        {% if resource.title is not none %}
+            <div class="font-semibold mr-2 flex flex-row items-center gap-1">
+                {% if resource['icon'] is not none %}
+                    <i data-lucide="${ resource.icon }" class="w-5 h-5 text-slate-400"></i>
+                {% endif %}
+                <span>${ resource.title | md_to_html }</span>
+            </div>
         {% endif %}
-
-        {% if is_missing and resource_config.requires %}
-            ${ resource_config.requires.get('text_if_missing', '') }
-        {% else %}
-            {% if resource_config.key_for_parts %}
-                <div class="schedule-resource-parts">
-                    <ol class="schedule-resource-parts">
-                    {% set parts = publication.metadata.get(resource_config.key_for_parts, []) %}
-                    {% for part in parts %}
-                        <li>
-                            ${ resolve(resource_config.text, {'part': part, 'publication': publication}) }
-                        </li>
-                    {% endfor %}
-                    </ol>
-                </div>
-            {% else %}
-                ${ resolve(resource_config.text, {'publication': publication}) }
-            {% endif %}
-        {% endif %}
-    </li>
+        <div>
+            ${ content }
+        </div>
+    </div>
     {% endif %}
 {% endmacro %}
 
-{% macro display_lecture(lecture, lecture_config, last) %}
-    <div class="schedule-lecture ${ 'last' if last }">
-        <h3 class="schedule-week-component-title">
-            ${ resolve(lecture_config.title, {'publication': lecture}) }
-        </h3>
-        <div class="schedule-lecture-resources">
-            <ul class="schedule-lecture-resources">
-            {% for resource_config in lecture_config.resources %}
-                ${ display_resource(resource_config, lecture) }
+{% macro display_html_resource(resource) %}
+    {% set resource_text = resource.html %}
+    ${ resource_wrapper(resource, resource_text.strip()) }
+{% endmacro %}
+
+{% macro display_markdown_resource(resource) %}
+    {% set resource_text = resource.markdown | md_to_html %}
+    {% if resource_text.strip() %}
+        {% set content %}
+        <div class="prose dark:prose-invert">
+            ${ resource_text }
+        </div>
+        {% endset %}
+        ${ resource_wrapper(resource, content) }
+    {% endif %}
+{% endmacro %}
+
+{% macro display_links_resource(resource) %}
+    {% if resource.links %}
+        {% if resource.style == "numbered" %}
+            ${ display_numbered_links_resource(resource) }
+        {% elif resource.style == "bulleted" %}
+            ${ display_bulleted_links_resource(resource) }
+        {% else %}
+            ${ display_button_links_resource(resource) }
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+
+{% set link_classes = "space-y-1 text-blue-500 dark:text-sky-400 no-underline hover:underline hover:text-blue-700 dark:hover:text-sky-600" %}
+
+{% macro display_numbered_links_resource(resource) %}
+    {% set content %}
+    <ol class="list-decimal list-inside">
+        {% for link in resource.links %}
+            <li>
+                <a href="${ link.url }" class="${ link_classes }">
+                    ${ link.text | md_to_html }
+                </a>
+            </li>
+        {% endfor %}
+    </ol>
+    {% endset %}
+    ${ resource_wrapper(resource, content, alignment="items-start") }
+{% endmacro %}
+
+{% macro display_bulleted_links_resource(resource) %}
+    {% set content %}
+    <ul class="list-disc list-inside">
+        {% for link in resource.links %}
+            <li>
+                <a href="${ link.url }" class="${ link_classes }">
+                    ${ link.text | md_to_html }
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+    {% endset %}
+    ${ resource_wrapper(resource, content, alignment="items-start") }
+{% endmacro %}
+
+{% macro display_button_links_resource(resource) %}
+    {% set content %}
+    <div class="flex flex-row gap-2">
+        {% for link in resource.links %}
+            ${ context.elements.button({
+                'label': link.text,
+                'url': link.url,
+            }) }
+        {% endfor %}
+    </div>
+    {% endset %}
+    ${ resource_wrapper(resource, content) }
+{% endmacro %}
+
+
+{# ============================================================================== #}
+{# Resource type dispatcher                                                       #}
+{# ============================================================================== #}
+
+{% macro display_resource(resource) %}
+    {% if resource.type == "html" %}
+        ${ display_html_resource(resource) }
+    {% elif resource.type == "markdown" %}
+        ${ display_markdown_resource(resource) }
+    {% elif resource.type == "links" %}
+        ${ display_links_resource(resource) }
+    {% endif %}
+{% endmacro %}
+
+{# ============================================================================== #}
+{# Content display macros                                                         #}
+{# ============================================================================== #}
+
+{% macro display_due_date(due_date) %}
+    {% if due_date is not none %}
+        {% if current_time.date() <= due_date.date() %}
+            <div class="text-sm text-red-600 dark:text-red-400 font-semibold">
+                Due ${ due_date.strftime("%A, %b %-d at %-I:%M %p") }
+            </div>
+        {% else %}
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                Was due ${ due_date.strftime("%A, %b. %-d") }
+            </div>
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+{% macro display_activity(activity, style='primary') %}
+    {% if style == 'primary' %}
+        {% set container_class = "" %}
+        {% set resource_margin = "mt-4" %}
+    {% else %}
+        {% set container_class = "md:p-5 py-3" %}
+        {% set resource_margin = "mt-2" %}
+    {% endif %}
+
+    <div class="${ container_class }">
+        <div>
+            <h3 class="text-2xl">
+                ${ activity.title | md_to_html }
+            </h3>
+        </div>
+        {% if activity.due_datetime is not none %}
+            ${ display_due_date(activity.due_datetime) }
+        {% endif %}
+        <div class="${ resource_margin } flex flex-col gap-y-2">
+            {% for resource in activity.resources %}
+            ${ display_resource(resource) }
             {% endfor %}
-            </ul>
+        </div>
+    </div>
+
+{% endmacro %}
+
+{# ============================================================================== #}
+{# misc.                                                                          #}
+{# ============================================================================== #}
+
+{% macro draw_week_divider(text) %}
+    <div class="flex flex-row items-center">
+        <div class="border-b h-0 grow mr-3 border-gray-300 dark:border-gray-700">
+        </div>
+        <span class="dark:text-gray-500 text-gray-400 font-semibold">
+            <i>${ text }</i>
+        </span>
+        <div class="border-b h-0 grow ml-3 border-gray-300 dark:border-gray-700">
         </div>
     </div>
 {% endmacro %}
 
-{% macro display_assignment(week, assignment_config) %}
-    {% set week_assignments = week.filter(
-        context.materials.collections[assignment_config.collection],
-        assignment_config.metadata_key_for_released
-    ) %}
+{# ============================================================================== #}
+{# Main template rendering                                                        #}
+{# ============================================================================== #}
 
-    {% for key, assignment in week_assignments.publications.items() | sort(attribute='0') %}
-        <div class="list-group-item">
-            <h3 class="schedule-week-component-title">
-                ${ resolve(assignment_config.title, {'publication': assignment}) }
-            </h3>
-            <div class="schedule-assignment-resources">
-                <ul class="schedule-assignment-resources" style="list-style: none">
-                {% for resource_config in assignment_config.resources %}
-                    ${ display_resource(resource_config, assignment) }
-                {% endfor %}
-                </ul>
-            </div>
-            {% if assignment_config.metadata_key_for_due %}
-                {% set due_time = assignment.metadata.get(assignment_config.metadata_key_for_due) %}
-                {% if due_time %}
-                <div class="badge badge-pill ${ 'badge-danger' if context.now < due_time else 'badge-light' }">
-                    {% if context.now > due_time %}
-                        Was due
-                    {% else %}
-                        Due
-                    {% endif %}
-                    ${ due_time.strftime('%A, %b %d at %H:%M %p') }
-                </div>
-                {% endif %}
-            {% endif %}
-        </div>
-    {% endfor %}
-{% endmacro %}
+{% include 'parts/title.html' with context %}
 
-{% macro display_discussion(week, discussion_config) %}
-    {% set week_discussions = week.filter(
-        context.materials.collections[discussion_config.collection],
-        discussion_config.metadata_key_for_released
-    ) %}
+<div class="flex flex-col gap-y-8 md:gap-y-10">
 
-    {% for key, discussion in week_discussions.publications.items() | sort(attribute='0') %}
-        <div class="list-group-item">
-            <h3 class="schedule-week-component-title">
-                ${ resolve(discussion_config.title, {'publication': discussion}) }
-            </h3>
-            <div class="schedule-discussion-resources">
-                <ul class="schedule-discussion-resources">
-                {% for resource_config in discussion_config.resources %}
-                    ${ display_resource(resource_config, discussion) }
-                {% endfor %}
-                </ul>
-            </div>
-        </div>
-    {% endfor %}
-{% endmacro %}
-
-<div class="schedule">
 {% for week in weeks %}
     {% if this_week is not none %}
         {% if week.number == this_week.number + 1 %}
-            <div class="schedule-separator">
-                future weeks
-            </div>
+            ${ draw_week_divider('future weeks') }
         {% endif %}
 
         {% if week.number == this_week.number - 1 %}
-            <div class="schedule-separator">
-                past weeks
-            </div>
+            ${ draw_week_divider('past weeks') }
         {% endif %}
     {% endif %}
 
-    {% set is_in_future = week.start_date > context.now.date() %}
+    {% set is_in_future = week.start_date > context.current_time.date() %}
 
-    <div class="schedule-week ${ 'schedule-week-future' if is_in_future }">
-        <div class="schedule-week-title">
-            <h1 class="schedule-week-title-number">
-                {% if loop.first %}
+    <!-- schedule week div -->
+    <div class="
+        bg-white dark:bg-gray-800
+        p-8
+        rounded-lg
+        border border-gray-300 dark:border-gray-700
+        shadow-lg
+        "
+        id="week-${ week.number }"
+        >
+
+        <div>
+            <h1 class="text-2xl">
+                {% if this_week is not none and week.number == this_week.number %}
                 This Week
+                {% elif this_week is not none and week.number == this_week.number + 1 %}
+                Next Week
+                {% elif this_week is not none and week.number == this_week.number - 1 %}
+                Last Week
                 {% else %}
                 Week ${ week.number }
                 {% endif %}
             </h1>
-            <h2 class="schedule-week-title-topic">${ week.topic }</h2>
 
-            {% if element_config.get('exams') %}
-            {% for exam_name, exam_date in element_config.exams.items() %}
-            {% if week.contains(exam_date) %}
-            <div class="badge badge-pill badge-danger">
-                ${ exam_name } on ${ exam_date.strftime('%A, %b %d') }
+            <h2 class="text-4xl">${ topics[week.number]  }</h2>
+
+            {% include 'elements/schedule-events.html' with context %}
+            {% include 'elements/schedule-announcements.html' with context %}
+
+            <!-- separator div -->
+            <div class="
+                md:hidden
+                border-t border-gray-300 dark:border-gray-700
+                mt-6
+                ">
             </div>
-            {% endif %}
-            {% endfor %}
-            {% endif %}
-        </div>
 
-        {% if element_config.get('week_announcements') %}
-        {% for announcement_config in element_config.week_announcements %}
-        {% if announcement_config.week == week.number %}
-        {% if announcement_config.urgent %}
-        {% set class = "alert-danger" %}
-        {% else %}
-        {% set class = "alert-primary" %}
-        {% endif %}
-        <div class="alert ${ class } schedule-announcement">
-            <p>${ resolve(announcement_config.content) }</p>
-        </div>
-        {% endif %}
-        {% endfor %}
-        {% endif %}
+            <!-- primary and secondary content div -->
+            <div class="flex flex-col md:flex-row">
 
-        {% if not is_in_future %}
-        <div class="row">
-            <div class="col-md-7">
-                {% set week_lectures = week.filter(
-                    context.materials.collections[element_config.lecture.collection],
-                    element_config.lecture.metadata_key_for_released
-                ) %}
 
-                {% for key, lecture in week_lectures.publications.items() | sort(attribute='0', reverse=true) %}
-                ${ display_lecture(lecture, element_config.lecture, loop.last) }
-                {% endfor %}
-            </div>
-            <div class="col-md-5">
-                <div class="list-group">
-                    {% for assignment_config in element_config.assignments %}
-                    ${ display_assignment(week, assignment_config) }
-                    {% endfor %}
-
-                    {% for discussion_config in element_config.discussions %}
-                    ${ display_discussion(week, discussion_config) }
+                <!-- primary content div -->
+                <div class="
+                    md:w-9/10 md:min-w-50
+                    pr-10
+                    mt-8
+                    flex flex-col gap-y-8
+                    ">
+                    {% for activity in primary_activities[week.number] %}
+                    ${ display_activity(activity, style='primary') }
                     {% endfor %}
                 </div>
+
+                <!-- secondary content div -->
+                {% if secondary_activities[week.number] %}
+                <div class="
+                    mt-8
+                    w-full md:min-w-30 md:max-w-75
+                    self-start
+                    bg-white dark:bg-gray-800
+                    border-t md:rounded-lg md:border
+                    border-gray-300 dark:border-gray-700
+                    pt-5 md:pt-0
+                    ">
+                    <div class="
+                        md:divide-y divide-gray-300 dark:divide-gray-700
+                        ">
+                        {% for activity in secondary_activities[week.number] %}
+                        ${ display_activity(activity, style='secondary') }
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
+
         </div>
-        {% endif %}
     </div>
+
 {% endfor %}
+
 </div>
