@@ -1,9 +1,12 @@
 import datetime
+import pathlib
 from typing import Optional
 
 import typer
 
 from . import _build
+from .config import find_config, read_config
+from .materials import read_publication_file, serialize
 
 app = typer.Typer()
 
@@ -77,6 +80,53 @@ def build(
 def status():
     """Check status of course materials."""
     print("All good.")
+
+
+@app.command()
+def resolve(
+    path: pathlib.Path = typer.Argument(
+        ...,
+        help="Path to the publication.yaml file to resolve.",
+    ),
+):
+    """Resolve a publication.yaml file and output as JSON.
+
+    This command reads and resolves a publication.yaml file, handling variable
+    interpolation from automata.yaml, and outputs the resolved publication as
+    JSON to STDOUT.
+    """
+    # Find the automata.yaml config file by searching upwards
+    config_path = find_config(path)
+    if config_path is None:
+        typer.echo(
+            f"Error: Could not find automata.yaml in {path.parent} or any parent "
+            "directory.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    # Read config
+    try:
+        config = read_config(config_path)
+        vars_dict = config.vars
+    except Exception as e:
+        typer.echo(f"Error reading config file {config_path}: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    # Resolve the publication file
+    try:
+        publication = read_publication_file(path, vars=vars_dict)
+    except Exception as e:
+        typer.echo(f"Error resolving publication file: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    # Serialize to JSON and output to stdout
+    try:
+        json_output = serialize(publication)
+        typer.echo(json_output)
+    except Exception as e:
+        typer.echo(f"Error serializing publication: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 def main():
