@@ -16,6 +16,11 @@
   @apply text-blue-700 dark:text-sky-600 underline;
 }
 
+@layer components {
+  .prose .toc ul { @apply my-1; }          /* reduce ul top/bottom margin */
+  .prose .toc li { @apply my-0 leading-snug; } /* remove li vertical margins */
+}
+
 /* Override typography plugin heading styles */
 .prose h1,
 .prose h2,
