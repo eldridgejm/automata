@@ -15,24 +15,29 @@ def render_context():
         build_directory=".",
     )
     materials = Universe[ExportedArtifact](collections={})
-    theme = Theme(templates={})
 
     return RenderContext(
         website_config=config,
         materials=materials,
         url_for=lambda x: x,
-        theme=theme,
     )
 
 
-def test_basic_element_raises_if_config_does_not_fit_schema(render_context):
+@fixture
+def jinja_env():
+    """A minimal Jinja environment for testing."""
+    theme = Theme(templates={})
+    return theme.create_jinja_environment()
+
+
+def test_basic_element_raises_if_config_does_not_fit_schema(render_context, jinja_env):
     class MyElement(BasicElement):
         schema = {"type": "dict", "required_keys": {"title": {"type": "string"}}}
 
-        def render(self, config: ConfigurationDict, context) -> str:
+        def render(self, config: ConfigurationDict) -> str:
             return f"Title: {config['title']}"
 
-    element = MyElement()
+    element = MyElement(jinja_env, render_context)
 
     with raises(Exception):
-        element({"wrong_key": "value"}, render_context)
+        element({"wrong_key": "value"})

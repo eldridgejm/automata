@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import smartconfig
 
-from automata.website import RenderContext, TemplateElement
+from automata.website import TemplateElement
 
 
 class RequirementsConfig(smartconfig.Prototype):
@@ -41,16 +41,15 @@ class Listing(TemplateElement):
 
     def template_vars(
         self,
-        context: RenderContext,
         config: smartconfig.types.Configuration,
     ) -> dict[str, Any]:
         """Provide additional template variables."""
-        tvars = super().template_vars(context, config)
+        tvars = super().template_vars(config)
 
         # Get the collection
         config_dict = cast(dict[str, Any], config)
         collection_name = cast(str, config_dict["collection"])
-        collection = context.materials.collections[collection_name]
+        collection = self.context.materials.collections[collection_name]
 
         # Get publications sorted by key
         publications_and_keys = sorted(collection.publications.items())

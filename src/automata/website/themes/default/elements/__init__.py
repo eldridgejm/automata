@@ -6,10 +6,10 @@ from ._people import People
 from ._schedule import Schedule
 
 elements = {
-    "announcement_box": AnnouncementBox(),
-    "date_pill": DatePill(),
-    "listing": Listing(),
-    "people": People(),
-    "schedule": Schedule(),
-    "button": Button(),
+    "announcement_box": AnnouncementBox,
+    "date_pill": DatePill,
+    "listing": Listing,
+    "people": People,
+    "schedule": Schedule,
+    "button": Button,
 }

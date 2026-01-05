@@ -2,7 +2,7 @@
 
 import datetime
 from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, TypeVar, cast
 
 import smartconfig
@@ -264,7 +264,7 @@ def make_activity_from_config(
     resolved_config = automata.util.resolution.resolve(
         config,
         ACTIVITY_CONFIG_SCHEMA_WITH_DATES,
-        global_variables=asdict(context),
+        global_variables=context.to_dict(),
     )
 
     resolved_config = cast(dict, resolved_config)
@@ -490,7 +490,7 @@ def make_activities_from_collection_config(
         publications,
         for_each_publication_config,
         schema=ACTIVITY_CONFIG_SCHEMA_WITH_DATES,
-        vars=asdict(context),
+        vars=context.to_dict(),
         fixup=fixup,
     )
 
@@ -750,7 +750,6 @@ class Schedule(TemplateElement):
 
     def template_vars(
         self,
-        context: RenderContext,
         config: smartconfig.types.Configuration,
     ) -> dict[str, Any]:
         """
@@ -777,8 +776,6 @@ class Schedule(TemplateElement):
 
         Parameters
         ----------
-        context : RenderContext
-            The rendering context.
         config : smartconfig.types.Configuration
             The configuration for this element.
 
@@ -788,7 +785,7 @@ class Schedule(TemplateElement):
             A dictionary of template variables to add to the context.
         """
 
-        tvars = super().template_vars(context, config)
+        tvars = super().template_vars(config)
 
         config_dict = cast(dict[str, Any], config)
 
@@ -805,19 +802,21 @@ class Schedule(TemplateElement):
         weeks = order_weeks(
             config_dict.get("week_order", "this_week_first"),
             weeks,
-            context.current_time.date(),
+            self.context.current_time.date(),
         )
 
-        this_week = automata.util.weeks.find_week(weeks, context.current_time.date())
+        this_week = automata.util.weeks.find_week(
+            weeks, self.context.current_time.date()
+        )
 
         events = make_events(config_dict, weeks)
 
         announcements = make_announcements(
-            config_dict, weeks, context.current_time.date()
+            config_dict, weeks, self.context.current_time.date()
         )
 
         primary_activities, secondary_activities = make_activities(
-            config_dict, context, weeks
+            config_dict, self.context, weeks
         )
 
         tvars.update(

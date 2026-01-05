@@ -16,7 +16,6 @@ import smartconfig.types
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util.resolution import resolve
 from ._config import WebsiteConfig
-from ._elements import Element
 from ._frontmatter import read_frontmatter
 from ._render import RenderContext, render_page_from_html, render_page_from_markdown
 from ._theme import Theme
@@ -201,7 +200,7 @@ def _generate_single_page(
         raise PageError(f'Template "{template_name}" not found.', input_path)
 
     wrapped_content = jinja_environment.get_template(template_name).render(
-        **dataclasses.asdict(context),
+        **context.to_dict(),
         base_url_path=base_path,
         content=rendered_content,
     )
@@ -223,20 +222,6 @@ def _copy_file_to_output(
     # copy other files as-is
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(path.read_bytes())
-
-
-def _bind_elements_to_context(
-    elements: dict[str, Element],
-    context: RenderContext,
-) -> dict[str, Callable[[smartconfig.types.Configuration], str]]:
-    """Bind elements to the given rendering context.
-
-    This function returns a dictionary mapping element names to their rendered
-    HTML strings.
-    """
-    return {
-        name: partial(element, context=context) for name, element in elements.items()
-    }
 
 
 def _fix_artifact_paths(
@@ -478,12 +463,14 @@ def generate(
         website_config=config,
         materials=materials,
         url_for=url_for,
-        theme=theme,
         current_time=current_time,
         vars=vars,
     )
 
-    context.elements = _bind_elements_to_context(theme.elements, context)
+    context.elements = {
+        name: element(jinja_environment, context)
+        for name, element in theme.elements.items()
+    }
 
     for path in _paths_outside_materials_directory(content_dirpath, materials_dirpath):
         relative_path = path.relative_to(content_dirpath)

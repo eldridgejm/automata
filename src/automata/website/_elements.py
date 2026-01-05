@@ -1,7 +1,6 @@
-from abc import abstractmethod
-from dataclasses import asdict
+from abc import ABC, abstractmethod
 from functools import partial
-from typing import Any, Protocol
+from typing import Any
 
 import jinja2
 import markdown
@@ -12,16 +11,31 @@ from ..util.resolution import resolve
 from ._render import RenderContext
 
 
-class Element(Protocol):
+class Element(ABC):
+    """Base class for all elements."""
+
+    def __init__(self, jinja_env: jinja2.Environment, context: RenderContext):
+        """Initialize the element with a Jinja environment and render context.
+
+        Parameters
+        ----------
+        jinja_env : jinja2.Environment
+            The Jinja2 environment to use for template rendering.
+        context : RenderContext
+            The rendering context.
+
+        """
+        self.jinja_env = jinja_env
+        self.context = context
+
     @abstractmethod
     def __call__(
         self,
         config: smartconfig.types.Configuration,
-        context: RenderContext,
     ) -> str: ...
 
 
-class BasicElement(Element, Protocol):
+class BasicElement(Element):
     """An Element that does basic configuration resolution and validation.
 
     Subclasses should provide the ``schema`` attribute and implement the ``render``
@@ -34,24 +48,21 @@ class BasicElement(Element, Protocol):
     def __call__(
         self,
         config: smartconfig.types.Configuration,
-        context: RenderContext,
     ) -> str:
         if self.schema is not None:
             config = resolve(config, self.schema)
-        config = self.extra_resolution(config, context)
-        return self.render(config, context)
+        config = self.extra_resolution(config)
+        return self.render(config)
 
     @abstractmethod
     def render(
         self,
         config: smartconfig.types.Configuration,
-        context: RenderContext,
     ) -> str: ...
 
     def extra_resolution(
         self,
         config: smartconfig.types.Configuration,
-        context: RenderContext,
     ) -> smartconfig.types.Configuration:
         """Perform any extra resolution/validation on the resolved configuration.
 
@@ -59,8 +70,6 @@ class BasicElement(Element, Protocol):
         ----------
         config : smartconfig.types.Configuration
             The resolved configuration for this element.
-        context : RenderContext
-            The rendering context.
 
         Returns
         -------
@@ -71,7 +80,6 @@ class BasicElement(Element, Protocol):
         return config
 
 
-# Helper function to evaluate template strings
 def _resolve(
     context: RenderContext, template_str: str, extra_vars: dict[str, Any] | None = None
 ) -> str:
@@ -86,7 +94,7 @@ def _resolve(
             f"The template variable is undefined: {template_str._undefined_name}"
         )
 
-    vars = asdict(context)
+    vars = context.to_dict()
     vars = {**vars, **extra_vars}
 
     try:
@@ -103,7 +111,6 @@ def _resolve(
         raise Exception(f"Error evaluating template: {exc}")
 
 
-# Helper function to check if something is missing
 def _is_something_missing(publication: Publication, requirements) -> bool:
     """Check if a publication is missing required artifacts or metadata."""
     if requirements is None:
@@ -139,7 +146,7 @@ def _md_to_html(md_text: str) -> str:
     return html
 
 
-class TemplateElement(BasicElement, Protocol):
+class TemplateElement(BasicElement):
     """An Element that renders a Jinja2 template.
 
     Subclasses should provide both the ``schema`` attribute and the ``template``
@@ -155,18 +162,16 @@ class TemplateElement(BasicElement, Protocol):
 
     def template_vars(
         self,
-        context: RenderContext,
         config: smartconfig.types.Configuration,
     ) -> dict[str, Any]:
         return {
-            "resolve": partial(_resolve, context),
+            "resolve": partial(_resolve, self.context),
             "is_something_missing": _is_something_missing,
-            **asdict(context),
+            **self.context.to_dict(),
         }
 
     def template_filters(
         self,
-        context: RenderContext,
         config: smartconfig.types.Configuration,
     ) -> dict[str, Any]:
         return {
@@ -176,17 +181,14 @@ class TemplateElement(BasicElement, Protocol):
     def render(
         self,
         config: smartconfig.types.Configuration,
-        context: RenderContext,
     ) -> str:
-        jinja_env = context.theme.create_jinja_environment()
+        filters = self.template_filters(config)
+        self.jinja_env.filters.update(**filters)
 
-        filters = self.template_filters(context, config)
-        jinja_env.filters.update(**filters)
-
-        template = jinja_env.get_template(self.template)
-        extra_vars = self.template_vars(context, config)
+        template = self.jinja_env.get_template(self.template)
+        extra_vars = self.template_vars(config)
         return template.render(
             element_config=config,
-            context=context,
+            context=self.context,
             **extra_vars,
         )

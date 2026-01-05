@@ -26,8 +26,8 @@ class Theme:
     # a string, that content will be written to the output file.
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
 
-    # dictionary mapping element names to element functions
-    elements: dict[str, Element] = field(default_factory=dict)
+    # dictionary mapping element names to element classes
+    elements: dict[str, type["Element"]] = field(default_factory=dict)
 
     # optional smartconfig schema for theme configuration validation
     schema: smartconfig.types.Schema | None = None
@@ -81,7 +81,7 @@ class Theme:
 
         templates: dict[str, str] = {}
         static_files: dict[str, str | bytes | Traversable] = {}
-        elements: dict[str, "Element"] = {}
+        elements: dict[str, type["Element"]] = {}
 
         def _is_hidden(parts: list[str]) -> bool:
             return any(part.startswith(".") for part in parts)
@@ -199,12 +199,12 @@ class Theme:
 
 def _load_elements_from_directory(
     elements_dir: Traversable,
-) -> dict[str, "Element"]:
+) -> dict[str, type["Element"]]:
     """Load elements from a directory.
 
     The directory must be a Python package (containing an ``__init__.py`` file)
     and must define an ``elements`` variable that is a dictionary mapping
-    element names to Element instances.
+    element names to Element classes.
 
     Parameters
     ----------
@@ -213,8 +213,8 @@ def _load_elements_from_directory(
 
     Returns
     -------
-    dict[str, Element]
-        A dictionary mapping element names to Element instances.
+    dict[str, type[Element]]
+        A dictionary mapping element names to Element classes.
 
     Raises
     ------

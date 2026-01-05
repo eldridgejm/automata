@@ -735,18 +735,19 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path, config):
 
 
 def test_generate_supports_theme_elements(tmpsite):
-    """Test using a simple function as a theme element."""
+    """Test using a simple class as a theme element."""
     tmpsite.make_page(
         "index.html",
         '${ elements.simple({"label": "Hello"}) }',
     )
 
-    def simple_element(config, context):
-        return f'<span data-element="simple">{config["label"]}</span>'
+    class SimpleElement(automata.website.Element):
+        def __call__(self, config):
+            return f'<span data-element="simple">{config["label"]}</span>'
 
     theme = automata.website.Theme(
         templates={"page.html": "<html><body>${ content }</body></html>"},
-        elements={"simple": simple_element},
+        elements={"simple": SimpleElement},
     )
 
     config = automata.website.WebsiteConfig(
@@ -777,8 +778,8 @@ def test_generate_with_template_element(tmpsite):
         schema = BadgeConfig._schema()
         template = "badge.html"
 
-        def template_vars(self, context, config):
-            return {"suffix": f"{context.website_config.build_directory}"}
+        def template_vars(self, config):
+            return {"suffix": f"{self.context.website_config.build_directory}"}
 
     theme = automata.website.Theme(
         templates={
@@ -788,7 +789,7 @@ def test_generate_with_template_element(tmpsite):
                 "${ element_config.label }:${ suffix }</span>"
             ),
         },
-        elements={"badge": BadgeElement()},
+        elements={"badge": BadgeElement},
     )
 
     config = automata.website.WebsiteConfig(

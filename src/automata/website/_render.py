@@ -11,7 +11,6 @@ import smartconfig
 from ..materials import ExportedArtifact, Universe
 from ._config import WebsiteConfig
 from ._frontmatter import Frontmatter
-from ._theme import Theme
 
 
 @dataclasses.dataclass
@@ -26,9 +25,6 @@ class RenderContext:
 
     # function to generate URLs for given paths
     url_for: Callable[[str], str]
-
-    # the theme being used to render the page
-    theme: Theme
 
     # elements avaiable during rendering. These should be already bound to the render
     # context, so that they only require one argument: the element configuration.
@@ -49,6 +45,15 @@ class RenderContext:
         default_factory=lambda: Frontmatter(vars={})
     )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the context to a dictionary for use in Jinja2.
+
+        This performs a shallow conversion of the context's fields, which is
+        necessary to avoid deepcopy issues with Jinja2 objects and callables
+        that occur with 'dataclasses.asdict'.
+        """
+        return {f.name: getattr(self, f.name) for f in dataclasses.fields(self)}
+
 
 def _interpolate(
     content: str,
@@ -63,7 +68,7 @@ def _interpolate(
         variable_end_string="}",
         block_start_string="{%",
         block_end_string="%}",
-    ).render(**dataclasses.asdict(context))
+    ).render(**context.to_dict())
 
 
 def render_page_from_markdown(
