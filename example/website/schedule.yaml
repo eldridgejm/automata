@@ -28,9 +28,16 @@ announcements:
   - week: 2
     urgent: true
     content: |
+      **Urgent!**
+
       *Hello!* Welcome to ${ vars.course_name }!
 
       Here is a [link](https://example.com) for you to check out.
+
+  - week: 2
+    content: |
+      This is a regular announcement for week 2 in ${ vars.course_name }. Each
+      week can have multiple announcements.
 
 
 primary_activity_collections:

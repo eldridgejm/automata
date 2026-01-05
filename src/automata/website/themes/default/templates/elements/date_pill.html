@@ -1,11 +1,21 @@
 <span>
-    {% set common_classes = "border px-2.5 py-1 rounded-lg text-sm font-semibold " + element_config.text_class %}
+    {% set common_classes = "px-2.5 py-1 rounded-lg text-sm font-semibold " + element_config.text_class %}
     {%- if context.current_time.date() <= element_config.date -%}
-    <span class="text-white bg-red-500 border-red-800 dark:bg-red-500 dark:border-red-400 ${ common_classes }">
+    <span class="
+        font-semibold
+        text-red-500 dark:text-white
+        bg-red-100 dark:bg-red-500
+        px-2 py-[2px]
+        ${ common_classes }
+        ">
         ${ resolve(element_config.text_before) }
     </span>
     {%- else -%}
-    <span class="text-gray-600 dark:text-gray-300 bg-gray-400/50 border-gray-400 ${ common_classes }">
+    <span class="
+        text-gray-500 dark:text-gray-300
+        bg-gray-200 dark:bg-gray-400/50
+        border-gray-400
+        ${ common_classes }">
         ${ resolve(element_config.text_after) }
     </span>
     {% endif %}
