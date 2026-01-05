@@ -1,4 +1,9 @@
-"""High-level function for resolving publication files."""
+"""High-level function for resolving publication files.
+
+Not to be confused with the lower-level resolve() functions for resolving arbitrary
+configurations.
+
+"""
 
 import pathlib
 from typing import Any
