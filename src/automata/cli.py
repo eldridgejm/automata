@@ -1,9 +1,11 @@
 import datetime
+import pathlib
 from typing import Optional
 
 import typer
 
-from . import _build
+from . import _build, _resolve
+from .materials import serialize
 
 app = typer.Typer()
 
@@ -77,6 +79,37 @@ def build(
 def status():
     """Check status of course materials."""
     print("All good.")
+
+
+@app.command()
+def resolve(
+    path: pathlib.Path = typer.Argument(
+        ...,
+        help="Path to the publication.yaml file to resolve.",
+    ),
+):
+    """Resolve a publication.yaml file and output as JSON.
+
+    This command reads and resolves a publication.yaml file, handling variable
+    interpolation from automata.yaml, and outputs the resolved publication as
+    JSON to STDOUT.
+    """
+    try:
+        publication = _resolve.resolve(path)
+    except FileNotFoundError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.echo(f"Error resolving publication file: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    # Serialize to JSON and output to stdout
+    try:
+        json_output = serialize(publication)
+        typer.echo(json_output)
+    except Exception as e:
+        typer.echo(f"Error serializing publication: {e}", err=True)
+        raise typer.Exit(code=1)
 
 
 def main():
