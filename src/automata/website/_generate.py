@@ -8,12 +8,12 @@ from functools import partial
 from typing import Any, Callable, cast
 
 import jinja2
-import markdown
 import smartconfig
 import smartconfig.exceptions
 import smartconfig.types
 
 from ..materials import ExportedArtifact, Universe, deserialize
+from ..util import markdown as markdown_util
 from ..util.resolution import resolve
 from ._config import WebsiteConfig
 from ._frontmatter import read_frontmatter
@@ -271,7 +271,7 @@ def generate(
     vars: dict[str, Any] | None = None,
     extra_themes: dict[str, Theme] | None = None,
     current_time: datetime.datetime | None = None,
-    render_markdown: Callable[[str], str] = markdown.markdown,
+    render_markdown: Callable[[str], str] = markdown_util.render,
     cwd: pathlib.Path | None = None,
 ):
     """Generates a static website from course materials.
@@ -291,7 +291,9 @@ def generate(
         The current date and time to be used during rendering.
     render_markdown : Callable[[str], str], optional
         A function that converts markdown content to HTML. Should take markdown
-        text (str) and return HTML (str). Defaults to :func:`markdown.markdown`.
+        text (str) and return HTML (str). Defaults to
+        :func:`automata.util.markdown.render`, which wraps
+        :func:`markdown.markdown` with the TOC extension enabled.
         This allows for customization of the markdown rendering engine, such as
         using a different markdown library or adding custom extensions.
     cwd : pathlib.Path, optional

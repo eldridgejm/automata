@@ -89,6 +89,8 @@ def render_page_from_markdown(
     markdown_renderer : Callable[[str], str], optional
         The function to use for rendering markdown to HTML. Should take markdown
         content (str) and return HTML (str). Defaults to :func:`markdown.markdown`.
+        When called from :func:`automata.website.generate`, this is passed
+        :func:`automata.util.markdown.render` which enables the TOC extension.
 
     Returns
     -------

@@ -298,7 +298,7 @@ def test_frontmatter_in_markdown_page(tmpsite, config):
 
     # then
     output = tmpsite.get_output("info.html")
-    assert "<h1>Info Page</h1>" in output
+    assert '<h1 id="info-page">Info Page</h1>' in output
     assert "By Test Author" in output
 
 
