@@ -39,7 +39,7 @@ def build(
     config = read_config(path / CONFIGURATION_FILENAME)
 
     # Discover, build, and export materials
-    unbuilt_universe = materials.discover(path)
+    unbuilt_universe = materials.discover(path, vars=config.vars)
     built_universe = materials.build(unbuilt_universe, current_time=current_time)
 
     # Export materials to content directory (use absolute path)

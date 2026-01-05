@@ -1,6 +1,6 @@
 metadata:
   number: 1
-  date: 2025-09-23
+  date: ${ vars.date_of_first_lecture }
   topic: "Introduction"
   reading:
     title: "Introduction to Automata Theory"
