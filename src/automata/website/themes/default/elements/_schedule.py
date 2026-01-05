@@ -486,7 +486,7 @@ def make_activities_from_collection_config(
                 )
         return config
 
-    activity_configs = automata.util.resolution.resolve_for_each_publication(
+    activity_configs = automata.materials.resolve_for_each_publication(
         publications,
         for_each_publication_config,
         schema=ACTIVITY_CONFIG_SCHEMA_WITH_DATES,

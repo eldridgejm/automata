@@ -3,11 +3,8 @@
 import smartconfig
 
 from automata import materials
-from automata.util.resolution import (
-    resolve_for_each,
-    resolve_for_each_publication,
-    unwrap_raw_strings,
-)
+from automata.materials import resolve_for_each_publication
+from automata.util.resolution import resolve_for_each, unwrap_raw_strings
 
 # unwrap_raw_strings() tests
 # ============================================================================

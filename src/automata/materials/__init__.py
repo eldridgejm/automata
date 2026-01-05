@@ -7,6 +7,7 @@ from ._export import ExportCallbacks, export
 from ._filter import FilterCallbacks, filter
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file
+from ._resolution import resolve_for_each_publication
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -33,6 +34,7 @@ __all__ = [
     "deserialize",
     "read_collection_file",
     "read_publication_file",
+    "resolve_for_each_publication",
     "discover",
     "DiscoverCallbacks",
     "build",
