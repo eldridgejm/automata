@@ -442,7 +442,10 @@ def generate(
 
     # create url_for function based on config.base_path
     def url_for(path: str) -> str:
-        return f"{config.base_path.rstrip('/')}/{path.lstrip('/')}"
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        else:
+            return f"{config.base_path.rstrip('/')}/{path.lstrip('/')}"
 
     theme = _get_theme(config, extra_themes=extra_themes, cwd=cwd)
 
