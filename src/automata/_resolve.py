@@ -144,6 +144,9 @@ def resolve(path: pathlib.Path) -> Publication[UnbuiltArtifact]:
         If there are errors reading the config or resolving the publication.
 
     """
+    # Resolve to absolute path immediately to ensure consistent path operations
+    path = path.resolve()
+
     # Find the automata.yaml config file by searching upwards
     config_path = find_config(path)
     if config_path is None:
