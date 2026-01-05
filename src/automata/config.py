@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import smartconfig
-import yaml
 
 from .exceptions import Error
+from .util.resolution import resolve
+from .util.yaml import parse_yaml
 from .website import WebsiteConfig
 
 
@@ -38,39 +39,13 @@ def read_config(path: Path) -> Config:
         If the configuration is invalid or does not match the schema.
 
     """
-    # Read the YAML file
-    with path.open("r") as f:
-        raw_config = yaml.safe_load(f)
-
-    # set up custom functions. For now, there is only "include"
-    def include(args: smartconfig.types.FunctionArgs) -> Any:
-        """Include another YAML file and return its contents."""
-        schema = {"type": "string"}
-        include_path = smartconfig.resolve(args.input, schema)
-        include_path = cast(str, include_path)
-
-        include_path = path.parent / include_path
-        with include_path.open("r") as f:
-            return yaml.safe_load(f)
-
-    def md_to_html(args: smartconfig.types.FunctionArgs) -> str:
-        """Convert markdown content to HTML."""
-        schema = {"type": "string"}
-        md_content = smartconfig.resolve(args.input, schema)
-        md_content = cast(str, md_content)
-
-        import markdown
-
-        html = markdown.markdown(md_content)
-        print(html.strip())
-        return html.strip()
-
-    functions = dict(smartconfig.DEFAULT_FUNCTIONS).copy()
-    functions["include"] = include
-    functions["md_to_html"] = md_to_html
+    # Read and resolve the YAML file
+    yaml_content = path.read_text()
+    config_dict = parse_yaml(yaml_content)
 
     # Resolve the configuration against the schema
+    # (include function is automatically provided by resolve)
     try:
-        return smartconfig.resolve(raw_config, Config, functions=functions)
+        return resolve(config_dict, Config, base_path=path.parent)
     except smartconfig.exceptions.Error as e:
         raise Error(f"Invalid configuration: {e}") from e

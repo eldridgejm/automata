@@ -1,7 +1,10 @@
+from pathlib import Path
 from typing import Any
 
-import yaml
-from smartconfig import Prototype, resolve
+from smartconfig import Prototype
+
+from automata.util.resolution import resolve
+from automata.util.yaml import parse_yaml
 
 
 class Frontmatter(Prototype):
@@ -17,6 +20,7 @@ class Frontmatter(Prototype):
 
 def _parse_yaml_frontmatter(
     yaml_content: str,
+    base_path: Path | None = None,
 ) -> Frontmatter:
     """Parses the given YAML content into a Frontmatter object.
 
@@ -24,6 +28,9 @@ def _parse_yaml_frontmatter(
     ----------
     yaml_content : str
         The YAML content to parse.
+    base_path : Path | None
+        The base directory for resolving relative paths in __include__ directives.
+        If None, the include function will not be available. Default: None.
 
     Returns
     -------
@@ -31,8 +38,8 @@ def _parse_yaml_frontmatter(
         The parsed frontmatter.
 
     """
-    data = yaml.safe_load(yaml_content) or {}
-    return resolve(data, Frontmatter)
+    data = parse_yaml(yaml_content)
+    return resolve(data, Frontmatter, base_path=base_path)
 
 
 def _find_and_extract_frontmatter_yaml(content: str) -> tuple[str | None, str]:
@@ -77,6 +84,7 @@ def _find_and_extract_frontmatter_yaml(content: str) -> tuple[str | None, str]:
 
 def read_frontmatter(
     content: str,
+    base_path: Path | None = None,
 ) -> tuple[Frontmatter, str]:
     """Reads the frontmatter from the given content.
 
@@ -86,6 +94,9 @@ def read_frontmatter(
     ----------
     content : str
         The content to read the frontmatter from.
+    base_path : Path | None
+        The base directory for resolving relative paths in __include__ directives.
+        If None, the include function will not be available. Default: None.
 
     Returns
     -------
@@ -102,6 +113,6 @@ def read_frontmatter(
         return Frontmatter(vars={}), remaining_content
 
     # Parse the YAML into a Frontmatter object
-    frontmatter = _parse_yaml_frontmatter(yaml_content)
+    frontmatter = _parse_yaml_frontmatter(yaml_content, base_path=base_path)
 
     return frontmatter, remaining_content

@@ -8,6 +8,7 @@ import markdown
 import smartconfig
 
 from ..materials import Publication
+from ..util.resolution import resolve
 from ._render import RenderContext
 
 
@@ -36,7 +37,7 @@ class BasicElement(Element, Protocol):
         context: RenderContext,
     ) -> str:
         if self.schema is not None:
-            config = smartconfig.resolve(config, self.schema)
+            config = resolve(config, self.schema)
         config = self.extra_resolution(config, context)
         return self.render(config, context)
 

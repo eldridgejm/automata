@@ -28,7 +28,7 @@ announcements:
   - week: 2
     urgent: true
     content: |
-      *Hello!* Welcome to the class.
+      *Hello!* Welcome to ${ vars.course_name }!
 
       Here is a [link](https://example.com) for you to check out.
 
@@ -36,10 +36,8 @@ announcements:
 primary_activity_collections:
   - collection: lectures
     for_each_publication:
-      start_displaying_on:
-        __raw__: "${ publication.metadata.date }"
-      title:
-        __raw__: "Lecture ${ publication.metadata.number } - ${ publication.metadata.topic }"
+      start_displaying_on: !raw "${ publication.metadata.date }"
+      title: !raw "Lecture ${ publication.metadata.number } - ${ publication.metadata.topic }"
       resources:
         - type: artifact_links
           title: Slides
@@ -53,15 +51,14 @@ primary_activity_collections:
         - type: markdown
           title: Reading
           icon: book-open
-          markdown:
-            __raw__: |
-              {% if "reading" in publication.metadata %}
-                {% if publication.metadata.reading.url %}
-                  [${ publication.metadata.reading.title }](${ publication.metadata.reading.url })
-                {% else %}
-                  ${ publication.metadata.reading.title }
-                {% endif %}
+          markdown: !raw |
+            {% if "reading" in publication.metadata %}
+              {% if publication.metadata.reading.url %}
+                [${ publication.metadata.reading.title }](${ publication.metadata.reading.url })
+              {% else %}
+                ${ publication.metadata.reading.title }
               {% endif %}
+            {% endif %}
 
         - type: links
           title: References
@@ -77,10 +74,8 @@ primary_activity_collections:
           icon: film
           metadata_key_for_links: videos
           for_each_link:
-            text:
-              __raw__: "${ link.title }"
-            url:
-              __raw__: "${ link.url }"
+            text: !raw "${ link.title }"
+            url: !raw "${ link.url }"
 
         - type: artifact_links
           links:
@@ -95,12 +90,9 @@ secondary_activity_collections:
   - collection: homeworks
     for_each_publication:
       start_displaying_on:
-        __raw__: "${ publication.metadata.released }"
-      due_datetime:
-        __raw__:
-          "${ publication.metadata.due }"
-      title:
-        __raw__:  "Homework ${ publication.metadata.number }"
+        !raw "${ publication.metadata.released }"
+      due_datetime: !raw "${ publication.metadata.due }"
+      title: !raw "Homework ${ publication.metadata.number }"
       resources:
         - type: artifact_links
           links:
@@ -112,17 +104,14 @@ secondary_activity_collections:
   - collection: labs
     for_each_publication:
       start_displaying_on:
-        __raw__: "2 days before ${ publication.metadata.released }"
-      due_datetime:
-        __raw__:
-          "${ publication.metadata.due }"
+        !raw "2 days before ${ publication.metadata.released }"
+      due_datetime: !raw "${ publication.metadata.due }"
       title: Lab
       resources:
         - type: markdown
-          markdown:
-            __raw__ : |
-              [Instructions](${ publication.artifacts["lab.txt"].path }) and
-              [Starter Code](${ publication.artifacts["starter.txt"].path })
+          markdown: !raw |
+            [Instructions](${ publication.artifacts["lab.txt"].path }) and
+            [Starter Code](${ publication.artifacts["starter.txt"].path })
 
 extra_primary_activities:
   - title: Exam Review Session
@@ -134,12 +123,11 @@ extra_primary_activities:
           We will cover key topics and answer your questions.
           However, we won't have food.
       - type: html
-        html:
-          __raw__: |
-            ${ elements.button({
-                "label": "Join Review Session",
-                "url": "https://example.com/review-session",
-            })}
+        html: !raw |
+          ${ elements.button({
+              "label": "Join Review Session",
+              "url": "https://example.com/review-session",
+          })}
 
 
 extra_secondary_activities:

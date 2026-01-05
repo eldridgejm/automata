@@ -4,8 +4,9 @@ import pathlib
 from typing import Any, Dict, Mapping, Optional, cast
 
 import smartconfig
-import yaml  # type: ignore
 
+from ..util.resolution import resolve
+from ..util.yaml import parse_yaml
 from ._types import Collection, PublicationSchema, UnbuiltArtifact
 from .exceptions import DiscoveryError
 
@@ -89,7 +90,7 @@ def _resolve_collection_file(
     }
 
     try:
-        resolved: Dict[str, Any] = smartconfig.resolve(combined, combined_schema)
+        resolved: Dict[str, Any] = resolve(combined, combined_schema)
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
@@ -155,8 +156,8 @@ def read_collection_file(
     if vars is None:
         vars = {}
 
-    with path.open() as fileobj:
-        raw_contents = yaml.load(fileobj, Loader=yaml.Loader)
+    yaml_content = path.read_text()
+    raw_contents = parse_yaml(yaml_content)
 
     resolved = _resolve_collection_file(raw_contents, vars, path)
 

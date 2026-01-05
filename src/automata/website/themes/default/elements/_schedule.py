@@ -261,7 +261,7 @@ def make_activity_from_config(
     """
     config = automata.util.resolution.unwrap_raw_strings(config)
 
-    resolved_config = smartconfig.resolve(
+    resolved_config = automata.util.resolution.resolve(
         config,
         ACTIVITY_CONFIG_SCHEMA_WITH_DATES,
         global_variables=asdict(context),

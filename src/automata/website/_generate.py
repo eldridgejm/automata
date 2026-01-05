@@ -14,6 +14,7 @@ import smartconfig.exceptions
 import smartconfig.types
 
 from ..materials import ExportedArtifact, Universe, deserialize
+from ..util.resolution import resolve
 from ._config import WebsiteConfig
 from ._elements import Element
 from ._frontmatter import read_frontmatter
@@ -37,7 +38,7 @@ def _resolve_theme_config(
 
     Returns
     -------
-    dict[str, Any]
+    Any
         The resolved configuration with defaults applied.
 
     Raises
@@ -50,7 +51,7 @@ def _resolve_theme_config(
         return theme_config
 
     try:
-        return smartconfig.resolve(theme_config, schema)
+        return resolve(theme_config, schema)
     except smartconfig.exceptions.ResolutionError as exc:
         raise WebsiteError(f"Invalid theme configuration: {exc}") from exc
 
@@ -178,7 +179,9 @@ def _generate_single_page(
 
     # extract frontmatter from the content
     try:
-        frontmatter, content = read_frontmatter(raw_content)
+        frontmatter, content = read_frontmatter(
+            raw_content, base_path=input_path.parent
+        )
     except Exception as e:
         # Wrap any parsing errors with file path context
         raise PageError(str(e), input_path) from e

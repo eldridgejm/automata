@@ -4,8 +4,9 @@ import pathlib
 from typing import Any, Dict, Mapping, MutableMapping, Optional, cast
 
 import smartconfig
-import yaml  # type: ignore
 
+from ..util.resolution import resolve
+from ..util.yaml import parse_yaml
 from ._types import Publication, PublicationSchema, UnbuiltArtifact
 from .exceptions import DiscoveryError
 
@@ -147,7 +148,7 @@ def _resolve_publication_file(
     combined = cast(smartconfig.types.ConfigurationDict, combined_dict)
 
     try:
-        resolved = smartconfig.resolve(combined, combined_schema)
+        resolved = resolve(combined, combined_schema)
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
@@ -201,11 +202,11 @@ def read_publication_file(
     required/optional artifacts are not enforced.
 
     """
-    with path.open() as fileobj:
-        try:
-            raw_contents = yaml.load(fileobj.read(), Loader=yaml.Loader)
-        except yaml.YAMLError as exc:
-            raise DiscoveryError(str(exc), path)
+    yaml_content = path.read_text()
+    try:
+        raw_contents = parse_yaml(yaml_content)
+    except Exception as exc:
+        raise DiscoveryError(str(exc), path)
 
     previous_dict = previous._deep_asdict() if previous is not None else None
 

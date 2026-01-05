@@ -1,6 +1,6 @@
 .PHONY: lint typecheck test integration-test coverage checks fix
 
-checks: lint typecheck test coverage
+checks: lint typecheck test integration-test coverage
 
 lint:
 	uv run ruff check

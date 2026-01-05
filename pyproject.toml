@@ -13,7 +13,7 @@ license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "pyyaml",
+    "ruamel.yaml",
     "jinja2",
     "markdown",
     "mistune",
@@ -33,7 +33,6 @@ dev = [
     "mypy",
     "pytest-cov>=7.0.0",
     "types-Markdown",
-    "types-PyYAML",
     "beautifulsoup4",
 ]
 

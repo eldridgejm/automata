@@ -2,12 +2,15 @@
 
 import typing
 from collections.abc import Mapping
+from pathlib import Path
 
 import smartconfig
 
 from .. import materials
+from .yaml import parse_yaml
 
 T = typing.TypeVar("T")
+P = typing.TypeVar("P", bound=smartconfig.Prototype)
 
 
 def unwrap_raw_strings(
@@ -98,7 +101,7 @@ def resolve_for_each(
 
     for item in items:
         global_vars = {**vars, loop_variable: item}
-        resolved_config = smartconfig.resolve(
+        resolved_config = resolve(
             config,
             schema,
             global_variables=global_vars,
@@ -192,3 +195,101 @@ def resolve_for_each_publication(
         functions=functions,
         fixup=fixup,
     )
+
+
+@typing.overload
+def resolve(
+    config: smartconfig.types.Configuration,
+    schema: type[P],
+    base_path: Path | None = None,
+    **kwargs: typing.Any,
+) -> P: ...
+
+
+@typing.overload
+def resolve(
+    config: smartconfig.types.ConfigurationDict,
+    schema: smartconfig.types.Schema,
+    base_path: Path | None = None,
+    **kwargs: typing.Any,
+) -> dict: ...
+
+
+@typing.overload
+def resolve(
+    config: smartconfig.types.ConfigurationList,
+    schema: smartconfig.types.Schema,
+    base_path: Path | None = None,
+    **kwargs: typing.Any,
+) -> list: ...
+
+
+@typing.overload
+def resolve(
+    config: smartconfig.types.ConfigurationValue,
+    schema: smartconfig.types.Schema,
+    base_path: Path | None = None,
+    **kwargs: typing.Any,
+) -> typing.Any: ...
+
+
+def resolve(
+    config: smartconfig.types.Configuration,
+    schema: smartconfig.types.Schema | type[P],
+    base_path: Path | None = None,
+    **kwargs: typing.Any,
+) -> typing.Any:
+    """Resolve a configuration using smartconfig with built-in functions.
+
+    This function wraps smartconfig.resolve() and automatically provides built-in
+    functions like 'include' for common operations.
+
+    Parameters
+    ----------
+    config : smartconfig.types.Configuration
+        The configuration to resolve (typically a dict loaded from YAML).
+    schema : smartconfig.types.Schema | type
+        The schema to validate and resolve against. Can be a schema dictionary
+        or a Prototype class.
+    base_path : Path | None
+        The base directory for resolving relative paths in __include__ directives.
+        If None, the include function will not be available. Default: None.
+    **kwargs : Any
+        Additional keyword arguments to pass to the underlying resolver
+        (e.g., global_variables, etc.). Note that if 'functions' is provided,
+        it will be merged with the built-in functions.
+
+    Returns
+    -------
+    Any
+        The resolved configuration.
+
+    Raises
+    ------
+    smartconfig.exceptions.ResolutionError
+        If the configuration cannot be resolved against the schema.
+
+    """
+    # Set up built-in functions
+    functions = dict(smartconfig.DEFAULT_FUNCTIONS)
+
+    if base_path is not None:
+
+        def include(args: smartconfig.types.FunctionArgs) -> typing.Any:
+            """Include another YAML file and return its contents."""
+            schema = {"type": "string"}
+            include_path = resolve(args.input, schema)
+            include_path = typing.cast(str, include_path)
+
+            include_path = base_path / include_path
+            yaml_content = include_path.read_text()
+            return parse_yaml(yaml_content)
+
+        functions["include"] = include
+
+    # Merge with any user-provided functions
+    if "functions" in kwargs:
+        user_functions = kwargs.pop("functions")
+        functions.update(user_functions)
+
+    return smartconfig.resolve(config, schema, functions=functions, **kwargs)

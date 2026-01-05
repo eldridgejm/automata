@@ -17,7 +17,7 @@ class ThemeConfig(smartconfig.Prototype):
     overrides: str | None = None
 
     # additional configuration options to pass to the theme
-    config: dict[str, Any] = {}
+    config: Any = {}
 
 
 class WebsiteConfig(smartconfig.Prototype):
