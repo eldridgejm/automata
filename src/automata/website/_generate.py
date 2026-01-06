@@ -130,6 +130,10 @@ def _get_theme(
             # Merge overrides into base theme (overrides take precedence)
             theme.templates.update(override_theme.templates)
             theme.static_files.update(override_theme.static_files)
+        else:
+            raise WebsiteError(
+                f'Theme overrides directory not found at "{overrides_dir}".'
+            )
 
     if "page.html" not in theme.templates:
         raise ValueError('Theme templates must include a "page.html" file.')
