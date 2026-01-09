@@ -77,6 +77,17 @@ def _register_materials_publish_parser(subparsers):
         if args.vars is not None:
             args.vars = util.load_yaml(args.vars)
 
+        if args.now is None:
+            now = datetime.datetime.now()
+        else:
+            try:
+                n_days = int(args.now)
+                now = datetime.datetime.now() + datetime.timedelta(days=n_days)
+            except ValueError:
+                now = datetime.datetime.fromisoformat(args.now)
+
+            print(f"Running as if it is currently {now}")
+
         return automata.api.materials.publish(
             args.input_directory,
             args.output_directory,
@@ -86,7 +97,7 @@ def _register_materials_publish_parser(subparsers):
             vars=args.vars,
             skip_directories=args.skip_directories,
             verbose=args.verbose,
-            now=args.now,
+            now=now,
         )
 
     parser.set_defaults(cmd=cmd)
