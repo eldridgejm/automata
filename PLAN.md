@@ -35,13 +35,19 @@ In this branch, we will implement the website feature "from scratch". We have al
     - [x] Implement a `!metadata_key` function for use in schedule config
     - [x] Better styling for "future weeks" divider
 - [x] Implement date_pill element
-- [ ] Simplify the second integration test?
-- [ ] "Install" lucide icons so that we don't need to use the CDN
-- [ ] Implement `!` tags in config reader
+- [-] Simplify the second integration test?
+- [-] "Install" lucide icons so that we don't need to use the CDN
+- [x] Implement `!` tags in config reader
 - [x] Figure out what controls whether something shows up in schedule yet
+- [ ] Extract the logic tests for schedule to tests of the builtin_elements module.
+- [ ] Change signature of generate() to accept the path to the materials directory
+    - Copy it if it is outside of the content directory; otherwise just use it directly
+- [ ] Update build() to export the materials to a temporary directory and pass that to generate()
+- [ ] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
+- [ ] Build hooks (allowing scripts to run at certain points in the generation process)
+- [ ] Improve test coverage
 - [ ] Thorough documentation of website abstraction
 - [ ] Thorough documentation of default theme, including elements
-- [ ] Build hooks (allowing scripts to run at certain points in the generation process)
 - [ ] Better error messages
 - [ ] Flesh out the CLI with more commands
 
