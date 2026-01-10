@@ -15,7 +15,6 @@ requires-python = ">=3.14"
 dependencies = [
     "ruamel.yaml",
     "jinja2",
-    "markdown",
     "mistune",
     "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git@0.4.0",
     "typer",
@@ -32,7 +31,6 @@ dev = [
     "ruff",
     "mypy",
     "pytest-cov>=7.0.0",
-    "types-Markdown",
     "beautifulsoup4",
 ]
 

@@ -43,7 +43,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Change signature of generate() to accept the path to the materials directory
     - Copy it if it is outside of the content directory; otherwise just use it directly
 - [x] Update build() to export the materials to a temporary directory and pass that to generate()
-- [ ] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
+- [x] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
 - [ ] Build hooks (allowing scripts to run at certain points in the generation process)
 - [ ] Improve test coverage
 - [ ] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.

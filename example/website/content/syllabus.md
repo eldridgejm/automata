@@ -1,6 +1,6 @@
 # Syllabus
 
-[TOC]
+.. toc::
 
 ## Example Course
 
@@ -41,3 +41,12 @@ TailwindCSS for styling. If the user specifies a CSS class that isn't already
 used by the default theme, a post-build hook will rebuild the Tailwind CSS to include
 the new styles.
 </span>
+
+.. details:: This is a test
+
+    This is a collapsible *details* element. We can write markdown inside.
+    Even lists!
+
+    - Foo
+    - Bar
+    - Baz

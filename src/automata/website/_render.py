@@ -5,10 +5,10 @@ import datetime
 from typing import Any, Callable
 
 import jinja2
-import markdown
 import smartconfig
 
 from ..materials import ExportedArtifact, Universe
+from ..util import markdown as markdown_util
 from ._config import WebsiteConfig
 from ._frontmatter import Frontmatter
 
@@ -74,7 +74,7 @@ def _interpolate(
 def render_page_from_markdown(
     markdown_content: str,
     context: RenderContext,
-    markdown_renderer: Callable[[str], str] = markdown.markdown,
+    markdown_renderer: Callable[[str], str] = markdown_util.render,
 ) -> str:
     """Renders a page from markdown.
 
@@ -88,9 +88,8 @@ def render_page_from_markdown(
 
     markdown_renderer : Callable[[str], str], optional
         The function to use for rendering markdown to HTML. Should take markdown
-        content (str) and return HTML (str). Defaults to :func:`markdown.markdown`.
-        When called from :func:`automata.website.generate`, this is passed
-        :func:`automata.util.markdown.render` which enables the TOC extension.
+        content (str) and return HTML (str). Defaults to
+        :func:`automata.util.markdown.render` which enables the TOC plugin.
 
     Returns
     -------

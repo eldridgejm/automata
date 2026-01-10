@@ -3,10 +3,10 @@ from functools import partial
 from typing import Any
 
 import jinja2
-import markdown
 import smartconfig
 
 from ..materials import Publication
+from ..util import markdown as markdown_util
 from ..util.resolution import resolve
 from ._render import RenderContext
 
@@ -140,7 +140,7 @@ def _is_something_missing(publication: Publication, requirements) -> bool:
 def _md_to_html(md_text: str) -> str:
     """Convert markdown text to HTML."""
     md_text = md_text.strip()
-    html = markdown.markdown(md_text).strip()
+    html = markdown_util.render(md_text).strip()
     if html.startswith("<p>") and html.endswith("</p>"):
         html = html[3:-4]
     return html
@@ -187,8 +187,13 @@ class TemplateElement(BasicElement):
 
         template = self.jinja_env.get_template(self.template)
         extra_vars = self.template_vars(config)
-        return template.render(
+        rendered = template.render(
             element_config=config,
             context=self.context,
             **extra_vars,
         )
+        # strip leading whitespace from every line. We do this because, while the
+        # element returns HTML, this HTML is processed by the markdown renderer. Some
+        # markdown renderers get finicky with the indentation in this HTML and treat
+        # it as an indented code block. This prevents that from happening.
+        return "\n".join(line.lstrip() for line in rendered.splitlines())
