@@ -34,3 +34,10 @@ Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac tu
 Mauris dignissim quis nisi a elementum. Integer nec tincidunt libero, at rhoncus lectus. Phasellus semper lectus ut turpis mattis placerat. Praesent placerat felis pulvinar sem faucibus semper. Proin malesuada mi ac lorem ultricies dapibus. Praesent eu dolor vitae lorem pretium ornare quis at lorem. Vivamus dictum libero eu urna vestibulum aliquet.
 
 In eu quam et nunc suscipit luctus. Proin aliquam finibus ullamcorper. Pellentesque elementum nulla nisl, eget viverra lectus pulvinar et. Suspendisse nibh arcu, sollicitudin vehicula turpis eu, tempor accumsan velit. Etiam magna erat, congue quis orci a, egestas imperdiet enim. Nunc vel lorem in urna pharetra bibendum a ultricies nunc. Donec sagittis venenatis enim sed laoreet. Duis vehicula posuere euismod. Sed rhoncus felis id neque interdum dictum. Proin lorem ligula, eleifend non lobortis id, imperdiet eget quam. Aliquam ultrices, lorem at ultricies lobortis, tellus nunc pharetra ligula, sed fringilla nunc mauris at odio. Pellentesque consequat, odio ultricies aliquam consectetur, felis odio rhoncus massa, at efficitur ligula est quis velit. Morbi gravida nisl libero, ut ultricies odio scelerisque at. Phasellus congue auctor eros, ut feugiat leo porta quis. Maecenas pulvinar risus id egestas condimentum.
+
+<span class="text-emerald-400">
+This is some additional information in a lighter color. The default uses
+TailwindCSS for styling. If the user specifies a CSS class that isn't already
+used by the default theme, a post-build hook will rebuild the Tailwind CSS to include
+the new styles.
+</span>

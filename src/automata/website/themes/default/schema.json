@@ -23,6 +23,10 @@
         }
       },
       "default": []
+    },
+    "rebuild_tailwind": {
+      "type": "boolean",
+      "default": true
     }
   }
 }

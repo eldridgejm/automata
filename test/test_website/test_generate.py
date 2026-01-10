@@ -18,6 +18,7 @@ def config(tmpsite):
                 "short_title": "DSC 40B",
                 "long_title": "Theoretical Foundations of Data Science II",
                 "navigation": [],
+                "rebuild_tailwind": False,  # Disable for faster tests
             },
         ),
     )
@@ -1128,3 +1129,86 @@ def test_generate_raises_on_post_build_hook_error(tmpsite, tmp_path):
     # when / then
     with raises(automata.website.exceptions.WebsiteError, match="post_build hook"):
         automata.website.generate(config)
+
+
+# default theme tailwind rebuild ================================================
+
+
+def test_default_theme_tailwind_rebuild_with_npx_available(tmpsite, monkeypatch):
+    """Test that default theme rebuilds Tailwind CSS when npx is available."""
+    # Mock subprocess to simulate successful Tailwind rebuild
+    mock_run_calls = []
+
+    def mock_run(*args, **kwargs):
+        mock_run_calls.append((args, kwargs))
+        # Return success for npx --version
+        if args[0][0] == "npx" and args[0][1] == "--version":
+            return fixture.Mock(returncode=0)
+        # Return success for Tailwind CLI
+        return fixture.Mock(returncode=0, stderr="")
+
+    import subprocess
+    from unittest import mock as fixture
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    tmpsite.make_page(
+        "index.md", "# Test\n\nThis uses <div class='bg-fuchsia-500'>custom</div>"
+    )
+
+    config = automata.website.WebsiteConfig(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use="default",
+            config={
+                "short_title": "Test",
+                "long_title": "Test Site",
+                "rebuild_tailwind": True,  # Disable for faster tests
+            },
+        ),
+    )
+
+    # when
+    automata.website.generate(config)
+
+    # then - Tailwind CLI should have been called
+    tailwind_calls = [c for c in mock_run_calls if "@tailwindcss/cli" in str(c)]
+    assert len(tailwind_calls) > 0, "Tailwind CLI should have been called"
+
+
+def test_default_theme_fallback_when_npx_not_available(tmpsite, monkeypatch, caplog):
+    """Test that default theme falls back gracefully when npx is not available."""
+    import subprocess
+
+    def mock_run(*args, **kwargs):
+        # Simulate npx not being available
+        raise FileNotFoundError("npx not found")
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    tmpsite.make_page("index.md", "# Test Page")
+
+    config = automata.website.WebsiteConfig(
+        content_directory=tmpsite.content_directory,
+        build_directory=tmpsite.build_directory,
+        theme=automata.website.ThemeConfig(
+            use="default",
+            config={
+                "short_title": "Test",
+                "long_title": "Test Site",
+                "rebuild_tailwind": True,
+            },
+        ),
+    )
+
+    # when
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        automata.website.generate(config)
+
+    # then - should have warned about npx not being available
+    assert any("npx not found" in record.message for record in caplog.records)
+    # Build should still succeed
+    assert "Test Page" in tmpsite.get_output("index.html")

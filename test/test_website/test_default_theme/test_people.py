@@ -14,6 +14,7 @@ def config(tmpsite):
                 "short_title": "DSC 40B",
                 "long_title": "Theoretical Foundations of Data Science II",
                 "navigation": [],
+                "rebuild_tailwind": False,  # Disable for faster tests
             },
         ),
     )
