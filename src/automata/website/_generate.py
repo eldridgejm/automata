@@ -461,6 +461,13 @@ def generate(
         schema=theme.schema,
     )
 
+    # Execute pre-build hook if defined
+    if theme.hooks.pre_build is not None:
+        try:
+            theme.hooks.pre_build(config)
+        except Exception as e:
+            raise WebsiteError(f"Error in theme pre_build hook: {e}") from e
+
     jinja_environment = theme.create_jinja_environment()
 
     _copy_theme_static_files(theme, build_dirpath)
@@ -511,3 +518,10 @@ def generate(
         materials_output_path,
         dirs_exist_ok=True,
     )
+
+    # Execute post-build hook if defined
+    if theme.hooks.post_build is not None:
+        try:
+            theme.hooks.post_build(config)
+        except Exception as e:
+            raise WebsiteError(f"Error in theme post_build hook: {e}") from e

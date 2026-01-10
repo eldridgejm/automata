@@ -6,14 +6,33 @@ import json
 import sys
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 import jinja2
 import smartconfig.exceptions
 import smartconfig.types
 
 if TYPE_CHECKING:
+    from ._config import WebsiteConfig
     from ._elements import Element
+
+
+@dataclass
+class ThemeHooks:
+    """Hooks that can be executed during website generation.
+
+    Attributes
+    ----------
+    pre_build : Callable[[WebsiteConfig], None] | None
+        Optional hook called before the main build process begins.
+        Receives the website configuration.
+    post_build : Callable[[WebsiteConfig], None] | None
+        Optional hook called after the main build process completes.
+        Receives the website configuration.
+    """
+
+    pre_build: Callable[["WebsiteConfig"], None] | None = None
+    post_build: Callable[["WebsiteConfig"], None] | None = None
 
 
 @dataclass
@@ -32,6 +51,9 @@ class Theme:
     # optional smartconfig schema for theme configuration validation
     schema: smartconfig.types.Schema | None = None
 
+    # optional hooks for pre/post build operations
+    hooks: ThemeHooks = field(default_factory=lambda: ThemeHooks())
+
     @classmethod
     def from_directory(
         cls, directory: Traversable, require_templates: bool = True
@@ -40,13 +62,16 @@ class Theme:
 
         The directory must contain a ``templates/`` subdirectory with template
         files (unless ``require_templates`` is False). It may optionally contain
-        a ``static/`` subdirectory with static files and an ``elements/``
-        subdirectory containing a Python package.
+        a ``static/`` subdirectory with static files, an ``elements/``
+        subdirectory containing a Python package, and a ``hooks.py`` file.
 
         If the ``elements/`` directory is present, it must contain an
         ``__init__.py`` file that defines an ``elements`` variable. This
         variable must be a dictionary mapping element names to ``Element``
         instances.
+
+        If a ``hooks.py`` file is present, it may define ``pre_build`` and/or
+        ``post_build`` functions that will be called during website generation.
 
         Parameters
         ----------
@@ -129,6 +154,9 @@ class Theme:
         if elements_dir.is_dir():
             elements = _load_elements_from_directory(elements_dir)
 
+        # Load hooks from hooks.py if present
+        hooks = _load_hooks_from_directory(directory)
+
         # Load schema from schema.json if present
         schema_file = directory / "schema.json"
         schema: smartconfig.types.Schema | None = None
@@ -149,6 +177,7 @@ class Theme:
             static_files=static_files,
             elements=elements,
             schema=schema,
+            hooks=hooks,
         )
 
     @classmethod
@@ -197,6 +226,72 @@ class Theme:
         )
 
 
+def _load_python_module_from_theme_directory(
+    directory: Traversable,
+    filename: str,
+    module_type: str,
+    submodule_search_locations: list[str] | None = None,
+):
+    """Load a Python module from a file in a theme directory.
+
+    Handles the common pattern of loading Python modules from theme directories:
+    1. Converting Traversable to file path
+    2. Generating unique module name with hash
+    3. Loading module with spec_from_file_location
+    4. Adding to sys.modules and executing
+    5. Cleaning up on error
+
+    Parameters
+    ----------
+    directory : Traversable
+        The theme directory containing the file.
+    filename : str
+        Name of the Python file to load (e.g., "__init__.py", "hooks.py").
+    module_type : str
+        Type identifier for module name (e.g., "elements", "hooks").
+    submodule_search_locations : list[str] | None, optional
+        Optional submodule search locations for package loading.
+
+    Returns
+    -------
+    module
+        The loaded module object.
+
+    Raises
+    ------
+    ValueError
+        If the module cannot be loaded.
+
+    """
+    with importlib.resources.as_file(directory) as dir_path:
+        digest = hashlib.sha256(str(dir_path).encode("utf-8")).hexdigest()[:12]
+        module_name = f"automata.website.theme_{module_type}_{digest}"
+        file_path = dir_path / filename
+
+        spec = importlib.util.spec_from_file_location(
+            module_name,
+            file_path,
+            submodule_search_locations=submodule_search_locations,
+        )
+        if spec is None or spec.loader is None:
+            raise ValueError(f"Unable to load {module_type} module at {file_path}.")
+
+        module = importlib.util.module_from_spec(spec)
+
+        sys.modules[module_name] = module
+
+        try:
+            spec.loader.exec_module(module)
+        except Exception as e:
+            # Clean up sys.modules if loading fails
+            sys.modules.pop(module_name, None)
+            raise ValueError(
+                f"Error loading {module_type} from {file_path}: {e}"
+            ) from e
+
+    return module
+
+
 def _load_elements_from_directory(
     elements_dir: Traversable,
 ) -> dict[str, type["Element"]]:
@@ -227,29 +322,12 @@ def _load_elements_from_directory(
     if not init_file.is_file():
         return {}
 
-    with importlib.resources.as_file(elements_dir) as elements_path:
-        digest = hashlib.sha256(str(elements_path).encode("utf-8")).hexdigest()[:12]
-        module_name = f"automata.website.theme_elements_{digest}"
-        init_path = elements_path / "__init__.py"
-
-        spec = importlib.util.spec_from_file_location(
-            module_name,
-            init_path,
-            submodule_search_locations=[str(elements_path)],
-        )
-        if spec is None or spec.loader is None:
-            raise ValueError(f"Unable to load elements package at {init_path}.")
-
-        module = importlib.util.module_from_spec(spec)
-
-        sys.modules[module_name] = module
-
-        try:
-            spec.loader.exec_module(module)
-        except Exception:
-            # Clean up sys.modules if loading fails
-            sys.modules.pop(module_name, None)
-            raise
+    module = _load_python_module_from_theme_directory(
+        directory=elements_dir,
+        filename="__init__.py",
+        module_type="elements",
+        submodule_search_locations=[str(elements_dir)],
+    )
 
     if hasattr(module, "elements"):
         elements = module.elements
@@ -264,3 +342,58 @@ def _load_elements_from_directory(
         )
 
     return elements
+
+
+def _load_hooks_from_directory(hooks_dir: Traversable) -> ThemeHooks:
+    """Load hooks from a hooks.py file in a theme directory.
+
+    The directory may contain a ``hooks.py`` file that defines ``pre_build``
+    and/or ``post_build`` functions. Both functions are optional.
+
+    Parameters
+    ----------
+    hooks_dir : Traversable
+        The theme directory that may contain a hooks.py file.
+
+    Returns
+    -------
+    ThemeHooks
+        A ThemeHooks instance with any hooks found in hooks.py.
+        If hooks.py doesn't exist or doesn't define hooks, returns
+        an empty ThemeHooks instance.
+
+    Raises
+    ------
+    ValueError
+        If hooks.py exists but cannot be loaded or contains invalid hooks.
+
+    """
+    hooks_file = hooks_dir / "hooks.py"
+    if not hooks_file.is_file():
+        return ThemeHooks()
+
+    module = _load_python_module_from_theme_directory(
+        directory=hooks_dir,
+        filename="hooks.py",
+        module_type="hooks",
+    )
+
+    # Extract hooks if they exist
+    pre_build = None
+    post_build = None
+
+    if hasattr(module, "pre_build"):
+        pre_build = module.pre_build
+        if not callable(pre_build):
+            raise ValueError(
+                f"pre_build in {hooks_file} must be callable, got {type(pre_build)}."
+            )
+
+    if hasattr(module, "post_build"):
+        post_build = module.post_build
+        if not callable(post_build):
+            raise ValueError(
+                f"post_build in {hooks_file} must be callable, got {type(post_build)}."
+            )
+
+    return ThemeHooks(pre_build=pre_build, post_build=post_build)

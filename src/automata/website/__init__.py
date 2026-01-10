@@ -6,7 +6,7 @@ from ._elements import BasicElement, Element, TemplateElement
 from ._frontmatter import Frontmatter
 from ._generate import generate
 from ._render import RenderContext
-from ._theme import Theme
+from ._theme import Theme, ThemeHooks
 from .exceptions import PageError
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "WebsiteConfig",
     "ThemeConfig",
     "Theme",
+    "ThemeHooks",
     "Frontmatter",
     "PageError",
     "Element",

@@ -215,3 +215,109 @@ def test_from_directory_raises_on_invalid_schema_in_schema_json(tmp_path: Path) 
 
     with pytest.raises(ValueError, match="Theme configuration schema is invalid"):
         Theme.from_directory(theme_dir)
+
+
+# hooks.py loading =============================================================
+
+
+def test_from_directory_loads_hooks_from_hooks_py(tmp_path: Path) -> None:
+    """Test that Theme.from_directory() loads hooks from hooks.py if present."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    # Create hooks.py with both hooks
+    (theme_dir / "hooks.py").write_text(
+        "def pre_build(config):\n    pass\n\ndef post_build(config):\n    pass\n"
+    )
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.hooks.pre_build is not None
+    assert theme.hooks.post_build is not None
+    assert callable(theme.hooks.pre_build)
+    assert callable(theme.hooks.post_build)
+
+
+def test_from_directory_allows_missing_hooks_py(tmp_path: Path) -> None:
+    """Test that Theme.from_directory() works when hooks.py is missing."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.hooks.pre_build is None
+    assert theme.hooks.post_build is None
+
+
+def test_from_directory_allows_partial_hooks_pre_build_only(tmp_path: Path) -> None:
+    """Test that hooks.py can define only pre_build."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    (theme_dir / "hooks.py").write_text("def pre_build(config):\n    pass\n")
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.hooks.pre_build is not None
+    assert theme.hooks.post_build is None
+
+
+def test_from_directory_allows_partial_hooks_post_build_only(tmp_path: Path) -> None:
+    """Test that hooks.py can define only post_build."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    (theme_dir / "hooks.py").write_text("def post_build(config):\n    pass\n")
+
+    theme = Theme.from_directory(theme_dir)
+
+    assert theme.hooks.pre_build is None
+    assert theme.hooks.post_build is not None
+
+
+def test_from_directory_raises_on_malformed_hooks_py(tmp_path: Path) -> None:
+    """Test that Theme.from_directory() raises ValueError for malformed hooks.py."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    # Invalid Python syntax
+    (theme_dir / "hooks.py").write_text("def pre_build(config)\n    pass\n")
+
+    with pytest.raises(ValueError, match="Error loading hooks"):
+        Theme.from_directory(theme_dir)
+
+
+def test_from_directory_raises_on_non_callable_pre_build(tmp_path: Path) -> None:
+    """Test ValueError is raised if pre_build is not callable."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    (theme_dir / "hooks.py").write_text("pre_build = 'not a function'\n")
+
+    with pytest.raises(ValueError, match="pre_build.*must be callable"):
+        Theme.from_directory(theme_dir)
+
+
+def test_from_directory_raises_on_non_callable_post_build(tmp_path: Path) -> None:
+    """Test ValueError is raised if post_build is not callable."""
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    templates_dir.mkdir(parents=True)
+    (templates_dir / "base.html").write_text("<html></html>")
+
+    (theme_dir / "hooks.py").write_text("post_build = 42\n")
+
+    with pytest.raises(ValueError, match="post_build.*must be callable"):
+        Theme.from_directory(theme_dir)
