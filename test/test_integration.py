@@ -256,9 +256,9 @@ ${ elements.schedule(vars.schedule_config) }
     # Run the full build (discovers, builds, exports materials, and generates website)
     build(temporary_course.path, current_time=current_time)
 
-    # Read the generated materials.json
+    # Read the generated materials.json from the build directory
     materials_json_path = (
-        temporary_course.path / "content" / "materials" / "materials.json"
+        temporary_course.path / "_build" / "materials" / "materials.json"
     )
     with materials_json_path.open() as f:
         materials_data = json.load(f)
@@ -319,8 +319,8 @@ ${ elements.schedule(vars.schedule_config) }
         "Metadata dates should be preserved even when in the future"
     )
 
-    # Verify artifacts were actually exported to the content/materials directory
-    materials_dir = temporary_course.path / "content" / "materials"
+    # Verify artifacts were actually exported to the build/materials directory
+    materials_dir = temporary_course.path / "_build" / "materials"
     assert (materials_dir / "assignments" / "scenario3" / "assignment.pdf").exists()
     assert not (materials_dir / "assignments" / "scenario3" / "solution.pdf").exists()
     assert (materials_dir / "assignments" / "scenario4" / "assignment.pdf").exists()

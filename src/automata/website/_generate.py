@@ -272,6 +272,7 @@ def _paths_outside_materials_directory(
 
 def generate(
     config: WebsiteConfig,
+    materials_directory: pathlib.Path,
     vars: dict[str, Any] | None = None,
     extra_themes: dict[str, Theme] | None = None,
     current_time: datetime.datetime | None = None,
@@ -286,6 +287,12 @@ def generate(
         The configuration for the website generation. Contains information about
         the location of the content and build directories, among other settings.
         See :class:`WebsiteConfig` for more details.
+    materials_directory : pathlib.Path
+        The path to the directory containing the exported materials. This directory
+        should contain a materials.json file and associated artifact files, as
+        produced by :func:`automata.materials.export`. The directory will be copied
+        to the build directory at the location specified by
+        config.materials_directory_name.
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
     extra_themes : dict[str, Theme], optional
@@ -325,17 +332,18 @@ def generate(
     copied to the output directory with that suffix removed. This allows for raw
     markdown and HTML files to be included in the output without rendering them.
 
-    This function assumes that course materials have already been exported and are
-    located in the content directory in a directory named
-    ``config.materials_directory_name`` (by default, this is ``materials``).
-    This directory should be of the same format as produced by the
-    :func:`automata.materials.export` function; namely, there should be a
-    ``materials.json`` file in the root of the materials directory, along with
-    subdirectories containing the actual content files. If this materials directory
-    is not found, an error will be raised.
+    This function requires that course materials have already been exported to the
+    directory specified by the ``materials_directory`` parameter. This directory
+    should be of the same format as produced by the :func:`automata.materials.export`
+    function; namely, there should be a ``materials.json`` file in the root of the
+    materials directory, along with subdirectories containing the actual artifact files.
+    If this materials directory is not found or is missing required files, an error
+    will be raised.
 
-    Content and materials will be copied to the ``config.build_directory``, preserving
-    the directory structure found in the content directory.
+    Content will be copied to the ``config.build_directory``, preserving the directory
+    structure found in the content directory. The materials directory will be copied
+    to the build directory at the location specified by
+    ``config.materials_directory_name`` (by default, this is ``materials``).
 
     Rendering Context
     ~~~~~~~~~~~~~~~~~
@@ -442,9 +450,8 @@ def generate(
         cwd = pathlib.Path.cwd()
 
     # Resolve paths relative to cwd (absolute paths are unchanged)
-    content_dirpath = cwd / config.content_directory
-    materials_dirpath = content_dirpath / config.materials_directory_name
-    build_dirpath = cwd / config.build_directory
+    content_directory = cwd / config.content_directory
+    build_directory = cwd / config.build_directory
 
     # create url_for function based on config.base_path
     def url_for(path: str) -> str:
@@ -470,9 +477,9 @@ def generate(
 
     jinja_environment = theme.create_jinja_environment()
 
-    _copy_theme_static_files(theme, build_dirpath)
+    _copy_theme_static_files(theme, build_directory)
 
-    materials = _load_materials(materials_dirpath)
+    materials = _load_materials(materials_directory)
     _fix_artifact_paths(materials, url_for)
 
     context = RenderContext(
@@ -488,9 +495,11 @@ def generate(
         for name, element in theme.elements.items()
     }
 
-    for path in _paths_outside_materials_directory(content_dirpath, materials_dirpath):
-        relative_path = path.relative_to(content_dirpath)
-        output_path = build_dirpath / relative_path
+    for path in _paths_outside_materials_directory(
+        content_directory, materials_directory
+    ):
+        relative_path = path.relative_to(content_directory)
+        output_path = build_directory / relative_path
 
         if path.is_dir():
             output_path.mkdir(parents=True, exist_ok=True)
@@ -510,14 +519,18 @@ def generate(
         else:
             _copy_file_to_output(path, output_path, config)
 
-    # copy the built materials
-    materials_output_path = build_dirpath / config.materials_directory_name
-    materials_output_path.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(
-        materials_dirpath,
-        materials_output_path,
-        dirs_exist_ok=True,
-    )
+    # Copy the built materials to the build directory
+    materials_output_path = build_directory / config.materials_directory_name
+
+    # Only copy if source and destination are different
+    # (resolve both paths to handle relative paths and symlinks correctly)
+    if materials_directory.resolve() != materials_output_path.resolve():
+        materials_output_path.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(
+            materials_directory,
+            materials_output_path,
+            dirs_exist_ok=True,
+        )
 
     # Execute post-build hook if defined
     if theme.hooks.post_build is not None:

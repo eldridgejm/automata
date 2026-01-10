@@ -38,17 +38,17 @@ def build(
 
     config = read_config(path / CONFIGURATION_FILENAME)
 
-    # Discover, build, and export materials
+    # Discover and build materials
     unbuilt_universe = materials.discover(path, vars=config.vars)
     built_universe = materials.build(unbuilt_universe, current_time=current_time)
 
-    # Export materials to content directory (use absolute path)
-    content_dir = (path / config.website.content_directory).resolve()
-    materials_output_dir = content_dir / config.website.materials_directory_name
+    # Export materials directly to the build directory
+    build_dir = path / config.website.build_directory
+    materials_output_dir = build_dir / config.website.materials_directory_name
 
     exported_universe = materials.export(
         built_universe,
-        outdir=content_dir,
+        outdir=build_dir,
         prefix=config.website.materials_directory_name,
     )
 
@@ -57,5 +57,11 @@ def build(
     materials_json.parent.mkdir(parents=True, exist_ok=True)
     materials_json.write_text(materials.serialize(exported_universe))
 
-    # Generate website (pass cwd so relative paths are resolved correctly)
-    generate(config.website, config.vars, cwd=path, current_time=current_time)
+    # Generate website (materials are already in place, so no copy needed)
+    generate(
+        config.website,
+        materials_output_dir,
+        config.vars,
+        cwd=path,
+        current_time=current_time,
+    )

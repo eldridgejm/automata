@@ -26,8 +26,7 @@ class WebsiteConfig(smartconfig.Prototype):
     # path to the directory containing the pages and materials
     content_directory: str
 
-    # name of the subdirectory within the content directory that contains
-    # the materials to be included in the website
+    # name of the subdirectory within the build directory where materials will be copied
     materials_directory_name: str = "materials"
 
     # path to the output directory where the website will be built

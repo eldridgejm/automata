@@ -39,13 +39,15 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [-] "Install" lucide icons so that we don't need to use the CDN
 - [x] Implement `!` tags in config reader
 - [x] Figure out what controls whether something shows up in schedule yet
-- [ ] Extract the logic tests for schedule to tests of the builtin_elements module.
-- [ ] Change signature of generate() to accept the path to the materials directory
+- [x] Extract the logic tests for schedule to tests of the builtin_elements module.
+- [x] Change signature of generate() to accept the path to the materials directory
     - Copy it if it is outside of the content directory; otherwise just use it directly
-- [ ] Update build() to export the materials to a temporary directory and pass that to generate()
+- [x] Update build() to export the materials to a temporary directory and pass that to generate()
 - [ ] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
 - [ ] Build hooks (allowing scripts to run at certain points in the generation process)
 - [ ] Improve test coverage
+- [ ] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
+- [ ] Improve the listing element by moving more of the logic outside of the template
 - [ ] Thorough documentation of website abstraction
 - [ ] Thorough documentation of default theme, including elements
 - [ ] Better error messages
