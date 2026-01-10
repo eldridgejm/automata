@@ -29,14 +29,109 @@
   .sidebar-mobile-spacing {
     padding-top: calc(4rem + env(safe-area-inset-top));
   }
-}
 
-/* Override typography plugin heading styles */
-.prose h1,
-.prose h2,
-.prose h3,
-.prose h4,
-.prose h5,
-.prose h6 {
-  @apply font-semibold;
+  /* Override typography plugin heading styles */
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+      @apply font-semibold;
+  }
+
+  /* Admonition styles -------------------------------------------------------------- */
+
+  .prose .admonition {
+    @apply my-4 p-4 rounded-lg border-l-4;
+  }
+
+  .prose .admonition-title {
+    @apply font-semibold mb-2 mt-0;
+  }
+
+  .prose .admonition > *:last-child {
+    @apply mb-0;
+  }
+
+  /* Note admonition - blue */
+  .prose .admonition.note {
+    @apply bg-blue-50 dark:bg-blue-950/30 border-blue-500 dark:border-blue-600;
+  }
+
+  .prose .admonition.note .admonition-title {
+    @apply text-blue-900 dark:text-blue-300;
+  }
+
+  /* Tip/Hint admonition - green */
+  .prose .admonition.tip,
+  .prose .admonition.hint {
+    @apply bg-green-50 dark:bg-green-950/30 border-green-500 dark:border-green-600;
+  }
+
+  .prose .admonition.tip .admonition-title,
+  .prose .admonition.hint .admonition-title {
+    @apply text-green-900 dark:text-green-300;
+  }
+
+  /* Important admonition - purple */
+  .prose .admonition.important {
+    @apply bg-purple-50 dark:bg-purple-950/30 border-purple-500 dark:border-purple-600;
+  }
+
+  .prose .admonition.important .admonition-title {
+    @apply text-purple-900 dark:text-purple-300;
+  }
+
+  /* Warning/Caution/Attention admonition - amber */
+  .prose .admonition.warning,
+  .prose .admonition.caution,
+  .prose .admonition.attention {
+    @apply bg-amber-50 dark:bg-amber-950/30 border-amber-500 dark:border-amber-600;
+  }
+
+  .prose .admonition.warning .admonition-title,
+  .prose .admonition.caution .admonition-title,
+  .prose .admonition.attention .admonition-title {
+    @apply text-amber-900 dark:text-amber-300;
+  }
+
+  /* Danger/Error admonition - red */
+  .prose .admonition.danger,
+  .prose .admonition.error {
+    @apply bg-red-50 dark:bg-red-950/30 border-red-500 dark:border-red-600;
+  }
+
+  .prose .admonition.danger .admonition-title,
+  .prose .admonition.error .admonition-title {
+    @apply text-red-900 dark:text-red-300;
+  }
+
+  /* Details/Summary (collapsible) styles -------------------------------------------- */
+
+  .prose details {
+    @apply my-4 p-4 rounded-lg border border-gray-300 dark:border-gray-700;
+  }
+
+  .prose details summary {
+    @apply font-semibold cursor-pointer select-none -mx-4 -my-4 px-4 py-3 rounded-t-lg hover:bg-gray-100 dark:hover:bg-gray-700/50;
+  }
+
+  .prose details[open] summary {
+    @apply mb-3 border-b border-gray-300 dark:border-gray-700;
+  }
+
+  /* Arrow indicator for closed/open state */
+  .prose details summary::marker {
+    @apply text-gray-500 dark:text-gray-400;
+  }
+
+  /* Remove default margins from first/last children inside details content */
+  .prose details > *:last-child {
+    @apply mb-0;
+  }
+
+  .prose details > summary + *:first-of-type {
+    @apply mt-0;
+  }
 }

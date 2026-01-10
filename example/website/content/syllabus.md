@@ -50,3 +50,7 @@ the new styles.
     - Foo
     - Bar
     - Baz
+
+.. danger::
+
+    This is a warning!
