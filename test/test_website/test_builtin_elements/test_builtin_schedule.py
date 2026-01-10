@@ -9,6 +9,7 @@ import datetime
 import jinja2
 import pytest
 import smartconfig.exceptions
+import smartconfig.types
 
 import automata.materials
 import automata.website
@@ -55,7 +56,7 @@ def schedule_element(jinja_env, render_context):
     return Schedule(jinja_env, render_context)
 
 
-# Validation and error handling tests ================================================
+# validation and error handling ========================================================
 
 
 def test_schedule_element_raises_on_missing_resource_type(
@@ -371,19 +372,128 @@ def test_schedule_validates_artifact_link_config(schedule_element):
         schedule_element(config)
 
 
-# NOTE: Tests for artifact_links and metadata_links rejection in extra activities
-# are better tested through the full rendering pipeline in test_default_theme tests,
-# since they require the full template environment to be set up.
+# activity placement logic =============================================================
 
 
-# Activity placement logic tests =====================================================
-# Note: These tests are complex and are better tested through the rendering tests
-# in test_default_theme/test_schedule.py. The activity placement logic involves
-# complex interactions with date resolution and week calculation that require
-# the full element rendering pipeline.
+def test_activities_placed_in_correct_week(schedule_element):
+    """Test that activities are placed in the correct week based on display date."""
+
+    # 1) make a fake context with a few lecture publications, each in a different week
+    materials = automata.materials.Universe(
+        collections={
+            "lectures": automata.materials.Collection(
+                publication_schema=None,
+                publications={
+                    "lecture01": automata.materials.Publication(
+                        metadata={
+                            "number": 1,
+                            "date": datetime.date(2024, 1, 8),  # Week 1
+                        },
+                        artifacts={},
+                    ),
+                    "lecture02": automata.materials.Publication(
+                        metadata={
+                            "number": 2,
+                            "date": datetime.date(2024, 1, 17),  # Week 2
+                        },
+                        artifacts={},
+                    ),
+                },
+            )
+        }
+    )
+
+    # 2) create a schedule element and set its context to be the one we just made
+    schedule_element.context.materials = materials
+    schedule_element.context.current_time = datetime.datetime(2024, 1, 20, 12, 0, 0)
+
+    # 3) create a schedule element config
+    config = {
+        "week_topics": ["Introduction", "Advanced Topics", "Even More Advanced Topics"],
+        "first_week_start_date": datetime.date(2024, 1, 8),
+        "primary_activity_collections": [
+            {
+                "collection": "lectures",
+                "for_each_publication": {
+                    "start_displaying_on": smartconfig.types.RawString(
+                        "${ publication.metadata.date }"
+                    ),
+                    "title": "Lecture",
+                    "resources": [],
+                },
+            }
+        ],
+        "secondary_activity_collections": [],
+        "extra_primary_activities": [],
+        "extra_secondary_activities": [],
+        "events": [],
+        "announcements": [],
+    }
+
+    # 4) call template_vars to process the activities and check that they are in the
+    # expected weeks
+    tvars = schedule_element.template_vars(config)
+
+    # Lecture 1 (Jan 8) should be in week 1, Lecture 2 (Jan 17) should be in week 2
+    assert len(tvars["primary_activities"][1]) == 1
+    assert len(tvars["primary_activities"][2]) == 1
 
 
-# Resource processing tests ==========================================================
+def test_activities_outside_week_range_placed_in_none_week(schedule_element):
+    """Test that activities with dates outside all weeks are placed under None."""
+    # Create a materials universe with a lecture outside the defined weeks
+    materials = automata.materials.Universe(
+        collections={
+            "lectures": automata.materials.Collection(
+                publication_schema=None,
+                publications={
+                    "lecture01": automata.materials.Publication(
+                        metadata={
+                            "number": 1,
+                            "date": datetime.date(2024, 1, 20),  # After week 1
+                        },
+                        artifacts={},
+                    )
+                },
+            )
+        }
+    )
+    schedule_element.context.materials = materials
+    schedule_element.context.current_time = datetime.datetime(2024, 1, 25, 12, 0, 0)
+
+    config = {
+        "week_topics": ["Introduction"],
+        "first_week_start_date": datetime.date(2024, 1, 8),  # Week 1: Jan 8-14
+        "primary_activity_collections": [
+            {
+                "collection": "lectures",
+                "for_each_publication": {
+                    "start_displaying_on": smartconfig.types.RawString(
+                        "${ publication.metadata.date }"
+                    ),
+                    "title": "Lecture",
+                    "resources": [],
+                },
+            }
+        ],
+        "secondary_activity_collections": [],
+        "extra_primary_activities": [],
+        "extra_secondary_activities": [],
+        "events": [],
+        "announcements": [],
+    }
+
+    tvars = schedule_element.template_vars(config)
+
+    # Activity should be in None week (date is outside all defined weeks)
+    assert None in tvars["primary_activities"]
+    assert len(tvars["primary_activities"][None]) == 1
+    assert len(tvars["primary_activities"][1]) == 0
+
+
+# resources ============================================================================
+
+
 def test_metadata_links_resources_are_expanded(schedule_element):
     """Test that metadata_links resources are expanded correctly via template_vars."""
     # Create a materials universe with a lecture that has videos metadata
@@ -445,9 +555,7 @@ def test_metadata_links_resources_are_expanded(schedule_element):
     tvars = schedule_element.template_vars(config)
 
     # Check that we have primary activities
-    assert 1 in tvars["primary_activities"]
     activities = tvars["primary_activities"][1]
-    assert len(activities) == 1
     activity = activities[0]
 
     # Check that the metadata_links resource was converted to links
