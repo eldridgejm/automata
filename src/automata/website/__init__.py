@@ -4,8 +4,7 @@ from . import exceptions
 from ._config import ThemeConfig, WebsiteConfig
 from ._elements import BasicElement, Element, TemplateElement
 from ._frontmatter import Frontmatter
-from ._generate import generate
-from ._render import RenderContext
+from ._generate import RenderContext, generate
 from ._theme import Theme, ThemeHooks
 from .exceptions import PageError
 

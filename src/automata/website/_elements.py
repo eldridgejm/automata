@@ -8,7 +8,7 @@ import smartconfig
 from ..materials import Publication
 from ..util import markdown as markdown_util
 from ..util.resolution import resolve
-from ._render import RenderContext
+from ._generate import RenderContext
 
 
 class Element(ABC):
