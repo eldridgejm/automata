@@ -4,7 +4,6 @@ import dataclasses
 import datetime
 import pathlib
 import shutil
-from functools import partial
 from typing import Any, Callable, cast
 
 import jinja2
@@ -77,64 +76,6 @@ def _interpolate(
         block_start_string="{%",
         block_end_string="%}",
     ).render(**context.to_dict())
-
-
-def render_page_from_markdown(
-    markdown_content: str,
-    context: RenderContext,
-    markdown_renderer: Callable[[str], str] = markdown_util.render,
-) -> str:
-    """Renders a page from markdown.
-
-    Parameters
-    ----------
-    markdown_content : str
-        The markdown content to render.
-
-    context : RenderContext
-        The rendering context.
-
-    markdown_renderer : Callable[[str], str], optional
-        The function to use for rendering markdown to HTML. Should take markdown
-        content (str) and return HTML (str). Defaults to
-        :func:`automata.util.markdown.render` which enables the TOC plugin.
-
-    Returns
-    -------
-    str
-        The rendered HTML content.
-    """
-    interpolated_markdown = _interpolate(
-        markdown_content,
-        context,
-    )
-
-    return markdown_renderer(interpolated_markdown)
-
-
-def render_page_from_html(
-    html_content: str,
-    context: RenderContext,
-) -> str:
-    """Renders a page from HTML.
-
-    Parameters
-    ----------
-    html_content : str
-        The HTML content to render.
-
-    context : RenderContext
-        The rendering context.
-
-    Returns
-    -------
-    str
-        The rendered HTML content.
-    """
-    return _interpolate(
-        html_content,
-        context,
-    )
 
 
 def _resolve_theme_config(
@@ -290,8 +231,8 @@ def _generate_single_page(
     input_path: pathlib.Path,
     output_path: pathlib.Path,
     jinja_environment: jinja2.Environment,
-    renderer: Callable[[str, RenderContext], str],
     context: RenderContext,
+    markdown_renderer: Callable[[str], str] | None = None,
 ) -> None:
     raw_content = input_path.read_text()
 
@@ -307,8 +248,12 @@ def _generate_single_page(
     # create a new context with the frontmatter
     context = dataclasses.replace(context, frontmatter=frontmatter)
 
-    # render the content (without frontmatter)
-    rendered_content = renderer(content, context)
+    # interpolate variables in the content
+    rendered_content = _interpolate(content, context)
+
+    # render markdown to HTML if a markdown renderer is provided
+    if markdown_renderer is not None:
+        rendered_content = markdown_renderer(rendered_content)
 
     base_path = context.website_config.base_path
     if not base_path.endswith("/"):
@@ -624,13 +569,11 @@ def generate(
                 path,
                 output_path,
                 jinja_environment,
-                partial(render_page_from_markdown, markdown_renderer=render_markdown),
                 context,
+                markdown_renderer=render_markdown,
             )
         elif path.suffix.lower() == ".html":
-            _generate_single_page(
-                path, output_path, jinja_environment, render_page_from_html, context
-            )
+            _generate_single_page(path, output_path, jinja_environment, context)
         else:
             _copy_file_to_output(path, output_path, config)
 
