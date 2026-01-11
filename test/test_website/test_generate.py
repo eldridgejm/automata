@@ -1245,3 +1245,140 @@ def test_default_theme_fallback_when_npx_not_available(tmpsite, monkeypatch, cap
     assert any("npx not found" in record.message for record in caplog.records)
     # Build should still succeed
     assert "Test Page" in tmpsite.get_output("index.html")
+
+
+# extra_content =======================================================================
+
+
+def test_extra_content_with_string_renders_through_full_pipeline(tmpsite, config):
+    """String content goes through full pipeline: frontmatter, interpolation, etc."""
+    # given
+    markdown_content = "# Extra Page\n\nThis is **bold** text."
+
+    # when
+    automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        extra_content={"extra.html": markdown_content},
+    )
+
+    # then
+    output = tmpsite.get_output("extra.html")
+    assert "<h1>Extra Page</h1>" in output
+    assert "<strong>bold</strong>" in output
+    # Should be wrapped in template (default theme marker)
+    assert 'data-automata-theme="default"' in output
+
+
+def test_extra_content_with_string_supports_frontmatter(tmpsite, config):
+    """String content with frontmatter should have it parsed."""
+    # given
+    content_with_frontmatter = """---
+vars:
+  greeting: Hello World
+---
+# ${ frontmatter.vars.greeting }
+"""
+
+    # when
+    automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        extra_content={"greeting.html": content_with_frontmatter},
+    )
+
+    # then
+    output = tmpsite.get_output("greeting.html")
+    assert "<h1>Hello World</h1>" in output
+
+
+def test_extra_content_with_string_supports_variable_interpolation(tmpsite, config):
+    """String content should have access to render context variables."""
+    # given
+    content = "Site title: ${ website_config.theme.config.short_title }"
+
+    # when
+    automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        extra_content={"info.html": content},
+    )
+
+    # then
+    output = tmpsite.get_output("info.html")
+    assert "Site title: DSC 40B" in output
+
+
+def test_extra_content_with_bytes_writes_binary(tmpsite, config):
+    """Bytes content should be written directly as binary."""
+    # given
+    binary_content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"  # PNG header bytes
+
+    # when
+    automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        extra_content={"image.png": binary_content},
+    )
+
+    # then
+    output_path = tmpsite.build_directory / "image.png"
+    assert output_path.exists()
+    assert output_path.read_bytes() == binary_content
+
+
+def test_extra_content_with_path_copies_file(tmpsite, config, tmp_path):
+    """Path content should copy the source file to the destination."""
+    # given
+    source_file = tmp_path / "source.txt"
+    source_file.write_text("Content from source file")
+
+    # when
+    automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        extra_content={"copied.txt": source_file},
+    )
+
+    # then
+    assert tmpsite.get_output("copied.txt") == "Content from source file"
+
+
+def test_extra_content_creates_subdirectories(tmpsite, config):
+    """Extra content with nested paths should create parent directories."""
+    # given
+    content = "# Nested Page"
+
+    # when
+    automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        extra_content={"deep/nested/page.html": content},
+    )
+
+    # then
+    output = tmpsite.get_output("deep/nested/page.html")
+    assert "<h1>Nested Page</h1>" in output
+
+
+def test_extra_content_with_multiple_items(tmpsite, config, tmp_path):
+    """Multiple extra content items of different types should all be processed."""
+    # given
+    source_file = tmp_path / "data.json"
+    source_file.write_text('{"key": "value"}')
+
+    # when
+    automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        extra_content={
+            "page.html": "# A Page",
+            "binary.bin": b"\x00\x01\x02",
+            "data.json": source_file,
+        },
+    )
+
+    # then
+    assert "<h1>A Page</h1>" in tmpsite.get_output("page.html")
+    assert (tmpsite.build_directory / "binary.bin").read_bytes() == b"\x00\x01\x02"
+    assert tmpsite.get_output("data.json") == '{"key": "value"}'

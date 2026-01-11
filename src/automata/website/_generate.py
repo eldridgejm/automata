@@ -371,6 +371,7 @@ def generate(
     current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown_util.render,
     cwd: pathlib.Path | None = None,
+    extra_content: dict[str, str | bytes | pathlib.Path] | None = None,
 ):
     """Generates a static website from course materials.
 
@@ -405,6 +406,16 @@ def generate(
         in the configuration (content_directory, build_directory, theme paths) will
         be resolved relative to this directory. If None, uses the current working
         directory. Absolute paths in config are used as-is regardless of cwd.
+    extra_content : dict[str, str | bytes | pathlib.Path], optional
+        Additional content to include in the generated output. Each key is a relative
+        path from the build directory root, determining where the content should be
+        placed. The value can be:
+
+        - A string: assumed to be markdown or HTML. It is processed through the full
+          rendering pipeline (frontmatter parsing, variable interpolation, markdown
+          rendering, and template wrapping), then written as text.
+        - A bytes object: written directly as binary.
+        - A pathlib.Path: the file at that path is copied to the destination.
 
     Notes
     -----
@@ -588,6 +599,7 @@ def generate(
         for name, element in theme.elements.items()
     }
 
+    # process main content
     for path in _paths_outside_materials_directory(
         content_directory, materials_directory
     ):
@@ -609,6 +621,26 @@ def generate(
             _generate_single_page(path, output_path, jinja_environment, context)
         else:
             _copy_file_to_output(path, output_path, config)
+
+    # Process extra content
+    if extra_content is not None:
+        for relative_path, content in extra_content.items():
+            output_path = build_directory / relative_path
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if isinstance(content, bytes):
+                output_path.write_bytes(content)
+            elif isinstance(content, pathlib.Path):
+                shutil.copy2(content, output_path)
+            else:
+                # String content goes through the full rendering pipeline
+                rendered = _render_page(
+                    content,
+                    jinja_environment,
+                    context,
+                    markdown_renderer=render_markdown,
+                )
+                output_path.write_text(rendered)
 
     # Copy the built materials to the build directory
     materials_output_path = build_directory / config.materials_directory_name
