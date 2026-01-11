@@ -701,7 +701,7 @@ def generate(
     theme = _get_theme(config, extra_themes=extra_themes, cwd=cwd)
     config.theme.config = _resolve_theme_config(config.theme.config, theme.schema)
 
-    _run_theme_hook(theme.hooks.pre_build, config, "pre_build")
+    _run_theme_hook(theme.hooks.pre_generate, config, "pre_generate")
 
     # set up jinja environment and copy theme static files
     jinja_environment = theme.create_jinja_environment()
@@ -735,4 +735,4 @@ def generate(
 
     # finalize build
     _copy_materials_to_build(materials_directory, build_directory, config)
-    _run_theme_hook(theme.hooks.post_build, config, "post_build")
+    _run_theme_hook(theme.hooks.post_generate, config, "post_generate")

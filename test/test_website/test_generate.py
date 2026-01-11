@@ -952,19 +952,19 @@ def test_generate_updates_config_with_resolved_theme_config(tmp_path, tmpsite):
 # hooks ===========================================================================
 
 
-def test_generate_executes_pre_build_hook(tmpsite, tmp_path):
-    """Test that generate() executes pre_build hook if defined."""
-    # given: a theme with a pre_build hook that creates a marker file
+def test_generate_executes_pre_generate_hook(tmpsite, tmp_path):
+    """Test that generate() executes pre_generate hook if defined."""
+    # given: a theme with a pre_generate hook that creates a marker file
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
-    marker_file = tmp_path / "pre_build_marker.txt"
+    marker_file = tmp_path / "pre_generate_marker.txt"
     (theme_dir / "hooks.py").write_text(
-        f"def pre_build(config):\n"
+        f"def pre_generate(config):\n"
         f"    with open('{marker_file}', 'w') as f:\n"
-        f"        f.write('pre_build executed')\n"
+        f"        f.write('pre_generate executed')\n"
     )
 
     tmpsite.make_page("index.md", "# Home")
@@ -983,22 +983,22 @@ def test_generate_executes_pre_build_hook(tmpsite, tmp_path):
 
     # then
     assert marker_file.exists()
-    assert marker_file.read_text() == "pre_build executed"
+    assert marker_file.read_text() == "pre_generate executed"
 
 
-def test_generate_executes_post_build_hook(tmpsite, tmp_path):
-    """Test that generate() executes post_build hook if defined."""
-    # given: a theme with a post_build hook that creates a marker file
+def test_generate_executes_post_generate_hook(tmpsite, tmp_path):
+    """Test that generate() executes post_generate hook if defined."""
+    # given: a theme with a post_generate hook that creates a marker file
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
-    marker_file = tmp_path / "post_build_marker.txt"
+    marker_file = tmp_path / "post_generate_marker.txt"
     (theme_dir / "hooks.py").write_text(
-        f"def post_build(config):\n"
+        f"def post_generate(config):\n"
         f"    with open('{marker_file}', 'w') as f:\n"
-        f"        f.write('post_build executed')\n"
+        f"        f.write('post_generate executed')\n"
     )
 
     tmpsite.make_page("index.md", "# Home")
@@ -1017,11 +1017,11 @@ def test_generate_executes_post_build_hook(tmpsite, tmp_path):
 
     # then
     assert marker_file.exists()
-    assert marker_file.read_text() == "post_build executed"
+    assert marker_file.read_text() == "post_generate executed"
 
 
 def test_generate_executes_both_hooks_in_order(tmpsite, tmp_path):
-    """Test that generate() executes pre_build before post_build."""
+    """Test that generate() executes pre_generate before post_generate."""
     # given: a theme with both hooks that append to a file
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
@@ -1030,13 +1030,13 @@ def test_generate_executes_both_hooks_in_order(tmpsite, tmp_path):
 
     log_file = tmp_path / "hooks_log.txt"
     (theme_dir / "hooks.py").write_text(
-        f"def pre_build(config):\n"
+        f"def pre_generate(config):\n"
         f"    with open('{log_file}', 'a') as f:\n"
-        f"        f.write('pre_build\\n')\n"
+        f"        f.write('pre_generate\\n')\n"
         f"\n"
-        f"def post_build(config):\n"
+        f"def post_generate(config):\n"
         f"    with open('{log_file}', 'a') as f:\n"
-        f"        f.write('post_build\\n')\n"
+        f"        f.write('post_generate\\n')\n"
     )
 
     tmpsite.make_page("index.md", "# Home")
@@ -1056,7 +1056,7 @@ def test_generate_executes_both_hooks_in_order(tmpsite, tmp_path):
     # then
     assert log_file.exists()
     log_content = log_file.read_text()
-    assert log_content == "pre_build\npost_build\n"
+    assert log_content == "pre_generate\npost_generate\n"
 
 
 def test_generate_continues_without_hooks(tmpsite, tmp_path):
@@ -1083,16 +1083,16 @@ def test_generate_continues_without_hooks(tmpsite, tmp_path):
     assert "Home" in tmpsite.get_output("index.html")
 
 
-def test_generate_raises_on_pre_build_hook_error(tmpsite, tmp_path):
-    """Test that generate() raises WebsiteError when pre_build hook fails."""
-    # given: a theme with a pre_build hook that raises an exception
+def test_generate_raises_on_pre_generate_hook_error(tmpsite, tmp_path):
+    """Test that generate() raises WebsiteError when pre_generate hook fails."""
+    # given: a theme with a pre_generate hook that raises an exception
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
     (theme_dir / "hooks.py").write_text(
-        "def pre_build(config):\n    raise RuntimeError('Hook failed!')\n"
+        "def pre_generate(config):\n    raise RuntimeError('Hook failed!')\n"
     )
 
     tmpsite.make_page("index.md", "# Home")
@@ -1107,20 +1107,20 @@ def test_generate_raises_on_pre_build_hook_error(tmpsite, tmp_path):
     )
 
     # when / then
-    with raises(automata.website.exceptions.WebsiteError, match="pre_build hook"):
+    with raises(automata.website.exceptions.WebsiteError, match="pre_generate hook"):
         automata.website.generate(config, tmpsite.materials_directory)
 
 
-def test_generate_raises_on_post_build_hook_error(tmpsite, tmp_path):
-    """Test that generate() raises WebsiteError when post_build hook fails."""
-    # given: a theme with a post_build hook that raises an exception
+def test_generate_raises_on_post_generate_hook_error(tmpsite, tmp_path):
+    """Test that generate() raises WebsiteError when post_generate hook fails."""
+    # given: a theme with a post_generate hook that raises an exception
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
     (theme_dir / "hooks.py").write_text(
-        "def post_build(config):\n    raise RuntimeError('Hook failed!')\n"
+        "def post_generate(config):\n    raise RuntimeError('Hook failed!')\n"
     )
 
     tmpsite.make_page("index.md", "# Home")
@@ -1135,7 +1135,7 @@ def test_generate_raises_on_post_build_hook_error(tmpsite, tmp_path):
     )
 
     # when / then
-    with raises(automata.website.exceptions.WebsiteError, match="post_build hook"):
+    with raises(automata.website.exceptions.WebsiteError, match="post_generate hook"):
         automata.website.generate(config, tmpsite.materials_directory)
 
 
