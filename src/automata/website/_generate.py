@@ -227,6 +227,75 @@ def _copy_theme_static_files(theme: Theme, build_directory: pathlib.Path) -> Non
             output_path.write_bytes(static_content.read_bytes())
 
 
+def _create_url_for(base_path: str) -> Callable[[str], str]:
+    """Create a url_for function that respects the site's base path."""
+
+    def url_for(path: str) -> str:
+        if path.startswith("http://") or path.startswith("https://"):
+            return path
+        return f"{base_path.rstrip('/')}/{path.lstrip('/')}"
+
+    return url_for
+
+
+def _run_theme_hook(
+    hook: Callable[[WebsiteConfig], None] | None,
+    config: WebsiteConfig,
+    hook_name: str,
+) -> None:
+    """Execute a theme hook with error handling."""
+    if hook is not None:
+        try:
+            hook(config)
+        except Exception as e:
+            raise WebsiteError(f"Error in theme {hook_name} hook: {e}") from e
+
+
+def _create_render_context(
+    config: WebsiteConfig,
+    materials: Universe[ExportedArtifact],
+    url_for: Callable[[str], str],
+    current_time: datetime.datetime,
+    vars: dict[str, Any],
+    theme: Theme,
+    jinja_environment: jinja2.Environment,
+) -> RenderContext:
+    """Create the render context with theme elements bound."""
+    context = RenderContext(
+        website_config=config,
+        materials=materials,
+        url_for=url_for,
+        current_time=current_time,
+        vars=vars,
+    )
+
+    context.elements = {
+        name: element(jinja_environment, context)
+        for name, element in theme.elements.items()
+    }
+
+    return context
+
+
+def _copy_materials_to_build(
+    materials_directory: pathlib.Path,
+    build_directory: pathlib.Path,
+    config: WebsiteConfig,
+) -> None:
+    """Copy the materials directory to the build directory."""
+    materials_output_path = build_directory / config.materials_directory_name
+
+    # Only copy if source and destination are different
+    # (resolve both paths to handle relative paths and symlinks correctly)
+    if materials_directory.resolve() != materials_output_path.resolve():
+        materials_output_path.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(
+            materials_directory,
+            materials_output_path,
+            dirs_exist_ok=True,
+        )
+
+
 def _render_page(
     content: str,
     jinja_environment: jinja2.Environment,
@@ -361,6 +430,82 @@ def _paths_outside_materials_directory(
 
         for filename in filenames:
             yield dirpath / filename
+
+
+def _process_content_directory(
+    content_directory: pathlib.Path,
+    materials_directory: pathlib.Path,
+    build_directory: pathlib.Path,
+    jinja_environment: jinja2.Environment,
+    context: RenderContext,
+    config: WebsiteConfig,
+    render_markdown: Callable[[str], str],
+) -> None:
+    """Process all files in the content directory.
+
+    Walks through the content directory and processes each file:
+    - Directories are created in the build directory
+    - Markdown files are rendered to HTML
+    - HTML files are rendered (with variable interpolation)
+    - Other files are copied as-is
+
+    """
+    for path in _paths_outside_materials_directory(
+        content_directory, materials_directory
+    ):
+        relative_path = path.relative_to(content_directory)
+        output_path = build_directory / relative_path
+
+        if path.is_dir():
+            output_path.mkdir(parents=True, exist_ok=True)
+        elif path.suffix.lower() == ".md":
+            output_path = output_path.with_suffix(".html")
+            _generate_single_page(
+                path,
+                output_path,
+                jinja_environment,
+                context,
+                markdown_renderer=render_markdown,
+            )
+        elif path.suffix.lower() == ".html":
+            _generate_single_page(path, output_path, jinja_environment, context)
+        else:
+            _copy_file_to_output(path, output_path, config)
+
+
+def _process_extra_content(
+    extra_content: dict[str, str | bytes | pathlib.Path],
+    build_directory: pathlib.Path,
+    jinja_environment: jinja2.Environment,
+    context: RenderContext,
+    render_markdown: Callable[[str], str],
+) -> None:
+    """Process extra content items and write them to the build directory.
+
+    Each item in extra_content is processed based on its type:
+    - str: rendered through the full pipeline (frontmatter, interpolation,
+      markdown, template)
+    - bytes: written directly as binary
+    - pathlib.Path: copied from source to destination
+
+    """
+    for relative_path, content in extra_content.items():
+        output_path = build_directory / relative_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(content, bytes):
+            output_path.write_bytes(content)
+        elif isinstance(content, pathlib.Path):
+            shutil.copy2(content, output_path)
+        else:
+            # String content goes through the full rendering pipeline
+            rendered = _render_page(
+                content,
+                jinja_environment,
+                context,
+                markdown_renderer=render_markdown,
+            )
+            output_path.write_text(rendered)
 
 
 def generate(
@@ -542,122 +687,52 @@ def generate(
     directory can contain only templates, only static files, or both.
 
     """
-
     # set default values for optional parameters
-    if vars is None:
-        vars = {}
+    vars = vars or {}
+    current_time = current_time or datetime.datetime.now()
+    cwd = cwd or pathlib.Path.cwd()
 
-    if current_time is None:
-        current_time = datetime.datetime.now()
-
-    if cwd is None:
-        cwd = pathlib.Path.cwd()
-
-    # Resolve paths relative to cwd (absolute paths are unchanged)
+    # resolve paths relative to cwd (absolute paths are unchanged)
     content_directory = cwd / config.content_directory
     build_directory = cwd / config.build_directory
 
-    # create url_for function based on config.base_path
-    def url_for(path: str) -> str:
-        if path.startswith("http://") or path.startswith("https://"):
-            return path
-        else:
-            return f"{config.base_path.rstrip('/')}/{path.lstrip('/')}"
-
+    # set up theme and its configuration
+    url_for = _create_url_for(config.base_path)
     theme = _get_theme(config, extra_themes=extra_themes, cwd=cwd)
+    config.theme.config = _resolve_theme_config(config.theme.config, theme.schema)
 
-    # Resolve and validate theme configuration
-    config.theme.config = _resolve_theme_config(
-        theme_config=config.theme.config,
-        schema=theme.schema,
-    )
+    _run_theme_hook(theme.hooks.pre_build, config, "pre_build")
 
-    # Execute pre-build hook if defined
-    if theme.hooks.pre_build is not None:
-        try:
-            theme.hooks.pre_build(config)
-        except Exception as e:
-            raise WebsiteError(f"Error in theme pre_build hook: {e}") from e
-
+    # set up jinja environment and copy theme static files
     jinja_environment = theme.create_jinja_environment()
-
     _copy_theme_static_files(theme, build_directory)
 
+    # load materials and create render context
     materials = _load_materials(materials_directory)
     _fix_artifact_paths(materials, url_for)
-
-    context = RenderContext(
-        website_config=config,
-        materials=materials,
-        url_for=url_for,
-        current_time=current_time,
-        vars=vars,
+    context = _create_render_context(
+        config, materials, url_for, current_time, vars, theme, jinja_environment
     )
 
-    context.elements = {
-        name: element(jinja_environment, context)
-        for name, element in theme.elements.items()
-    }
-
-    # process main content
-    for path in _paths_outside_materials_directory(
-        content_directory, materials_directory
-    ):
-        relative_path = path.relative_to(content_directory)
-        output_path = build_directory / relative_path
-
-        if path.is_dir():
-            output_path.mkdir(parents=True, exist_ok=True)
-        elif path.suffix.lower() == ".md":
-            output_path = output_path.with_suffix(".html")
-            _generate_single_page(
-                path,
-                output_path,
-                jinja_environment,
-                context,
-                markdown_renderer=render_markdown,
-            )
-        elif path.suffix.lower() == ".html":
-            _generate_single_page(path, output_path, jinja_environment, context)
-        else:
-            _copy_file_to_output(path, output_path, config)
-
-    # Process extra content
+    # process content
+    _process_content_directory(
+        content_directory,
+        materials_directory,
+        build_directory,
+        jinja_environment,
+        context,
+        config,
+        render_markdown,
+    )
     if extra_content is not None:
-        for relative_path, content in extra_content.items():
-            output_path = build_directory / relative_path
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-
-            if isinstance(content, bytes):
-                output_path.write_bytes(content)
-            elif isinstance(content, pathlib.Path):
-                shutil.copy2(content, output_path)
-            else:
-                # String content goes through the full rendering pipeline
-                rendered = _render_page(
-                    content,
-                    jinja_environment,
-                    context,
-                    markdown_renderer=render_markdown,
-                )
-                output_path.write_text(rendered)
-
-    # Copy the built materials to the build directory
-    materials_output_path = build_directory / config.materials_directory_name
-
-    # Only copy if source and destination are different
-    # (resolve both paths to handle relative paths and symlinks correctly)
-    if materials_directory.resolve() != materials_output_path.resolve():
-        materials_output_path.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(
-            materials_directory,
-            materials_output_path,
-            dirs_exist_ok=True,
+        _process_extra_content(
+            extra_content,
+            build_directory,
+            jinja_environment,
+            context,
+            render_markdown,
         )
 
-    # Execute post-build hook if defined
-    if theme.hooks.post_build is not None:
-        try:
-            theme.hooks.post_build(config)
-        except Exception as e:
-            raise WebsiteError(f"Error in theme post_build hook: {e}") from e
+    # finalize build
+    _copy_materials_to_build(materials_directory, build_directory, config)
+    _run_theme_hook(theme.hooks.post_build, config, "post_build")
