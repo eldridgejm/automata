@@ -6,6 +6,7 @@ import json
 import sys
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, cast
 
 import jinja2
@@ -17,21 +18,27 @@ if TYPE_CHECKING:
     from ._elements import Element
 
 
+# Type alias for extra content that can be provided by hooks
+ExtraContent = dict[str, str | bytes | Path]
+
+
 @dataclass
 class ThemeHooks:
     """Hooks that can be executed during website generation.
 
     Attributes
     ----------
-    pre_generate : Callable[[WebsiteConfig], None] | None
+    pre_generate : Callable[[WebsiteConfig], ExtraContent | None] | None
         Optional hook called before the main build process begins.
-        Receives the website configuration.
+        Receives the website configuration. May return a dictionary of extra
+        content to be included in the generated output (same format as the
+        extra_content parameter to generate()).
     post_generate : Callable[[WebsiteConfig], None] | None
         Optional hook called after the main build process completes.
         Receives the website configuration.
     """
 
-    pre_generate: Callable[["WebsiteConfig"], None] | None = None
+    pre_generate: Callable[["WebsiteConfig"], ExtraContent | None] | None = None
     post_generate: Callable[["WebsiteConfig"], None] | None = None
 
 
