@@ -6,6 +6,7 @@ import json
 import sys
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, cast
 
 import jinja2
@@ -17,22 +18,28 @@ if TYPE_CHECKING:
     from ._elements import Element
 
 
+# Type alias for extra content that can be provided by hooks
+ExtraContent = dict[str, str | bytes | Path]
+
+
 @dataclass
 class ThemeHooks:
     """Hooks that can be executed during website generation.
 
     Attributes
     ----------
-    pre_build : Callable[[WebsiteConfig], None] | None
+    pre_generate : Callable[[WebsiteConfig], ExtraContent | None] | None
         Optional hook called before the main build process begins.
-        Receives the website configuration.
-    post_build : Callable[[WebsiteConfig], None] | None
+        Receives the website configuration. May return a dictionary of extra
+        content to be included in the generated output (same format as the
+        extra_content parameter to generate()).
+    post_generate : Callable[[WebsiteConfig], None] | None
         Optional hook called after the main build process completes.
         Receives the website configuration.
     """
 
-    pre_build: Callable[["WebsiteConfig"], None] | None = None
-    post_build: Callable[["WebsiteConfig"], None] | None = None
+    pre_generate: Callable[["WebsiteConfig"], ExtraContent | None] | None = None
+    post_generate: Callable[["WebsiteConfig"], None] | None = None
 
 
 @dataclass
@@ -70,8 +77,8 @@ class Theme:
         variable must be a dictionary mapping element names to ``Element``
         instances.
 
-        If a ``hooks.py`` file is present, it may define ``pre_build`` and/or
-        ``post_build`` functions that will be called during website generation.
+        If a ``hooks.py`` file is present, it may define ``pre_generate`` and/or
+        ``post_generate`` functions that will be called during website generation.
 
         Parameters
         ----------
@@ -347,8 +354,8 @@ def _load_elements_from_directory(
 def _load_hooks_from_directory(hooks_dir: Traversable) -> ThemeHooks:
     """Load hooks from a hooks.py file in a theme directory.
 
-    The directory may contain a ``hooks.py`` file that defines ``pre_build``
-    and/or ``post_build`` functions. Both functions are optional.
+    The directory may contain a ``hooks.py`` file that defines ``pre_generate``
+    and/or ``post_generate`` functions. Both functions are optional.
 
     Parameters
     ----------
@@ -379,21 +386,23 @@ def _load_hooks_from_directory(hooks_dir: Traversable) -> ThemeHooks:
     )
 
     # Extract hooks if they exist
-    pre_build = None
-    post_build = None
+    pre_generate = None
+    post_generate = None
 
-    if hasattr(module, "pre_build"):
-        pre_build = module.pre_build
-        if not callable(pre_build):
+    if hasattr(module, "pre_generate"):
+        pre_generate = module.pre_generate
+        if not callable(pre_generate):
             raise ValueError(
-                f"pre_build in {hooks_file} must be callable, got {type(pre_build)}."
+                f"pre_generate in {hooks_file} must be callable, "
+                f"got {type(pre_generate)}."
             )
 
-    if hasattr(module, "post_build"):
-        post_build = module.post_build
-        if not callable(post_build):
+    if hasattr(module, "post_generate"):
+        post_generate = module.post_generate
+        if not callable(post_generate):
             raise ValueError(
-                f"post_build in {hooks_file} must be callable, got {type(post_build)}."
+                f"post_generate in {hooks_file} must be callable, "
+                f"got {type(post_generate)}."
             )
 
-    return ThemeHooks(pre_build=pre_build, post_build=post_build)
+    return ThemeHooks(pre_generate=pre_generate, post_generate=post_generate)

@@ -137,11 +137,11 @@ def test_rebuild_tailwind_raises_on_subprocess_check_error(tmp_path):
             hooks._rebuild_tailwind(input_css, output_css, content_dir)
 
 
-# post_build integration tests ==============================================
+# post_generate integration tests ==============================================
 
 
-def test_post_build_skips_when_npx_not_available():
-    """Test that post_build gracefully skips when npx is not available."""
+def test_post_generate_skips_when_npx_not_available():
+    """Test that post_generate gracefully skips when npx is not available."""
     mock_config = mock.Mock()
     mock_config.build_directory = "/tmp/build"
     mock_config.theme.config = {}
@@ -149,13 +149,13 @@ def test_post_build_skips_when_npx_not_available():
     with mock.patch.object(hooks, "_is_npx_available", return_value=False):
         with mock.patch("automata.website.themes.default.hooks.logger") as mock_logger:
             # Should not raise, just warn
-            hooks.post_build(mock_config)
+            hooks.post_generate(mock_config)
             mock_logger.warning.assert_called_once()
             assert "npx not found" in mock_logger.warning.call_args[0][0]
 
 
-def test_post_build_skips_when_theme_dir_not_found():
-    """Test that post_build skips when theme directory cannot be found."""
+def test_post_generate_skips_when_theme_dir_not_found():
+    """Test that post_generate skips when theme directory cannot be found."""
     mock_config = mock.Mock()
     mock_config.build_directory = "/tmp/build"
     mock_config.theme.config = {}
@@ -165,14 +165,14 @@ def test_post_build_skips_when_theme_dir_not_found():
             with mock.patch(
                 "automata.website.themes.default.hooks.logger"
             ) as mock_logger:
-                hooks.post_build(mock_config)
+                hooks.post_generate(mock_config)
                 mock_logger.warning.assert_called_once()
                 warning_msg = mock_logger.warning.call_args[0][0]
                 assert "Could not locate theme directory" in warning_msg
 
 
-def test_post_build_skips_when_input_css_missing(tmp_path):
-    """Test that post_build skips when style.input.css is missing."""
+def test_post_generate_skips_when_input_css_missing(tmp_path):
+    """Test that post_generate skips when style.input.css is missing."""
     mock_config = mock.Mock()
     mock_config.build_directory = str(tmp_path / "build")
     mock_config.theme.config = {}
@@ -185,14 +185,14 @@ def test_post_build_skips_when_input_css_missing(tmp_path):
             with mock.patch(
                 "automata.website.themes.default.hooks.logger"
             ) as mock_logger:
-                hooks.post_build(mock_config)
+                hooks.post_generate(mock_config)
                 mock_logger.warning.assert_called_once()
                 warning_msg = mock_logger.warning.call_args[0][0]
                 assert "Tailwind input file not found" in warning_msg
 
 
-def test_post_build_handles_rebuild_errors_gracefully(tmp_path):
-    """Test that post_build handles errors during rebuild gracefully."""
+def test_post_generate_handles_rebuild_errors_gracefully(tmp_path):
+    """Test that post_generate handles errors during rebuild gracefully."""
     mock_config = mock.Mock()
     mock_config.build_directory = str(tmp_path / "build")
     mock_config.theme.config = {}
@@ -210,15 +210,15 @@ def test_post_build_handles_rebuild_errors_gracefully(tmp_path):
                     "automata.website.themes.default.hooks.logger"
                 ) as mock_logger:
                     # Should not raise, just warn
-                    hooks.post_build(mock_config)
+                    hooks.post_generate(mock_config)
                     assert any(
                         "Failed to rebuild Tailwind CSS" in str(call)
                         for call in mock_logger.warning.call_args_list
                     )
 
 
-def test_post_build_calls_rebuild_with_correct_paths(tmp_path):
-    """Test that post_build calls _rebuild_tailwind with correct paths."""
+def test_post_generate_calls_rebuild_with_correct_paths(tmp_path):
+    """Test that post_generate calls _rebuild_tailwind with correct paths."""
     build_dir = tmp_path / "build"
     build_dir.mkdir()
 
@@ -234,7 +234,7 @@ def test_post_build_calls_rebuild_with_correct_paths(tmp_path):
     with mock.patch.object(hooks, "_is_npx_available", return_value=True):
         with mock.patch.object(hooks, "_get_theme_directory", return_value=theme_dir):
             with mock.patch.object(hooks, "_rebuild_tailwind") as mock_rebuild:
-                hooks.post_build(mock_config)
+                hooks.post_generate(mock_config)
 
                 mock_rebuild.assert_called_once()
                 call_args = mock_rebuild.call_args[0]
@@ -243,15 +243,15 @@ def test_post_build_calls_rebuild_with_correct_paths(tmp_path):
                 assert call_args[2] == build_dir
 
 
-def test_post_build_skips_when_rebuild_disabled_in_config():
-    """Test that post_build skips rebuild when rebuild_tailwind is False."""
+def test_post_generate_skips_when_rebuild_disabled_in_config():
+    """Test that post_generate skips rebuild when rebuild_tailwind is False."""
     mock_config = mock.Mock()
     mock_config.build_directory = "/tmp/build"
     mock_config.theme.config = {"rebuild_tailwind": False}
 
     with mock.patch.object(hooks, "_is_npx_available") as mock_npx:
         with mock.patch.object(hooks, "_rebuild_tailwind") as mock_rebuild:
-            hooks.post_build(mock_config)
+            hooks.post_generate(mock_config)
 
             # Should not check for npx or attempt rebuild
             mock_npx.assert_not_called()

@@ -7,7 +7,7 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 
-def post_build(config):
+def post_generate(config):
     """Rebuild Tailwind CSS after site generation to include custom classes.
 
     This hook runs the Tailwind CLI to regenerate CSS by scanning the built

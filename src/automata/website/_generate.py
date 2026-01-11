@@ -238,17 +238,47 @@ def _create_url_for(base_path: str) -> Callable[[str], str]:
     return url_for
 
 
-def _run_theme_hook(
+# Type alias for extra content
+_ExtraContent = dict[str, str | bytes | pathlib.Path]
+
+
+def _run_pre_generate_hook(
+    hook: Callable[[WebsiteConfig], _ExtraContent | None] | None,
+    config: WebsiteConfig,
+    extra_content: _ExtraContent | None,
+) -> _ExtraContent | None:
+    """Execute the pre_generate theme hook and merge any extra content it provides.
+
+    The hook's extra content is merged with the provided extra_content, with the
+    provided extra_content taking precedence over hook content for duplicate keys.
+
+    Returns the merged extra content, or None if neither source provides content.
+    """
+    if hook is None:
+        return extra_content
+
+    try:
+        hook_extra_content = hook(config)
+    except Exception as e:
+        raise WebsiteError(f"Error in theme pre_generate hook: {e}") from e
+
+    if hook_extra_content is None:
+        return extra_content
+    if extra_content is None:
+        return hook_extra_content
+    return {**hook_extra_content, **extra_content}
+
+
+def _run_post_generate_hook(
     hook: Callable[[WebsiteConfig], None] | None,
     config: WebsiteConfig,
-    hook_name: str,
 ) -> None:
-    """Execute a theme hook with error handling."""
+    """Execute the post_generate theme hook."""
     if hook is not None:
         try:
             hook(config)
         except Exception as e:
-            raise WebsiteError(f"Error in theme {hook_name} hook: {e}") from e
+            raise WebsiteError(f"Error in theme post_generate hook: {e}") from e
 
 
 def _create_render_context(
@@ -701,7 +731,9 @@ def generate(
     theme = _get_theme(config, extra_themes=extra_themes, cwd=cwd)
     config.theme.config = _resolve_theme_config(config.theme.config, theme.schema)
 
-    _run_theme_hook(theme.hooks.pre_build, config, "pre_build")
+    extra_content = _run_pre_generate_hook(
+        theme.hooks.pre_generate, config, extra_content
+    )
 
     # set up jinja environment and copy theme static files
     jinja_environment = theme.create_jinja_environment()
@@ -735,4 +767,4 @@ def generate(
 
     # finalize build
     _copy_materials_to_build(materials_directory, build_directory, config)
-    _run_theme_hook(theme.hooks.post_build, config, "post_build")
+    _run_post_generate_hook(theme.hooks.post_generate, config)
