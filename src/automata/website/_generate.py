@@ -227,23 +227,35 @@ def _copy_theme_static_files(theme: Theme, build_directory: pathlib.Path) -> Non
             output_path.write_bytes(static_content.read_bytes())
 
 
-def _generate_single_page(
-    input_path: pathlib.Path,
-    output_path: pathlib.Path,
+def _render_page(
+    content: str,
     jinja_environment: jinja2.Environment,
     context: RenderContext,
     markdown_renderer: Callable[[str], str] | None = None,
-) -> None:
-    raw_content = input_path.read_text()
+    base_path: pathlib.Path | None = None,
+) -> str:
+    """Renders page content to HTML.
 
-    # extract frontmatter from the content
-    try:
-        frontmatter, content = read_frontmatter(
-            raw_content, base_path=input_path.parent
-        )
-    except Exception as e:
-        # Wrap any parsing errors with file path context
-        raise PageError(str(e), input_path) from e
+    Parameters
+    ----------
+    content : str
+        The raw content (with optional frontmatter).
+    jinja_environment : jinja2.Environment
+        The Jinja2 environment for template rendering.
+    context : RenderContext
+        The rendering context.
+    markdown_renderer : Callable[[str], str] | None
+        If provided, content is treated as markdown and rendered to HTML.
+    base_path : pathlib.Path | None
+        Base path for resolving relative paths in frontmatter. If None,
+        uses current working directory.
+
+    Returns
+    -------
+    str
+        The rendered HTML content.
+    """
+    frontmatter, content = read_frontmatter(content, base_path=base_path)
 
     # create a new context with the frontmatter
     context = dataclasses.replace(context, frontmatter=frontmatter)
@@ -255,20 +267,41 @@ def _generate_single_page(
     if markdown_renderer is not None:
         rendered_content = markdown_renderer(rendered_content)
 
-    base_path = context.website_config.base_path
-    if not base_path.endswith("/"):
-        base_path = f"{base_path}/"
+    base_url_path = context.website_config.base_path
+    if not base_url_path.endswith("/"):
+        base_url_path = f"{base_url_path}/"
 
     template_name = context.frontmatter.template
     if template_name not in jinja_environment.list_templates():
-        raise PageError(f'Template "{template_name}" not found.', input_path)
+        raise ValueError(f'Template "{template_name}" not found.')
 
-    wrapped_content = jinja_environment.get_template(template_name).render(
+    return jinja_environment.get_template(template_name).render(
         **context.to_dict(),
-        base_url_path=base_path,
+        base_url_path=base_url_path,
         content=rendered_content,
     )
-    output_path.write_text(wrapped_content)
+
+
+def _generate_single_page(
+    input_path: pathlib.Path,
+    output_path: pathlib.Path,
+    jinja_environment: jinja2.Environment,
+    context: RenderContext,
+    markdown_renderer: Callable[[str], str] | None = None,
+) -> None:
+    """Reads a file, renders it, and writes the output."""
+    try:
+        rendered = _render_page(
+            input_path.read_text(),
+            jinja_environment,
+            context,
+            markdown_renderer=markdown_renderer,
+            base_path=input_path.parent,
+        )
+    except Exception as e:
+        raise PageError(str(e), input_path) from e
+
+    output_path.write_text(rendered)
 
 
 def _copy_file_to_output(
