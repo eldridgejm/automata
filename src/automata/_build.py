@@ -5,7 +5,7 @@ from pathlib import Path
 
 from . import materials
 from .config import read_config
-from .website import generate
+from .website import Theme, generate
 
 CONFIGURATION_FILENAME = "automata.yaml"
 
@@ -57,11 +57,17 @@ def build(
     materials_json.parent.mkdir(parents=True, exist_ok=True)
     materials_json.write_text(materials.serialize(exported_universe))
 
+    # Load the theme
+    theme = Theme.from_entry_point(config.website.theme.use)
+
     # Generate website (materials are already in place, so no copy needed)
     generate(
         config.website,
         materials_output_dir,
-        config.vars,
+        templates=theme.templates,
+        elements=theme.elements,
+        extra_assets=theme.static_files,
+        vars=config.vars,
         cwd=path,
         current_time=current_time,
     )

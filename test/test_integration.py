@@ -81,20 +81,10 @@ def test_release_time_and_ready_flag_behavior(temporary_course):
     # Set a fixed current_time for reproducible tests (today is 2025-01-15)
     current_time = datetime(2025, 1, 15, 12, 0, 0)
 
-    # Get path to default theme (use path syntax to avoid entry point lookup)
-    theme_path = (
-        Path(__file__).parent.parent
-        / "src"
-        / "automata"
-        / "website"
-        / "themes"
-        / "default"
-    )
-
     # Create automata.yaml config with schedule configuration
     config_path = temporary_course.path / "automata.yaml"
     config_path.write_text(
-        f"""
+        """
 vars:
   schedule_config:
     __include__: "schedule.yaml"
@@ -105,10 +95,11 @@ website:
   materials_directory_name: "materials"
   base_path: "."
   theme:
-    use: "{theme_path}"
+    use: "default"
     config:
       short_title: "Test Course"
       long_title: "Test Course - Release Time Behavior"
+      navigation: []
 """
     )
 
