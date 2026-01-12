@@ -37,7 +37,7 @@ def find_week(html: str, week: int) -> Tag:
     return week_section
 
 
-def test_schedule_element_renders_basic_week(tmpsite, config):
+def test_schedule_element_renders_basic_week(tmpsite, config, default_theme_kwargs):
     """Test rendering a basic schedule with one week."""
     # given: empty materials for now
     tmpsite.write_materials_json(
@@ -81,7 +81,9 @@ def test_schedule_element_renders_basic_week(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -89,7 +91,7 @@ def test_schedule_element_renders_basic_week(tmpsite, config):
     assert "Introduction" in output
 
 
-def test_schedule_element_renders_multiple_weeks(tmpsite, config):
+def test_schedule_element_renders_multiple_weeks(tmpsite, config, default_theme_kwargs):
     """Test rendering multiple weeks with topics."""
     # given
     tmpsite.write_materials_json(
@@ -133,7 +135,9 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -142,7 +146,7 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, config):
     assert "Data" in output
 
 
-def test_schedule_element_renders_html_resource(tmpsite, config):
+def test_schedule_element_renders_html_resource(tmpsite, config, default_theme_kwargs):
     """Test rendering HTML resource type."""
     # given
     tmpsite.write_materials_json(
@@ -197,7 +201,9 @@ def test_schedule_element_renders_html_resource(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -206,7 +212,9 @@ def test_schedule_element_renders_html_resource(tmpsite, config):
     assert "href='slides.pdf'" in output or 'href="slides.pdf"' in output
 
 
-def test_schedule_element_renders_markdown_resource(tmpsite, config):
+def test_schedule_element_renders_markdown_resource(
+    tmpsite, config, default_theme_kwargs
+):
     """Test rendering Markdown resource type."""
     # given
     tmpsite.write_materials_json(
@@ -263,7 +271,9 @@ def test_schedule_element_renders_markdown_resource(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -273,7 +283,9 @@ def test_schedule_element_renders_markdown_resource(tmpsite, config):
     assert 'href="book.pdf"' in output or "href='book.pdf'" in output
 
 
-def test_schedule_element_renders_metadata_links_resource(tmpsite, config):
+def test_schedule_element_renders_metadata_links_resource(
+    tmpsite, config, default_theme_kwargs
+):
     """Test rendering metadata links resource type."""
     # given
     tmpsite.write_materials_json(
@@ -341,7 +353,9 @@ def test_schedule_element_renders_metadata_links_resource(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -352,7 +366,9 @@ def test_schedule_element_renders_metadata_links_resource(tmpsite, config):
     assert 'href="setup.mp4"' in output or "href='setup.mp4'" in output
 
 
-def test_schedule_element_renders_artifact_links_resource(tmpsite, config):
+def test_schedule_element_renders_artifact_links_resource(
+    tmpsite, config, default_theme_kwargs
+):
     """Test rendering artifact links resource type when all artifacts exist."""
     # given
     tmpsite.write_materials_json(
@@ -419,7 +435,9 @@ def test_schedule_element_renders_artifact_links_resource(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -430,7 +448,9 @@ def test_schedule_element_renders_artifact_links_resource(tmpsite, config):
     assert "/lectures/lecture01/slides.pptx" in output
 
 
-def test_schedule_element_artifact_links_only_shows_existing_artifacts(tmpsite, config):
+def test_schedule_element_artifact_links_only_shows_existing_artifacts(
+    tmpsite, config, default_theme_kwargs
+):
     """Test that artifact links only shows links for artifacts that exist."""
     # given
     tmpsite.write_materials_json(
@@ -499,7 +519,9 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(tmpsite, 
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -515,7 +537,7 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(tmpsite, 
 
 
 def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
-    tmpsite, config
+    tmpsite, config, default_theme_kwargs
 ):
     """Test that HTML resource with only whitespace does not render."""
     # given
@@ -571,7 +593,9 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then - title should not appear since content is only whitespace
     output = tmpsite.get_output("index.html")
@@ -579,7 +603,7 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
 
 
 def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only(
-    tmpsite, config
+    tmpsite, config, default_theme_kwargs
 ):
     """Test that Markdown resource with only whitespace does not render."""
     # given
@@ -635,7 +659,9 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then - title should not appear since content is only whitespace
     output = tmpsite.get_output("index.html")
@@ -643,7 +669,7 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
 
 
 def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
-    tmpsite, config
+    tmpsite, config, default_theme_kwargs
 ):
     """Test that metadata links resource does not render when there are no links."""
     # given
@@ -709,7 +735,9 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then - title should not appear since there are no items
     output = tmpsite.get_output("index.html")
@@ -717,7 +745,7 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
 
 
 def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
-    tmpsite, config
+    tmpsite, config, default_theme_kwargs
 ):
     """
     Test that metadata links resource does not render when metadata key is missing.
@@ -785,7 +813,9 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then - title should not appear since metadata key is missing
     output = tmpsite.get_output("index.html")
@@ -793,7 +823,7 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
 
 
 def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
-    tmpsite, config
+    tmpsite, config, default_theme_kwargs
 ):
     """Test that artifact links does not render when no artifacts."""
     # given
@@ -854,14 +884,16 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then - title should not appear since there are no artifacts
     output = tmpsite.get_output("index.html")
     assert "Slides" not in output
 
 
-def test_schedule_element_resource_with_icon(tmpsite, config):
+def test_schedule_element_resource_with_icon(tmpsite, config, default_theme_kwargs):
     """Test that resources can display Lucide icons."""
     # given
     tmpsite.write_materials_json(
@@ -917,7 +949,9 @@ def test_schedule_element_resource_with_icon(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -925,7 +959,9 @@ def test_schedule_element_resource_with_icon(tmpsite, config):
     assert 'data-lucide="file-text"' in output
 
 
-def test_schedule_element_renders_extra_primary_listings(tmpsite, config):
+def test_schedule_element_renders_extra_primary_listings(
+    tmpsite, config, default_theme_kwargs
+):
     """Test rendering extra_primary_activities that are not tied to a publication."""
     # given
     tmpsite.write_materials_json(
@@ -972,7 +1008,9 @@ def test_schedule_element_renders_extra_primary_listings(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")
@@ -983,7 +1021,9 @@ def test_schedule_element_renders_extra_primary_listings(tmpsite, config):
     assert 'data-lucide="file-text"' in output
 
 
-def test_schedule_element_renders_extra_secondary_listings(tmpsite, config):
+def test_schedule_element_renders_extra_secondary_listings(
+    tmpsite, config, default_theme_kwargs
+):
     """Test rendering extra_secondary_activities (not tied to a publication)."""
     # given
     tmpsite.write_materials_json(
@@ -1030,7 +1070,9 @@ def test_schedule_element_renders_extra_secondary_listings(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(
+        config, tmpsite.materials_directory, **default_theme_kwargs
+    )
 
     # then
     output = tmpsite.get_output("index.html")

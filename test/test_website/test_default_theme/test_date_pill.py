@@ -22,7 +22,7 @@ def config(tmpsite):
     )
 
 
-def test_date_pill_uses_now_for_current_date(tmpsite, config):
+def test_date_pill_uses_now_for_current_date(tmpsite, config, default_theme_kwargs):
     # given
     tmpsite.make_page(
         "index.html",
@@ -34,7 +34,10 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config):
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, current_time=datetime(2024, 6, 15)
+        config,
+        tmpsite.materials_directory,
+        **default_theme_kwargs,
+        current_time=datetime(2024, 6, 15),
     )
 
     # then
@@ -43,13 +46,16 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config):
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, current_time=datetime(2024, 6, 17)
+        config,
+        tmpsite.materials_directory,
+        **default_theme_kwargs,
+        current_time=datetime(2024, 6, 17),
     )
     output = tmpsite.get_output("index.html")
     assert "After!" in output
 
 
-def test_date_pill_with_template_variables(tmpsite, config):
+def test_date_pill_with_template_variables(tmpsite, config, default_theme_kwargs):
     # given
     tmpsite.make_page(
         "index.html",
@@ -63,6 +69,7 @@ def test_date_pill_with_template_variables(tmpsite, config):
     automata.website.generate(
         config,
         tmpsite.materials_directory,
+        **default_theme_kwargs,
         current_time=datetime(2024, 6, 15),
         vars={"foo": "BAR"},
     )
