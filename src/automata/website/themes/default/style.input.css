@@ -30,6 +30,12 @@
     padding-top: calc(4rem + env(safe-area-inset-top));
   }
 
+  /* Prevent scrolling when sidebar overlay is open (fixes iOS flickering) */
+  body:has(#overlay:not(.hidden)) {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   /* Override typography plugin heading styles */
   .prose h1,
   .prose h2,
