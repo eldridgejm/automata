@@ -1503,8 +1503,20 @@
     line-height: var(--leading-snug);
   }
   .mobile-navbar {
-    top: calc(-1 * env(safe-area-inset-top, 0px));
+    top: 0;
     padding-top: env(safe-area-inset-top, 0px);
+  }
+  .mobile-navbar::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 0px);
+    background-color: rgb(249 250 251);
+  }
+  :is(.dark .mobile-navbar)::before {
+    background-color: rgb(31 41 55);
   }
   .sidebar-mobile-spacing {
     padding-top: calc(4rem + env(safe-area-inset-top));
