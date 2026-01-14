@@ -2,7 +2,6 @@
 /* this file is processed by tailwindcss */
 
 @import "tailwindcss";
-@import "tailwindcss-safe-area";
 @plugin "@tailwindcss/typography";
 
 /* Set dark mode using classes; tailwind's default is a media query */
@@ -21,9 +20,9 @@
   .prose .toc ul { @apply my-1; }          /* reduce ul top/bottom margin */
   .prose .toc li { @apply my-0 leading-snug; } /* remove li vertical margins */
 
-  /* Sidebar spacing to account for mobile navbar with safe area */
+  /* Sidebar spacing to account for mobile navbar */
   .sidebar-mobile-spacing {
-    padding-top: calc(4rem + env(safe-area-inset-top));
+    padding-top: 4rem;
   }
 
   /* Override typography plugin heading styles */
