@@ -21,8 +21,11 @@
   .prose .toc li { @apply my-0 leading-snug; } /* remove li vertical margins */
 
   /* Mobile navbar with safe area insets for iOS */
+  /* On iOS, fixed elements at top:0 position at the safe area boundary, not the screen edge.
+     We use negative top to pull the navbar into the safe area, then padding to push content down. */
   .mobile-navbar {
-    padding-top: env(safe-area-inset-top);
+    top: calc(-1 * env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
   }
 
   /* Sidebar spacing to account for mobile navbar with safe area */
