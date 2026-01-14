@@ -2,6 +2,7 @@
 /* this file is processed by tailwindcss */
 
 @import "tailwindcss";
+@import "tailwindcss-safe-area";
 @plugin "@tailwindcss/typography";
 
 /* Set dark mode using classes; tailwind's default is a media query */
@@ -19,27 +20,6 @@
 @layer components {
   .prose .toc ul { @apply my-1; }          /* reduce ul top/bottom margin */
   .prose .toc li { @apply my-0 leading-snug; } /* remove li vertical margins */
-
-  /* Mobile navbar with safe area insets for iOS */
-  /* Use a pseudo-element to extend the background into the safe area (behind dynamic island) */
-  .mobile-navbar {
-    top: 0;
-    padding-top: env(safe-area-inset-top, 0px);
-  }
-
-  .mobile-navbar::before {
-    content: '';
-    position: absolute;
-    top: calc(-1 * env(safe-area-inset-top, 0px));
-    left: 0;
-    right: 0;
-    height: env(safe-area-inset-top, 0px);
-    background-color: rgb(249 250 251); /* gray-50 */
-  }
-
-  :is(.dark .mobile-navbar)::before {
-    background-color: rgb(31 41 55); /* gray-800 */
-  }
 
   /* Sidebar spacing to account for mobile navbar with safe area */
   .sidebar-mobile-spacing {
