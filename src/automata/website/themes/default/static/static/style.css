@@ -7,44 +7,17 @@
       "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
-    --color-red-50: oklch(97.1% 0.013 17.38);
     --color-red-100: oklch(93.6% 0.032 17.717);
     --color-red-200: oklch(88.5% 0.062 18.334);
     --color-red-300: oklch(80.8% 0.114 19.571);
     --color-red-400: oklch(70.4% 0.191 22.216);
     --color-red-500: oklch(63.7% 0.237 25.331);
-    --color-red-600: oklch(57.7% 0.245 27.325);
-    --color-red-900: oklch(39.6% 0.141 25.723);
-    --color-red-950: oklch(25.8% 0.092 26.042);
-    --color-amber-50: oklch(98.7% 0.022 95.277);
-    --color-amber-300: oklch(87.9% 0.169 91.605);
-    --color-amber-500: oklch(76.9% 0.188 70.08);
-    --color-amber-600: oklch(66.6% 0.179 58.318);
-    --color-amber-900: oklch(41.4% 0.112 45.904);
-    --color-amber-950: oklch(27.9% 0.077 45.635);
-    --color-green-50: oklch(98.2% 0.018 155.826);
-    --color-green-300: oklch(87.1% 0.15 154.449);
-    --color-green-500: oklch(72.3% 0.219 149.579);
-    --color-green-600: oklch(62.7% 0.194 149.214);
-    --color-green-900: oklch(39.3% 0.095 152.535);
-    --color-green-950: oklch(26.6% 0.065 152.934);
     --color-sky-400: oklch(74.6% 0.16 232.661);
     --color-sky-500: oklch(68.5% 0.169 237.323);
     --color-sky-600: oklch(58.8% 0.158 241.966);
-    --color-blue-50: oklch(97% 0.014 254.604);
-    --color-blue-300: oklch(80.9% 0.105 251.813);
     --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-blue-600: oklch(54.6% 0.245 262.881);
     --color-blue-700: oklch(48.8% 0.243 264.376);
-    --color-blue-900: oklch(37.9% 0.146 265.522);
-    --color-blue-950: oklch(28.2% 0.091 267.935);
-    --color-purple-50: oklch(97.7% 0.014 308.299);
-    --color-purple-300: oklch(82.7% 0.119 306.383);
-    --color-purple-500: oklch(62.7% 0.265 303.9);
-    --color-purple-600: oklch(55.8% 0.288 302.321);
-    --color-purple-900: oklch(38.1% 0.176 304.987);
-    --color-purple-950: oklch(29.1% 0.149 302.717);
-    --color-fuchsia-500: oklch(66.7% 0.295 322.15);
     --color-slate-400: oklch(70.4% 0.04 256.788);
     --color-gray-50: oklch(98.5% 0.002 247.839);
     --color-gray-100: oklch(96.7% 0.003 264.542);
@@ -232,14 +205,8 @@
   }
 }
 @layer utilities {
-  .absolute {
-    position: absolute;
-  }
   .fixed {
     position: fixed;
-  }
-  .static {
-    position: static;
   }
   .inset-0 {
     inset: calc(var(--spacing) * 0);
@@ -926,9 +893,6 @@
   .bg-blue-500 {
     background-color: var(--color-blue-500);
   }
-  .bg-fuchsia-500 {
-    background-color: var(--color-fuchsia-500);
-  }
   .bg-gray-50 {
     background-color: var(--color-gray-50);
   }
@@ -952,9 +916,6 @@
   }
   .bg-white {
     background-color: var(--color-white);
-  }
-  .p-4 {
-    padding: calc(var(--spacing) * 4);
   }
   .p-8 {
     padding: calc(var(--spacing) * 8);
@@ -1502,184 +1463,16 @@
     --tw-leading: var(--leading-snug);
     line-height: var(--leading-snug);
   }
+  .mobile-navbar {
+    padding-top: env(safe-area-inset-top);
+  }
   .sidebar-mobile-spacing {
-    padding-top: 4rem;
+    padding-top: calc(4rem + env(safe-area-inset-top));
   }
-  .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-    --tw-font-weight: var(--font-weight-semibold);
-    font-weight: var(--font-weight-semibold);
-  }
-  .prose .admonition {
-    margin-block: calc(var(--spacing) * 4);
-    border-radius: var(--radius-lg);
-    border-left-style: var(--tw-border-style);
-    border-left-width: 4px;
-    padding: calc(var(--spacing) * 4);
-  }
-  .prose .admonition-title {
-    margin-top: calc(var(--spacing) * 0);
-    margin-bottom: calc(var(--spacing) * 2);
-    --tw-font-weight: var(--font-weight-semibold);
-    font-weight: var(--font-weight-semibold);
-  }
-  .prose .admonition > *:last-child {
-    margin-bottom: calc(var(--spacing) * 0);
-  }
-  .prose .admonition.note {
-    border-color: var(--color-blue-500);
-    background-color: var(--color-blue-50);
-    &:where(.dark, .dark *) {
-      border-color: var(--color-blue-600);
-    }
-    &:where(.dark, .dark *) {
-      background-color: color-mix(in srgb, oklch(28.2% 0.091 267.935) 30%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-blue-950) 30%, transparent);
-      }
-    }
-  }
-  .prose .admonition.note .admonition-title {
-    color: var(--color-blue-900);
-    &:where(.dark, .dark *) {
-      color: var(--color-blue-300);
-    }
-  }
-  .prose .admonition.tip, .prose .admonition.hint {
-    border-color: var(--color-green-500);
-    background-color: var(--color-green-50);
-    &:where(.dark, .dark *) {
-      border-color: var(--color-green-600);
-    }
-    &:where(.dark, .dark *) {
-      background-color: color-mix(in srgb, oklch(26.6% 0.065 152.934) 30%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-green-950) 30%, transparent);
-      }
-    }
-  }
-  .prose .admonition.tip .admonition-title, .prose .admonition.hint .admonition-title {
-    color: var(--color-green-900);
-    &:where(.dark, .dark *) {
-      color: var(--color-green-300);
-    }
-  }
-  .prose .admonition.important {
-    border-color: var(--color-purple-500);
-    background-color: var(--color-purple-50);
-    &:where(.dark, .dark *) {
-      border-color: var(--color-purple-600);
-    }
-    &:where(.dark, .dark *) {
-      background-color: color-mix(in srgb, oklch(29.1% 0.149 302.717) 30%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-purple-950) 30%, transparent);
-      }
-    }
-  }
-  .prose .admonition.important .admonition-title {
-    color: var(--color-purple-900);
-    &:where(.dark, .dark *) {
-      color: var(--color-purple-300);
-    }
-  }
-  .prose .admonition.warning, .prose .admonition.caution, .prose .admonition.attention {
-    border-color: var(--color-amber-500);
-    background-color: var(--color-amber-50);
-    &:where(.dark, .dark *) {
-      border-color: var(--color-amber-600);
-    }
-    &:where(.dark, .dark *) {
-      background-color: color-mix(in srgb, oklch(27.9% 0.077 45.635) 30%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-amber-950) 30%, transparent);
-      }
-    }
-  }
-  .prose .admonition.warning .admonition-title, .prose .admonition.caution .admonition-title, .prose .admonition.attention .admonition-title {
-    color: var(--color-amber-900);
-    &:where(.dark, .dark *) {
-      color: var(--color-amber-300);
-    }
-  }
-  .prose .admonition.danger, .prose .admonition.error {
-    border-color: var(--color-red-500);
-    background-color: var(--color-red-50);
-    &:where(.dark, .dark *) {
-      border-color: var(--color-red-600);
-    }
-    &:where(.dark, .dark *) {
-      background-color: color-mix(in srgb, oklch(25.8% 0.092 26.042) 30%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        background-color: color-mix(in oklab, var(--color-red-950) 30%, transparent);
-      }
-    }
-  }
-  .prose .admonition.danger .admonition-title, .prose .admonition.error .admonition-title {
-    color: var(--color-red-900);
-    &:where(.dark, .dark *) {
-      color: var(--color-red-300);
-    }
-  }
-  .prose details {
-    margin-block: calc(var(--spacing) * 4);
-    border-radius: var(--radius-lg);
-    border-style: var(--tw-border-style);
-    border-width: 1px;
-    border-color: var(--color-gray-300);
-    padding: calc(var(--spacing) * 4);
-    &:where(.dark, .dark *) {
-      border-color: var(--color-gray-700);
-    }
-  }
-  .prose details summary {
-    margin-inline: calc(var(--spacing) * -4);
-    margin-block: calc(var(--spacing) * -4);
-    cursor: pointer;
-    border-top-left-radius: var(--radius-lg);
-    border-top-right-radius: var(--radius-lg);
-    padding-inline: calc(var(--spacing) * 4);
-    padding-block: calc(var(--spacing) * 3);
-    --tw-font-weight: var(--font-weight-semibold);
-    font-weight: var(--font-weight-semibold);
-    -webkit-user-select: none;
-    user-select: none;
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-gray-100);
-      }
-    }
-    &:where(.dark, .dark *) {
-      &:hover {
-        @media (hover: hover) {
-          background-color: color-mix(in srgb, oklch(37.3% 0.034 259.733) 50%, transparent);
-          @supports (color: color-mix(in lab, red, red)) {
-            background-color: color-mix(in oklab, var(--color-gray-700) 50%, transparent);
-          }
-        }
-      }
-    }
-  }
-  .prose details[open] summary {
-    margin-bottom: calc(var(--spacing) * 3);
-    border-bottom-style: var(--tw-border-style);
-    border-bottom-width: 1px;
-    border-color: var(--color-gray-300);
-    &:where(.dark, .dark *) {
-      border-color: var(--color-gray-700);
-    }
-  }
-  .prose details summary::marker {
-    color: var(--color-gray-500);
-    &:where(.dark, .dark *) {
-      color: var(--color-gray-400);
-    }
-  }
-  .prose details > *:last-child {
-    margin-bottom: calc(var(--spacing) * 0);
-  }
-  .prose details > summary + *:first-of-type {
-    margin-top: calc(var(--spacing) * 0);
-  }
+}
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  --tw-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
 }
 @property --tw-translate-x {
   syntax: "*";

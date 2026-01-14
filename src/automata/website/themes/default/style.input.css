@@ -20,9 +20,14 @@
   .prose .toc ul { @apply my-1; }          /* reduce ul top/bottom margin */
   .prose .toc li { @apply my-0 leading-snug; } /* remove li vertical margins */
 
-  /* Sidebar spacing to account for mobile navbar */
+  /* Mobile navbar with safe area insets for iOS */
+  .mobile-navbar {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Sidebar spacing to account for mobile navbar with safe area */
   .sidebar-mobile-spacing {
-    padding-top: 4rem;
+    padding-top: calc(4rem + env(safe-area-inset-top));
   }
 
   /* Override typography plugin heading styles */
