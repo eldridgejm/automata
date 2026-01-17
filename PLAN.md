@@ -45,7 +45,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Update build() to export the materials to a temporary directory and pass that to generate()
 - [x] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
 - [x] Build hooks (allowing scripts to run at certain points in the generation process)
-- [ ] Remove ability for script hooks to return output (only some hooks will be valid script hooks)
+- [x] Remove ability for script hooks to return output (only some hooks will be valid script hooks)
 - [ ] If plugin directory contains a __init__.py file, treat it as a package and add it to sys.path. Otherwise, treat it as a "filesystem plugin".
 - [ ] Allow plugins to specify additional resolve functions, global functions available during resolution.
 - [ ] Rename "build()" to "generate()"?

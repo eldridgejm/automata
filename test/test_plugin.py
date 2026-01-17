@@ -316,3 +316,62 @@ def test_merge_plugins_preserves_order() -> None:
     merged = merge_plugins([plugin_1, plugin_2, plugin_3])
 
     assert merged.templates["file.html"] == "3"
+
+
+# Python package plugins =======================================================
+
+
+def test_from_directory_loads_python_package_plugin(tmp_path: Path) -> None:
+    """Test that from_directory loads a Python package with a plugin attribute.
+
+    When a directory contains __init__.py and exports a `plugin` attribute,
+    it should be loaded as a Python package rather than using the filesystem
+    plugin structure (templates/, static/, etc.).
+    """
+    plugin_dir = tmp_path / "my_plugin"
+    plugin_dir.mkdir()
+
+    # Create foo.py with a templates dictionary
+    (plugin_dir / "foo.py").write_text(
+        "templates = {\n"
+        '    "page.html": "<html><body>{{ content }}</body></html>",\n'
+        '    "header.html": "<header>My Site</header>",\n'
+        "}\n"
+    )
+
+    # Create __init__.py that imports from foo.py and creates a Plugin instance
+    (plugin_dir / "__init__.py").write_text(
+        "from automata import Plugin\n"
+        "from .foo import templates\n"
+        "\n"
+        "plugin = Plugin(templates=templates)\n"
+    )
+
+    plugin = Plugin.from_directory(plugin_dir)
+
+    assert plugin.templates == {
+        "page.html": "<html><body>{{ content }}</body></html>",
+        "header.html": "<header>My Site</header>",
+    }
+    assert plugin.static_files == {}
+    assert plugin.elements == {}
+
+
+def test_from_directory_raises_if_package_has_no_plugin_attribute(
+    tmp_path: Path,
+) -> None:
+    """Test that from_directory raises if __init__.py has no plugin attribute.
+
+    When a directory contains __init__.py but does NOT export a `plugin`
+    attribute, a ValueError should be raised.
+    """
+    plugin_dir = tmp_path / "my_plugin"
+    plugin_dir.mkdir()
+
+    # Create __init__.py without a plugin attribute
+    (plugin_dir / "__init__.py").write_text(
+        "# This package does not export a plugin attribute\nVERSION = '1.0.0'\n"
+    )
+
+    with pytest.raises(ValueError, match="must export a 'plugin' attribute"):
+        Plugin.from_directory(plugin_dir)

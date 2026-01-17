@@ -64,12 +64,20 @@ class Plugin:
     ) -> "Plugin":
         """Create a Plugin instance from a directory.
 
-        The directory may contain:
+        If the directory contains an ``__init__.py`` file, it is treated as a
+        Python package and loaded as a module. The module is expected to export
+        a ``plugin`` attribute containing a Plugin instance. If no ``plugin``
+        attribute is found, the directory is loaded as a non-Python plugin.
+
+        For non-Python plugins (directories without ``__init__.py`` or without
+        a ``plugin`` attribute), the directory may contain:
+
         - ``templates/`` subdirectory with Jinja2 template files
         - ``static/`` subdirectory with static files (CSS, JS, images, etc.)
         - ``elements/`` subdirectory containing a Python package that exports
           an ``elements`` dictionary
         - ``schema.json`` file with a smartconfig schema for configuration
+        - ``hooks.py`` file with hook functions
 
         All components are optional unless ``require_templates`` is True.
 
@@ -96,6 +104,11 @@ class Plugin:
         """
         if not directory.is_dir():
             raise ValueError("Plugin directory does not exist or is not a directory.")
+
+        # Check if this is a Python package (has __init__.py)
+        init_file = directory / "__init__.py"
+        if init_file.is_file():
+            return _load_plugin_from_package(directory)
 
         templates_dir = directory / "templates"
         if require_templates and not templates_dir.is_dir():
@@ -461,3 +474,48 @@ def _load_hooks_from_directory(
                 hooks[hook_point] = [(priority, func)]
 
     return hooks
+
+
+def _load_plugin_from_package(directory: Traversable) -> "Plugin":
+    """Load a Plugin instance from a Python package.
+
+    The directory must contain an __init__.py that exports a ``plugin``
+    attribute which is a Plugin instance.
+
+    Parameters
+    ----------
+    directory : Traversable
+        The directory containing the Python package.
+
+    Returns
+    -------
+    Plugin
+        The Plugin instance.
+
+    Raises
+    ------
+    ValueError
+        If the module cannot be loaded or does not export a valid ``plugin``
+        attribute.
+
+    """
+    module = _load_python_module_from_directory(
+        directory=directory,
+        filename="__init__.py",
+        module_type="plugin",
+        submodule_search_locations=[str(directory)],
+    )
+
+    if not hasattr(module, "plugin"):
+        raise ValueError(
+            f"Python package plugin at {directory} must export a 'plugin' attribute."
+        )
+
+    plugin = module.plugin
+    if not isinstance(plugin, Plugin):
+        raise ValueError(
+            f"Python package plugin at {directory} must export a Plugin instance, "
+            f"got {type(plugin).__name__}."
+        )
+
+    return plugin
