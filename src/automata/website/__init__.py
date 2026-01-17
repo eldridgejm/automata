@@ -1,7 +1,7 @@
 """Generate a static website from course materials."""
 
-from .._config import PluginConfig, WebsiteConfig
-from ..plugin import Plugin, merge_plugins
+from .._config import ExtensionConfig, WebsiteConfig
+from ..extension import Extension, merge_extensions
 from . import exceptions
 from ._elements import BasicElement, Element, TemplateElement
 from ._frontmatter import Frontmatter
@@ -10,10 +10,10 @@ from .exceptions import PageError
 
 __all__ = [
     "RenderContext",
-    "PluginConfig",
+    "ExtensionConfig",
     "WebsiteConfig",
-    "Plugin",
-    "merge_plugins",
+    "Extension",
+    "merge_extensions",
     "Frontmatter",
     "PageError",
     "Element",

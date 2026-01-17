@@ -3,7 +3,7 @@
 This module provides a typed hook system that replaces the separate callbacks
 and hooks systems with a single, unified approach.
 
-Hooks allow plugins and configuration to inject custom logic at specific
+Hooks allow extensions and configuration to inject custom logic at specific
 points in the build process. Each hook is a class with a `priority` attribute
 and a `__call__` method with a hook-specific signature.
 

@@ -16,7 +16,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Page frontmatter
 - [x] Base path handling
 - [x] The "theme" abstraction
-- [x] Theme plugins as entry points
+- [x] Theme extensions as entry points
 - [x] Theme overrides (templates and static files)
 - [x] The "element" abstraction
 - [x] Make new design
@@ -46,13 +46,15 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
 - [x] Build hooks (allowing scripts to run at certain points in the generation process)
 - [x] Remove ability for script hooks to return output (only some hooks will be valid script hooks)
-- [x] If plugin directory contains a __init__.py file, treat it as a package and add it to sys.path. Otherwise, treat it as a "filesystem plugin".
-- [x] More clearly define the notions of "filesystem plugins" vs "package plugins" and clearly document the structure of a filesystem plugin. Maybe rename the methods that load plugins to reflect this distinction?
-- [x] Is "priority" the best way to control the order in which plugins are applied? 100 is the lowest priority, meaning it runs last, but isn't that "higher" priority in a sense because it will override other plugins?
-- [x] Allow plugins to specify additional resolve functions, global functions available during resolution.
+- [x] If extension directory contains a __init__.py file, treat it as a package and add it to sys.path. Otherwise, treat it as a "filesystem extension".
+- [x] More clearly define the notions of "filesystem extensions" vs "package extensions" and clearly document the structure of a filesystem extension. Maybe rename the methods that load extensions to reflect this distinction?
+- [x] Is "priority" the best way to control the order in which extensions are applied? 100 is the lowest priority, meaning it runs last, but isn't that "higher" priority in a sense because it will override other extensions?
+- [x] Allow extensions to specify additional resolve functions, global functions available during resolution.
     - we will handle this with hooks
 - [x] Whenever we pass a lot of arguments to execute_hook, we should consider passing them as kwargs instead.
-- [ ] Rename "plugin" to "extension"?
+- [x] Rename "plugin" to "extension"
+- [ ] Rename "static_files" to "assets"
+- [ ] Explore reorganizing hooks module into a subpackage
 - [ ] Rename "build()" to "generate()"?
 - [ ] Make sure all tests are in pytest style
 - [ ] Investigate issue with npx not being found

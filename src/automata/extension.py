@@ -1,29 +1,29 @@
-"""Plugin system for Automata.
+"""Extension system for Automata.
 
-Plugins can provide templates, static files, elements, and hooks to extend
+Extensions can provide templates, static files, elements, and hooks to extend
 Automata's functionality. They can be loaded from filesystem directories or
 via entry points.
 
-Themes are a special case of plugins that provide base templates for website
+Themes are a special case of extensions that provide base templates for website
 generation.
 
-Plugin Types
+Extension Types
 ------------
 
-There are two types of plugins:
+There are two types of extensions:
 
-1. **Filesystem plugins** - A directory without ``__init__.py`` that uses a
-   conventional structure to provide plugin components.
+1. **Filesystem extensions** - A directory without ``__init__.py`` that uses a
+   conventional structure to provide extension components.
 
-2. **Python package plugins** - A directory with ``__init__.py`` that exports
-   a ``plugin`` attribute containing a :class:`Plugin` instance.
+2. **Python package extensions** - A directory with ``__init__.py`` that exports
+   a ``extension`` attribute containing a :class:`Extension` instance.
 
-Filesystem Plugin Structure
+Filesystem Extension Structure
 ---------------------------
 
-A filesystem plugin is a directory with the following optional structure::
+A filesystem extension is a directory with the following optional structure::
 
-    my_plugin/
+    my_extension/
     ├── templates/          # Jinja2 template files
     │   ├── base.html
     │   ├── page.html
@@ -41,7 +41,7 @@ A filesystem plugin is a directory with the following optional structure::
     └── schema.json         # Configuration schema (smartconfig format)
 
 All components are optional. The directory must NOT contain an ``__init__.py``
-file at the root level (that would make it a Python package plugin instead).
+file at the root level (that would make it a Python package extension instead).
 
 - **templates/**: Contains Jinja2 template files. Files are loaded recursively
   and keyed by their relative path (e.g., ``partials/header.html``).
@@ -103,27 +103,27 @@ file at the root level (that would make it a Python package plugin instead).
   Supported hooks: ``pre_generate_website``, ``post_generate_website``.
   Lower priority values execute first.
 
-- **schema.json**: A smartconfig schema for validating plugin configuration.
+- **schema.json**: A smartconfig schema for validating extension configuration.
 
-Python Package Plugin Structure
+Python Package Extension Structure
 -------------------------------
 
-A Python package plugin is a directory with an ``__init__.py`` that exports
-a ``plugin`` attribute::
+A Python package extension is a directory with an ``__init__.py`` that exports
+a ``extension`` attribute::
 
-    my_plugin/
-    ├── __init__.py         # Must export `plugin = Plugin(...)`
+    my_extension/
+    ├── __init__.py         # Must export `extension = Extension(...)`
     ├── templates.py        # Can organize however you like
     └── ...
 
-The ``__init__.py`` must export a :class:`Plugin` instance::
+The ``__init__.py`` must export a :class:`Extension` instance::
 
-    from automata import Plugin, load_templates_from_directory
+    from automata import Extension, load_templates_from_directory
     from pathlib import Path
 
     here = Path(__file__).parent
 
-    plugin = Plugin(
+    extension = Extension(
         templates=load_templates_from_directory(here / "templates"),
         static_files={"style.css": (here / "style.css").read_text()},
     )
@@ -131,8 +131,8 @@ The ``__init__.py`` must export a :class:`Plugin` instance::
 Helper Functions
 ----------------
 
-This module provides helper functions for loading plugin components from
-directories, useful when creating Python package plugins:
+This module provides helper functions for loading extension components from
+directories, useful when creating Python package extensions:
 
 - :func:`load_templates_from_directory` - Load templates from a directory
 - :func:`load_static_files_from_directory` - Load static files from a directory
@@ -224,8 +224,8 @@ def load_templates_from_directory(directory: Traversable) -> dict[str, str]:
     Examples
     --------
     >>> from pathlib import Path
-    >>> from automata.plugin import load_templates_from_directory
-    >>> templates = load_templates_from_directory(Path("my_plugin/templates"))
+    >>> from automata.extension import load_templates_from_directory
+    >>> templates = load_templates_from_directory(Path("my_extension/templates"))
     >>> # templates = {"page.html": "...", "partials/header.html": "..."}
 
     """
@@ -265,8 +265,8 @@ def load_static_files_from_directory(
     Examples
     --------
     >>> from pathlib import Path
-    >>> from automata.plugin import load_static_files_from_directory
-    >>> static = load_static_files_from_directory(Path("my_plugin/static"))
+    >>> from automata.extension import load_static_files_from_directory
+    >>> static = load_static_files_from_directory(Path("my_extension/static"))
     >>> # static = {"style.css": <Traversable>, "images/logo.png": <Traversable>}
 
     """
@@ -312,8 +312,8 @@ def load_elements_from_directory(
     Examples
     --------
     >>> from pathlib import Path
-    >>> from automata.plugin import load_elements_from_directory
-    >>> elements = load_elements_from_directory(Path("my_plugin/elements"))
+    >>> from automata.extension import load_elements_from_directory
+    >>> elements = load_elements_from_directory(Path("my_extension/elements"))
 
     """
     if not directory.is_dir():
@@ -381,8 +381,8 @@ def load_hooks_from_directory(
     Examples
     --------
     >>> from pathlib import Path
-    >>> from automata.plugin import load_hooks_from_directory
-    >>> hooks = load_hooks_from_directory(Path("my_plugin/hooks"))
+    >>> from automata.extension import load_hooks_from_directory
+    >>> hooks = load_hooks_from_directory(Path("my_extension/hooks"))
 
     """
     if not directory.is_dir():
@@ -459,11 +459,11 @@ def _load_hooks_from_package(
 
 
 @dataclass
-class Plugin:
-    """A plugin that provides templates, static files, elements, and/or hooks.
+class Extension:
+    """A extension that provides templates, static files, elements, and/or hooks.
 
-    Plugins can be loaded from filesystem directories or via entry points.
-    Multiple plugins can be merged together, with later plugins overriding
+    Extensions can be loaded from filesystem directories or via entry points.
+    Multiple extensions can be merged together, with later extensions overriding
     earlier ones (except for hooks, which are accumulated).
 
     Attributes
@@ -477,7 +477,7 @@ class Plugin:
     elements : dict[str, type[Element]]
         Dictionary mapping element names to Element classes.
     schema : smartconfig.types.Schema | None
-        Optional smartconfig schema for validating plugin configuration.
+        Optional smartconfig schema for validating extension configuration.
     hooks : dict[str, list]
         Dictionary mapping hook point names (e.g., "pre_generate_website") to
         lists of hook instances. Each hook instance has a ``priority`` attribute
@@ -493,14 +493,14 @@ class Plugin:
     @classmethod
     def from_directory(
         cls, directory: Traversable, require_templates: bool = False
-    ) -> "Plugin":
-        """Create a Plugin instance from a directory.
+    ) -> "Extension":
+        """Create a Extension instance from a directory.
 
         If the directory contains an ``__init__.py`` file, it is treated as a
         Python package and loaded as a module. The module is expected to export
-        a ``plugin`` attribute containing a Plugin instance.
+        a ``extension`` attribute containing a Extension instance.
 
-        For non-Python plugins (directories without ``__init__.py``), the
+        For non-Python extensions (directories without ``__init__.py``), the
         directory may contain:
 
         - ``templates/`` subdirectory with Jinja2 template files
@@ -515,7 +515,7 @@ class Plugin:
         Parameters
         ----------
         directory : Traversable
-            The directory containing the plugin files. Use ``PathTraversable``
+            The directory containing the extension files. Use ``PathTraversable``
             to wrap a ``pathlib.Path``.
         require_templates : bool, optional
             If True, the directory must contain a ``templates/`` subdirectory.
@@ -523,28 +523,32 @@ class Plugin:
 
         Returns
         -------
-        Plugin
-            The created Plugin instance.
+        Extension
+            The created Extension instance.
 
         Raises
         ------
         ValueError
             If the directory does not exist, if ``require_templates`` is True
             and the ``templates/`` directory is missing, if the directory
-            contains ``__init__.py`` but does not export a ``plugin``
+            contains ``__init__.py`` but does not export a ``extension``
             attribute, or if the ``elements/`` package is invalid.
         """
         if not directory.is_dir():
-            raise ValueError("Plugin directory does not exist or is not a directory.")
+            raise ValueError(
+                "Extension directory does not exist or is not a directory."
+            )
 
         # Check if this is a Python package (has __init__.py)
         init_file = directory / "__init__.py"
         if init_file.is_file():
-            return _load_plugin_from_package(directory)
+            return _load_extension_from_package(directory)
 
         templates_dir = directory / "templates"
         if require_templates and not templates_dir.is_dir():
-            raise ValueError('Plugin directory must contain a "templates" directory.')
+            raise ValueError(
+                'Extension directory must contain a "templates" directory.'
+            )
 
         # Load components using public helper functions
         templates = load_templates_from_directory(templates_dir)
@@ -564,7 +568,7 @@ class Plugin:
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON in schema.json: {e}")
             except smartconfig.exceptions.InvalidSchemaError as e:
-                raise ValueError(f"Plugin configuration schema is invalid: {e}")
+                raise ValueError(f"Extension configuration schema is invalid: {e}")
 
         return cls(
             templates=templates,
@@ -575,16 +579,18 @@ class Plugin:
         )
 
     @classmethod
-    def from_entry_point(cls, name: str, group: str = "automata.plugins") -> "Plugin":
-        """Create a Plugin instance from an entry point.
+    def from_entry_point(
+        cls, name: str, group: str = "automata.extensions"
+    ) -> "Extension":
+        """Create an Extension instance from an entry point.
 
         The entry point should refer to a module that either:
-        1. Exports a ``plugin`` attribute containing a Plugin instance, or
+        1. Exports an ``extension`` attribute containing an Extension instance, or
         2. Is a package with ``templates/``, ``static/``, and/or ``elements/``
            directories.
 
-        If the module has a ``plugin`` attribute, it will be used. Otherwise,
-        the module will be treated as a plugin package and loaded from its
+        If the module has a ``extension`` attribute, it will be used. Otherwise,
+        the module will be treated as a extension package and loaded from its
         directories.
 
         Parameters
@@ -592,34 +598,34 @@ class Plugin:
         name : str
             The name of the entry point.
         group : str, optional
-            The entry point group to search in. Default is "automata.plugins".
-            Use "automata.website.themes" for theme plugins.
+            The entry point group to search in. Default is "automata.extensions".
+            Use "automata.website.themes" for theme extensions.
 
         Returns
         -------
-        Plugin
-            The created Plugin instance.
+        Extension
+            The created Extension instance.
 
         Raises
         ------
         KeyError
             If the entry point is not found.
         ValueError
-            If the plugin cannot be loaded.
+            If the extension cannot be loaded.
         """
         entry_points = metadata.entry_points()
         entry_point = entry_points.select(group=group)[name]
 
         module = entry_point.load()
-        if hasattr(module, "plugin"):
-            return cast(Plugin, module.plugin)
+        if hasattr(module, "extension"):
+            return cast(Extension, module.extension)
         else:
             root = importlib.resources.files(module)
             return cls.from_directory(root)
 
     @classmethod
-    def from_spec(cls, spec: str, group: str = "automata.plugins") -> "Plugin":
-        """Create a Plugin instance from a specification string.
+    def from_spec(cls, spec: str, group: str = "automata.extensions") -> "Extension":
+        """Create a Extension instance from a specification string.
 
         The spec can be either:
         - A path to a directory (contains a path separator)
@@ -631,17 +637,17 @@ class Plugin:
             Either a filesystem path or an entry point name.
         group : str, optional
             The entry point group to search in if spec is a name.
-            Default is "automata.plugins".
+            Default is "automata.extensions".
 
         Returns
         -------
-        Plugin
-            The created Plugin instance.
+        Extension
+            The created Extension instance.
 
         Raises
         ------
         ValueError
-            If the plugin cannot be loaded.
+            If the extension cannot be loaded.
         """
         if os.sep in spec or (os.altsep and os.altsep in spec):
             # It's a path - Path is duck-typed compatible with Traversable
@@ -651,47 +657,47 @@ class Plugin:
             return cls.from_entry_point(name=spec, group=group)
 
 
-def merge_plugins(plugins: Sequence[Plugin]) -> Plugin:
-    """Merge multiple plugins into a single plugin.
+def merge_extensions(extensions: Sequence[Extension]) -> Extension:
+    """Merge multiple extensions into a single extension.
 
-    Plugins are merged in order, with later plugins overriding earlier ones.
-    For example, if plugin A provides template "page.html" and plugin B also
-    provides "page.html", the merged result will use plugin B's version.
+    Extensions are merged in order, with later extensions overriding earlier ones.
+    For example, if extension A provides template "page.html" and extension B also
+    provides "page.html", the merged result will use extension B's version.
 
-    Hooks are accumulated rather than overridden - all hooks from all plugins
+    Hooks are accumulated rather than overridden - all hooks from all extensions
     are collected and will execute in priority order.
 
-    The merged plugin will have no schema, as individual plugin configurations
+    The merged extension will have no schema, as individual extension configurations
     should be validated before merging.
 
     Parameters
     ----------
-    plugins : Sequence[Plugin]
-        The plugins to merge, in order of increasing priority.
+    extensions : Sequence[Extension]
+        The extensions to merge, in order of increasing priority.
 
     Returns
     -------
-    Plugin
-        A new Plugin instance containing the merged templates, static files,
-        elements, and hooks from all input plugins.
+    Extension
+        A new Extension instance containing the merged templates, static files,
+        elements, and hooks from all input extensions.
     """
     templates: dict[str, str] = {}
     static_files: dict[str, str | bytes | Traversable] = {}
     elements: dict[str, type["Element"]] = {}
     hooks_dict: dict[str, list] = {}
 
-    for plugin in plugins:
-        templates.update(plugin.templates)
-        static_files.update(plugin.static_files)
-        elements.update(plugin.elements)
+    for extension in extensions:
+        templates.update(extension.templates)
+        static_files.update(extension.static_files)
+        elements.update(extension.elements)
 
         # Accumulate hooks (don't override)
-        for hook_point, hook_list in plugin.hooks.items():
+        for hook_point, hook_list in extension.hooks.items():
             if hook_point not in hooks_dict:
                 hooks_dict[hook_point] = []
             hooks_dict[hook_point].extend(cast(list, hook_list))
 
-    return Plugin(
+    return Extension(
         templates=templates,
         static_files=static_files,
         elements=elements,
@@ -709,9 +715,9 @@ def _load_python_module_from_directory(
     module_type: str,
     submodule_search_locations: list[str] | None = None,
 ):
-    """Load a Python module from a file in a plugin directory.
+    """Load a Python module from a file in a extension directory.
 
-    Handles the common pattern of loading Python modules from plugin directories:
+    Handles the common pattern of loading Python modules from extension directories:
     1. Converting Traversable to file path
     2. Generating unique module name with hash
     3. Loading module with spec_from_file_location
@@ -741,7 +747,7 @@ def _load_python_module_from_directory(
     """
     with importlib.resources.as_file(directory) as dir_path:
         digest = hashlib.sha256(str(dir_path).encode("utf-8")).hexdigest()[:12]
-        module_name = f"automata.plugin_{module_type}_{digest}"
+        module_name = f"automata.extension_{module_type}_{digest}"
         file_path = dir_path / filename
 
         spec = importlib.util.spec_from_file_location(
@@ -768,11 +774,11 @@ def _load_python_module_from_directory(
     return module
 
 
-def _load_plugin_from_package(directory: Traversable) -> "Plugin":
-    """Load a Plugin instance from a Python package.
+def _load_extension_from_package(directory: Traversable) -> "Extension":
+    """Load a Extension instance from a Python package.
 
-    The directory must contain an __init__.py that exports a ``plugin``
-    attribute which is a Plugin instance.
+    The directory must contain an __init__.py that exports a ``extension``
+    attribute which is a Extension instance.
 
     Parameters
     ----------
@@ -781,33 +787,34 @@ def _load_plugin_from_package(directory: Traversable) -> "Plugin":
 
     Returns
     -------
-    Plugin
-        The Plugin instance.
+    Extension
+        The Extension instance.
 
     Raises
     ------
     ValueError
-        If the module cannot be loaded or does not export a valid ``plugin``
+        If the module cannot be loaded or does not export a valid ``extension``
         attribute.
 
     """
     module = _load_python_module_from_directory(
         directory=directory,
         filename="__init__.py",
-        module_type="plugin",
+        module_type="extension",
         submodule_search_locations=[str(directory)],
     )
 
-    if not hasattr(module, "plugin"):
+    if not hasattr(module, "extension"):
         raise ValueError(
-            f"Python package plugin at {directory} must export a 'plugin' attribute."
+            f"Python package extension at {directory} must export an "
+            f"'extension' attribute."
         )
 
-    plugin = module.plugin
-    if not isinstance(plugin, Plugin):
+    extension = module.extension
+    if not isinstance(extension, Extension):
         raise ValueError(
-            f"Python package plugin at {directory} must export a Plugin instance, "
-            f"got {type(plugin).__name__}."
+            f"Python package extension at {directory} must export an "
+            f"Extension instance, got {type(extension).__name__}."
         )
 
-    return plugin
+    return extension

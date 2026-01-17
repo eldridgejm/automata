@@ -53,7 +53,7 @@ npm install
 
 This installs:
 - `tailwindcss` (v4.1.18)
-- `@tailwindcss/typography` (typography plugin)
+- `@tailwindcss/typography` (typography extension)
 
 ### Building
 

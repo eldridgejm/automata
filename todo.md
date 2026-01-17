@@ -7,7 +7,7 @@
 - [x] src/automata/materials/_discover.py
 - [x] src/automata/materials/_export.py
 - [x] src/automata/materials/_filter.py
-- [ ] src/automata/plugin.py
+- [ ] src/automata/extension.py
 - [ ] test/test_hooks_system.py
 - [ ] test/test_materials/test_discover.py
 - [ ] test/test_materials/test_hooks_integration.py

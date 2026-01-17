@@ -1,5 +1,13 @@
 from . import exceptions
 from ._api import build, load, resolve
+from .extension import (
+    Extension,
+    load_elements_from_directory,
+    load_hooks_from_directory,
+    load_static_files_from_directory,
+    load_templates_from_directory,
+    merge_extensions,
+)
 from .hooks import (
     HOOK_POINTS,
     BuildOnMissingHook,
@@ -26,22 +34,14 @@ from .hooks import (
     sort_hooks_by_priority,
     validate_hook_point_names,
 )
-from .plugin import (
-    Plugin,
-    load_elements_from_directory,
-    load_hooks_from_directory,
-    load_static_files_from_directory,
-    load_templates_from_directory,
-    merge_plugins,
-)
 
 __all__ = [
     "exceptions",
     "build",
     "load",
     "resolve",
-    "Plugin",
-    "merge_plugins",
+    "Extension",
+    "merge_extensions",
     "load_templates_from_directory",
     "load_static_files_from_directory",
     "load_elements_from_directory",

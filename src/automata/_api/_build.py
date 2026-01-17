@@ -35,12 +35,12 @@ def build(
     if current_time is None:
         current_time = datetime.datetime.now()
 
-    config, plugin = load(path)
+    config, extension = load(path)
 
     # Discover and build materials
-    unbuilt_universe = materials.discover(path, vars=config.vars, hooks=plugin.hooks)
+    unbuilt_universe = materials.discover(path, vars=config.vars, hooks=extension.hooks)
     built_universe = materials.build(
-        unbuilt_universe, current_time=current_time, hooks=plugin.hooks
+        unbuilt_universe, current_time=current_time, hooks=extension.hooks
     )
 
     # Export materials directly to the build directory
@@ -51,7 +51,7 @@ def build(
         built_universe,
         outdir=build_dir,
         prefix=config.website.materials_directory_name,
-        hooks=plugin.hooks,
+        hooks=extension.hooks,
     )
 
     # Write materials.json
@@ -61,7 +61,7 @@ def build(
 
     # Execute pre_generate_website hooks and merge results
     pre_generate_results = execute_hooks(
-        plugin.hooks,
+        extension.hooks,
         "pre_generate_website",
         materials=exported_universe,
         website_config=config.website,
@@ -75,9 +75,9 @@ def build(
     generate(
         config.website,
         materials_output_dir,
-        templates=plugin.templates,
-        elements=plugin.elements,
-        extra_assets={**plugin.static_files, **hook_overrides.assets},
+        templates=extension.templates,
+        elements=extension.elements,
+        extra_assets={**extension.static_files, **hook_overrides.assets},
         extra_pages=hook_overrides.pages if hook_overrides.pages else None,
         vars=config.vars,
         cwd=path,
@@ -86,7 +86,7 @@ def build(
 
     # Execute post_generate_website hooks
     execute_hooks(
-        plugin.hooks,
+        extension.hooks,
         "post_generate_website",
         materials=exported_universe,
         website_config=config.website,

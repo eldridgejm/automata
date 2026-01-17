@@ -1,16 +1,16 @@
-# Plugin System Wishlist
+# Extension System Wishlist
 
-Future capabilities to consider adding to the Automata plugin system.
+Future capabilities to consider adding to the Automata extension system.
 
 ## High Priority
 
 ### Jinja Filters and Globals
 
-Allow plugins to extend the Jinja2 environment with custom filters and global functions.
+Allow extensions to extend the Jinja2 environment with custom filters and global functions.
 
 ```python
 @dataclass
-class Plugin:
+class Extension:
     # ... existing fields ...
     filters: dict[str, Callable] = field(default_factory=dict)
     globals: dict[str, Any] = field(default_factory=dict)
@@ -24,22 +24,22 @@ class Plugin:
 
 ### Hooks with Materials Access
 
-Currently hooks only receive `WebsiteConfig`. Many plugins need access to the materials universe.
+Currently hooks only receive `WebsiteConfig`. Many extensions need access to the materials universe.
 
 **Use cases:**
-- Calendar plugin generating iCal from due dates
-- Search plugin building index from all content
-- Changelog plugin showing recently released materials
+- Calendar extension generating iCal from due dates
+- Search extension building index from all content
+- Changelog extension showing recently released materials
 
 **Solution:** Change hook signature to include `RenderContext` or `Universe[ExportedArtifact]`.
 
 ### Markdown Extensions
 
-Allow plugins to register markdown extensions and preprocessors.
+Allow extensions to register markdown extensions and preprocessors.
 
 ```python
 @dataclass
-class Plugin:
+class Extension:
     # ... existing fields ...
     markdown_extensions: list[Extension] = field(default_factory=list)
 ```
@@ -52,7 +52,7 @@ class Plugin:
 
 ### Event Priority System
 
-When multiple plugins define the same hook, allow priority ordering.
+When multiple extensions define the same hook, allow priority ordering.
 
 ```python
 @dataclass
@@ -63,7 +63,7 @@ class ThemeHooks:
 
 **Use cases:**
 - Ensuring hooks run in correct dependency order
-- Allowing plugins to run "before" or "after" other plugins
+- Allowing extensions to run "before" or "after" other extensions
 
 ## Medium Priority
 
@@ -84,7 +84,7 @@ More fine-grained hooks for page processing (inspired by MkDocs/Jekyll):
 
 ### Content Generators
 
-Allow plugins to generate pages from data sources.
+Allow extensions to generate pages from data sources.
 
 ```python
 class Generator(ABC):
@@ -123,7 +123,7 @@ Register handlers for file extensions beyond `.md` and `.html`.
 
 ```python
 @dataclass
-class Plugin:
+class Extension:
     # ... existing fields ...
     converters: dict[str, Callable[[str], str]] = field(default_factory=dict)
 ```
@@ -156,11 +156,11 @@ Support for generating multiple versions of pages (e.g., different languages).
 
 ---
 
-## Plugin Use Case Ideas
+## Extension Use Case Ideas
 
-Potential plugins that would exercise these capabilities:
+Potential extensions that would exercise these capabilities:
 
-| Plugin | Templates | Static | Elements | Filters | Hooks | Generators |
+| Extension | Templates | Static | Elements | Filters | Hooks | Generators |
 |--------|-----------|--------|----------|---------|-------|------------|
 | Calendar Integration | | ✓ | ✓ | | ✓ | |
 | Grade Calculator | | ✓ | ✓ | | | |

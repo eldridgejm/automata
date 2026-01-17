@@ -68,10 +68,10 @@ def render_html_details_title(_renderer, text: str) -> str:
 
 
 def render(text: str) -> str:
-    """Renders markdown content to HTML with TOC, Admonition, and Details plugins.
+    """Renders markdown content to HTML with TOC, Admonition, and Details extensions.
 
     This is a wrapper around :func:`mistune.create_markdown` that enables the
-    Table of Contents (TOC), Admonition, and Details plugins by default.
+    Table of Contents (TOC), Admonition, and Details extensions by default.
 
     - TOC: Use ``.. toc::`` directive
     - Admonitions: Use directives like ``.. note::``, ``.. warning::``, etc.
@@ -96,7 +96,7 @@ def render(text: str) -> str:
     '<h1>Heading</h1>\\n<div class="toc">...</div>\\n<h2>Section 1</h2>'
 
     """
-    # Type ignore needed due to mistune's plugin type annotations
+    # Type ignore needed due to mistune's extension type annotations
     md = mistune.create_markdown(
         plugins=[RSTDirective([TableOfContents(), Admonition(), Details()])],  # type: ignore[list-item]
         escape=False,  # necessary to prevent escaping of HTML within the markdown

@@ -3,7 +3,7 @@
 from pytest import fixture
 
 import automata.website
-from automata.website import PluginConfig
+from automata.website import ExtensionConfig
 
 
 @fixture
@@ -11,7 +11,7 @@ def config(tmpsite):
     return automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
-        theme=PluginConfig(
+        theme=ExtensionConfig(
             use="default",
             config={
                 "short_title": "DSC 40B",

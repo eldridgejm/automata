@@ -13,7 +13,7 @@ import smartconfig.types
 
 import automata.materials
 import automata.website
-from automata.website import PluginConfig, RenderContext, WebsiteConfig
+from automata.website import ExtensionConfig, RenderContext, WebsiteConfig
 from automata.website.builtin_elements._schedule import Schedule
 
 # Fixtures ===========================================================================
@@ -29,7 +29,7 @@ def render_context():
     website_config = WebsiteConfig(
         content_directory="/fake/content",
         build_directory="/fake/build",
-        theme=PluginConfig(use="default", config={}),
+        theme=ExtensionConfig(use="default", config={}),
     )
 
     # Simple url_for function

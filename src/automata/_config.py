@@ -10,14 +10,14 @@ from .util.yaml import parse_yaml
 CONFIGURATION_FILENAME = "automata.yaml"
 
 
-class PluginConfig(smartconfig.Prototype):
-    """Configuration for a plugin."""
+class ExtensionConfig(smartconfig.Prototype):
+    """Configuration for a extension."""
 
-    # which plugin to use. If this contains slashes, it is treated as a path to a
-    # plugin directory. Otherwise, it is treated as the name of an entry point.
+    # which extension to use. If this contains slashes, it is treated as a path to a
+    # extension directory. Otherwise, it is treated as the name of an entry point.
     use: str
 
-    # additional configuration options to pass to the plugin
+    # additional configuration options to pass to the extension
     config: Any = {}
 
 
@@ -58,7 +58,7 @@ class WebsiteConfig(smartconfig.Prototype):
     # base path for the website (e.g., "/" or "/course/")
     base_path: str = "/"
 
-    theme: PluginConfig = PluginConfig(use="default")
+    theme: ExtensionConfig = ExtensionConfig(use="default")
 
 
 class Config(smartconfig.Prototype):
