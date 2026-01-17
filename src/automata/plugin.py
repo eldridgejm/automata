@@ -150,12 +150,12 @@ import sys
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Sequence, cast
+from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 import smartconfig.exceptions
 import smartconfig.types
 
-from .hooks import PostGenerateWebsiteHook
+from .hooks import Hooks, PostGenerateWebsiteHook
 
 if TYPE_CHECKING:
     from .hooks import PreGenerateWebsiteHook
@@ -488,7 +488,7 @@ class Plugin:
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     elements: dict[str, type["Element"]] = field(default_factory=dict)
     schema: smartconfig.types.Schema | None = None
-    hooks: dict[str, list[Any]] = field(default_factory=dict)
+    hooks: Hooks = field(default_factory=lambda: cast(Hooks, {}))
 
     @classmethod
     def from_directory(
@@ -550,7 +550,7 @@ class Plugin:
         templates = load_templates_from_directory(templates_dir)
         static_files = load_static_files_from_directory(directory / "static")
         elements = load_elements_from_directory(directory / "elements")
-        hooks = load_hooks_from_directory(directory / "hooks")
+        hooks = cast(Hooks, load_hooks_from_directory(directory / "hooks"))
 
         # Load schema from schema.json if present
         schema_file = directory / "schema.json"
@@ -678,7 +678,7 @@ def merge_plugins(plugins: Sequence[Plugin]) -> Plugin:
     templates: dict[str, str] = {}
     static_files: dict[str, str | bytes | Traversable] = {}
     elements: dict[str, type["Element"]] = {}
-    hooks: dict[str, list[Any]] = {}
+    hooks_dict: dict[str, list] = {}
 
     for plugin in plugins:
         templates.update(plugin.templates)
@@ -687,16 +687,16 @@ def merge_plugins(plugins: Sequence[Plugin]) -> Plugin:
 
         # Accumulate hooks (don't override)
         for hook_point, hook_list in plugin.hooks.items():
-            if hook_point not in hooks:
-                hooks[hook_point] = []
-            hooks[hook_point].extend(hook_list)
+            if hook_point not in hooks_dict:
+                hooks_dict[hook_point] = []
+            hooks_dict[hook_point].extend(cast(list, hook_list))
 
     return Plugin(
         templates=templates,
         static_files=static_files,
         elements=elements,
         schema=None,
-        hooks=hooks,
+        hooks=cast(Hooks, hooks_dict),
     )
 
 

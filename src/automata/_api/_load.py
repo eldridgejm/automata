@@ -1,10 +1,10 @@
 """High-level function for loading configuration and plugins."""
 
 from pathlib import Path
-from typing import Any
+from typing import cast
 
 from .._config import Config, read_config
-from ..hooks import HOOK_POINTS, ScriptableHookMixin
+from ..hooks import HOOK_POINTS, Hooks, ScriptableHookMixin
 from ..plugin import Plugin, merge_plugins
 
 CONFIGURATION_FILENAME = "automata.yaml"
@@ -77,7 +77,7 @@ def _config_hooks_to_plugin(config: Config, cwd: Path) -> Plugin:
         If an unknown or non-scriptable hook point is specified.
 
     """
-    hooks: dict[str, list[Any]] = {}
+    hooks_dict: dict[str, list] = {}
 
     for hook_point, hook_config in config.hooks.items():
         if hook_point not in HOOK_POINTS:
@@ -96,6 +96,6 @@ def _config_hooks_to_plugin(config: Config, cwd: Path) -> Plugin:
             cwd=cwd,
             priority=hook_config.priority,
         )
-        hooks[hook_point] = [hook]
+        hooks_dict[hook_point] = [hook]
 
-    return Plugin(hooks=hooks)
+    return Plugin(hooks=cast(Hooks, hooks_dict))
