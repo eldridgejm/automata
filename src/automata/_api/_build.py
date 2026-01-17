@@ -42,8 +42,10 @@ def build(
     config, plugin = load(path)
 
     # Discover and build materials
-    unbuilt_universe = materials.discover(path, vars=config.vars)
-    built_universe = materials.build(unbuilt_universe, current_time=current_time)
+    unbuilt_universe = materials.discover(path, vars=config.vars, hooks=plugin.hooks)
+    built_universe = materials.build(
+        unbuilt_universe, current_time=current_time, hooks=plugin.hooks
+    )
 
     # Export materials directly to the build directory
     build_dir = path / config.website.build_directory
@@ -53,6 +55,7 @@ def build(
         built_universe,
         outdir=build_dir,
         prefix=config.website.materials_directory_name,
+        hooks=plugin.hooks,
     )
 
     # Write materials.json

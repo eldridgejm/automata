@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from .._config import Config, read_config
-from ..hooks import PostGenerateWebsiteHook
+from ..hooks import HOOK_POINTS, ScriptableHookMixin
 from ..plugin import Plugin, merge_plugins
 
 CONFIGURATION_FILENAME = "automata.yaml"
@@ -56,8 +56,8 @@ def _config_hooks_to_plugin(config: Config, cwd: Path) -> Plugin:
     This wraps each shell command hook in a hook instance and creates a
     Plugin containing those hooks.
 
-    Note: Only ``post_generate_website`` hooks are supported from config
-    since shell hooks cannot return values required by ``pre_generate_website``.
+    Only hooks that inherit from ScriptableHookMixin can be defined in config,
+    since shell hooks cannot return values.
 
     Parameters
     ----------
@@ -71,17 +71,31 @@ def _config_hooks_to_plugin(config: Config, cwd: Path) -> Plugin:
     Plugin
         A plugin containing only hooks (no templates, elements, etc.).
 
+    Raises
+    ------
+    ValueError
+        If an unknown or non-scriptable hook point is specified.
+
     """
     hooks: dict[str, list[Any]] = {}
 
     for hook_point, hook_config in config.hooks.items():
-        # Only post_generate_website supports shell hooks
-        if hook_point == "post_generate_website":
-            hook = PostGenerateWebsiteHook.from_script(
-                command=hook_config.command,
-                cwd=cwd,
-                priority=hook_config.priority,
+        if hook_point not in HOOK_POINTS:
+            raise ValueError(f"Unknown hook point: {hook_point!r}")
+
+        hook_class = HOOK_POINTS[hook_point]
+
+        if not issubclass(hook_class, ScriptableHookMixin):
+            raise ValueError(
+                f"Hook point {hook_point!r} does not support shell scripts "
+                f"(it must return a value)"
             )
-            hooks[hook_point] = [hook]
+
+        hook = hook_class.from_script(
+            command=hook_config.command,
+            cwd=cwd,
+            priority=hook_config.priority,
+        )
+        hooks[hook_point] = [hook]
 
     return Plugin(hooks=hooks)

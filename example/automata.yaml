@@ -34,3 +34,5 @@ website:
 hooks:
   post_generate_website:
     command: "echo 'Build complete!'"
+  "materials.discover:on_publication":
+    command: "jq -r '.path'"
