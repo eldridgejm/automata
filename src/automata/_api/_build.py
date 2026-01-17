@@ -63,11 +63,11 @@ def build(
     pre_generate_results = execute_hooks(
         plugin.hooks,
         "pre_generate_website",
-        exported_universe,
-        config.website,
-        build_dir,
-        config.vars,
-        current_time,
+        materials=exported_universe,
+        website_config=config.website,
+        build_directory=build_dir,
+        vars=config.vars,
+        current_time=current_time,
     )
     hook_overrides = PreGenerateWebsiteHook.merge_results(pre_generate_results)
 
@@ -88,9 +88,9 @@ def build(
     execute_hooks(
         plugin.hooks,
         "post_generate_website",
-        exported_universe,
-        config.website,
-        build_dir,
-        config.vars,
-        current_time,
+        materials=exported_universe,
+        website_config=config.website,
+        build_directory=build_dir,
+        vars=config.vars,
+        current_time=current_time,
     )

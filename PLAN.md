@@ -51,7 +51,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Is "priority" the best way to control the order in which plugins are applied? 100 is the lowest priority, meaning it runs last, but isn't that "higher" priority in a sense because it will override other plugins?
 - [x] Allow plugins to specify additional resolve functions, global functions available during resolution.
     - we will handle this with hooks
-- [ ] Whenever we pass a lot of arguments to execute_hook, we should consider passing them as kwargs instead.
+- [x] Whenever we pass a lot of arguments to execute_hook, we should consider passing them as kwargs instead.
 - [ ] Rename "plugin" to "extension"?
 - [ ] Rename "build()" to "generate()"?
 - [ ] Make sure all tests are in pytest style
