@@ -13,6 +13,7 @@ import smartconfig.types
 
 import automata.materials
 import automata.website
+from automata.plugins import PluginConfig
 from automata.website import RenderContext, WebsiteConfig
 from automata.website.builtin_elements._schedule import Schedule
 
@@ -29,7 +30,7 @@ def render_context():
     website_config = WebsiteConfig(
         content_directory="/fake/content",
         build_directory="/fake/build",
-        theme=automata.website.ThemeConfig(use="default", config={}),
+        theme=PluginConfig(use="default", config={}),
     )
 
     # Simple url_for function

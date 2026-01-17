@@ -4,7 +4,7 @@ import datetime
 from pathlib import Path
 
 from . import materials
-from ._plugin import Plugin, merge_plugins
+from ._plugin import Plugin
 from .config import read_config
 from .website import generate
 
@@ -58,31 +58,18 @@ def build(
     materials_json.parent.mkdir(parents=True, exist_ok=True)
     materials_json.write_text(materials.serialize(exported_universe))
 
-    # Load the theme and any overrides as plugins
-    plugins: list[Plugin] = []
-
-    # Load the base theme
+    # Load the theme as a plugin
     theme_plugin = Plugin.from_spec(
         config.website.theme.use, group="automata.website.themes"
     )
-    plugins.append(theme_plugin)
-
-    # Load overrides if specified
-    if config.website.theme.overrides is not None:
-        overrides_path = path / config.website.theme.overrides
-        overrides_plugin = Plugin.from_directory(overrides_path)  # type: ignore[arg-type]
-        plugins.append(overrides_plugin)
-
-    # Merge all plugins (later plugins override earlier ones)
-    all_plugins = merge_plugins(plugins)
 
     # Generate website (materials are already in place, so no copy needed)
     generate(
         config.website,
         materials_output_dir,
-        templates=all_plugins.templates,
-        elements=all_plugins.elements,
-        extra_assets=all_plugins.static_files,
+        templates=theme_plugin.templates,
+        elements=theme_plugin.elements,
+        extra_assets=theme_plugin.static_files,
         vars=config.vars,
         cwd=path,
         current_time=current_time,

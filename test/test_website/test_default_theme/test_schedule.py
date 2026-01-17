@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup, Tag
 from pytest import fixture
 
 import automata.website
+from automata.plugins import PluginConfig
 
 
 @fixture
@@ -15,7 +16,7 @@ def config(tmpsite):
     return automata.website.WebsiteConfig(
         content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
-        theme=automata.website.ThemeConfig(
+        theme=PluginConfig(
             use="default",
             config={
                 "short_title": "DSC 40B",

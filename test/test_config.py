@@ -62,7 +62,6 @@ def test_read_config_applies_defaults(tmp_path: Path) -> None:
 
     # website theme should have defaults
     assert config.website.theme.use == "default"
-    assert config.website.theme.overrides is None
     assert config.website.theme.config == {}
 
     # Other website defaults
@@ -153,7 +152,6 @@ def test_read_config_with_complex_theme_config(tmp_path: Path) -> None:
               build_directory: "./build"
               theme:
                 use: "./custom-theme"
-                overrides: "./theme-overrides"
                 config:
                   short_title: "Course"
                   long_title: "Full Course Title"
@@ -169,7 +167,6 @@ def test_read_config_with_complex_theme_config(tmp_path: Path) -> None:
     config = read_config(config_file)
 
     assert config.website.theme.use == "./custom-theme"
-    assert config.website.theme.overrides == "./theme-overrides"
     assert len(config.website.theme.config["navigation"]) == 2
     assert config.website.theme.config["navigation"][0]["text"] == "Home"
 
