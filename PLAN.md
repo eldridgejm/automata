@@ -55,7 +55,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Rename "plugin" to "extension"
 - [ ] Rename "static_files" to "assets"
 - [ ] Explore reorganizing hooks module into a subpackage
-- [ ] Rename "build()" to "generate()"?
+- [-] Rename "build()" to "generate()"? (deferred)
 - [ ] Make sure all tests are in pytest style
 - [ ] Investigate issue with npx not being found
 - [ ] Improve test coverage
