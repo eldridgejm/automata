@@ -73,12 +73,13 @@ def create_shell_hook(
     command: str,
     cwd: Path,
     priority: int = 50,
-) -> tuple[int, Callable[[dict[str, Any]], dict[str, Any]]]:
+) -> tuple[int, Callable[[dict[str, Any]], None]]:
     """Create a hook callable that executes a shell command.
 
-    The shell command receives a JSON-serialized context on stdin and is
-    expected to return a JSON object on stdout. For hooks that don't need
-    to return data (like post_generate), the command may return empty output.
+    The shell command receives a JSON-serialized context on stdin. Shell hooks
+    cannot return values that modify the generation process; they are intended
+    for side effects only (e.g., running post-processing scripts). Any output
+    from the command is ignored.
 
     Parameters
     ----------
@@ -96,13 +97,13 @@ def create_shell_hook(
 
     """
 
-    def shell_hook(context: dict[str, Any]) -> dict[str, Any]:
+    def shell_hook(context: dict[str, Any]) -> None:
         """Execute the shell command with context as JSON stdin."""
         # Serialize context to JSON
         context_json = json.dumps(context, default=_json_serializer)
 
         try:
-            result = subprocess.run(
+            subprocess.run(
                 command,
                 shell=True,
                 cwd=str(cwd),
@@ -118,19 +119,6 @@ def create_shell_hook(
             ) from e
         except subprocess.TimeoutExpired as e:
             raise RuntimeError("Shell hook timed out after 300 seconds") from e
-
-        # Parse output (empty output is valid for hooks that don't return data)
-        stdout = result.stdout.strip()
-        if not stdout:
-            return {}
-
-        try:
-            result_dict: dict[str, Any] = json.loads(stdout)
-            return result_dict
-        except json.JSONDecodeError as e:
-            raise RuntimeError(
-                f"Shell hook returned invalid JSON: {e}\nOutput: {stdout}"
-            ) from e
 
     return (priority, shell_hook)
 
