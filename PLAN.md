@@ -47,9 +47,10 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Build hooks (allowing scripts to run at certain points in the generation process)
 - [x] Remove ability for script hooks to return output (only some hooks will be valid script hooks)
 - [x] If plugin directory contains a __init__.py file, treat it as a package and add it to sys.path. Otherwise, treat it as a "filesystem plugin".
-- [ ] More clearly define the notions of "filesystem plugins" vs "package plugins" and clearly document the structure of a filesystem plugin. Maybe rename the methods that load plugins to reflect this distinction?
-- [ ] Is "priority" the best way to control the order in which plugins are applied? 100 is the lowest priority, meaning it runs last, but isn't that "higher" priority in a sense because it will override other plugins?
+- [x] More clearly define the notions of "filesystem plugins" vs "package plugins" and clearly document the structure of a filesystem plugin. Maybe rename the methods that load plugins to reflect this distinction?
+- [x] Is "priority" the best way to control the order in which plugins are applied? 100 is the lowest priority, meaning it runs last, but isn't that "higher" priority in a sense because it will override other plugins?
 - [ ] Allow plugins to specify additional resolve functions, global functions available during resolution.
+    - we will handle this with hooks
 - [ ] Rename "plugin" to "extension"?
 - [ ] Rename "build()" to "generate()"?
 - [ ] Investigate issue with npx not being found
