@@ -46,8 +46,10 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
 - [x] Build hooks (allowing scripts to run at certain points in the generation process)
 - [x] Remove ability for script hooks to return output (only some hooks will be valid script hooks)
-- [ ] If plugin directory contains a __init__.py file, treat it as a package and add it to sys.path. Otherwise, treat it as a "filesystem plugin".
+- [x] If plugin directory contains a __init__.py file, treat it as a package and add it to sys.path. Otherwise, treat it as a "filesystem plugin".
+- [ ] More clearly define the notions of "filesystem plugins" vs "package plugins" and clearly document the structure of a filesystem plugin. Maybe rename the methods that load plugins to reflect this distinction?
 - [ ] Allow plugins to specify additional resolve functions, global functions available during resolution.
+- [ ] Rename "plugin" to "extension"?
 - [ ] Rename "build()" to "generate()"?
 - [ ] Investigate issue with npx not being found
 - [ ] Improve test coverage

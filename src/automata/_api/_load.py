@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .._config import Config, read_config
 from .._hooks import create_shell_hook
-from .._plugin import Plugin, merge_plugins
+from ..plugin import Plugin, merge_plugins
 
 CONFIGURATION_FILENAME = "automata.yaml"
 
