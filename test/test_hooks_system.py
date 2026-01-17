@@ -30,7 +30,6 @@ from automata.hooks import (
     ResolveOverrides,
     execute_hooks,
     hook_point,
-    merge_hook_results,
     sort_hooks_by_priority,
     validate_hook_point_names,
 )
@@ -520,8 +519,8 @@ class TestExecuteHooks:
 # =============================================================================
 
 
-class TestMergeHookResults:
-    """Tests for merge_hook_results function."""
+class TestMergeResults:
+    """Tests for hook merge_results static methods."""
 
     def test_merge_resolve_override_results(self):
         """Verify later hooks override earlier ones for ResolveOverrides."""
@@ -542,7 +541,7 @@ class TestMergeHookResults:
             ),
         ]
 
-        merged = merge_hook_results(results, ResolveOverrides)
+        merged = PreResolveHook.merge_results(results)
 
         # foo should be overwritten by second hook
         assert merged.functions["foo"] is fn2
@@ -563,7 +562,7 @@ class TestMergeHookResults:
             ),
         ]
 
-        merged = merge_hook_results(results, GenerateOverrides)
+        merged = PreGenerateWebsiteHook.merge_results(results)
 
         # about.html should be overwritten
         assert merged.pages["about.html"] == "Second"
@@ -581,22 +580,17 @@ class TestMergeHookResults:
             ResolveOverrides(global_variables={"x": 1}),
         ]
 
-        merged = merge_hook_results(results, ResolveOverrides)
+        merged = PreResolveHook.merge_results(results)
 
         assert "foo" in merged.functions
         assert merged.global_variables["x"] == 1
 
     def test_merge_empty_results(self):
         """Verify empty results list returns empty overrides."""
-        merged = merge_hook_results([], ResolveOverrides)
+        merged = PreResolveHook.merge_results([])
 
         assert merged.functions == {}
         assert merged.global_variables == {}
-
-    def test_merge_unknown_type_raises(self):
-        """Verify unknown result type raises ValueError."""
-        with pytest.raises(ValueError, match="Unknown result type"):
-            merge_hook_results([], str)  # type: ignore[arg-type]
 
 
 # =============================================================================

@@ -4,11 +4,7 @@ import datetime
 from pathlib import Path
 
 from .. import materials
-from ..hooks import (
-    GenerateOverrides,
-    execute_hooks,
-    merge_hook_results,
-)
+from ..hooks import PreGenerateWebsiteHook, execute_hooks
 from ..website import generate
 from ._load import load
 
@@ -63,7 +59,7 @@ def build(
     materials_json.parent.mkdir(parents=True, exist_ok=True)
     materials_json.write_text(materials.serialize(exported_universe))
 
-    # Execute pre_generate_website hooks
+    # Execute pre_generate_website hooks and merge results
     pre_generate_results = execute_hooks(
         plugin.hooks,
         "pre_generate_website",
@@ -73,7 +69,7 @@ def build(
         config.vars,
         current_time,
     )
-    hook_overrides = merge_hook_results(pre_generate_results, GenerateOverrides)
+    hook_overrides = PreGenerateWebsiteHook.merge_results(pre_generate_results)
 
     # Generate website (materials are already in place, so no copy needed)
     generate(

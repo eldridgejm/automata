@@ -48,7 +48,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Self, Sequence, TypedDict, overload
+from typing import TYPE_CHECKING, Any, Callable, Self, Sequence, TypedDict
 
 if TYPE_CHECKING:
     import datetime
@@ -117,6 +117,17 @@ class ResolveOverrides:
     functions: dict[str, Callable] = field(default_factory=dict)
     global_variables: dict[str, Any] = field(default_factory=dict)
 
+    def merge(self, other: "ResolveOverrides") -> "ResolveOverrides":
+        """Merge another ResolveOverrides into this one.
+
+        Returns a new instance with combined values. Values from `other`
+        override values from `self` for conflicting keys.
+        """
+        return ResolveOverrides(
+            functions={**self.functions, **other.functions},
+            global_variables={**self.global_variables, **other.global_variables},
+        )
+
 
 @dataclass
 class GenerateOverrides:
@@ -134,6 +145,17 @@ class GenerateOverrides:
 
     pages: dict[str, str] = field(default_factory=dict)
     assets: dict[str, str | bytes] = field(default_factory=dict)
+
+    def merge(self, other: "GenerateOverrides") -> "GenerateOverrides":
+        """Merge another GenerateOverrides into this one.
+
+        Returns a new instance with combined values. Values from `other`
+        override values from `self` for conflicting keys.
+        """
+        return GenerateOverrides(
+            pages={**self.pages, **other.pages},
+            assets={**self.assets, **other.assets},
+        )
 
 
 # =============================================================================
@@ -781,6 +803,15 @@ class PreResolveHook(ABC):
         """
         ...
 
+    @staticmethod
+    def merge_results(results: Sequence[ResolveOverrides | None]) -> ResolveOverrides:
+        """Merge results from multiple hooks, skipping None values."""
+        merged = ResolveOverrides()
+        for result in results:
+            if result is not None:
+                merged = merged.merge(result)
+        return merged
+
 
 # =============================================================================
 # Hook Base Classes - website.generate
@@ -833,6 +864,15 @@ class PreGenerateWebsiteHook(ABC):
 
         """
         ...
+
+    @staticmethod
+    def merge_results(results: Sequence[GenerateOverrides | None]) -> GenerateOverrides:
+        """Merge results from multiple hooks, skipping None values."""
+        merged = GenerateOverrides()
+        for result in results:
+            if result is not None:
+                merged = merged.merge(result)
+        return merged
 
 
 @hook_point("post_generate_website")
@@ -1019,70 +1059,6 @@ def execute_hooks(
             ) from e
 
     return results
-
-
-@overload
-def merge_hook_results(
-    results: Sequence[ResolveOverrides | None],
-    result_type: type[ResolveOverrides],
-) -> ResolveOverrides: ...
-
-
-@overload
-def merge_hook_results(
-    results: Sequence[GenerateOverrides | None],
-    result_type: type[GenerateOverrides],
-) -> GenerateOverrides: ...
-
-
-def merge_hook_results(
-    results: Sequence[ResolveOverrides | GenerateOverrides | None],
-    result_type: type[ResolveOverrides] | type[GenerateOverrides],
-) -> ResolveOverrides | GenerateOverrides:
-    """Merge results from multiple hooks.
-
-    Results are merged in order, with later hooks overriding earlier ones
-    for any conflicting keys.
-
-    Parameters
-    ----------
-    results : Sequence
-        Sequence of results from hook execution (may contain None values).
-    result_type : type
-        The type of result to create (ResolveOverrides or GenerateOverrides).
-
-    Returns
-    -------
-    ResolveOverrides | GenerateOverrides
-        The merged result.
-
-    """
-    if result_type is ResolveOverrides:
-        merged_functions: dict[str, Callable] = {}
-        merged_globals: dict[str, Any] = {}
-
-        for result in results:
-            if result is not None and isinstance(result, ResolveOverrides):
-                merged_functions.update(result.functions)
-                merged_globals.update(result.global_variables)
-
-        return ResolveOverrides(
-            functions=merged_functions, global_variables=merged_globals
-        )
-
-    elif result_type is GenerateOverrides:
-        merged_pages: dict[str, str] = {}
-        merged_assets: dict[str, str | bytes] = {}
-
-        for result in results:
-            if result is not None and isinstance(result, GenerateOverrides):
-                merged_pages.update(result.pages)
-                merged_assets.update(result.assets)
-
-        return GenerateOverrides(pages=merged_pages, assets=merged_assets)
-
-    else:
-        raise ValueError(f"Unknown result type: {result_type}")
 
 
 def validate_hook_point_names(hooks: Hooks) -> None:

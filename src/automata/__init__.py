@@ -23,7 +23,6 @@ from .hooks import (
     ResolveOverrides,
     execute_hooks,
     hook_point,
-    merge_hook_results,
     sort_hooks_by_priority,
     validate_hook_point_names,
 )
@@ -52,7 +51,6 @@ __all__ = [
     "Hooks",
     "hook_point",
     "execute_hooks",
-    "merge_hook_results",
     "validate_hook_point_names",
     "sort_hooks_by_priority",
     "ResolveOverrides",
