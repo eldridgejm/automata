@@ -5,15 +5,14 @@ import datetime
 import pathlib
 import subprocess
 from typing import (
-    TYPE_CHECKING,
     Any,
-    Optional,
     TypedDict,
     Unpack,
     cast,
     overload,
 )
 
+from ..hooks import Hooks, execute_hooks
 from ._types import (
     BuiltArtifact,
     Collection,
@@ -23,9 +22,6 @@ from ._types import (
     Universe,
 )
 from .exceptions import BuildError
-
-if TYPE_CHECKING:
-    from ..hooks import Hooks
 
 
 def _build_artifact(
@@ -37,8 +33,7 @@ def _build_artifact(
     verbose=False,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    hooks: Optional["Hooks"] = None,
-    _execute_hooks=None,
+    hooks: Hooks | None = None,
 ):
     """Build an artifact using its recipe.
 
@@ -77,13 +72,11 @@ def _build_artifact(
         and artifact.release_time is not None
         and artifact.release_time > current_time
     ):
-        if _execute_hooks:
-            _execute_hooks(hooks, "materials.build:on_too_soon", artifact)
+        execute_hooks(hooks, "materials.build:on_too_soon", artifact)
         return None
 
     if not artifact.ready and not ignore_ready:
-        if _execute_hooks:
-            _execute_hooks(hooks, "materials.build:on_not_ready", artifact)
+        execute_hooks(hooks, "materials.build:on_not_ready", artifact)
         return None
 
     if artifact.recipe is None:
@@ -91,8 +84,7 @@ def _build_artifact(
         stderr = None
         returncode = None
     else:
-        if _execute_hooks:
-            _execute_hooks(hooks, "materials.build:on_recipe", artifact)
+        execute_hooks(hooks, "materials.build:on_recipe", artifact)
 
         kwargs = {
             "cwd": artifact.workdir,
@@ -116,8 +108,7 @@ def _build_artifact(
     path = artifact.workdir / artifact.path
     if not exists(path):
         if artifact.missing_ok:
-            if _execute_hooks:
-                _execute_hooks(hooks, "materials.build:on_missing", artifact)
+            execute_hooks(hooks, "materials.build:on_missing", artifact)
             return None
         else:
             raise BuildError(f"Artifact {path} does not exist at {path}.")
@@ -125,8 +116,7 @@ def _build_artifact(
     output = dataclasses.replace(
         output, returncode=returncode, stdout=stdout, stderr=stderr
     )
-    if _execute_hooks:
-        _execute_hooks(hooks, "materials.build:on_success", output)
+    execute_hooks(hooks, "materials.build:on_success", output)
     return output
 
 
@@ -141,9 +131,9 @@ class BuildOptions(TypedDict, total=False):
     ignore_release_time: bool
     ignore_ready: bool
     verbose: bool
-    hooks: Optional["Hooks"]
+    hooks: Hooks | None
     run: Any
-    current_time: Optional[datetime.datetime]
+    current_time: datetime.datetime | None
     exists: Any
 
 
@@ -181,7 +171,7 @@ def build(
     ignore_release_time: bool = False,
     ignore_ready: bool = False,
     verbose: bool = False,
-    hooks: Optional["Hooks"] = None,
+    hooks: Hooks | None = None,
     current_time: datetime.datetime | None = None,
     run=subprocess.run,
     exists=pathlib.Path.exists,
@@ -236,9 +226,6 @@ def build(
     an exception is raised.
 
     """
-    # Import here to avoid circular imports
-    from ..hooks import execute_hooks
-
     if isinstance(root, UnbuiltArtifact):
         return _build_artifact(  # type: ignore[no-any-return]
             root,
@@ -249,7 +236,6 @@ def build(
             verbose=verbose,
             exists=exists,
             hooks=hooks,
-            _execute_hooks=execute_hooks,
         )
 
     # recursively build the children

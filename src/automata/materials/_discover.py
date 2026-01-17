@@ -3,10 +3,11 @@
 import pathlib
 import typing
 from collections import OrderedDict, deque
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any, Dict, Optional
 
 from automata import constants
 
+from ..hooks import Hooks, execute_hooks
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file
 from ._types import (
@@ -17,10 +18,6 @@ from ._types import (
     Universe,
 )
 from .exceptions import DiscoveryError
-
-if TYPE_CHECKING:
-    from ..hooks import Hooks
-
 
 # helper functions =====================================================================
 
@@ -57,8 +54,7 @@ def _search_for_collections_and_publications(
     root_directory: pathlib.Path,
     skip_directories: Optional[typing.Collection[str]] = None,
     *,
-    hooks: Optional["Hooks"] = None,
-    _execute_hooks=None,
+    hooks: Hooks | None = None,
 ):
     """Perform a BFS to find all collections and publications in the filesystem.
 
@@ -69,10 +65,8 @@ def _search_for_collections_and_publications(
     skip_directories : Optional[Collection[str]]
         A collection of folder names that, if found, will be skipped over. If None,
         every folder is searched.
-    hooks : Optional[Hooks]
+    hooks : Hooks | None
         Hooks to invoke during discovery.
-    _execute_hooks : Callable
-        Internal: the execute_hooks function (passed to avoid repeated imports).
 
     Returns
     -------
@@ -115,8 +109,7 @@ def _search_for_collections_and_publications(
         for subpath in current_path.iterdir():
             if subpath.is_dir():
                 if subpath.name in skip_directories:
-                    if _execute_hooks:
-                        _execute_hooks(hooks, "materials.discover:on_skip", subpath)
+                    execute_hooks(hooks, "materials.discover:on_skip", subpath)
                     continue
                 queue.append((subpath, parent_collection_path))  # type: ignore
 
@@ -137,8 +130,7 @@ def _make_collections(
     collection_paths: typing.Collection[pathlib.Path],
     root_directory,
     vars: Optional[Dict[str, Any]] = None,
-    hooks: Optional["Hooks"] = None,
-    _execute_hooks=None,
+    hooks: Hooks | None = None,
 ) -> typing.MutableMapping[str, Collection]:
     """Given a collection of paths to collections, create Collection objects.
 
@@ -159,10 +151,8 @@ def _make_collections(
     vars : Optional[dict]
         A dictionary of extra variables to be used during interpolation of fields in
         collection.yaml.
-    hooks : Optional[Hooks]
+    hooks : Hooks | None
         Hooks to invoke during discovery.
-    _execute_hooks : Callable
-        Internal: the execute_hooks function (passed to avoid repeated imports).
 
     Returns
     -------
@@ -180,10 +170,7 @@ def _make_collections(
         key = str(path.relative_to(root_directory))
         collections[key] = collection
 
-        if _execute_hooks:
-            _execute_hooks(
-                hooks, "materials.discover:on_collection", file_path, collection
-            )
+        execute_hooks(hooks, "materials.discover:on_collection", file_path, collection)
 
     collections["default"] = _make_default_collection()
     return collections
@@ -217,8 +204,7 @@ def _make_publications(
     collections: typing.MutableMapping[str, Collection],
     *,
     vars: Optional[Dict[str, Any]] = None,
-    hooks: Optional["Hooks"] = None,
-    _execute_hooks=None,
+    hooks: Hooks | None = None,
 ) -> None:
     """Given a collection of paths to publications, create Publication objects.
 
@@ -236,10 +222,8 @@ def _make_publications(
     vars : Optional[dict]
         A dictionary of extra variables to be used during interpolation of fields in
         publication.yaml.
-    hooks : Optional[Hooks]
+    hooks : Hooks | None
         Hooks to invoke during discovery.
-    _execute_hooks : Callable
-        Internal: the execute_hooks function (passed to avoid repeated imports).
 
     Returns
     -------
@@ -274,10 +258,9 @@ def _make_publications(
 
         collection.publications[publication_key] = publication
 
-        if _execute_hooks:
-            _execute_hooks(
-                hooks, "materials.discover:on_publication", file_path, publication
-            )
+        execute_hooks(
+            hooks, "materials.discover:on_publication", file_path, publication
+        )
 
 
 def _sort_dictionary(dct) -> OrderedDict:
@@ -295,7 +278,7 @@ def discover(
     root_directory: pathlib.Path,
     skip_directories: Optional[typing.Collection[str]] = None,
     vars: Optional[Dict[str, Any]] = None,
-    hooks: Optional["Hooks"] = None,
+    hooks: Hooks | None = None,
 ) -> Universe[UnbuiltArtifact]:
     """Discover the course materials in the filesystem.
 
@@ -337,7 +320,7 @@ def discover(
         A dictionary of user-defined variables to be available during
         interpolation. Passed to :func:`read_publication_file` and
         :func:`read_collection_file`.
-    hooks : Optional[Hooks]
+    hooks : Hooks | None
         Hooks to be invoked during the discovery. Supports:
         - ``materials.discover:on_collection``
         - ``materials.discover:on_publication``
@@ -350,14 +333,10 @@ def discover(
         instance.
 
     """
-    # Import here to avoid circular imports
-    from ..hooks import execute_hooks
-
     collection_paths, publication_paths = _search_for_collections_and_publications(
         root_directory,
         skip_directories=skip_directories,
         hooks=hooks,
-        _execute_hooks=execute_hooks,
     )
 
     publication_paths = _sort_dictionary(publication_paths)
@@ -367,7 +346,6 @@ def discover(
         root_directory,
         vars=vars,
         hooks=hooks,
-        _execute_hooks=execute_hooks,
     )
     _make_publications(
         publication_paths,
@@ -375,7 +353,6 @@ def discover(
         collections,
         vars=vars,
         hooks=hooks,
-        _execute_hooks=execute_hooks,
     )
 
     return Universe(collections)

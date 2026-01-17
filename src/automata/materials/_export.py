@@ -2,8 +2,9 @@
 
 import pathlib
 import shutil
-from typing import TYPE_CHECKING, Optional, cast, overload
+from typing import cast, overload
 
+from ..hooks import Hooks, execute_hooks
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -13,16 +14,12 @@ from ._types import (
     Universe,
 )
 
-if TYPE_CHECKING:
-    from ..hooks import Hooks
-
 
 def _export_artifact(
     built_artifact: BuiltArtifact,
     outdir: pathlib.Path,
     filename: str,
-    hooks: Optional["Hooks"] = None,
-    _execute_hooks=None,
+    hooks: Hooks | None = None,
 ) -> ExportedArtifact:
     """Copies an artifact to another directory.
 
@@ -35,10 +32,8 @@ def _export_artifact(
     filename : str
         The filename (or directory name) that will be given to the new file,
         including extension, if applicable.
-    hooks : Optional[Hooks]
+    hooks : Hooks | None
         Hooks to invoke during the export.
-    _execute_hooks : Callable
-        Internal: the execute_hooks function (passed to avoid repeated imports).
 
     """
     # actually copy the artifact
@@ -46,8 +41,7 @@ def _export_artifact(
     full_dst.parent.mkdir(parents=True, exist_ok=True)
     full_src = built_artifact.workdir / built_artifact.path
 
-    if _execute_hooks:
-        _execute_hooks(hooks, "materials.export:on_copy", full_src, full_dst)
+    execute_hooks(hooks, "materials.export:on_copy", full_src, full_dst)
 
     if full_src.is_dir():
         shutil.copytree(full_src, full_dst)
@@ -68,7 +62,7 @@ def export(
     root: Universe[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = ...,
-    hooks: Optional["Hooks"] = ...,
+    hooks: Hooks | None = ...,
 ) -> Universe[ExportedArtifact]: ...
 
 
@@ -77,7 +71,7 @@ def export(
     root: Collection[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
-    hooks: Optional["Hooks"] = None,
+    hooks: Hooks | None = None,
 ) -> Collection[ExportedArtifact]: ...
 
 
@@ -86,7 +80,7 @@ def export(
     root: Publication[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
-    hooks: Optional["Hooks"] = None,
+    hooks: Hooks | None = None,
 ) -> Publication[ExportedArtifact]: ...
 
 
@@ -95,7 +89,7 @@ def export(
     root: BuiltArtifact,
     outdir: pathlib.Path,
     prefix: str = "",
-    hooks: Optional["Hooks"] = None,
+    hooks: Hooks | None = None,
 ) -> ExportedArtifact: ...
 
 
@@ -109,7 +103,7 @@ def export(
     | BuiltArtifact,
     outdir: pathlib.Path,
     prefix: str = "",
-    hooks: Optional["Hooks"] = None,
+    hooks: Hooks | None = None,
 ) -> (
     Universe[ExportedArtifact]
     | Collection[ExportedArtifact]
@@ -136,7 +130,7 @@ def export(
         String to prepend between output directory path and the keys of the
         children. If the thing being exported is a :class:`BuiltArtifact`,
         this is simply the filename.
-    hooks : Optional[Hooks]
+    hooks : Hooks | None
         Hooks to be invoked during the export. Supports:
         - ``materials.export:on_copy``
         - ``materials.export:on_node``
@@ -156,13 +150,8 @@ def export(
     ``<prefix><collection_key>/<publication_key>/<artifact_key>``
 
     """
-    # Import here to avoid circular imports
-    from ..hooks import execute_hooks
-
     if isinstance(root, BuiltArtifact):
-        return _export_artifact(
-            root, outdir, prefix, hooks=hooks, _execute_hooks=execute_hooks
-        )
+        return _export_artifact(root, outdir, prefix, hooks=hooks)
 
     if isinstance(root, Artifact) and not isinstance(root, BuiltArtifact):
         raise ValueError("Cannot export an unbuilt artifact.")

@@ -1,7 +1,8 @@
 """Provides filter(), which selects materials according to a predicate."""
 
-from typing import TYPE_CHECKING, Callable, Optional, TypeVar, overload
+from typing import Callable, TypeVar, overload
 
+from ..hooks import Hooks, execute_hooks
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -11,10 +12,6 @@ from ._types import (
     UnbuiltArtifact,
     Universe,
 )
-
-if TYPE_CHECKING:
-    from ..hooks import Hooks
-
 
 # overloads for filter() ---------------------------------------------------------------
 
@@ -39,7 +36,7 @@ def filter(
     root: Universe[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Optional["Hooks"] = ...,
+    hooks: Hooks | None = ...,
 ) -> Universe[ArtifactType]: ...
 
 
@@ -48,7 +45,7 @@ def filter(
     root: Collection[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Optional["Hooks"] = ...,
+    hooks: Hooks | None = ...,
 ) -> Collection[ArtifactType]: ...
 
 
@@ -57,7 +54,7 @@ def filter(
     root: Publication[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Optional["Hooks"] = ...,
+    hooks: Hooks | None = ...,
 ) -> Publication[ArtifactType]: ...
 
 
@@ -66,7 +63,7 @@ def filter(
     root: ArtifactType,
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Optional["Hooks"] = ...,
+    hooks: Hooks | None = ...,
 ) -> ArtifactType: ...
 
 
@@ -80,7 +77,7 @@ def filter(
     | Artifact,
     predicate: Callable[[str, Universe | Collection | Publication | Artifact], bool],
     remove_empty_nodes: bool = False,
-    hooks: Optional["Hooks"] = None,
+    hooks: Hooks | None = None,
 ) -> (
     Universe[ArtifactType]
     | Collection[ArtifactType]
@@ -100,7 +97,7 @@ def filter(
         Whether nodes without children should be removed (True) or preserved
         (False). The exception is the root node: if all of its children are
         removed, it remains. Default: False.
-    hooks : Optional[Hooks]
+    hooks : Hooks | None
         Hooks to be invoked during the filtering. Supports:
         - ``materials.filter:on_hit``
         - ``materials.filter:on_miss``
@@ -112,8 +109,6 @@ def filter(
         removed. This is a new object, and the original root is unchanged.
 
     """
-    # Import here to avoid circular imports
-    from ..hooks import execute_hooks
 
     # bottom up -- by the time the predicate is applied to publication, its artifacts
     # have been filtered
