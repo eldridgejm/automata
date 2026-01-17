@@ -34,7 +34,7 @@ def _build_artifact(
     run=subprocess.run,
     exists=pathlib.Path.exists,
     hooks: Hooks | None = None,
-):
+) -> BuiltArtifact | None:
     """Build an artifact using its recipe.
 
     This private helper function is used by :func:`build` to build an artifact.
@@ -156,7 +156,9 @@ def build(
 
 
 @overload
-def build(root: UnbuiltArtifact, **kwargs: Unpack[BuildOptions]) -> BuiltArtifact: ...
+def build(
+    root: UnbuiltArtifact, **kwargs: Unpack[BuildOptions]
+) -> BuiltArtifact | None: ...
 
 
 # build() ==============================================================================
@@ -180,6 +182,7 @@ def build(
     | Collection[BuiltArtifact]
     | Publication[BuiltArtifact]
     | BuiltArtifact
+    | None
 ):
     """Build all artifacts contained under the given root node.
 
@@ -227,7 +230,7 @@ def build(
 
     """
     if isinstance(root, UnbuiltArtifact):
-        return _build_artifact(  # type: ignore[no-any-return]
+        return _build_artifact(
             root,
             ignore_release_time=ignore_release_time,
             ignore_ready=ignore_ready,
