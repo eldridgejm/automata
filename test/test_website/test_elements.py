@@ -3,8 +3,7 @@ from pytest import fixture, raises
 from smartconfig.types import ConfigurationDict
 
 from automata.materials import ExportedArtifact, Universe
-from automata.website import BasicElement, RenderContext
-from automata.website._config import WebsiteConfig
+from automata.website import BasicElement, RenderContext, WebsiteConfig
 
 
 @fixture

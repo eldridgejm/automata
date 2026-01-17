@@ -3,12 +3,9 @@
 import datetime
 from pathlib import Path
 
-from . import materials
-from ._plugin import Plugin
-from .config import read_config
-from .website import generate
-
-CONFIGURATION_FILENAME = "automata.yaml"
+from .. import materials
+from ..website import generate
+from ._load import load
 
 
 def build(
@@ -37,7 +34,7 @@ def build(
     if current_time is None:
         current_time = datetime.datetime.now()
 
-    config = read_config(path / CONFIGURATION_FILENAME)
+    config, plugin = load(path)
 
     # Discover and build materials
     unbuilt_universe = materials.discover(path, vars=config.vars)
@@ -58,18 +55,13 @@ def build(
     materials_json.parent.mkdir(parents=True, exist_ok=True)
     materials_json.write_text(materials.serialize(exported_universe))
 
-    # Load the theme as a plugin
-    theme_plugin = Plugin.from_spec(
-        config.website.theme.use, group="automata.website.themes"
-    )
-
     # Generate website (materials are already in place, so no copy needed)
     generate(
         config.website,
         materials_output_dir,
-        templates=theme_plugin.templates,
-        elements=theme_plugin.elements,
-        extra_assets=theme_plugin.static_files,
+        templates=plugin.templates,
+        elements=plugin.elements,
+        extra_assets=plugin.static_files,
         vars=config.vars,
         cwd=path,
         current_time=current_time,

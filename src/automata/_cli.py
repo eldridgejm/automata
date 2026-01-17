@@ -4,7 +4,8 @@ from typing import Optional
 
 import typer
 
-from . import _build, _resolve
+from ._api import build as _build_fn
+from ._api import resolve as _resolve_fn
 from .materials import serialize
 
 app = typer.Typer()
@@ -72,7 +73,7 @@ def build(
             typer.echo(f"Error: {e}", err=True)
             raise typer.Exit(code=1)
 
-    _build.build(current_time=parsed_time)
+    _build_fn(current_time=parsed_time)
 
 
 @app.command()
@@ -95,7 +96,7 @@ def resolve(
     JSON to STDOUT.
     """
     try:
-        publication = _resolve.resolve(path)
+        publication = _resolve_fn(path)
     except FileNotFoundError as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)

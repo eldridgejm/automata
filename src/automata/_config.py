@@ -6,9 +6,41 @@ import smartconfig
 from .exceptions import Error
 from .util.resolution import resolve
 from .util.yaml import parse_yaml
-from .website import WebsiteConfig
 
 CONFIGURATION_FILENAME = "automata.yaml"
+
+
+class PluginConfig(smartconfig.Prototype):
+    """Configuration for a plugin."""
+
+    # which plugin to use. If this contains slashes, it is treated as a path to a
+    # plugin directory. Otherwise, it is treated as the name of an entry point.
+    use: str
+
+    # additional configuration options to pass to the plugin
+    config: Any = {}
+
+
+class WebsiteConfig(smartconfig.Prototype):
+    """Configuration for the website."""
+
+    # path to the directory containing the pages and materials
+    content_directory: str
+
+    # name of the subdirectory within the build directory where materials will be copied
+    materials_directory_name: str = "materials"
+
+    # path to the output directory where the website will be built
+    build_directory: str
+
+    # suffix indicating that a file should not be rendered. If None, all files
+    # will be rendered.
+    no_render_suffix: str | None = ".no_render"
+
+    # base path for the website (e.g., "/" or "/course/")
+    base_path: str = "/"
+
+    theme: PluginConfig = PluginConfig(use="default")
 
 
 class Config(smartconfig.Prototype):

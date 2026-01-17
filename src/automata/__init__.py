@@ -1,5 +1,5 @@
 from . import exceptions
-from ._build import build
+from ._api import build, load, resolve
 from ._plugin import Plugin, merge_plugins
 
-__all__ = ["exceptions", "build", "Plugin", "merge_plugins"]
+__all__ = ["exceptions", "build", "load", "resolve", "Plugin", "merge_plugins"]

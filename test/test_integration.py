@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from automata._build import build
+from automata import build
 
 
 @pytest.fixture

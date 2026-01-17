@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Any, Callable, cast
 import jinja2
 import smartconfig.types
 
+from .._config import WebsiteConfig
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util import markdown as markdown_util
-from ._config import WebsiteConfig
 from ._frontmatter import Frontmatter, read_frontmatter
 from .exceptions import PageError, WebsiteError
 

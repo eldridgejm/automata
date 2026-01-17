@@ -8,9 +8,9 @@ configurations.
 import pathlib
 from typing import Any
 
-from . import constants
-from .config import find_config, read_config
-from .materials import (
+from .. import constants
+from .._config import find_config, read_config
+from ..materials import (
     Publication,
     UnbuiltArtifact,
     read_collection_file,

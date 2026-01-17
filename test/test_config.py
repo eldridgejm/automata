@@ -1,4 +1,4 @@
-"""Tests for automata.config module."""
+"""Tests for automata._config module."""
 
 from pathlib import Path
 from textwrap import dedent
@@ -6,7 +6,7 @@ from textwrap import dedent
 import pytest
 
 from automata import exceptions
-from automata.config import Config, read_config
+from automata._config import Config, read_config
 
 
 def test_read_config_reads_valid_config(tmp_path: Path) -> None:

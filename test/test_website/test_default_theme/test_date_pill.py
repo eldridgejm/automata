@@ -3,7 +3,7 @@ from datetime import datetime
 from pytest import fixture
 
 import automata.website
-from automata.plugins import PluginConfig
+from automata.website import PluginConfig
 
 
 @fixture
