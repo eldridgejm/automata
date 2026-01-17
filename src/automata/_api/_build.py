@@ -70,7 +70,7 @@ def build(
         config.vars,
         current_time,
     )
-    overrides = merge_hook_results(pre_generate_results, GenerateOverrides)
+    hook_overrides = merge_hook_results(pre_generate_results, GenerateOverrides)
 
     # Generate website (materials are already in place, so no copy needed)
     generate(
@@ -78,8 +78,8 @@ def build(
         materials_output_dir,
         templates=plugin.templates,
         elements=plugin.elements,
-        extra_assets={**plugin.static_files, **overrides.assets},
-        extra_pages=overrides.pages if overrides.pages else None,
+        extra_assets={**plugin.static_files, **hook_overrides.assets},
+        extra_pages=hook_overrides.pages if hook_overrides.pages else None,
         vars=config.vars,
         cwd=path,
         current_time=current_time,

@@ -276,7 +276,7 @@ def _json_serializer(obj: Any) -> Any:
 
 
 @hook_point("materials.discover:on_collection")
-class DiscoverOnCollectionHook(ABC):
+class DiscoverOnCollectionHook(ScriptableHookMixin, ABC):
     """Hook called when a collection is discovered.
 
     Attributes
@@ -302,9 +302,14 @@ class DiscoverOnCollectionHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(path: Path, collection: "Collection") -> dict:
+        """Serialize arguments for script execution."""
+        return {"path": str(path)}
+
 
 @hook_point("materials.discover:on_publication")
-class DiscoverOnPublicationHook(ABC):
+class DiscoverOnPublicationHook(ScriptableHookMixin, ABC):
     """Hook called when a publication is discovered.
 
     Attributes
@@ -330,9 +335,14 @@ class DiscoverOnPublicationHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(path: Path, publication: "Publication") -> dict:
+        """Serialize arguments for script execution."""
+        return {"path": str(path)}
+
 
 @hook_point("materials.discover:on_skip")
-class DiscoverOnSkipHook(ABC):
+class DiscoverOnSkipHook(ScriptableHookMixin, ABC):
     """Hook called when a directory is skipped during discovery.
 
     Attributes
@@ -356,6 +366,11 @@ class DiscoverOnSkipHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(path: Path) -> dict:
+        """Serialize arguments for script execution."""
+        return {"path": str(path)}
+
 
 # =============================================================================
 # Hook Base Classes - materials.build
@@ -363,7 +378,7 @@ class DiscoverOnSkipHook(ABC):
 
 
 @hook_point("materials.build:on_start")
-class BuildOnStartHook(ABC):
+class BuildOnStartHook(ScriptableHookMixin, ABC):
     """Hook called when building a node begins.
 
     Attributes
@@ -391,9 +406,16 @@ class BuildOnStartHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(
+        key: str, node: "Collection | Publication | UnbuiltArtifact"
+    ) -> dict:
+        """Serialize arguments for script execution."""
+        return {"key": key, "node_type": type(node).__name__}
+
 
 @hook_point("materials.build:on_too_soon")
-class BuildOnTooSoonHook(ABC):
+class BuildOnTooSoonHook(ScriptableHookMixin, ABC):
     """Hook called when release time hasn't passed.
 
     Attributes
@@ -417,9 +439,20 @@ class BuildOnTooSoonHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(artifact: "UnbuiltArtifact") -> dict:
+        """Serialize arguments for script execution."""
+        return {
+            "workdir": str(artifact.workdir),
+            "path": str(artifact.path),
+            "release_time": artifact.release_time.isoformat()
+            if artifact.release_time
+            else None,
+        }
+
 
 @hook_point("materials.build:on_not_ready")
-class BuildOnNotReadyHook(ABC):
+class BuildOnNotReadyHook(ScriptableHookMixin, ABC):
     """Hook called when artifact isn't ready.
 
     Attributes
@@ -443,9 +476,17 @@ class BuildOnNotReadyHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(artifact: "UnbuiltArtifact") -> dict:
+        """Serialize arguments for script execution."""
+        return {
+            "workdir": str(artifact.workdir),
+            "path": str(artifact.path),
+        }
+
 
 @hook_point("materials.build:on_missing")
-class BuildOnMissingHook(ABC):
+class BuildOnMissingHook(ScriptableHookMixin, ABC):
     """Hook called when artifact is missing but missing_ok=True.
 
     Attributes
@@ -469,9 +510,17 @@ class BuildOnMissingHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(artifact: "UnbuiltArtifact") -> dict:
+        """Serialize arguments for script execution."""
+        return {
+            "workdir": str(artifact.workdir),
+            "path": str(artifact.path),
+        }
+
 
 @hook_point("materials.build:on_recipe")
-class BuildOnRecipeHook(ABC):
+class BuildOnRecipeHook(ScriptableHookMixin, ABC):
     """Hook called when recipe is about to execute.
 
     Attributes
@@ -495,9 +544,18 @@ class BuildOnRecipeHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(artifact: "UnbuiltArtifact") -> dict:
+        """Serialize arguments for script execution."""
+        return {
+            "workdir": str(artifact.workdir),
+            "path": str(artifact.path),
+            "recipe": artifact.recipe,
+        }
+
 
 @hook_point("materials.build:on_success")
-class BuildOnSuccessHook(ABC):
+class BuildOnSuccessHook(ScriptableHookMixin, ABC):
     """Hook called when build succeeded.
 
     Attributes
@@ -521,6 +579,14 @@ class BuildOnSuccessHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(artifact: "BuiltArtifact") -> dict:
+        """Serialize arguments for script execution."""
+        return {
+            "workdir": str(artifact.workdir),
+            "path": str(artifact.path),
+        }
+
 
 # =============================================================================
 # Hook Base Classes - materials.export
@@ -528,7 +594,7 @@ class BuildOnSuccessHook(ABC):
 
 
 @hook_point("materials.export:on_copy")
-class ExportOnCopyHook(ABC):
+class ExportOnCopyHook(ScriptableHookMixin, ABC):
     """Hook called when copying a file during export.
 
     Attributes
@@ -554,9 +620,14 @@ class ExportOnCopyHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(src: Path, dst: Path) -> dict:
+        """Serialize arguments for script execution."""
+        return {"src": str(src), "dst": str(dst)}
+
 
 @hook_point("materials.export:on_node")
-class ExportOnNodeHook(ABC):
+class ExportOnNodeHook(ScriptableHookMixin, ABC):
     """Hook called when exporting a node.
 
     Attributes
@@ -584,6 +655,13 @@ class ExportOnNodeHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(
+        key: str, node: "Universe | Collection | Publication | Artifact"
+    ) -> dict:
+        """Serialize arguments for script execution."""
+        return {"key": key, "node_type": type(node).__name__}
+
 
 # =============================================================================
 # Hook Base Classes - materials.filter
@@ -591,7 +669,7 @@ class ExportOnNodeHook(ABC):
 
 
 @hook_point("materials.filter:on_hit")
-class FilterOnHitHook(ABC):
+class FilterOnHitHook(ScriptableHookMixin, ABC):
     """Hook called when predicate matches.
 
     Attributes
@@ -619,9 +697,16 @@ class FilterOnHitHook(ABC):
         """
         ...
 
+    @staticmethod
+    def serialize_args(
+        key: str, node: "Universe | Collection | Publication | Artifact"
+    ) -> dict:
+        """Serialize arguments for script execution."""
+        return {"key": key, "node_type": type(node).__name__}
+
 
 @hook_point("materials.filter:on_miss")
-class FilterOnMissHook(ABC):
+class FilterOnMissHook(ScriptableHookMixin, ABC):
     """Hook called when predicate doesn't match.
 
     Attributes
@@ -648,6 +733,13 @@ class FilterOnMissHook(ABC):
 
         """
         ...
+
+    @staticmethod
+    def serialize_args(
+        key: str, node: "Universe | Collection | Publication | Artifact"
+    ) -> dict:
+        """Serialize arguments for script execution."""
+        return {"key": key, "node_type": type(node).__name__}
 
 
 # =============================================================================
