@@ -9,7 +9,6 @@ from typing import (
     Any,
     Optional,
     TypedDict,
-    Union,
     Unpack,
     cast,
     overload,
@@ -29,50 +28,6 @@ if TYPE_CHECKING:
     from ..hooks import Hooks
 
 
-class BuildCallbacks:
-    """Callbacks used by :func:`build`.
-
-    To provide callbacks to :func:`build`, subclass this class and override
-    the methods you want to use. The methods that are not overridden will be
-    no-ops.
-
-    """
-
-    def on_build(self, key: str, node: Union[Collection, Publication, UnbuiltArtifact]):
-        """Called when building a collection/publication/artifact.
-
-        Parameters
-        ----------
-        key : str
-            The key of the node. Generally, this is the relative path to the
-            node from the root.
-        node : Collection | Publication | UnbuiltArtifact
-            The node whose artifacts are being built.
-
-        """
-        return key, node
-
-    def on_too_soon(self, artifact: UnbuiltArtifact):
-        """Called when it is too soon to release the artifact."""
-        return artifact
-
-    def on_not_ready(self, artifact: UnbuiltArtifact):
-        """Called when the artifact is not ready."""
-        return artifact
-
-    def on_missing(self, artifact: UnbuiltArtifact):
-        """Called when the artifact is missing, but missing is OK."""
-        return artifact
-
-    def on_recipe(self, artifact: UnbuiltArtifact):
-        """Called when artifact is being built using its recipe."""
-        return artifact
-
-    def on_success(self, artifact: BuiltArtifact):
-        """Called when the build succeeded."""
-        return artifact
-
-
 def _build_artifact(
     artifact: UnbuiltArtifact,
     *,
@@ -82,7 +37,8 @@ def _build_artifact(
     verbose=False,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    callbacks: BuildCallbacks,
+    hooks: Optional["Hooks"] = None,
+    _execute_hooks=None,
 ):
     """Build an artifact using its recipe.
 
@@ -121,11 +77,13 @@ def _build_artifact(
         and artifact.release_time is not None
         and artifact.release_time > current_time
     ):
-        callbacks.on_too_soon(artifact)
+        if _execute_hooks:
+            _execute_hooks(hooks, "materials.build:on_too_soon", artifact)
         return None
 
     if not artifact.ready and not ignore_ready:
-        callbacks.on_not_ready(artifact)
+        if _execute_hooks:
+            _execute_hooks(hooks, "materials.build:on_not_ready", artifact)
         return None
 
     if artifact.recipe is None:
@@ -133,7 +91,8 @@ def _build_artifact(
         stderr = None
         returncode = None
     else:
-        callbacks.on_recipe(artifact)
+        if _execute_hooks:
+            _execute_hooks(hooks, "materials.build:on_recipe", artifact)
 
         kwargs = {
             "cwd": artifact.workdir,
@@ -157,7 +116,8 @@ def _build_artifact(
     path = artifact.workdir / artifact.path
     if not exists(path):
         if artifact.missing_ok:
-            callbacks.on_missing(artifact)
+            if _execute_hooks:
+                _execute_hooks(hooks, "materials.build:on_missing", artifact)
             return None
         else:
             raise BuildError(f"Artifact {path} does not exist at {path}.")
@@ -165,7 +125,8 @@ def _build_artifact(
     output = dataclasses.replace(
         output, returncode=returncode, stdout=stdout, stderr=stderr
     )
-    callbacks.on_success(output)
+    if _execute_hooks:
+        _execute_hooks(hooks, "materials.build:on_success", output)
     return output
 
 
@@ -180,7 +141,6 @@ class BuildOptions(TypedDict, total=False):
     ignore_release_time: bool
     ignore_ready: bool
     verbose: bool
-    callbacks: Optional[BuildCallbacks]
     hooks: Optional["Hooks"]
     run: Any
     current_time: Optional[datetime.datetime]
@@ -221,7 +181,6 @@ def build(
     ignore_release_time: bool = False,
     ignore_ready: bool = False,
     verbose: bool = False,
-    callbacks: Optional[BuildCallbacks] = None,
     hooks: Optional["Hooks"] = None,
     current_time: datetime.datetime | None = None,
     run=subprocess.run,
@@ -247,10 +206,6 @@ def build(
     ignore_ready : bool
         If ``True``, all artifacts will be built, even if they are marked as
         not ready.
-    callbacks : BuildCallbacks
-        Deprecated. Use ``hooks`` parameter instead. An instance of
-        :class:`BuildCallbacks` that contains methods that will be invoked
-        as callbacks at various points during the build process.
     hooks : Optional[Hooks]
         Hooks to be invoked during the build. Supports:
         - ``materials.build:on_start``
@@ -284,57 +239,18 @@ def build(
     # Import here to avoid circular imports
     from ..hooks import execute_hooks
 
-    if callbacks is None:
-        callbacks = BuildCallbacks()
-
-    # Wrap callbacks to also execute hooks
-    original_callbacks = callbacks
-
-    class HookExecutingCallbacks(BuildCallbacks):
-        def on_build(self, key, node):
-            original_callbacks.on_build(key, node)
-            execute_hooks(hooks, "materials.build:on_start", key, node)
-            return key, node
-
-        def on_too_soon(self, artifact):
-            original_callbacks.on_too_soon(artifact)
-            execute_hooks(hooks, "materials.build:on_too_soon", artifact)
-            return artifact
-
-        def on_not_ready(self, artifact):
-            original_callbacks.on_not_ready(artifact)
-            execute_hooks(hooks, "materials.build:on_not_ready", artifact)
-            return artifact
-
-        def on_missing(self, artifact):
-            original_callbacks.on_missing(artifact)
-            execute_hooks(hooks, "materials.build:on_missing", artifact)
-            return artifact
-
-        def on_recipe(self, artifact):
-            original_callbacks.on_recipe(artifact)
-            execute_hooks(hooks, "materials.build:on_recipe", artifact)
-            return artifact
-
-        def on_success(self, artifact):
-            original_callbacks.on_success(artifact)
-            execute_hooks(hooks, "materials.build:on_success", artifact)
-            return artifact
-
-    wrapped_callbacks = HookExecutingCallbacks() if hooks else callbacks
-
-    kwargs = dict(
-        ignore_release_time=ignore_release_time,
-        ignore_ready=ignore_ready,
-        current_time=current_time,
-        run=run,
-        verbose=verbose,
-        exists=exists,
-        callbacks=wrapped_callbacks,
-    )
-
     if isinstance(root, UnbuiltArtifact):
-        return _build_artifact(root, **kwargs)  # type: ignore
+        return _build_artifact(  # type: ignore[no-any-return]
+            root,
+            ignore_release_time=ignore_release_time,
+            ignore_ready=ignore_ready,
+            current_time=current_time,
+            run=run,
+            verbose=verbose,
+            exists=exists,
+            hooks=hooks,
+            _execute_hooks=execute_hooks,
+        )
 
     # recursively build the children
     new_children = {}
@@ -345,8 +261,17 @@ def build(
 
         assert isinstance(child, (Collection, Publication, UnbuiltArtifact))
 
-        wrapped_callbacks.on_build(child_key, child)
-        result = build(child, **kwargs)  # type: ignore
+        execute_hooks(hooks, "materials.build:on_start", child_key, child)
+        result = build(
+            child,
+            ignore_release_time=ignore_release_time,
+            ignore_ready=ignore_ready,
+            verbose=verbose,
+            hooks=hooks,
+            current_time=current_time,
+            run=run,
+            exists=exists,
+        )
         # if a node is not built (perhaps due to it not being ready), the
         # result is None. this next conditional prevents such nodes from
         # appearing in the tree

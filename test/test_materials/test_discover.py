@@ -1,8 +1,10 @@
 import datetime
+from dataclasses import dataclass
 
 from pytest import raises
 
-from automata.materials import DiscoverCallbacks, discover
+from automata.hooks import DiscoverOnSkipHook
+from automata.materials import discover
 from automata.materials.exceptions import DiscoveryError
 
 
@@ -564,21 +566,23 @@ def test_interpolates_vars_in_collection_metadata_schema(temporary_course):
     assert schema["required_keys"]["name"]["type"] == "string"
 
 
-def test_skip_directories_invokes_callback(default_example_course):
-    """Test that the on_skip callback is invoked when directories are skipped."""
+def test_skip_directories_invokes_hook(default_example_course):
+    """Test that the on_skip hook is invoked when directories are skipped."""
     # given
     skipped_paths = []
 
-    class TrackingCallbacks(DiscoverCallbacks):
-        def on_skip(self, path):
+    @dataclass
+    class TrackingSkipHook(DiscoverOnSkipHook):
+        priority: int = 50
+
+        def __call__(self, path):
             skipped_paths.append(path)
-            return path
 
     # when
     discover(
         default_example_course.path,
         skip_directories={"01-intro"},
-        callbacks=TrackingCallbacks(),
+        hooks={"materials.discover:on_skip": [TrackingSkipHook()]},
     )
 
     # then

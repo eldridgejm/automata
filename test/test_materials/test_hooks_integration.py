@@ -2,7 +2,6 @@
 
 import pathlib
 from dataclasses import dataclass
-from unittest.mock import Mock
 
 import automata.materials
 from automata.hooks import (
@@ -508,71 +507,3 @@ class TestFilterWithHooks:
         # Should have been called for non-matching nodes
         assert len(hook.calls) >= 1
         assert all(call[0] == "on_miss" for call in hook.calls)
-
-
-# =============================================================================
-# Backward Compatibility Tests
-# =============================================================================
-
-
-class TestBackwardCompatibility:
-    """Tests for backward compatibility with callbacks parameter."""
-
-    def test_discover_callbacks_still_works(self, default_example_course):
-        """Verify callbacks parameter still works."""
-        callbacks = automata.materials.DiscoverCallbacks()
-        callbacks.on_collection = Mock(return_value=None)
-
-        # Should not raise
-        automata.materials.discover(default_example_course.path, callbacks=callbacks)
-
-        # Should have been called
-        assert callbacks.on_collection.called
-
-    def test_build_callbacks_still_works(self, default_example_course):
-        """Verify callbacks parameter still works."""
-        callbacks = automata.materials.BuildCallbacks()
-        callbacks.on_success = Mock(return_value=None)
-
-        universe = automata.materials.discover(default_example_course.path)
-
-        # Should not raise
-        automata.materials.build(universe, callbacks=callbacks)
-
-        # Should have been called
-        assert callbacks.on_success.called
-
-    def test_export_callbacks_still_works(self, default_example_course, tmp_path):
-        """Verify callbacks parameter still works."""
-        callbacks = automata.materials.ExportCallbacks()
-        callbacks.on_copy = Mock(return_value=None)
-
-        universe = automata.materials.discover(default_example_course.path)
-        built = automata.materials.build(universe)
-
-        # Use a separate output directory to avoid source == destination
-        output_dir = tmp_path / "output"
-        output_dir.mkdir()
-
-        # Should not raise
-        automata.materials.export(built, output_dir, callbacks=callbacks)
-
-        # Should have been called
-        assert callbacks.on_copy.called
-
-    def test_filter_callbacks_still_works(self, default_example_course):
-        """Verify callbacks parameter still works."""
-        callbacks = automata.materials.FilterCallbacks()
-        callbacks.on_hit = Mock(return_value=None)
-
-        universe = automata.materials.discover(default_example_course.path)
-
-        # Should not raise
-        automata.materials.filter(
-            universe,
-            predicate=lambda key, node: True,
-            callbacks=callbacks,
-        )
-
-        # Should have been called
-        assert callbacks.on_hit.called

@@ -16,18 +16,6 @@ if TYPE_CHECKING:
     from ..hooks import Hooks
 
 
-class FilterCallbacks:
-    """Callbacks used by :func:`filter`."""
-
-    def on_hit(self, key: str, node: Universe | Collection | Publication | Artifact):
-        """Called when a node matches the predicate."""
-        return key, node
-
-    def on_miss(self, key: str, node: Universe | Collection | Publication | Artifact):
-        """Called when a node does not match the predicate."""
-        return key, node
-
-
 # overloads for filter() ---------------------------------------------------------------
 
 # The following overloads are used to provide type hints for the filter()
@@ -51,7 +39,6 @@ def filter(
     root: Universe[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    callbacks: Optional[FilterCallbacks] = ...,
     hooks: Optional["Hooks"] = ...,
 ) -> Universe[ArtifactType]: ...
 
@@ -61,7 +48,6 @@ def filter(
     root: Collection[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    callbacks: Optional[FilterCallbacks] = ...,
     hooks: Optional["Hooks"] = ...,
 ) -> Collection[ArtifactType]: ...
 
@@ -71,7 +57,6 @@ def filter(
     root: Publication[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    callbacks: Optional[FilterCallbacks] = ...,
     hooks: Optional["Hooks"] = ...,
 ) -> Publication[ArtifactType]: ...
 
@@ -81,7 +66,6 @@ def filter(
     root: ArtifactType,
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    callbacks: Optional[FilterCallbacks] = ...,
     hooks: Optional["Hooks"] = ...,
 ) -> ArtifactType: ...
 
@@ -96,7 +80,6 @@ def filter(
     | Artifact,
     predicate: Callable[[str, Universe | Collection | Publication | Artifact], bool],
     remove_empty_nodes: bool = False,
-    callbacks: Optional[FilterCallbacks] = None,
     hooks: Optional["Hooks"] = None,
 ) -> (
     Universe[ArtifactType]
@@ -117,9 +100,6 @@ def filter(
         Whether nodes without children should be removed (True) or preserved
         (False). The exception is the root node: if all of its children are
         removed, it remains. Default: False.
-    callbacks : Optional[FilterCallbacks]
-        Deprecated. Use ``hooks`` parameter instead. Callbacks to be invoked
-        during the filtering.
     hooks : Optional[Hooks]
         Hooks to be invoked during the filtering. Supports:
         - ``materials.filter:on_hit``
@@ -141,31 +121,12 @@ def filter(
     if isinstance(root, Artifact):
         return root
 
-    if callbacks is None:
-        callbacks = FilterCallbacks()
-
-    # Wrap callbacks to also execute hooks
-    original_callbacks = callbacks
-
-    class HookExecutingCallbacks(FilterCallbacks):
-        def on_hit(self, key, node):
-            original_callbacks.on_hit(key, node)
-            execute_hooks(hooks, "materials.filter:on_hit", key, node)
-            return key, node
-
-        def on_miss(self, key, node):
-            original_callbacks.on_miss(key, node)
-            execute_hooks(hooks, "materials.filter:on_miss", key, node)
-            return key, node
-
-    wrapped_callbacks = HookExecutingCallbacks() if hooks else callbacks
-
-    def predicate_with_callbacks(key, node):
+    def predicate_with_hooks(key, node):
         result = predicate(key, node)
         if result:
-            wrapped_callbacks.on_hit(key, node)
+            execute_hooks(hooks, "materials.filter:on_hit", key, node)
         else:
-            wrapped_callbacks.on_miss(key, node)
+            execute_hooks(hooks, "materials.filter:on_miss", key, node)
         return result
 
     new_children = {}
@@ -174,7 +135,7 @@ def filter(
             child,
             predicate,
             remove_empty_nodes=remove_empty_nodes,
-            callbacks=wrapped_callbacks,
+            hooks=hooks,
         )
         if (
             isinstance(new_child, Artifact)
@@ -184,7 +145,7 @@ def filter(
             new_children[child_key] = new_child
 
     new_children = {
-        k: v for (k, v) in new_children.items() if predicate_with_callbacks(k, v)
+        k: v for (k, v) in new_children.items() if predicate_with_hooks(k, v)
     }
 
     return root._replace_children(new_children)

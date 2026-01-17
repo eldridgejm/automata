@@ -16,27 +16,13 @@ from ._types import (
 if TYPE_CHECKING:
     from ..hooks import Hooks
 
-# exporting
-# --------------------------------------------------------------------------------------
-
-
-class ExportCallbacks:
-    """Callbacks used by :func:`export`."""
-
-    def on_copy(self, src: pathlib.Path, dst: pathlib.Path):
-        """Called when copying a file."""
-        return src, dst
-
-    def on_export(self, key: str, node: Universe | Collection | Publication | Artifact):
-        """When export is called on a node."""
-        return key, node
-
 
 def _export_artifact(
     built_artifact: BuiltArtifact,
     outdir: pathlib.Path,
     filename: str,
-    callbacks: ExportCallbacks,
+    hooks: Optional["Hooks"] = None,
+    _execute_hooks=None,
 ) -> ExportedArtifact:
     """Copies an artifact to another directory.
 
@@ -49,15 +35,19 @@ def _export_artifact(
     filename : str
         The filename (or directory name) that will be given to the new file,
         including extension, if applicable.
-    callbacks : ExportCallbacks
-        Callbacks to be invoked during the publication.
+    hooks : Optional[Hooks]
+        Hooks to invoke during the export.
+    _execute_hooks : Callable
+        Internal: the execute_hooks function (passed to avoid repeated imports).
 
     """
     # actually copy the artifact
     full_dst = outdir / filename
     full_dst.parent.mkdir(parents=True, exist_ok=True)
     full_src = built_artifact.workdir / built_artifact.path
-    callbacks.on_copy(full_src, full_dst)
+
+    if _execute_hooks:
+        _execute_hooks(hooks, "materials.export:on_copy", full_src, full_dst)
 
     if full_src.is_dir():
         shutil.copytree(full_src, full_dst)
@@ -78,7 +68,6 @@ def export(
     root: Universe[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = ...,
-    callbacks: Optional[ExportCallbacks] = ...,
     hooks: Optional["Hooks"] = ...,
 ) -> Universe[ExportedArtifact]: ...
 
@@ -88,7 +77,6 @@ def export(
     root: Collection[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
-    callbacks: Optional[ExportCallbacks] = None,
     hooks: Optional["Hooks"] = None,
 ) -> Collection[ExportedArtifact]: ...
 
@@ -98,7 +86,6 @@ def export(
     root: Publication[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
-    callbacks: Optional[ExportCallbacks] = None,
     hooks: Optional["Hooks"] = None,
 ) -> Publication[ExportedArtifact]: ...
 
@@ -108,7 +95,6 @@ def export(
     root: BuiltArtifact,
     outdir: pathlib.Path,
     prefix: str = "",
-    callbacks: Optional[ExportCallbacks] = None,
     hooks: Optional["Hooks"] = None,
 ) -> ExportedArtifact: ...
 
@@ -123,7 +109,6 @@ def export(
     | BuiltArtifact,
     outdir: pathlib.Path,
     prefix: str = "",
-    callbacks: Optional[ExportCallbacks] = None,
     hooks: Optional["Hooks"] = None,
 ) -> (
     Universe[ExportedArtifact]
@@ -151,9 +136,6 @@ def export(
         String to prepend between output directory path and the keys of the
         children. If the thing being exported is a :class:`BuiltArtifact`,
         this is simply the filename.
-    callbacks : Optional[ExportCallbacks]
-        Deprecated. Use ``hooks`` parameter instead. Callbacks to be invoked
-        during the publication.
     hooks : Optional[Hooks]
         Hooks to be invoked during the export. Supports:
         - ``materials.export:on_copy``
@@ -177,38 +159,21 @@ def export(
     # Import here to avoid circular imports
     from ..hooks import execute_hooks
 
-    if callbacks is None:
-        callbacks = ExportCallbacks()
-
-    # Wrap callbacks to also execute hooks
-    original_callbacks = callbacks
-
-    class HookExecutingCallbacks(ExportCallbacks):
-        def on_copy(self, src, dst):
-            original_callbacks.on_copy(src, dst)
-            execute_hooks(hooks, "materials.export:on_copy", src, dst)
-            return src, dst
-
-        def on_export(self, key, node):
-            original_callbacks.on_export(key, node)
-            execute_hooks(hooks, "materials.export:on_node", key, node)
-            return key, node
-
-    wrapped_callbacks = HookExecutingCallbacks() if hooks else callbacks
-
     if isinstance(root, BuiltArtifact):
-        return _export_artifact(root, outdir, prefix, wrapped_callbacks)
+        return _export_artifact(
+            root, outdir, prefix, hooks=hooks, _execute_hooks=execute_hooks
+        )
 
     if isinstance(root, Artifact) and not isinstance(root, BuiltArtifact):
         raise ValueError("Cannot export an unbuilt artifact.")
 
     new_children = {}
     for child_key, child in root._children.items():
-        wrapped_callbacks.on_export(child_key, child)
+        execute_hooks(hooks, "materials.export:on_node", child_key, child)
         new_prefix = str(pathlib.Path(prefix) / child_key)
 
         assert isinstance(child, (Universe, Collection, Publication, Artifact))
-        new_children[child_key] = export(child, outdir, new_prefix, wrapped_callbacks)
+        new_children[child_key] = export(child, outdir, new_prefix, hooks=hooks)
 
     result = root._replace_children(new_children)
     return cast(
