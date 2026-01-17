@@ -1,6 +1,6 @@
 from . import exceptions
 from ._api import build, load, resolve
-from .extension import (
+from .extensions import (
     Extension,
     load_elements_from_directory,
     load_hooks_from_directory,

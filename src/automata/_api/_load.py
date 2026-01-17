@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import cast
 
 from .._config import Config, read_config
-from ..extension import Extension, merge_extensions
+from ..extensions import Extension, merge_extensions
 from ..hooks import HOOK_POINTS, Hooks, ScriptableHookMixin
 
 CONFIGURATION_FILENAME = "automata.yaml"

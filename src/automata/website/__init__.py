@@ -1,7 +1,7 @@
 """Generate a static website from course materials."""
 
 from .._config import ExtensionConfig, WebsiteConfig
-from ..extension import Extension, merge_extensions
+from ..extensions import Extension, merge_extensions
 from . import exceptions
 from ._elements import BasicElement, Element, TemplateElement
 from ._frontmatter import Frontmatter
