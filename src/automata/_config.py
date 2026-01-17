@@ -21,6 +21,24 @@ class PluginConfig(smartconfig.Prototype):
     config: Any = {}
 
 
+class ShellHookConfig(smartconfig.Prototype):
+    """Configuration for a shell hook in automata.yaml.
+
+    Example usage in automata.yaml::
+
+        hooks:
+          pre_generate:
+            command: "python scripts/generate_calendar.py"
+            priority: 50
+    """
+
+    # the shell command to execute
+    command: str
+
+    # execution priority (lower values run first)
+    priority: int = 50
+
+
 class WebsiteConfig(smartconfig.Prototype):
     """Configuration for the website."""
 
@@ -52,6 +70,9 @@ class Config(smartconfig.Prototype):
 
     # configuration for the website
     website: WebsiteConfig
+
+    # shell hooks to run at various points in the build process
+    hooks: dict[str, ShellHookConfig] = {}
 
 
 def find_config(start_path: Path) -> Path | None:

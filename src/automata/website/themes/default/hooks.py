@@ -6,8 +6,11 @@ import subprocess
 
 logger = logging.getLogger(__name__)
 
+# Priority for this hook (default theme runs after other hooks)
+POST_GENERATE_PRIORITY = 100
 
-def post_generate(config):
+
+def post_generate(context):
     """Rebuild Tailwind CSS after site generation to include custom classes.
 
     This hook runs the Tailwind CLI to regenerate CSS by scanning the built
@@ -17,20 +20,31 @@ def post_generate(config):
     If npx is not available, logs a warning and continues with the pre-built CSS.
 
     The rebuild can be disabled by setting `rebuild_tailwind: false` in the
-    theme configuration.
+    vars section of automata.yaml.
 
     Parameters
     ----------
-    config : WebsiteConfig
-        The website configuration containing build directory and other settings.
+    context : dict
+        Hook context containing:
+        - config: dict with build_directory, content_directory, etc.
+        - vars: dict of global variables
+        - materials: serialized materials universe
+        - current_time: ISO format timestamp
+        - build_directory: path to build output
+
+    Returns
+    -------
+    dict
+        Empty dict (post_generate hooks don't return pages/assets).
 
     """
-    # Check if rebuild is disabled via config
-    if not config.theme.config.get("rebuild_tailwind", True):
-        return
+    # Check if rebuild is disabled via vars
+    vars_dict = context.get("vars", {})
+    if not vars_dict.get("rebuild_tailwind", True):
+        return {}
 
-    # Get build directory from config
-    build_dir = pathlib.Path(config.build_directory)
+    # Get build directory from context
+    build_dir = pathlib.Path(context["build_directory"])
     css_output = build_dir / "static" / "style.css"
 
     # Check if npx is available
@@ -39,18 +53,18 @@ def post_generate(config):
             "npx not found - using pre-built Tailwind CSS. "
             "Install Node.js to enable automatic Tailwind rebuilds with custom classes."
         )
-        return
+        return {}
 
     # Get theme directory (where style.input.css is located)
     theme_dir = _get_theme_directory()
     if theme_dir is None:
         logger.warning("Could not locate theme directory - skipping Tailwind rebuild")
-        return
+        return {}
 
     css_input = theme_dir / "style.input.css"
     if not css_input.exists():
         logger.warning(f"Tailwind input file not found at {css_input}")
-        return
+        return {}
 
     # Rebuild Tailwind CSS
     try:
@@ -59,6 +73,8 @@ def post_generate(config):
         logger.info("Tailwind CSS rebuilt successfully")
     except Exception as e:
         logger.warning(f"Failed to rebuild Tailwind CSS: {e}. Using pre-built CSS.")
+
+    return {}
 
 
 def _is_npx_available() -> bool:

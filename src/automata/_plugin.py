@@ -1,7 +1,8 @@
 """Plugin system for Automata.
 
-Plugins can provide templates, static files, and elements to extend Automata's
-functionality. They can be loaded from filesystem directories or via entry points.
+Plugins can provide templates, static files, elements, and hooks to extend
+Automata's functionality. They can be loaded from filesystem directories or
+via entry points.
 
 Themes are a special case of plugins that provide base templates for website
 generation.
@@ -17,7 +18,7 @@ import sys
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import TYPE_CHECKING, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, Sequence, cast
 
 import smartconfig.exceptions
 import smartconfig.types
@@ -28,11 +29,11 @@ if TYPE_CHECKING:
 
 @dataclass
 class Plugin:
-    """A plugin that provides templates, static files, and/or elements.
+    """A plugin that provides templates, static files, elements, and/or hooks.
 
     Plugins can be loaded from filesystem directories or via entry points.
     Multiple plugins can be merged together, with later plugins overriding
-    earlier ones.
+    earlier ones (except for hooks, which are accumulated).
 
     Attributes
     ----------
@@ -46,12 +47,16 @@ class Plugin:
         Dictionary mapping element names to Element classes.
     schema : smartconfig.types.Schema | None
         Optional smartconfig schema for validating plugin configuration.
+    hooks : dict[str, list[tuple[int, Callable]]]
+        Dictionary mapping hook point names (e.g., "pre_generate") to lists
+        of (priority, callable) tuples. Lower priority values execute first.
     """
 
     templates: dict[str, str] = field(default_factory=dict)
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     elements: dict[str, type["Element"]] = field(default_factory=dict)
     schema: smartconfig.types.Schema | None = None
+    hooks: dict[str, list[tuple[int, Callable[..., Any]]]] = field(default_factory=dict)
 
     @classmethod
     def from_directory(
@@ -153,11 +158,18 @@ class Plugin:
             except smartconfig.exceptions.InvalidSchemaError as e:
                 raise ValueError(f"Plugin configuration schema is invalid: {e}")
 
+        # Load hooks from hooks.py if present
+        hooks: dict[str, list[tuple[int, Callable[..., Any]]]] = {}
+        hooks_file = directory / "hooks.py"
+        if hooks_file.is_file():
+            hooks = _load_hooks_from_directory(directory)
+
         return cls(
             templates=templates,
             static_files=static_files,
             elements=elements,
             schema=schema,
+            hooks=hooks,
         )
 
     @classmethod
@@ -244,6 +256,9 @@ def merge_plugins(plugins: Sequence[Plugin]) -> Plugin:
     For example, if plugin A provides template "page.html" and plugin B also
     provides "page.html", the merged result will use plugin B's version.
 
+    Hooks are accumulated rather than overridden - all hooks from all plugins
+    are collected and will execute in priority order.
+
     The merged plugin will have no schema, as individual plugin configurations
     should be validated before merging.
 
@@ -256,22 +271,30 @@ def merge_plugins(plugins: Sequence[Plugin]) -> Plugin:
     -------
     Plugin
         A new Plugin instance containing the merged templates, static files,
-        and elements from all input plugins.
+        elements, and hooks from all input plugins.
     """
     templates: dict[str, str] = {}
     static_files: dict[str, str | bytes | Traversable] = {}
     elements: dict[str, type["Element"]] = {}
+    hooks: dict[str, list[tuple[int, Callable[..., Any]]]] = {}
 
     for plugin in plugins:
         templates.update(plugin.templates)
         static_files.update(plugin.static_files)
         elements.update(plugin.elements)
 
+        # Accumulate hooks (don't override)
+        for hook_point, hook_list in plugin.hooks.items():
+            if hook_point not in hooks:
+                hooks[hook_point] = []
+            hooks[hook_point].extend(hook_list)
+
     return Plugin(
         templates=templates,
         static_files=static_files,
         elements=elements,
         schema=None,
+        hooks=hooks,
     )
 
 
@@ -389,3 +412,52 @@ def _load_elements_from_directory(
         )
 
     return elements
+
+
+def _load_hooks_from_directory(
+    directory: Traversable,
+) -> dict[str, list[tuple[int, Callable[..., Any]]]]:
+    """Load hooks from a hooks.py file in a plugin directory.
+
+    The hooks.py file should define functions named after hook points:
+    - pre_generate(context: dict) -> dict
+    - post_generate(context: dict) -> None
+
+    Each hook function can optionally have a corresponding priority constant:
+    - PRE_GENERATE_PRIORITY = 50
+    - POST_GENERATE_PRIORITY = 50
+
+    If no priority constant is defined, the default priority of 50 is used.
+
+    Parameters
+    ----------
+    directory : Traversable
+        The plugin directory containing hooks.py.
+
+    Returns
+    -------
+    dict[str, list[tuple[int, Callable]]]
+        Mapping from hook point names to lists of (priority, callable) tuples.
+
+    """
+    module = _load_python_module_from_directory(
+        directory=directory,
+        filename="hooks.py",
+        module_type="hooks",
+    )
+
+    hooks: dict[str, list[tuple[int, Callable[..., Any]]]] = {}
+
+    # Standard hook points to look for
+    hook_points = ["pre_generate", "post_generate"]
+
+    for hook_point in hook_points:
+        if hasattr(module, hook_point):
+            func = getattr(module, hook_point)
+            if callable(func):
+                # Look for priority constant (e.g., PRE_GENERATE_PRIORITY)
+                priority_attr = f"{hook_point.upper()}_PRIORITY"
+                priority = getattr(module, priority_attr, 50)
+                hooks[hook_point] = [(priority, func)]
+
+    return hooks

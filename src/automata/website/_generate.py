@@ -554,6 +554,7 @@ def generate(
     # set default values for optional parameters
     elements = elements or {}
     extra_assets = extra_assets or {}
+    extra_pages = extra_pages or {}
     vars = vars or {}
     current_time = current_time or datetime.datetime.now()
     cwd = cwd or pathlib.Path.cwd()

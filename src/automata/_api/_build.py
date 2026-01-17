@@ -2,8 +2,10 @@
 
 import datetime
 from pathlib import Path
+from typing import Any
 
 from .. import materials
+from .._hooks import execute_hooks
 from ..website import generate
 from ._load import load
 
@@ -55,14 +57,77 @@ def build(
     materials_json.parent.mkdir(parents=True, exist_ok=True)
     materials_json.write_text(materials.serialize(exported_universe))
 
+    # Create hook context
+    hook_context = _create_hook_context(
+        config, exported_universe, current_time, build_dir
+    )
+
+    # Execute pre_generate hooks
+    extra_pages: dict[str, str] = {}
+    extra_assets: dict[str, str | bytes] = {}
+
+    pre_generate_results = execute_hooks(plugin.hooks, "pre_generate", hook_context)
+    for result in pre_generate_results:
+        if result is not None:
+            extra_pages.update(result.get("pages", {}))
+            extra_assets.update(result.get("assets", {}))
+
     # Generate website (materials are already in place, so no copy needed)
     generate(
         config.website,
         materials_output_dir,
         templates=plugin.templates,
         elements=plugin.elements,
-        extra_assets=plugin.static_files,
+        extra_assets={**plugin.static_files, **extra_assets},
+        extra_pages=extra_pages if extra_pages else None,
         vars=config.vars,
         cwd=path,
         current_time=current_time,
     )
+
+    # Execute post_generate hooks
+    execute_hooks(plugin.hooks, "post_generate", hook_context)
+
+
+def _create_hook_context(
+    config: "Config",
+    exported_universe: materials.Universe,
+    current_time: datetime.datetime,
+    build_directory: Path,
+) -> dict[str, Any]:
+    """Create a JSON-serializable context dict for hooks.
+
+    Parameters
+    ----------
+    config : Config
+        The automata configuration.
+    exported_universe : Universe
+        The exported materials universe.
+    current_time : datetime.datetime
+        Current time for the build.
+    build_directory : Path
+        Path to the build output directory.
+
+    Returns
+    -------
+    dict[str, Any]
+        A JSON-serializable context dictionary containing config data,
+        materials, current time, and variables.
+
+    """
+    return {
+        "config": {
+            "content_directory": str(config.website.content_directory),
+            "build_directory": str(config.website.build_directory),
+            "materials_directory_name": config.website.materials_directory_name,
+            "base_path": config.website.base_path,
+        },
+        "materials": materials.serialize(exported_universe),
+        "current_time": current_time.isoformat(),
+        "vars": config.vars,
+        "build_directory": str(build_directory),
+    }
+
+
+# Import Config for type hints
+from .._config import Config  # noqa: E402
