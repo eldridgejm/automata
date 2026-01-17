@@ -6,11 +6,8 @@ import subprocess
 
 logger = logging.getLogger(__name__)
 
-# Priority for this hook (default theme runs after other hooks)
-POST_GENERATE_PRIORITY = 100
 
-
-def post_generate(context):
+def _post_generate(context):
     """Rebuild Tailwind CSS after site generation to include custom classes.
 
     This hook runs the Tailwind CLI to regenerate CSS by scanning the built
@@ -110,8 +107,8 @@ def _get_theme_directory() -> pathlib.Path | None:
 
     """
     try:
-        # This file is in the theme directory
-        return pathlib.Path(__file__).parent.resolve()
+        # This file is in the hooks/ subdirectory of the theme directory
+        return pathlib.Path(__file__).parent.parent.resolve()
     except NameError:
         return None
 
@@ -168,3 +165,10 @@ def _rebuild_tailwind(
 
     if result.returncode != 0:
         raise RuntimeError(f"Tailwind CLI failed: {result.stderr}")
+
+
+# Export hooks in the expected format
+# Priority 100 means this runs after other hooks (lower priority runs first)
+hooks = {
+    "post_generate": [(100, _post_generate)],
+}

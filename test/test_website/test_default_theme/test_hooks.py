@@ -163,7 +163,7 @@ def test_post_generate_skips_when_npx_not_available():
     with mock.patch.object(hooks, "_is_npx_available", return_value=False):
         with mock.patch("automata.website.themes.default.hooks.logger") as mock_logger:
             # Should not raise, just warn
-            result = hooks.post_generate(context)
+            result = hooks._post_generate(context)
             assert result == {}
             mock_logger.warning.assert_called_once()
             assert "npx not found" in mock_logger.warning.call_args[0][0]
@@ -178,7 +178,7 @@ def test_post_generate_skips_when_theme_dir_not_found():
             with mock.patch(
                 "automata.website.themes.default.hooks.logger"
             ) as mock_logger:
-                result = hooks.post_generate(context)
+                result = hooks._post_generate(context)
                 assert result == {}
                 mock_logger.warning.assert_called_once()
                 warning_msg = mock_logger.warning.call_args[0][0]
@@ -198,7 +198,7 @@ def test_post_generate_skips_when_input_css_missing(tmp_path):
             with mock.patch(
                 "automata.website.themes.default.hooks.logger"
             ) as mock_logger:
-                result = hooks.post_generate(context)
+                result = hooks._post_generate(context)
                 assert result == {}
                 mock_logger.warning.assert_called_once()
                 warning_msg = mock_logger.warning.call_args[0][0]
@@ -223,7 +223,7 @@ def test_post_generate_handles_rebuild_errors_gracefully(tmp_path):
                     "automata.website.themes.default.hooks.logger"
                 ) as mock_logger:
                     # Should not raise, just warn
-                    result = hooks.post_generate(context)
+                    result = hooks._post_generate(context)
                     assert result == {}
                     assert any(
                         "Failed to rebuild Tailwind CSS" in str(call)
@@ -245,7 +245,7 @@ def test_post_generate_calls_rebuild_with_correct_paths(tmp_path):
     with mock.patch.object(hooks, "_is_npx_available", return_value=True):
         with mock.patch.object(hooks, "_get_theme_directory", return_value=theme_dir):
             with mock.patch.object(hooks, "_rebuild_tailwind") as mock_rebuild:
-                result = hooks.post_generate(context)
+                result = hooks._post_generate(context)
                 assert result == {}
 
                 mock_rebuild.assert_called_once()
@@ -261,7 +261,7 @@ def test_post_generate_skips_when_rebuild_disabled_in_vars():
 
     with mock.patch.object(hooks, "_is_npx_available") as mock_npx:
         with mock.patch.object(hooks, "_rebuild_tailwind") as mock_rebuild:
-            result = hooks.post_generate(context)
+            result = hooks._post_generate(context)
             assert result == {}
 
             # Should not check for npx or attempt rebuild

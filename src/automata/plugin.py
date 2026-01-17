@@ -7,9 +7,117 @@ via entry points.
 Themes are a special case of plugins that provide base templates for website
 generation.
 
+Plugin Types
+------------
+
+There are two types of plugins:
+
+1. **Filesystem plugins** - A directory without ``__init__.py`` that uses a
+   conventional structure to provide plugin components.
+
+2. **Python package plugins** - A directory with ``__init__.py`` that exports
+   a ``plugin`` attribute containing a :class:`Plugin` instance.
+
+Filesystem Plugin Structure
+---------------------------
+
+A filesystem plugin is a directory with the following optional structure::
+
+    my_plugin/
+    ├── templates/          # Jinja2 template files
+    │   ├── base.html
+    │   ├── page.html
+    │   └── partials/
+    │       └── header.html
+    ├── static/             # Static files (CSS, JS, images, etc.)
+    │   ├── style.css
+    │   └── images/
+    │       └── logo.png
+    ├── elements/           # Custom elements (Python package)
+    │   ├── __init__.py     # Must export `elements` dict
+    │   └── _my_element.py
+    ├── hooks/              # Hook functions or scripts
+    │   └── ...             # See below for structure options
+    └── schema.json         # Configuration schema (smartconfig format)
+
+All components are optional. The directory must NOT contain an ``__init__.py``
+file at the root level (that would make it a Python package plugin instead).
+
+- **templates/**: Contains Jinja2 template files. Files are loaded recursively
+  and keyed by their relative path (e.g., ``partials/header.html``).
+
+- **static/**: Contains static files to be copied to the build output. Files
+  are loaded recursively and keyed by their relative path.
+
+- **elements/**: Must be a Python package (contain ``__init__.py``) that exports
+  an ``elements`` dictionary mapping element names to Element classes.
+
+- **hooks/**: Can be structured in one of two ways:
+
+  1. **Python package** (contains ``__init__.py``): The module must export a
+     ``hooks`` variable containing a dictionary mapping hook point names to
+     lists of (priority, callable) tuples::
+
+         hooks/
+         ├── __init__.py     # Must export `hooks` dict
+         └── _helpers.py     # Optional helper modules
+
+     The ``__init__.py`` defines hook functions and exports them::
+
+         def _pre_generate(context: dict) -> dict:
+             return {"pages": {}, "assets": {}}
+
+         def _post_generate(context: dict) -> None:
+             pass
+
+         hooks = {
+             "pre_generate": [(50, _pre_generate)],
+             "post_generate": [(100, _post_generate)],
+         }
+
+  2. **Script directory** (no ``__init__.py``): Contains executable scripts
+     named after hook points::
+
+         hooks/
+         ├── pre_generate    # Executable script (receives JSON on stdin)
+         └── post_generate   # Executable script
+
+     Scripts receive context as JSON on stdin and cannot return values.
+     All script hooks run with priority 50.
+
+  Supported hooks: ``pre_generate``, ``post_generate``. Lower priority values
+  execute first.
+
+- **schema.json**: A smartconfig schema for validating plugin configuration.
+
+Python Package Plugin Structure
+-------------------------------
+
+A Python package plugin is a directory with an ``__init__.py`` that exports
+a ``plugin`` attribute::
+
+    my_plugin/
+    ├── __init__.py         # Must export `plugin = Plugin(...)`
+    ├── templates.py        # Can organize however you like
+    └── ...
+
+The ``__init__.py`` must export a :class:`Plugin` instance::
+
+    from automata import Plugin, load_templates_from_directory
+    from pathlib import Path
+
+    here = Path(__file__).parent
+
+    plugin = Plugin(
+        templates=load_templates_from_directory(here / "templates"),
+        static_files={"style.css": (here / "style.css").read_text()},
+    )
+
+Helper Functions
+----------------
+
 This module provides helper functions for loading plugin components from
-directories, which can be used by plugin authors creating Python package
-plugins:
+directories, useful when creating Python package plugins:
 
 - :func:`load_templates_from_directory` - Load templates from a directory
 - :func:`load_static_files_from_directory` - Load static files from a directory
@@ -32,8 +140,13 @@ from typing import TYPE_CHECKING, Any, Callable, Sequence, cast
 import smartconfig.exceptions
 import smartconfig.types
 
+from ._hooks import create_shell_hook
+
 if TYPE_CHECKING:
     from .website._elements import Element
+
+# Standard hook points supported by the system
+HOOK_POINTS = ["pre_generate", "post_generate"]
 
 
 def _is_hidden(parts: list[str]) -> bool:
@@ -219,71 +332,104 @@ def load_elements_from_directory(
 def load_hooks_from_directory(
     directory: Traversable,
 ) -> dict[str, list[tuple[int, Callable[..., Any]]]]:
-    """Load hooks from a hooks.py file in a directory.
+    """Load hooks from a directory.
 
-    The hooks.py file should define functions named after hook points:
+    The directory can be either:
 
-    - ``pre_generate(context: dict) -> dict`` - Called before website generation
-    - ``post_generate(context: dict) -> None`` - Called after website generation
+    1. A Python package (contains ``__init__.py``) that exports a ``hooks``
+       variable - a dictionary mapping hook point names to lists of
+       (priority, callable) tuples.
 
-    Each hook function can optionally have a corresponding priority constant:
-
-    - ``PRE_GENERATE_PRIORITY = 50``
-    - ``POST_GENERATE_PRIORITY = 50``
-
-    If no priority constant is defined, the default priority of 50 is used.
-    Lower priority values execute first.
+    2. A directory containing executable scripts named after hook points
+       (e.g., ``pre_generate``, ``post_generate``). Scripts receive JSON
+       on stdin and run with priority 50.
 
     Parameters
     ----------
     directory : Traversable
-        The directory containing hooks.py. Can be a ``pathlib.Path``
-        or any ``Traversable``.
+        The hooks directory. Can be a ``pathlib.Path`` or any ``Traversable``.
 
     Returns
     -------
     dict[str, list[tuple[int, Callable]]]
         Mapping from hook point names to lists of (priority, callable) tuples.
-        Returns an empty dict if hooks.py doesn't exist.
+        Returns an empty dict if the directory doesn't exist or has no hooks.
 
     Raises
     ------
     ValueError
-        If hooks.py exists but cannot be loaded.
+        If the directory contains ``__init__.py`` but does not export a valid
+        ``hooks`` variable.
 
     Examples
     --------
     >>> from pathlib import Path
     >>> from automata.plugin import load_hooks_from_directory
-    >>> hooks = load_hooks_from_directory(Path("my_plugin"))
+    >>> hooks = load_hooks_from_directory(Path("my_plugin/hooks"))
 
     """
     if not directory.is_dir():
         return {}
 
-    hooks_file = directory / "hooks.py"
-    if not hooks_file.is_file():
-        return {}
+    # Check if this is a Python package
+    init_file = directory / "__init__.py"
+    if init_file.is_file():
+        return _load_hooks_from_package(directory)
 
-    module = _load_python_module_from_directory(
-        directory=directory,
-        filename="hooks.py",
-        module_type="hooks",
-    )
-
+    # Otherwise, load as script hooks
     hooks: dict[str, list[tuple[int, Callable[..., Any]]]] = {}
 
-    # Standard hook points to look for
-    hook_points = ["pre_generate", "post_generate"]
+    # Need actual filesystem path for script execution
+    with importlib.resources.as_file(directory) as dir_path:
+        for hook_point in HOOK_POINTS:
+            script_file = directory / hook_point
+            if script_file.is_file():
+                script_path = dir_path / hook_point
+                # Create shell hook that executes the script
+                priority, hook_fn = create_shell_hook(
+                    command=str(script_path),
+                    cwd=dir_path,
+                    priority=50,
+                )
+                hooks[hook_point] = [(priority, hook_fn)]
 
-    for hook_point in hook_points:
-        if hasattr(module, hook_point):
-            func = getattr(module, hook_point)
-            if callable(func):
-                # Look for priority constant (e.g., PRE_GENERATE_PRIORITY)
-                priority_attr = f"{hook_point.upper()}_PRIORITY"
-                priority = getattr(module, priority_attr, 50)
-                hooks[hook_point] = [(priority, func)]
+    return hooks
+
+
+def _load_hooks_from_package(
+    directory: Traversable,
+) -> dict[str, list[tuple[int, Callable[..., Any]]]]:
+    """Load hooks from a Python package (directory with __init__.py).
+
+    The package must export a ``hooks`` variable that is a dictionary mapping
+    hook point names to lists of (priority, callable) tuples.
+
+    Example hooks/__init__.py::
+
+        def my_pre_generate(context):
+            return {"pages": {}, "assets": {}}
+
+        hooks = {
+            "pre_generate": [(50, my_pre_generate)],
+        }
+
+    """
+    module = _load_python_module_from_directory(
+        directory=directory,
+        filename="__init__.py",
+        module_type="hooks",
+        submodule_search_locations=[str(directory)],
+    )
+
+    if not hasattr(module, "hooks"):
+        raise ValueError(
+            f"Hooks package at {directory} must define a `hooks` variable."
+        )
+
+    hooks = module.hooks
+
+    if not isinstance(hooks, dict):
+        raise ValueError(f"Hooks package at {directory} must define `hooks` as a dict.")
 
     return hooks
 
@@ -379,7 +525,7 @@ class Plugin:
         templates = load_templates_from_directory(templates_dir)
         static_files = load_static_files_from_directory(directory / "static")
         elements = load_elements_from_directory(directory / "elements")
-        hooks = load_hooks_from_directory(directory)
+        hooks = load_hooks_from_directory(directory / "hooks")
 
         # Load schema from schema.json if present
         schema_file = directory / "schema.json"
