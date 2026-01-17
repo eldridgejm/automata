@@ -38,7 +38,7 @@ def test_build_end_to_end(example_project):
     # Run the build
     build(example_project)
 
-    materials_dir = example_project / "website" / "content" / "materials"
+    materials_dir = example_project / "_build" / "materials"
 
     # Verify materials were discovered, built, and exported
     assert materials_dir.exists(), "Materials directory should be created"
