@@ -49,7 +49,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] If plugin directory contains a __init__.py file, treat it as a package and add it to sys.path. Otherwise, treat it as a "filesystem plugin".
 - [x] More clearly define the notions of "filesystem plugins" vs "package plugins" and clearly document the structure of a filesystem plugin. Maybe rename the methods that load plugins to reflect this distinction?
 - [x] Is "priority" the best way to control the order in which plugins are applied? 100 is the lowest priority, meaning it runs last, but isn't that "higher" priority in a sense because it will override other plugins?
-- [ ] Allow plugins to specify additional resolve functions, global functions available during resolution.
+- [x] Allow plugins to specify additional resolve functions, global functions available during resolution.
     - we will handle this with hooks
 - [ ] Whenever we pass a lot of arguments to execute_hook, we should consider passing them as kwargs instead.
 - [ ] Rename "plugin" to "extension"?
