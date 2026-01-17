@@ -53,6 +53,7 @@ In this branch, we will implement the website feature "from scratch". We have al
     - we will handle this with hooks
 - [ ] Rename "plugin" to "extension"?
 - [ ] Rename "build()" to "generate()"?
+- [ ] Make sure all tests are in pytest style
 - [ ] Investigate issue with npx not being found
 - [ ] Improve test coverage
 - [ ] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
