@@ -3,7 +3,7 @@
 import pathlib
 import typing
 from collections import OrderedDict, deque
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from automata import constants
 
@@ -17,6 +17,9 @@ from ._types import (
     Universe,
 )
 from .exceptions import DiscoveryError
+
+if TYPE_CHECKING:
+    from ..hooks import Hooks
 
 
 class DiscoverCallbacks:
@@ -314,6 +317,7 @@ def discover(
     skip_directories: Optional[typing.Collection[str]] = None,
     callbacks: Optional[DiscoverCallbacks] = None,
     vars: Optional[Dict[str, Any]] = None,
+    hooks: Optional["Hooks"] = None,
 ) -> Universe[UnbuiltArtifact]:
     """Discover the course materials in the filesystem.
 
@@ -352,12 +356,17 @@ def discover(
         A collection of directory names that should be skipped if discovered.
         If None, no directories will be skipped.
     callbacks : Optional[DiscoverCallbacks]
-        Callbacks to be invoked during the discovery. If omitted, no callbacks
-        are executed. See below for the possible callbacks and their arguments.
+        Deprecated. Use ``hooks`` parameter instead. Callbacks to be invoked
+        during the discovery.
     vars : Optional[dict]
         A dictionary of user-defined variables to be available during
         interpolation. Passed to :func:`read_publication_file` and
         :func:`read_collection_file`.
+    hooks : Optional[Hooks]
+        Hooks to be invoked during the discovery. Supports:
+        - ``materials.discover:on_collection``
+        - ``materials.discover:on_publication``
+        - ``materials.discover:on_skip``
 
     Returns
     -------
@@ -366,23 +375,47 @@ def discover(
         instance.
 
     """
+    # Import here to avoid circular imports
+    from ..hooks import execute_hooks
+
     if callbacks is None:
         callbacks = DiscoverCallbacks()
 
+    # Wrap callbacks to also execute hooks
+    original_callbacks = callbacks
+
+    class HookExecutingCallbacks(DiscoverCallbacks):
+        def on_collection(self, path):
+            original_callbacks.on_collection(path)
+            execute_hooks(hooks, "materials.discover:on_collection", path, None)
+            return path
+
+        def on_publication(self, path):
+            original_callbacks.on_publication(path)
+            execute_hooks(hooks, "materials.discover:on_publication", path, None)
+            return path
+
+        def on_skip(self, path):
+            original_callbacks.on_skip(path)
+            execute_hooks(hooks, "materials.discover:on_skip", path)
+            return path
+
+    wrapped_callbacks = HookExecutingCallbacks() if hooks else callbacks
+
     collection_paths, publication_paths = _search_for_collections_and_publications(
-        root_directory, skip_directories=skip_directories, callbacks=callbacks
+        root_directory, skip_directories=skip_directories, callbacks=wrapped_callbacks
     )
 
     publication_paths = _sort_dictionary(publication_paths)
 
     collections = _make_collections(
-        collection_paths, root_directory, callbacks, vars=vars
+        collection_paths, root_directory, wrapped_callbacks, vars=vars
     )
     _make_publications(
         publication_paths,
         root_directory,
         collections,
-        callbacks=callbacks,
+        callbacks=wrapped_callbacks,
         vars=vars,
     )
 

@@ -4,7 +4,16 @@ import dataclasses
 import datetime
 import pathlib
 import subprocess
-from typing import Any, Optional, TypedDict, Union, Unpack, cast, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Optional,
+    TypedDict,
+    Union,
+    Unpack,
+    cast,
+    overload,
+)
 
 from ._types import (
     BuiltArtifact,
@@ -15,6 +24,9 @@ from ._types import (
     Universe,
 )
 from .exceptions import BuildError
+
+if TYPE_CHECKING:
+    from ..hooks import Hooks
 
 
 class BuildCallbacks:
@@ -169,6 +181,7 @@ class BuildOptions(TypedDict, total=False):
     ignore_ready: bool
     verbose: bool
     callbacks: Optional[BuildCallbacks]
+    hooks: Optional["Hooks"]
     run: Any
     current_time: Optional[datetime.datetime]
     exists: Any
@@ -209,6 +222,7 @@ def build(
     ignore_ready: bool = False,
     verbose: bool = False,
     callbacks: Optional[BuildCallbacks] = None,
+    hooks: Optional["Hooks"] = None,
     current_time: datetime.datetime | None = None,
     run=subprocess.run,
     exists=pathlib.Path.exists,
@@ -234,11 +248,17 @@ def build(
         If ``True``, all artifacts will be built, even if they are marked as
         not ready.
     callbacks : BuildCallbacks
-        An instance of :class:`BuildCallbacks` that contains methods that will
-        be invoked as callbacks at various points during the build process. See
-        :class:`BuildCallbacks` for the possible methods and their meanings. If
-        this argument is not provided, a default set of no-op callbacks will be
-        used.
+        Deprecated. Use ``hooks`` parameter instead. An instance of
+        :class:`BuildCallbacks` that contains methods that will be invoked
+        as callbacks at various points during the build process.
+    hooks : Optional[Hooks]
+        Hooks to be invoked during the build. Supports:
+        - ``materials.build:on_start``
+        - ``materials.build:on_too_soon``
+        - ``materials.build:on_not_ready``
+        - ``materials.build:on_missing``
+        - ``materials.build:on_recipe``
+        - ``materials.build:on_success``
 
     Returns
     -------
@@ -261,8 +281,47 @@ def build(
     an exception is raised.
 
     """
+    # Import here to avoid circular imports
+    from ..hooks import execute_hooks
+
     if callbacks is None:
         callbacks = BuildCallbacks()
+
+    # Wrap callbacks to also execute hooks
+    original_callbacks = callbacks
+
+    class HookExecutingCallbacks(BuildCallbacks):
+        def on_build(self, key, node):
+            original_callbacks.on_build(key, node)
+            execute_hooks(hooks, "materials.build:on_start", key, node)
+            return key, node
+
+        def on_too_soon(self, artifact):
+            original_callbacks.on_too_soon(artifact)
+            execute_hooks(hooks, "materials.build:on_too_soon", artifact)
+            return artifact
+
+        def on_not_ready(self, artifact):
+            original_callbacks.on_not_ready(artifact)
+            execute_hooks(hooks, "materials.build:on_not_ready", artifact)
+            return artifact
+
+        def on_missing(self, artifact):
+            original_callbacks.on_missing(artifact)
+            execute_hooks(hooks, "materials.build:on_missing", artifact)
+            return artifact
+
+        def on_recipe(self, artifact):
+            original_callbacks.on_recipe(artifact)
+            execute_hooks(hooks, "materials.build:on_recipe", artifact)
+            return artifact
+
+        def on_success(self, artifact):
+            original_callbacks.on_success(artifact)
+            execute_hooks(hooks, "materials.build:on_success", artifact)
+            return artifact
+
+    wrapped_callbacks = HookExecutingCallbacks() if hooks else callbacks
 
     kwargs = dict(
         ignore_release_time=ignore_release_time,
@@ -271,7 +330,7 @@ def build(
         run=run,
         verbose=verbose,
         exists=exists,
-        callbacks=callbacks,
+        callbacks=wrapped_callbacks,
     )
 
     if isinstance(root, UnbuiltArtifact):
@@ -286,7 +345,7 @@ def build(
 
         assert isinstance(child, (Collection, Publication, UnbuiltArtifact))
 
-        callbacks.on_build(child_key, child)
+        wrapped_callbacks.on_build(child_key, child)
         result = build(child, **kwargs)  # type: ignore
         # if a node is not built (perhaps due to it not being ready), the
         # result is None. this next conditional prevents such nodes from

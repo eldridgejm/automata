@@ -1,6 +1,6 @@
 """Provides filter(), which selects materials according to a predicate."""
 
-from typing import Callable, Optional, TypeVar, overload
+from typing import TYPE_CHECKING, Callable, Optional, TypeVar, overload
 
 from ._types import (
     Artifact,
@@ -11,6 +11,9 @@ from ._types import (
     UnbuiltArtifact,
     Universe,
 )
+
+if TYPE_CHECKING:
+    from ..hooks import Hooks
 
 
 class FilterCallbacks:
@@ -49,6 +52,7 @@ def filter(
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
     callbacks: Optional[FilterCallbacks] = ...,
+    hooks: Optional["Hooks"] = ...,
 ) -> Universe[ArtifactType]: ...
 
 
@@ -58,6 +62,7 @@ def filter(
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
     callbacks: Optional[FilterCallbacks] = ...,
+    hooks: Optional["Hooks"] = ...,
 ) -> Collection[ArtifactType]: ...
 
 
@@ -67,6 +72,7 @@ def filter(
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
     callbacks: Optional[FilterCallbacks] = ...,
+    hooks: Optional["Hooks"] = ...,
 ) -> Publication[ArtifactType]: ...
 
 
@@ -76,6 +82,7 @@ def filter(
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
     callbacks: Optional[FilterCallbacks] = ...,
+    hooks: Optional["Hooks"] = ...,
 ) -> ArtifactType: ...
 
 
@@ -90,6 +97,7 @@ def filter(
     predicate: Callable[[str, Universe | Collection | Publication | Artifact], bool],
     remove_empty_nodes: bool = False,
     callbacks: Optional[FilterCallbacks] = None,
+    hooks: Optional["Hooks"] = None,
 ) -> (
     Universe[ArtifactType]
     | Collection[ArtifactType]
@@ -110,8 +118,12 @@ def filter(
         (False). The exception is the root node: if all of its children are
         removed, it remains. Default: False.
     callbacks : Optional[FilterCallbacks]
-        Callbacks to be invoked during the filtering. If None, no callbacks
-        are invoked.
+        Deprecated. Use ``hooks`` parameter instead. Callbacks to be invoked
+        during the filtering.
+    hooks : Optional[Hooks]
+        Hooks to be invoked during the filtering. Supports:
+        - ``materials.filter:on_hit``
+        - ``materials.filter:on_miss``
 
     Returns
     -------
@@ -120,6 +132,9 @@ def filter(
         removed. This is a new object, and the original root is unchanged.
 
     """
+    # Import here to avoid circular imports
+    from ..hooks import execute_hooks
+
     # bottom up -- by the time the predicate is applied to publication, its artifacts
     # have been filtered
 
@@ -129,18 +144,37 @@ def filter(
     if callbacks is None:
         callbacks = FilterCallbacks()
 
+    # Wrap callbacks to also execute hooks
+    original_callbacks = callbacks
+
+    class HookExecutingCallbacks(FilterCallbacks):
+        def on_hit(self, key, node):
+            original_callbacks.on_hit(key, node)
+            execute_hooks(hooks, "materials.filter:on_hit", key, node)
+            return key, node
+
+        def on_miss(self, key, node):
+            original_callbacks.on_miss(key, node)
+            execute_hooks(hooks, "materials.filter:on_miss", key, node)
+            return key, node
+
+    wrapped_callbacks = HookExecutingCallbacks() if hooks else callbacks
+
     def predicate_with_callbacks(key, node):
         result = predicate(key, node)
         if result:
-            callbacks.on_hit(key, node)
+            wrapped_callbacks.on_hit(key, node)
         else:
-            callbacks.on_miss(key, node)
+            wrapped_callbacks.on_miss(key, node)
         return result
 
     new_children = {}
     for child_key, child in root._children.items():
         new_child = filter(
-            child, predicate, remove_empty_nodes=remove_empty_nodes, callbacks=callbacks
+            child,
+            predicate,
+            remove_empty_nodes=remove_empty_nodes,
+            callbacks=wrapped_callbacks,
         )
         if (
             isinstance(new_child, Artifact)

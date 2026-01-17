@@ -2,7 +2,7 @@
 
 import pathlib
 import shutil
-from typing import Optional, cast, overload
+from typing import TYPE_CHECKING, Optional, cast, overload
 
 from ._types import (
     Artifact,
@@ -12,6 +12,9 @@ from ._types import (
     Publication,
     Universe,
 )
+
+if TYPE_CHECKING:
+    from ..hooks import Hooks
 
 # exporting
 # --------------------------------------------------------------------------------------
@@ -76,6 +79,7 @@ def export(
     outdir: pathlib.Path,
     prefix: str = ...,
     callbacks: Optional[ExportCallbacks] = ...,
+    hooks: Optional["Hooks"] = ...,
 ) -> Universe[ExportedArtifact]: ...
 
 
@@ -85,6 +89,7 @@ def export(
     outdir: pathlib.Path,
     prefix: str = "",
     callbacks: Optional[ExportCallbacks] = None,
+    hooks: Optional["Hooks"] = None,
 ) -> Collection[ExportedArtifact]: ...
 
 
@@ -94,6 +99,7 @@ def export(
     outdir: pathlib.Path,
     prefix: str = "",
     callbacks: Optional[ExportCallbacks] = None,
+    hooks: Optional["Hooks"] = None,
 ) -> Publication[ExportedArtifact]: ...
 
 
@@ -103,6 +109,7 @@ def export(
     outdir: pathlib.Path,
     prefix: str = "",
     callbacks: Optional[ExportCallbacks] = None,
+    hooks: Optional["Hooks"] = None,
 ) -> ExportedArtifact: ...
 
 
@@ -117,6 +124,7 @@ def export(
     outdir: pathlib.Path,
     prefix: str = "",
     callbacks: Optional[ExportCallbacks] = None,
+    hooks: Optional["Hooks"] = None,
 ) -> (
     Universe[ExportedArtifact]
     | Collection[ExportedArtifact]
@@ -144,9 +152,12 @@ def export(
         children. If the thing being exported is a :class:`BuiltArtifact`,
         this is simply the filename.
     callbacks : Optional[ExportCallbacks]
-        Callbacks to be invoked during the publication. If omitted, no
-        callbacks are executed. See :class:`ExportCallbacks` for the possible
-        callbacks and their arguments.
+        Deprecated. Use ``hooks`` parameter instead. Callbacks to be invoked
+        during the publication.
+    hooks : Optional[Hooks]
+        Hooks to be invoked during the export. Supports:
+        - ``materials.export:on_copy``
+        - ``materials.export:on_node``
 
     Returns
     -------
@@ -163,22 +174,41 @@ def export(
     ``<prefix><collection_key>/<publication_key>/<artifact_key>``
 
     """
+    # Import here to avoid circular imports
+    from ..hooks import execute_hooks
+
     if callbacks is None:
         callbacks = ExportCallbacks()
 
+    # Wrap callbacks to also execute hooks
+    original_callbacks = callbacks
+
+    class HookExecutingCallbacks(ExportCallbacks):
+        def on_copy(self, src, dst):
+            original_callbacks.on_copy(src, dst)
+            execute_hooks(hooks, "materials.export:on_copy", src, dst)
+            return src, dst
+
+        def on_export(self, key, node):
+            original_callbacks.on_export(key, node)
+            execute_hooks(hooks, "materials.export:on_node", key, node)
+            return key, node
+
+    wrapped_callbacks = HookExecutingCallbacks() if hooks else callbacks
+
     if isinstance(root, BuiltArtifact):
-        return _export_artifact(root, outdir, prefix, callbacks)
+        return _export_artifact(root, outdir, prefix, wrapped_callbacks)
 
     if isinstance(root, Artifact) and not isinstance(root, BuiltArtifact):
         raise ValueError("Cannot export an unbuilt artifact.")
 
     new_children = {}
     for child_key, child in root._children.items():
-        callbacks.on_export(child_key, child)
+        wrapped_callbacks.on_export(child_key, child)
         new_prefix = str(pathlib.Path(prefix) / child_key)
 
         assert isinstance(child, (Universe, Collection, Publication, Artifact))
-        new_children[child_key] = export(child, outdir, new_prefix, callbacks)
+        new_children[child_key] = export(child, outdir, new_prefix, wrapped_callbacks)
 
     result = root._replace_children(new_children)
     return cast(
