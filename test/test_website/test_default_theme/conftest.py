@@ -12,9 +12,11 @@ def default_theme_kwargs():
     Returns a dictionary containing templates, elements, and extra_assets
     that can be splatted into generate().
     """
-    theme = automata.website.Theme.from_entry_point("default")
+    plugin = automata.website.Plugin.from_entry_point(
+        "default", group="automata.website.themes"
+    )
     return {
-        "templates": theme.templates,
-        "elements": theme.elements,
-        "extra_assets": theme.static_files,
+        "templates": plugin.templates,
+        "elements": plugin.elements,
+        "extra_assets": plugin.static_files,
     }
