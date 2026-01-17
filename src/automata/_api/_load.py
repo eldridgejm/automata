@@ -1,9 +1,10 @@
 """High-level function for loading configuration and plugins."""
 
 from pathlib import Path
+from typing import Any
 
 from .._config import Config, read_config
-from .._hooks import create_shell_hook
+from ..hooks import PostGenerateWebsiteHook
 from ..plugin import Plugin, merge_plugins
 
 CONFIGURATION_FILENAME = "automata.yaml"
@@ -52,8 +53,11 @@ def load(path: Path | None = None) -> tuple[Config, Plugin]:
 def _config_hooks_to_plugin(config: Config, cwd: Path) -> Plugin:
     """Convert hooks defined in config to a Plugin.
 
-    This wraps each shell command hook in a callable and creates a
+    This wraps each shell command hook in a hook instance and creates a
     Plugin containing those hooks.
+
+    Note: Only ``post_generate_website`` hooks are supported from config
+    since shell hooks cannot return values required by ``pre_generate_website``.
 
     Parameters
     ----------
@@ -68,14 +72,16 @@ def _config_hooks_to_plugin(config: Config, cwd: Path) -> Plugin:
         A plugin containing only hooks (no templates, elements, etc.).
 
     """
-    hooks = {}
+    hooks: dict[str, list[Any]] = {}
 
     for hook_point, hook_config in config.hooks.items():
-        priority, hook_fn = create_shell_hook(
-            command=hook_config.command,
-            cwd=cwd,
-            priority=hook_config.priority,
-        )
-        hooks[hook_point] = [(priority, hook_fn)]
+        # Only post_generate_website supports shell hooks
+        if hook_point == "post_generate_website":
+            hook = PostGenerateWebsiteHook.from_script(
+                command=hook_config.command,
+                cwd=cwd,
+                priority=hook_config.priority,
+            )
+            hooks[hook_point] = [hook]
 
     return Plugin(hooks=hooks)

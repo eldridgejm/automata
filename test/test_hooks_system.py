@@ -219,12 +219,17 @@ class TestScriptableHookMixin:
         params = list(sig.parameters.keys())
 
         # Should have the same parameters as PostGenerateWebsiteHook.__call__
-        assert "context" in params
+        assert "materials" in params
+        assert "website_config" in params
         assert "build_directory" in params
+        assert "vars" in params
+        assert "current_time" in params
 
     @patch("subprocess.run")
     def test_from_script_executes_command(self, mock_run):
         """Verify script hook executes command with mocked subprocess."""
+        import datetime
+
         mock_run.return_value = Mock(returncode=0)
 
         hook = PostGenerateWebsiteHook.from_script(
@@ -233,11 +238,21 @@ class TestScriptableHookMixin:
             priority=50,
         )
 
-        # Create mock context
-        mock_context = Mock()
-        mock_context.to_dict.return_value = {"test": "data"}
+        # Create mock arguments matching the new signature
+        mock_materials = Mock()
+        mock_website_config = Mock()
+        mock_website_config.content_directory = Path("/content")
+        mock_website_config.build_directory = Path("/build")
+        mock_website_config.materials_directory_name = "materials"
+        mock_website_config.base_path = "/"
 
-        hook(mock_context, Path("/build"))
+        hook(
+            mock_materials,
+            mock_website_config,
+            Path("/build"),
+            {"var": "value"},
+            datetime.datetime(2024, 1, 1),
+        )
 
         mock_run.assert_called_once()
         call_kwargs = mock_run.call_args[1]
@@ -247,6 +262,8 @@ class TestScriptableHookMixin:
     @patch("subprocess.run")
     def test_from_script_passes_json_on_stdin(self, mock_run):
         """Verify serialized arguments are passed on stdin."""
+        import datetime
+
         mock_run.return_value = Mock(returncode=0)
 
         hook = PostGenerateWebsiteHook.from_script(
@@ -255,18 +272,33 @@ class TestScriptableHookMixin:
             priority=50,
         )
 
-        mock_context = Mock()
-        mock_context.to_dict.return_value = {"key": "value"}
+        # Create a mock Universe that can be serialized
+        from automata.materials import Universe
 
-        hook(mock_context, Path("/build"))
+        mock_materials = Universe(collections={})
+        mock_website_config = Mock()
+        mock_website_config.content_directory = Path("/content")
+        mock_website_config.build_directory = Path("/build")
+        mock_website_config.materials_directory_name = "materials"
+        mock_website_config.base_path = "/"
+
+        hook(
+            mock_materials,
+            mock_website_config,
+            Path("/build"),
+            {"key": "value"},
+            datetime.datetime(2024, 1, 1),
+        )
 
         call_kwargs = mock_run.call_args[1]
         assert "input" in call_kwargs
-        assert "context" in call_kwargs["input"]
+        assert "config" in call_kwargs["input"]
         assert "build_directory" in call_kwargs["input"]
+        assert "vars" in call_kwargs["input"]
 
     def test_script_hook_returns_none(self):
         """Verify fire-and-forget behavior - script hooks return None."""
+        import datetime
 
         # Script hooks should not return values
         # This is implied by the __call__ signature returning None
@@ -274,15 +306,19 @@ class TestScriptableHookMixin:
         class ConcretePost(PostGenerateWebsiteHook):
             priority: int = 50
 
-            def __call__(self, context, build_directory):
+            def __call__(
+                self, materials, website_config, build_directory, vars, current_time
+            ):
                 return None  # Explicit None
 
             @staticmethod
-            def serialize_args(context, build_directory):
+            def serialize_args(
+                materials, website_config, build_directory, vars, current_time
+            ):
                 return {}
 
         hook = ConcretePost()
-        result = hook(Mock(), Path("/tmp"))
+        result = hook(Mock(), Mock(), Path("/tmp"), {}, datetime.datetime.now())
         assert result is None
 
 

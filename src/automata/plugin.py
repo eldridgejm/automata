@@ -56,37 +56,52 @@ file at the root level (that would make it a Python package plugin instead).
 
   1. **Python package** (contains ``__init__.py``): The module must export a
      ``hooks`` variable containing a dictionary mapping hook point names to
-     lists of (priority, callable) tuples::
+     lists of hook instances::
 
          hooks/
          ├── __init__.py     # Must export `hooks` dict
          └── _helpers.py     # Optional helper modules
 
-     The ``__init__.py`` defines hook functions and exports them::
+     The ``__init__.py`` defines hook classes and exports them::
 
-         def _pre_generate(context: dict) -> dict:
-             return {"pages": {}, "assets": {}}
+         from automata.hooks import (
+             PreGenerateWebsiteHook,
+             PostGenerateWebsiteHook,
+             GenerateOverrides,
+         )
 
-         def _post_generate(context: dict) -> None:
-             pass
+         class MyPreGenerateHook(PreGenerateWebsiteHook):
+             priority = 50
+
+             def __call__(self, materials, website_config, build_directory,
+                          vars, current_time):
+                 return GenerateOverrides(pages={}, assets={})
+
+         class MyPostGenerateHook(PostGenerateWebsiteHook):
+             priority = 100
+
+             def __call__(self, materials, website_config, build_directory,
+                          vars, current_time):
+                 pass
 
          hooks = {
-             "pre_generate": [(50, _pre_generate)],
-             "post_generate": [(100, _post_generate)],
+             "pre_generate_website": [MyPreGenerateHook()],
+             "post_generate_website": [MyPostGenerateHook()],
          }
 
   2. **Script directory** (no ``__init__.py``): Contains executable scripts
      named after hook points::
 
          hooks/
-         ├── pre_generate    # Executable script (receives JSON on stdin)
-         └── post_generate   # Executable script
+         └── post_generate_website   # Executable script
 
      Scripts receive context as JSON on stdin and cannot return values.
-     All script hooks run with priority 50.
+     All script hooks run with priority 50. Note that only
+     ``post_generate_website`` supports script hooks since
+     ``pre_generate_website`` must return values.
 
-  Supported hooks: ``pre_generate``, ``post_generate``. Lower priority values
-  execute first.
+  Supported hooks: ``pre_generate_website``, ``post_generate_website``.
+  Lower priority values execute first.
 
 - **schema.json**: A smartconfig schema for validating plugin configuration.
 
@@ -140,13 +155,14 @@ from typing import TYPE_CHECKING, Any, Callable, Sequence, cast
 import smartconfig.exceptions
 import smartconfig.types
 
-from ._hooks import create_shell_hook
+from .hooks import PostGenerateWebsiteHook
 
 if TYPE_CHECKING:
+    from .hooks import PreGenerateWebsiteHook
     from .website._elements import Element
 
-# Standard hook points supported by the system
-HOOK_POINTS = ["pre_generate", "post_generate"]
+# Standard hook points supported by the system (script hooks only support post_generate)
+HOOK_POINTS = ["post_generate_website"]
 
 
 def _is_hidden(parts: list[str]) -> bool:
@@ -331,18 +347,19 @@ def load_elements_from_directory(
 
 def load_hooks_from_directory(
     directory: Traversable,
-) -> dict[str, list[tuple[int, Callable[..., Any]]]]:
+) -> dict[str, list["PreGenerateWebsiteHook | PostGenerateWebsiteHook"]]:
     """Load hooks from a directory.
 
     The directory can be either:
 
     1. A Python package (contains ``__init__.py``) that exports a ``hooks``
-       variable - a dictionary mapping hook point names to lists of
-       (priority, callable) tuples.
+       variable - a dictionary mapping hook point names to lists of hook
+       instances (objects with a ``priority`` attribute and ``__call__`` method).
 
     2. A directory containing executable scripts named after hook points
-       (e.g., ``pre_generate``, ``post_generate``). Scripts receive JSON
-       on stdin and run with priority 50.
+       (e.g., ``post_generate_website``). Scripts receive JSON on stdin and
+       run with priority 50. Note: Only ``post_generate_website`` supports
+       script hooks since ``pre_generate_website`` must return values.
 
     Parameters
     ----------
@@ -351,8 +368,8 @@ def load_hooks_from_directory(
 
     Returns
     -------
-    dict[str, list[tuple[int, Callable]]]
-        Mapping from hook point names to lists of (priority, callable) tuples.
+    dict[str, list]
+        Mapping from hook point names to lists of hook instances.
         Returns an empty dict if the directory doesn't exist or has no hooks.
 
     Raises
@@ -377,7 +394,7 @@ def load_hooks_from_directory(
         return _load_hooks_from_package(directory)
 
     # Otherwise, load as script hooks
-    hooks: dict[str, list[tuple[int, Callable[..., Any]]]] = {}
+    hooks: dict[str, list["PreGenerateWebsiteHook | PostGenerateWebsiteHook"]] = {}
 
     # Need actual filesystem path for script execution
     with importlib.resources.as_file(directory) as dir_path:
@@ -385,32 +402,39 @@ def load_hooks_from_directory(
             script_file = directory / hook_point
             if script_file.is_file():
                 script_path = dir_path / hook_point
-                # Create shell hook that executes the script
-                priority, hook_fn = create_shell_hook(
+                # Create hook instance from script
+                hook = PostGenerateWebsiteHook.from_script(
                     command=str(script_path),
                     cwd=dir_path,
                     priority=50,
                 )
-                hooks[hook_point] = [(priority, hook_fn)]
+                hooks[hook_point] = [hook]
 
     return hooks
 
 
 def _load_hooks_from_package(
     directory: Traversable,
-) -> dict[str, list[tuple[int, Callable[..., Any]]]]:
+) -> dict[str, list["PreGenerateWebsiteHook | PostGenerateWebsiteHook"]]:
     """Load hooks from a Python package (directory with __init__.py).
 
     The package must export a ``hooks`` variable that is a dictionary mapping
-    hook point names to lists of (priority, callable) tuples.
+    hook point names to lists of hook instances (objects with a ``priority``
+    attribute and ``__call__`` method).
 
     Example hooks/__init__.py::
 
-        def my_pre_generate(context):
-            return {"pages": {}, "assets": {}}
+        from automata.hooks import PreGenerateWebsiteHook, GenerateOverrides
+
+        class MyPreGenerateHook(PreGenerateWebsiteHook):
+            priority = 50
+
+            def __call__(self, materials, website_config, build_directory,
+                         vars, current_time):
+                return GenerateOverrides(pages={}, assets={})
 
         hooks = {
-            "pre_generate": [(50, my_pre_generate)],
+            "pre_generate_website": [MyPreGenerateHook()],
         }
 
     """
@@ -454,16 +478,17 @@ class Plugin:
         Dictionary mapping element names to Element classes.
     schema : smartconfig.types.Schema | None
         Optional smartconfig schema for validating plugin configuration.
-    hooks : dict[str, list[tuple[int, Callable]]]
-        Dictionary mapping hook point names (e.g., "pre_generate") to lists
-        of (priority, callable) tuples. Lower priority values execute first.
+    hooks : dict[str, list]
+        Dictionary mapping hook point names (e.g., "pre_generate_website") to
+        lists of hook instances. Each hook instance has a ``priority`` attribute
+        and a ``__call__`` method. Lower priority values execute first.
     """
 
     templates: dict[str, str] = field(default_factory=dict)
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     elements: dict[str, type["Element"]] = field(default_factory=dict)
     schema: smartconfig.types.Schema | None = None
-    hooks: dict[str, list[tuple[int, Callable[..., Any]]]] = field(default_factory=dict)
+    hooks: dict[str, list[Any]] = field(default_factory=dict)
 
     @classmethod
     def from_directory(
@@ -653,7 +678,7 @@ def merge_plugins(plugins: Sequence[Plugin]) -> Plugin:
     templates: dict[str, str] = {}
     static_files: dict[str, str | bytes | Traversable] = {}
     elements: dict[str, type["Element"]] = {}
-    hooks: dict[str, list[tuple[int, Callable[..., Any]]]] = {}
+    hooks: dict[str, list[Any]] = {}
 
     for plugin in plugins:
         templates.update(plugin.templates)

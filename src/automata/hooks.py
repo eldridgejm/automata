@@ -50,15 +50,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Self, Sequence, TypedDict, overload
 
 if TYPE_CHECKING:
+    import datetime
+
+    from ._config import WebsiteConfig
     from .materials import (
         BuiltArtifact,
         Collection,
+        ExportedArtifact,
         Publication,
         UnbuiltArtifact,
         Universe,
     )
     from .materials._types import Artifact
-    from .website import RenderContext
 
 
 # =============================================================================
@@ -709,16 +712,27 @@ class PreGenerateWebsiteHook(ABC):
 
     @abstractmethod
     def __call__(
-        self, context: "RenderContext", build_directory: Path
+        self,
+        materials: "Universe[ExportedArtifact]",
+        website_config: "WebsiteConfig",
+        build_directory: Path,
+        vars: dict[str, Any],
+        current_time: "datetime.datetime",
     ) -> GenerateOverrides | None:
         """Called before website generation.
 
         Parameters
         ----------
-        context : RenderContext
-            The rendering context for the website.
+        materials : Universe[ExportedArtifact]
+            The exported materials universe.
+        website_config : WebsiteConfig
+            The website configuration.
         build_directory : Path
             Path to the build output directory.
+        vars : dict[str, Any]
+            Variables available for rendering.
+        current_time : datetime.datetime
+            The current build time.
 
         Returns
         -------
@@ -745,29 +759,54 @@ class PostGenerateWebsiteHook(ScriptableHookMixin):
     priority: int
 
     @abstractmethod
-    def __call__(self, context: "RenderContext", build_directory: Path) -> None:
+    def __call__(
+        self,
+        materials: "Universe[ExportedArtifact]",
+        website_config: "WebsiteConfig",
+        build_directory: Path,
+        vars: dict[str, Any],
+        current_time: "datetime.datetime",
+    ) -> None:
         """Called after website generation.
 
         Parameters
         ----------
-        context : RenderContext
-            The rendering context for the website.
+        materials : Universe[ExportedArtifact]
+            The exported materials universe.
+        website_config : WebsiteConfig
+            The website configuration.
         build_directory : Path
             Path to the build output directory.
+        vars : dict[str, Any]
+            Variables available for rendering.
+        current_time : datetime.datetime
+            The current build time.
 
         """
         ...
 
     @staticmethod
-    def serialize_args(context: "RenderContext", build_directory: Path) -> dict:
+    def serialize_args(
+        materials: "Universe[ExportedArtifact]",
+        website_config: "WebsiteConfig",
+        build_directory: Path,
+        vars: dict[str, Any],
+        current_time: "datetime.datetime",
+    ) -> dict:
         """Serialize arguments for script execution.
 
         Parameters
         ----------
-        context : RenderContext
-            The rendering context.
+        materials : Universe[ExportedArtifact]
+            The exported materials universe.
+        website_config : WebsiteConfig
+            The website configuration.
         build_directory : Path
             Path to the build output directory.
+        vars : dict[str, Any]
+            Variables available for rendering.
+        current_time : datetime.datetime
+            The current build time.
 
         Returns
         -------
@@ -775,7 +814,20 @@ class PostGenerateWebsiteHook(ScriptableHookMixin):
             JSON-serializable dictionary of arguments.
 
         """
-        return {"context": context.to_dict(), "build_directory": str(build_directory)}
+        from . import materials as materials_module
+
+        return {
+            "materials": materials_module.serialize(materials),
+            "config": {
+                "content_directory": str(website_config.content_directory),
+                "build_directory": str(website_config.build_directory),
+                "materials_directory_name": website_config.materials_directory_name,
+                "base_path": website_config.base_path,
+            },
+            "build_directory": str(build_directory),
+            "vars": vars,
+            "current_time": current_time.isoformat(),
+        }
 
 
 # =============================================================================
@@ -819,7 +871,7 @@ Hooks = TypedDict(
 
 
 def execute_hooks(
-    hooks: Hooks | None,
+    hooks: Hooks | dict[str, list[Any]] | None,
     hook_point_name: str,
     *args,
     **kwargs,
@@ -831,8 +883,10 @@ def execute_hooks(
 
     Parameters
     ----------
-    hooks : Hooks | None
-        The hooks dictionary, or None for no hooks.
+    hooks : Hooks | dict[str, list[Any]] | None
+        The hooks dictionary, or None for no hooks. Can be either a typed
+        Hooks dict or a generic dict mapping hook point names to lists of
+        hook instances.
     hook_point_name : str
         The name of the hook point to execute.
     *args : Any
