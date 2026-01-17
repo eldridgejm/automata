@@ -37,6 +37,7 @@ Script Hooks
 
 Script hooks are fire-and-forget—they cannot return values or affect program flow.
 Scriptable hooks inherit from `ScriptableHookMixin` and implement `serialize_args`.
+Output from script hooks is passed through to the terminal.
 """
 
 from __future__ import annotations
@@ -182,7 +183,7 @@ class ScriptableHookMixin(ABC):
         The shell command receives a JSON-serialized context on stdin.
         Script hooks cannot return values that modify the generation process;
         they are intended for side effects only (e.g., running post-processing
-        scripts). Any output from the command is ignored.
+        scripts). Output from the command is passed through to the terminal.
 
         Parameters
         ----------
@@ -219,13 +220,12 @@ class ScriptableHookMixin(ABC):
                         cwd=str(cwd),
                         input=context_json,
                         text=True,
-                        capture_output=True,
                         timeout=300,
                         check=True,
                     )
                 except subprocess.CalledProcessError as e:
                     raise RuntimeError(
-                        f"Shell hook failed with exit code {e.returncode}:\n{e.stderr}"
+                        f"Shell hook failed with exit code {e.returncode}"
                     ) from e
                 except subprocess.TimeoutExpired as e:
                     raise RuntimeError("Shell hook timed out after 300 seconds") from e

@@ -30,3 +30,7 @@ website:
               <i data-lucide="scale" class="mr-2 text-slate-400"></i>
               Syllabus
             url: syllabus.html
+
+hooks:
+  post_generate_website:
+    command: "echo 'Build complete!'"

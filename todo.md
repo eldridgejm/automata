@@ -1,0 +1,13 @@
+- [ ] src/automata/__init__.py
+- [x] src/automata/_api/_build.py
+- [ ] src/automata/_api/_load.py
+- [ ] src/automata/hooks.py
+- [ ] src/automata/materials/__init__.py
+- [x] src/automata/materials/_build.py
+- [x] src/automata/materials/_discover.py
+- [x] src/automata/materials/_export.py
+- [x] src/automata/materials/_filter.py
+- [ ] src/automata/plugin.py
+- [ ] test/test_hooks_system.py
+- [ ] test/test_materials/test_discover.py
+- [ ] test/test_materials/test_hooks_integration.py
