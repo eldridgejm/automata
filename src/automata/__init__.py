@@ -28,10 +28,12 @@ from .hooks import (
     validate_hook_point_names,
 )
 from .loaders import (
+    WebsiteComponents,
     load_elements_from_directory,
     load_files_from_directory,
     load_hooks_from_directory,
     load_templates_from_directory,
+    load_website_components_from_directory,
 )
 
 __all__ = [
@@ -45,6 +47,8 @@ __all__ = [
     "load_files_from_directory",
     "load_elements_from_directory",
     "load_hooks_from_directory",
+    "load_website_components_from_directory",
+    "WebsiteComponents",
     # Hook system
     "HOOK_POINTS",
     "Hooks",

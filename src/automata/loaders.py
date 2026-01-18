@@ -4,15 +4,17 @@ This module provides helper functions for loading extension components from
 directories, useful when creating Python package extensions:
 
 - :func:`load_templates_from_directory` - Load templates from a directory
-- :func:`load_files_from_directory` - Load static files from a directory
+- :func:`load_files_from_directory` - Load files from a directory
 - :func:`load_elements_from_directory` - Load elements from a Python package
 - :func:`load_hooks_from_directory` - Load hooks from a hooks.py file
+- :func:`load_website_components_from_directory` - Load all website components
 """
 
 import hashlib
 import importlib.resources
 import importlib.util
 import sys
+from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from typing import TYPE_CHECKING, Callable
 
@@ -382,3 +384,77 @@ def _load_hooks_from_package(
         raise ValueError(f"Hooks package at {directory} must define `hooks` as a dict.")
 
     return hooks
+
+
+@dataclass
+class WebsiteComponents:
+    """Container for website components loaded from a directory.
+
+    Attributes
+    ----------
+    elements : dict[str, type[Element]]
+        Dictionary mapping element names to Element classes.
+    templates : dict[str, str]
+        Dictionary mapping template names to their content.
+    content : dict[str, str | bytes | Traversable]
+        Dictionary mapping content file paths to their entries.
+    assets : dict[str, str | bytes | Traversable]
+        Dictionary mapping asset file paths to their entries.
+    static : dict[str, str | bytes | Traversable]
+        Dictionary mapping static file paths to their entries.
+    """
+
+    elements: dict[str, type["Element"]] = field(default_factory=dict)
+    templates: dict[str, str] = field(default_factory=dict)
+    content: dict[str, str | bytes | Traversable] = field(default_factory=dict)
+    assets: dict[str, str | bytes | Traversable] = field(default_factory=dict)
+    static: dict[str, str | bytes | Traversable] = field(default_factory=dict)
+
+
+def load_website_components_from_directory(
+    directory: Traversable,
+) -> WebsiteComponents:
+    """Load all website components from a directory.
+
+    Loads elements, templates, content, assets, and static files from their
+    respective subdirectories within the given directory.
+
+    Parameters
+    ----------
+    directory : Traversable
+        The directory containing website components. Can be a ``pathlib.Path``
+        or any ``Traversable``. Expected subdirectories:
+
+        - ``elements/`` - Python package with Element classes
+        - ``templates/`` - Jinja2 template files
+        - ``content/`` - Content files (markdown, etc.)
+        - ``assets/`` - Asset files (images, etc.)
+        - ``static/`` - Static files (CSS, JS, etc.)
+
+    Returns
+    -------
+    WebsiteComponents
+        A dataclass containing all loaded components. Missing subdirectories
+        result in empty dictionaries for those components.
+
+    Raises
+    ------
+    ValueError
+        If the elements package exists but cannot be loaded or is invalid.
+
+    Examples
+    --------
+    >>> from pathlib import Path
+    >>> from automata.loaders import load_website_components_from_directory
+    >>> components = load_website_components_from_directory(Path("my_theme"))
+    >>> # components.templates = {"base.html": "...", ...}
+    >>> # components.static = {"style.css": <Traversable>, ...}
+
+    """
+    return WebsiteComponents(
+        elements=load_elements_from_directory(directory / "elements"),
+        templates=load_templates_from_directory(directory / "templates"),
+        content=load_files_from_directory(directory / "content"),
+        assets=load_files_from_directory(directory / "assets"),
+        static=load_files_from_directory(directory / "static"),
+    )
