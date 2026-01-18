@@ -24,11 +24,9 @@ def default_theme_kwargs():
     extension = automata.website.Extension.from_entry_point(
         "default", group="automata.website.themes"
     )
-    # Merge assets into static_files
-    merged_static_files = {**extension.assets, **extension.static_files}
     return {
         "templates": extension.templates,
         "elements": extension.elements,
-        "static_files": merged_static_files,
+        "static_files": extension.static_files,
         "vars": DEFAULT_THEME_VARS.copy(),
     }

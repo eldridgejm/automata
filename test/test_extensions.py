@@ -9,20 +9,20 @@ from automata import Extension, merge_extensions
 # Extension.from_directory ========================================================
 
 
-def test_from_directory_reads_templates_and_static_files(tmp_path: Path) -> None:
-    """Test that from_directory reads templates and static files."""
+def test_from_directory_reads_templates_and_assets(tmp_path: Path) -> None:
+    """Test that from_directory reads templates and assets."""
     extension_dir = tmp_path / "extension"
     templates_dir = extension_dir / "templates"
-    static_dir = extension_dir / "static"
+    assets_dir = extension_dir / "assets"
 
     (templates_dir / "partials").mkdir(parents=True)
-    static_dir.mkdir(parents=True)
+    assets_dir.mkdir(parents=True)
 
     (templates_dir / "index.html").write_text("Index template")
     (templates_dir / "partials" / "nav.html").write_text("Nav template")
-    (static_dir / "style.css").write_text("body { color: black; }")
-    (static_dir / "images").mkdir()
-    (static_dir / "images" / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    (assets_dir / "style.css").write_text("body { color: black; }")
+    (assets_dir / "images").mkdir()
+    (assets_dir / "images" / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n")
 
     extension = Extension.from_directory(extension_dir)
 
@@ -41,19 +41,19 @@ def test_from_directory_skips_hidden_files_and_directories(tmp_path: Path) -> No
     """Test that hidden files and directories are skipped."""
     extension_dir = tmp_path / "extension"
     templates_dir = extension_dir / "templates"
-    static_dir = extension_dir / "static"
+    assets_dir = extension_dir / "assets"
 
     (templates_dir / ".hidden").mkdir(parents=True)
-    static_dir.mkdir(parents=True)
+    assets_dir.mkdir(parents=True)
 
     (templates_dir / ".hidden.html").write_text("Hidden template")
     (templates_dir / ".hidden" / "secret.html").write_text("Secret template")
     (templates_dir / "visible.html").write_text("Visible template")
 
-    (static_dir / ".hidden.txt").write_text("Hidden static")
-    (static_dir / ".hidden").mkdir()
-    (static_dir / ".hidden" / "secret.txt").write_text("Secret static")
-    (static_dir / "visible.txt").write_text("Visible static")
+    (assets_dir / ".hidden.txt").write_text("Hidden asset")
+    (assets_dir / ".hidden").mkdir()
+    (assets_dir / ".hidden" / "secret.txt").write_text("Secret asset")
+    (assets_dir / "visible.txt").write_text("Visible asset")
 
     extension = Extension.from_directory(extension_dir)
 
@@ -64,9 +64,9 @@ def test_from_directory_skips_hidden_files_and_directories(tmp_path: Path) -> No
 def test_from_directory_allows_missing_templates_by_default(tmp_path: Path) -> None:
     """Test that templates/ is optional by default."""
     extension_dir = tmp_path / "extension"
-    static_dir = extension_dir / "static"
-    static_dir.mkdir(parents=True)
-    (static_dir / "style.css").write_text("body {}")
+    assets_dir = extension_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    (assets_dir / "style.css").write_text("body {}")
 
     extension = Extension.from_directory(extension_dir)
 
@@ -83,8 +83,8 @@ def test_from_directory_requires_templates_when_specified(tmp_path: Path) -> Non
         Extension.from_directory(extension_dir, require_templates=True)
 
 
-def test_from_directory_allows_missing_static_directory(tmp_path: Path) -> None:
-    """Test that static/ is optional."""
+def test_from_directory_allows_missing_assets_directory(tmp_path: Path) -> None:
+    """Test that assets/ is optional."""
     extension_dir = tmp_path / "extension"
     templates_dir = extension_dir / "templates"
     templates_dir.mkdir(parents=True)

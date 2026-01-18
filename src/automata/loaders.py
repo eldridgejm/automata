@@ -397,19 +397,16 @@ class WebsiteComponents:
         Dictionary mapping element names to Element classes.
     templates : dict[str, str]
         Dictionary mapping template names to their content.
-    pages : dict[str, str | bytes | Traversable]
-        Dictionary mapping page file paths to their entries.
+    content : dict[str, str | bytes | Traversable]
+        Dictionary mapping content file paths to their entries.
     assets : dict[str, str | bytes | Traversable]
         Dictionary mapping asset file paths to their entries.
-    static : dict[str, str | bytes | Traversable]
-        Dictionary mapping static file paths to their entries.
     """
 
     elements: dict[str, type["Element"]] = field(default_factory=dict)
     templates: dict[str, str] = field(default_factory=dict)
-    pages: dict[str, str | bytes | Traversable] = field(default_factory=dict)
+    content: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     assets: dict[str, str | bytes | Traversable] = field(default_factory=dict)
-    static: dict[str, str | bytes | Traversable] = field(default_factory=dict)
 
 
 def load_website_components_from_directory(
@@ -417,8 +414,8 @@ def load_website_components_from_directory(
 ) -> WebsiteComponents:
     """Load all website components from a directory.
 
-    Loads elements, templates, pages, assets, and static files from their
-    respective subdirectories within the given directory.
+    Loads elements, templates, content, and assets from their respective
+    subdirectories within the given directory.
 
     Parameters
     ----------
@@ -428,9 +425,8 @@ def load_website_components_from_directory(
 
         - ``elements/`` - Python package with Element classes
         - ``templates/`` - Jinja2 template files
-        - ``content/`` - Content files (markdown, etc.)
-        - ``assets/`` - Asset files (images, etc.)
-        - ``static/`` - Static files (CSS, JS, etc.)
+        - ``content/`` - Content files (markdown, HTML, images, etc.)
+        - ``assets/`` - Asset files (images, CSS, JS, etc.)
 
     Returns
     -------
@@ -449,13 +445,12 @@ def load_website_components_from_directory(
     >>> from automata.loaders import load_website_components_from_directory
     >>> components = load_website_components_from_directory(Path("my_theme"))
     >>> # components.templates = {"base.html": "...", ...}
-    >>> # components.static = {"style.css": <Traversable>, ...}
+    >>> # components.content = {"index.md": <Traversable>, ...}
 
     """
     return WebsiteComponents(
         elements=load_elements_from_directory(directory / "elements"),
         templates=load_templates_from_directory(directory / "templates"),
-        pages=load_files_from_directory(directory / "content"),
+        content=load_files_from_directory(directory / "content"),
         assets=load_files_from_directory(directory / "assets"),
-        static=load_files_from_directory(directory / "static"),
     )

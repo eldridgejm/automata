@@ -182,6 +182,7 @@ class Extension:
         Dictionary mapping static file names to their content. If the value
         is a Traversable, the file will be copied from that location. If the
         value is bytes or a string, that content will be written directly.
+        This includes both explicit static files and assets.
     elements : dict[str, type[Element]]
         Dictionary mapping element names to Element classes.
     schema : smartconfig.types.Schema | None
@@ -193,9 +194,6 @@ class Extension:
     pages : dict[str, str | bytes | Traversable]
         Dictionary mapping page file paths to their content. Pages are
         rendered (Markdown/HTML) during website generation.
-    assets : dict[str, str | bytes | Traversable]
-        Dictionary mapping asset file paths to their content. Assets are copied
-        to the build output.
     """
 
     templates: dict[str, str] = field(default_factory=dict)
@@ -204,7 +202,6 @@ class Extension:
     schema: smartconfig.types.Schema | None = None
     hooks: Hooks = field(default_factory=lambda: cast(Hooks, {}))
     pages: dict[str, str | bytes | Traversable] = field(default_factory=dict)
-    assets: dict[str, str | bytes | Traversable] = field(default_factory=dict)
 
     @classmethod
     def from_directory(
@@ -220,11 +217,13 @@ class Extension:
         directory may contain:
 
         - ``templates/`` subdirectory with Jinja2 template files
-        - ``static/`` subdirectory with static files (CSS, JS, images, etc.)
+        - ``content/`` subdirectory with content files. Files with ``.md`` or
+          ``.html`` extensions are treated as pages to be rendered; all other
+          files are treated as static files to be copied.
+        - ``assets/`` subdirectory with asset files (images, CSS, JS, etc.)
+          to be copied as static files
         - ``elements/`` subdirectory containing a Python package that exports
           an ``elements`` dictionary
-        - ``pages/`` subdirectory with page files (markdown, HTML) to be rendered
-        - ``assets/`` subdirectory with asset files (images, etc.) to be copied
         - ``schema.json`` file with a smartconfig schema for configuration
         - ``hooks/`` subdirectory containing a Python package with hook definitions
 
@@ -270,11 +269,25 @@ class Extension:
 
         # Load components using public helper functions
         templates = load_templates_from_directory(templates_dir)
-        static_files = load_files_from_directory(directory / "static")
         elements = load_elements_from_directory(directory / "elements")
-        pages = load_files_from_directory(directory / "pages")
-        assets = load_files_from_directory(directory / "assets")
         hooks = cast(Hooks, load_hooks_from_directory(directory / "hooks"))
+
+        # Load content and assets
+        content = load_files_from_directory(directory / "content")
+        assets = load_files_from_directory(directory / "assets")
+
+        # Split content files: .md and .html go to pages, others to static_files
+        pages = {}
+        content_static = {}
+        for path, file_content in content.items():
+            if path.endswith(".md") or path.endswith(".html"):
+                pages[path] = file_content
+            else:
+                content_static[path] = file_content
+
+        # Merge: assets + content static files
+        # Content static files override assets if there's a conflict
+        static_files = {**assets, **content_static}
 
         # Load schema from schema.json if present
         schema_file = directory / "schema.json"
@@ -297,7 +310,6 @@ class Extension:
             schema=schema,
             hooks=hooks,
             pages=pages,
-            assets=assets,
         )
 
     @classmethod
@@ -401,13 +413,12 @@ def merge_extensions(extensions: Sequence[Extension]) -> Extension:
     -------
     Extension
         A new Extension instance containing the merged templates, static files,
-        elements, pages, assets, and hooks from all input extensions.
+        elements, pages, and hooks from all input extensions.
     """
     templates: dict[str, str] = {}
     static_files: dict[str, str | bytes | Traversable] = {}
     elements: dict[str, type["Element"]] = {}
     pages: dict[str, str | bytes | Traversable] = {}
-    assets: dict[str, str | bytes | Traversable] = {}
     hooks_dict: dict[str, list] = {}
 
     for extension in extensions:
@@ -415,7 +426,6 @@ def merge_extensions(extensions: Sequence[Extension]) -> Extension:
         static_files.update(extension.static_files)
         elements.update(extension.elements)
         pages.update(extension.pages)
-        assets.update(extension.assets)
 
         # Accumulate hooks (don't override)
         for hook_point, hook_list in extension.hooks.items():
@@ -430,7 +440,6 @@ def merge_extensions(extensions: Sequence[Extension]) -> Extension:
         schema=None,
         hooks=cast(Hooks, hooks_dict),
         pages=pages,
-        assets=assets,
     )
 
 

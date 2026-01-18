@@ -71,7 +71,7 @@ def _load_site_extension(site_dir: Path) -> Extension:
     """Load website components from a site directory as an Extension.
 
     The site directory is expected to have subdirectories for content, assets,
-    static files, templates, and elements (all optional).
+    templates, and elements (all optional).
 
     Content files are split based on extension:
     - .md and .html files go into pages (to be rendered)
@@ -95,15 +95,15 @@ def _load_site_extension(site_dir: Path) -> Extension:
     # Split content files: .md and .html go to pages, others to static_files
     pages = {}
     content_static = {}
-    for path, content in components.pages.items():
+    for path, file_content in components.content.items():
         if path.endswith(".md") or path.endswith(".html"):
-            pages[path] = content
+            pages[path] = file_content
         else:
-            content_static[path] = content
+            content_static[path] = file_content
 
-    # Merge: assets + content static files + explicit static files
-    # Later entries override earlier ones
-    merged_static = {**components.assets, **content_static, **components.static}
+    # Merge: assets + content static files
+    # Content static files override assets if there's a conflict
+    merged_static = {**components.assets, **content_static}
 
     return Extension(
         templates=components.templates,
