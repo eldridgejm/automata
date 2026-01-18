@@ -72,7 +72,7 @@ def build(
     )
     hook_overrides = PreGenerateWebsiteHook.merge_results(pre_generate_results)
 
-    # Load content from the content directory (excluding the materials directory)
+    # Load content files from the content directory
     content_dir = path / config.website.content_directory
     content_from_directory = load_files_from_directory(content_dir)
 
@@ -84,8 +84,10 @@ def build(
         if not k.startswith(materials_dir_name + "/") and k != materials_dir_name
     }
 
-    # Merge content: hook pages override directory content
+    # Merge components: hook overrides take precedence
     content = {**content_from_directory, **hook_overrides.pages}
+    assets = {**hook_overrides.assets}
+    static_files = {**extension.static_files}
 
     # Generate website (materials are already in place, so no copy needed)
     generate(
@@ -94,8 +96,8 @@ def build(
         templates=extension.templates,
         elements=extension.elements,
         content=content,
-        assets=hook_overrides.assets,
-        static_files=extension.static_files,
+        assets=assets,
+        static_files=static_files,
         vars=config.vars,
         cwd=path,
         current_time=current_time,
