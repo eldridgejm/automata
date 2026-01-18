@@ -87,17 +87,18 @@ def build(
     )
 
     # Generate website (materials are already in place, so no copy needed)
+    # Merge assets into static_files
+    merged_static_files = {**final_content.assets, **final_content.static_files}
     generate(
+        final_content.content,
         materials_output_dir,
         extension.templates,
         build_directory=build_dir,
+        static_files=merged_static_files,
+        elements=extension.elements,
+        vars=config.vars,
         base_path=config.website.base_path,
         materials_directory_name=config.website.materials_directory_name,
-        elements=extension.elements,
-        pages=final_content.content,
-        assets=final_content.assets,
-        static_files=final_content.static_files,
-        vars=config.vars,
         cwd=path,
         current_time=current_time,
     )

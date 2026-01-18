@@ -17,17 +17,18 @@ DEFAULT_THEME_VARS = {
 def default_theme_kwargs():
     """Fixture that returns the default theme's components for generate().
 
-    Returns a dictionary containing templates, elements, static_files, assets,
+    Returns a dictionary containing templates, elements, static_files,
     and default vars that can be splatted into generate(). Note: pages is not
     included because tests provide their own pages via tmpsite.pages.
     """
     extension = automata.website.Extension.from_entry_point(
         "default", group="automata.website.themes"
     )
+    # Merge assets into static_files
+    merged_static_files = {**extension.assets, **extension.static_files}
     return {
         "templates": extension.templates,
         "elements": extension.elements,
-        "static_files": extension.static_files,
-        "assets": extension.assets,
+        "static_files": merged_static_files,
         "vars": DEFAULT_THEME_VARS.copy(),
     }

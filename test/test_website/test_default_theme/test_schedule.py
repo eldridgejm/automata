@@ -65,10 +65,10 @@ def test_schedule_element_renders_basic_week(tmpsite, default_theme_kwargs):
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -124,10 +124,10 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, default_theme_kwargs):
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -195,10 +195,10 @@ def test_schedule_element_renders_html_resource(tmpsite, default_theme_kwargs):
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -268,10 +268,10 @@ def test_schedule_element_renders_markdown_resource(tmpsite, default_theme_kwarg
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -355,10 +355,10 @@ def test_schedule_element_renders_metadata_links_resource(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -442,10 +442,10 @@ def test_schedule_element_renders_artifact_links_resource(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -531,10 +531,10 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -610,10 +610,10 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -681,10 +681,10 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -762,10 +762,10 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -845,10 +845,10 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -921,10 +921,10 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -991,10 +991,10 @@ def test_schedule_element_resource_with_icon(tmpsite, default_theme_kwargs):
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -1053,10 +1053,10 @@ def test_schedule_element_renders_extra_primary_listings(tmpsite, default_theme_
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -1120,10 +1120,10 @@ def test_schedule_element_renders_extra_secondary_listings(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 

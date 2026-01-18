@@ -54,10 +54,10 @@ def test_listing_element_renders_simple_table(tmpsite, default_theme_kwargs):
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -118,10 +118,10 @@ def test_listing_element_renders_multiple_columns(tmpsite, default_theme_kwargs)
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -181,10 +181,10 @@ def test_listing_element_with_numbered_rows(tmpsite, default_theme_kwargs):
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -235,10 +235,10 @@ def test_listing_element_with_artifact_links(tmpsite, default_theme_kwargs):
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -302,10 +302,10 @@ def test_listing_element_conditional_content_when_artifact_missing(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -368,10 +368,10 @@ def test_listing_element_conditional_content_when_metadata_missing(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -434,10 +434,10 @@ def test_listing_element_conditional_content_non_null_metadata(
     # when
     templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 

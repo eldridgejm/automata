@@ -361,16 +361,15 @@ def _process_content(
 
 
 def generate(
+    pages: Mapping[str, str | bytes | Traversable],
     materials_directory: pathlib.Path,
     templates: Mapping[str, str],
     build_directory: pathlib.Path | str,
+    static_files: Mapping[str, str | bytes | Traversable] | None = None,
+    elements: Mapping[str, type["Element"]] | None = None,
+    vars: Mapping[str, Any] | None = None,
     base_path: str = "/",
     materials_directory_name: str = "materials",
-    elements: Mapping[str, type["Element"]] | None = None,
-    pages: Mapping[str, str | bytes | Traversable] | None = None,
-    assets: Mapping[str, str | bytes | Traversable] | None = None,
-    static_files: Mapping[str, str | bytes | Traversable] | None = None,
-    vars: Mapping[str, Any] | None = None,
     current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown_util.render,
     cwd: pathlib.Path | None = None,
@@ -379,6 +378,15 @@ def generate(
 
     Parameters
     ----------
+    pages : dict[str, str | bytes | Traversable]
+        Page files to render and include in the generated output. Each key is
+        a relative path from the build directory root. Values can be strings,
+        bytes, or Traversables containing markdown or HTML content. Files with
+        a ``.md`` extension are rendered as markdown; all others are treated as
+        HTML. Output paths will have their extension changed to ``.html`` if not
+        already. Each page file is processed through the full rendering pipeline
+        (frontmatter parsing, variable interpolation, markdown rendering if
+        applicable, and template wrapping).
     materials_directory : pathlib.Path
         The path to the directory containing the exported materials. This directory
         should contain a materials.json file and associated artifact files, as
@@ -390,38 +398,26 @@ def generate(
     build_directory : pathlib.Path | str
         The directory where the generated website will be written. If a relative
         path, it will be resolved relative to ``cwd``.
-    base_path : str, optional
-        The base URL path for the site. Used for generating URLs when the site
-        is deployed to a subdirectory. Defaults to "/".
-    materials_directory_name : str, optional
-        The name of the subdirectory within build_directory where materials
-        will be copied. Defaults to "materials".
-    elements : dict[str, type[Element]], optional
-        Dictionary mapping element names to Element classes. Elements are
-        callable components that can be used in templates to generate HTML.
-    pages : dict[str, str | bytes | Traversable], optional
-        Page files to render and include in the generated output. Each key is
-        a relative path from the build directory root. Values can be strings,
-        bytes, or Traversables containing markdown or HTML content. Files with
-        a ``.md`` extension are rendered as markdown; all others are treated as
-        HTML. Output paths will have their extension changed to ``.html`` if not
-        already. Each page file is processed through the full rendering pipeline
-        (frontmatter parsing, variable interpolation, markdown rendering if
-        applicable, and template wrapping).
-    assets : dict[str, str | bytes | Traversable], optional
-        Asset files to copy directly to the build directory. Each key is a
+    static_files : dict[str, str | bytes | Traversable], optional
+        Static files to copy directly to the build directory. Each key is a
         relative path from the build directory root. Values can be:
 
         - A string: written as text
         - A bytes object: written as binary
         - A Traversable: read and written as binary
 
-        These files are copied directly without any rendering.
-    static_files : dict[str, str | bytes | Traversable], optional
-        Static files to copy directly to the build directory. Same format as
-        ``assets``. Typically used for CSS, JavaScript, fonts, etc.
+        Typically used for CSS, JavaScript, fonts, etc.
+    elements : dict[str, type[Element]], optional
+        Dictionary mapping element names to Element classes. Elements are
+        callable components that can be used in templates to generate HTML.
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
+    base_path : str, optional
+        The base URL path for the site. Used for generating URLs when the site
+        is deployed to a subdirectory. Defaults to "/".
+    materials_directory_name : str, optional
+        The name of the subdirectory within build_directory where materials
+        will be copied. Defaults to "materials".
     current_time : datetime.datetime, optional
         The current date and time to be used during rendering.
     render_markdown : Callable[[str], str], optional
@@ -462,8 +458,8 @@ def generate(
     - Markdown files (those with ``.md`` extension) are converted to HTML
     - The result is wrapped in the appropriate template
 
-    Static files (``assets`` and ``static_files``) are copied directly to the output
-    without any processing.
+    Static files (``static_files``) are copied directly to the output without any
+    processing.
 
     The materials directory will be copied to the build directory at the location
     specified by ``materials_directory_name`` (default: ``materials``).
@@ -515,10 +511,8 @@ def generate(
         raise ValueError('Templates must include a "page.html" template.')
 
     # set default values for optional parameters
-    elements = elements or {}
-    pages = pages or {}
-    assets = assets or {}
     static_files = static_files or {}
+    elements = elements or {}
     vars = vars or {}
     current_time = current_time or datetime.datetime.now()
     cwd = cwd or pathlib.Path.cwd()
@@ -537,8 +531,7 @@ def generate(
         block_end_string="%}",
     )
 
-    # copy static files and assets
-    _copy_static_files(assets, build_directory_path)
+    # copy static files
     _copy_static_files(static_files, build_directory_path)
 
     # load materials and create render context

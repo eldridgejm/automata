@@ -18,10 +18,10 @@ def test_date_pill_uses_now_for_current_date(tmpsite, default_theme_kwargs):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 15),
     )
@@ -32,10 +32,10 @@ def test_date_pill_uses_now_for_current_date(tmpsite, default_theme_kwargs):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 17),
     )
@@ -60,10 +60,10 @@ def test_date_pill_with_template_variables(tmpsite, default_theme_kwargs):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 15),
     )

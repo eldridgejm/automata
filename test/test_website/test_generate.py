@@ -19,10 +19,10 @@ def test_converts_pages_from_markdown_to_html(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -36,10 +36,10 @@ def test_converts_pages_from_markdown_to_html_recursively(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -56,10 +56,10 @@ def tests_renders_html_pages(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -72,10 +72,10 @@ def test_vars_can_be_used_in_markdown_pages(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         vars={"foo": "bar"},
     )
 
@@ -89,10 +89,10 @@ def test_vars_can_be_used_in_html_pages(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         vars={"foo": "bar"},
     )
 
@@ -129,10 +129,10 @@ def test_materials_are_loaded_and_available_in_rendering_contex(
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -160,10 +160,10 @@ def test_exception_is_raised_if_materials_directory_missing(tmpsite):
     # when / then
     with raises(automata.website.exceptions.WebsiteError) as exc:
         automata.website.generate(
+            tmpsite.pages,
             tmpsite.materials_directory,
             MINIMAL_TEMPLATES,
             build_directory=tmpsite.build_directory,
-            pages=tmpsite.pages,
         )
 
     assert "Materials directory not found at" in str(exc.value)
@@ -189,10 +189,10 @@ def test_exception_is_raised_if_materials_json_missing(tmpsite):
     # when / then
     with raises(automata.website.exceptions.WebsiteError) as exc:
         automata.website.generate(
+            tmpsite.pages,
             tmpsite.materials_directory,
             MINIMAL_TEMPLATES,
             build_directory=tmpsite.build_directory,
-            pages=tmpsite.pages,
         )
 
     assert "materials.json not found at" in str(exc.value)
@@ -209,10 +209,10 @@ def test_missing_variable_in_markdown_page_raises_error(tmpsite):
     # when / then
     with raises(Exception) as exc_info:
         automata.website.generate(
+            tmpsite.pages,
             tmpsite.materials_directory,
             MINIMAL_TEMPLATES,
             build_directory=tmpsite.build_directory,
-            pages=tmpsite.pages,
         )
 
     assert "missing_var" in str(exc_info.value)
@@ -226,10 +226,10 @@ def test_missing_variable_in_html_page_raises_error(tmpsite):
     # when / then
     with raises(Exception) as exc_info:
         automata.website.generate(
+            tmpsite.pages,
             tmpsite.materials_directory,
             MINIMAL_TEMPLATES,
             build_directory=tmpsite.build_directory,
-            pages=tmpsite.pages,
         )
 
     assert "missing_var" in str(exc_info.value)
@@ -249,10 +249,10 @@ def test_custom_markdown_engine_can_be_injected(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         render_markdown=custom_markdown_engine,
     )
 
@@ -275,10 +275,10 @@ def test_frontmatter_in_markdown_page(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -297,10 +297,10 @@ def test_frontmatter_in_html_page(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -316,10 +316,10 @@ def test_pages_without_frontmatter_still_work(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -339,10 +339,10 @@ def test_invalid_yaml_raises_error(tmpsite):
     # when / then
     with raises(Exception):
         automata.website.generate(
+            tmpsite.pages,
             tmpsite.materials_directory,
             MINIMAL_TEMPLATES,
             build_directory=tmpsite.build_directory,
-            pages=tmpsite.pages,
         )
 
 
@@ -357,10 +357,10 @@ def test_invalid_frontmatter_key_raises_error(tmpsite):
     # when / then
     with raises(Exception):
         automata.website.generate(
+            tmpsite.pages,
             tmpsite.materials_directory,
             MINIMAL_TEMPLATES,
             build_directory=tmpsite.build_directory,
-            pages=tmpsite.pages,
         )
 
 
@@ -374,10 +374,10 @@ def test_empty_frontmatter(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -397,10 +397,10 @@ def test_frontmatter_with_nested_vars_structures(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -422,10 +422,10 @@ def test_url_for_with_default_base_path(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -445,11 +445,11 @@ def test_url_for_with_custom_base_path(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
         base_path="/course",
-        pages=tmpsite.pages,
     )
 
     # then
@@ -482,10 +482,10 @@ def test_generate_supports_template_inheritance(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -511,10 +511,10 @@ def test_generate_uses_frontmatter_template(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then
@@ -537,10 +537,10 @@ def test_generate_errors_for_missing_frontmatter_template(tmpsite):
     # when / then
     with raises(Exception, match="missing.html"):
         automata.website.generate(
+            tmpsite.pages,
             tmpsite.materials_directory,
             templates,
             build_directory=tmpsite.build_directory,
-            pages=tmpsite.pages,
         )
 
 
@@ -555,15 +555,15 @@ def test_generate_requires_page_html_template(tmpsite):
     # when / then
     with raises(ValueError, match="page.html"):
         automata.website.generate(
+            tmpsite.pages,
             tmpsite.materials_directory,
             templates,
             build_directory=tmpsite.build_directory,
-            pages=tmpsite.pages,
         )
 
 
-def test_generate_handles_all_asset_types(tmpsite, tmp_path):
-    """Test that generate() handles str, bytes, and Traversable assets."""
+def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
+    """Test that generate() handles str, bytes, and Traversable static files."""
     # given
     tmpsite.make_page("index.md", "# Test Page")
 
@@ -571,7 +571,7 @@ def test_generate_handles_all_asset_types(tmpsite, tmp_path):
     traversable_file = tmp_path / "traversable.txt"
     traversable_file.write_bytes(b"traversable content")
 
-    assets = {
+    static_files = {
         "string.txt": "string content",
         "bytes.bin": b"bytes content",
         "traversable.txt": traversable_file,
@@ -579,11 +579,11 @@ def test_generate_handles_all_asset_types(tmpsite, tmp_path):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
-        assets=assets,
+        static_files=static_files,
     )
 
     # then - verify all three types were copied correctly
@@ -604,10 +604,10 @@ def test_generate_copies_static_files(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         static_files=static_files,
     )
 
@@ -632,10 +632,10 @@ def test_generate_supports_elements(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         elements={"simple": SimpleElement},
     )
 
@@ -673,10 +673,10 @@ def test_generate_with_template_element(tmpsite):
 
     # when
     automata.website.generate(
+        tmpsite.pages,
         tmpsite.materials_directory,
         templates,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
         elements={"badge": BadgeElement},
     )
 
@@ -705,10 +705,10 @@ def test_generate_handles_materials_already_in_build_directory(tmpsite):
     # when - pass the materials directory that's already in the build directory
     # This should not raise an error and should not try to copy to itself
     automata.website.generate(
+        tmpsite.pages,
         materials_in_build,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages=tmpsite.pages,
     )
 
     # then - verify the page was generated and materials are still there
@@ -727,10 +727,10 @@ def test_pages_renders_through_full_pipeline(tmpsite):
 
     # when
     automata.website.generate(
+        {"extra.md": markdown_content},
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages={"extra.md": markdown_content},
     )
 
     # then
@@ -751,10 +751,10 @@ vars:
 
     # when
     automata.website.generate(
+        {"greeting.md": content_with_frontmatter},
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages={"greeting.md": content_with_frontmatter},
     )
 
     # then
@@ -769,11 +769,11 @@ def test_pages_supports_variable_interpolation(tmpsite):
 
     # when
     automata.website.generate(
+        {"info.html": page_content},
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
         base_path="/my-course",
-        pages={"info.html": page_content},
     )
 
     # then
@@ -788,10 +788,10 @@ def test_pages_creates_subdirectories(tmpsite):
 
     # when
     automata.website.generate(
+        {"deep/nested/page.md": page_content},
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages={"deep/nested/page.md": page_content},
     )
 
     # then
@@ -803,13 +803,13 @@ def test_pages_with_multiple_items(tmpsite):
     """Multiple pages should all be rendered."""
     # when
     automata.website.generate(
-        tmpsite.materials_directory,
-        MINIMAL_TEMPLATES,
-        build_directory=tmpsite.build_directory,
-        pages={
+        {
             "page1.md": "# Page One",
             "page2.md": "# Page Two",
         },
+        tmpsite.materials_directory,
+        MINIMAL_TEMPLATES,
+        build_directory=tmpsite.build_directory,
     )
 
     # then
@@ -821,13 +821,13 @@ def test_pages_changes_extension_to_html(tmpsite):
     """Pages paths without .html extension get changed to .html."""
     # when
     automata.website.generate(
-        tmpsite.materials_directory,
-        MINIMAL_TEMPLATES,
-        build_directory=tmpsite.build_directory,
-        pages={
+        {
             "readme.md": "# Readme",
             "about.txt": "About page",  # Even non-md gets .html
         },
+        tmpsite.materials_directory,
+        MINIMAL_TEMPLATES,
+        build_directory=tmpsite.build_directory,
     )
 
     # then
@@ -839,10 +839,10 @@ def test_pages_html_extension_unchanged(tmpsite):
     """Pages paths with .html extension remain unchanged."""
     # when
     automata.website.generate(
+        {"index.html": "<h1>Index</h1>"},
         tmpsite.materials_directory,
         MINIMAL_TEMPLATES,
         build_directory=tmpsite.build_directory,
-        pages={"index.html": "<h1>Index</h1>"},
     )
 
     # then
