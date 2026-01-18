@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .. import materials
 from ..hooks import PreGenerateWebsiteHook, execute_hooks
+from ..loaders import load_files_from_directory
 from ..website import generate
 from ._load import load
 
@@ -71,14 +72,30 @@ def build(
     )
     hook_overrides = PreGenerateWebsiteHook.merge_results(pre_generate_results)
 
+    # Load content from the content directory (excluding the materials directory)
+    content_dir = path / config.website.content_directory
+    content_from_directory = load_files_from_directory(content_dir)
+
+    # Filter out files in the materials directory (they're handled separately)
+    materials_dir_name = config.website.materials_directory_name
+    content_from_directory = {
+        k: v
+        for k, v in content_from_directory.items()
+        if not k.startswith(materials_dir_name + "/") and k != materials_dir_name
+    }
+
+    # Merge content: hook pages override directory content
+    content = {**content_from_directory, **hook_overrides.pages}
+
     # Generate website (materials are already in place, so no copy needed)
     generate(
         config.website,
         materials_output_dir,
         templates=extension.templates,
         elements=extension.elements,
-        extra_assets={**extension.static_files, **hook_overrides.assets},
-        extra_pages=hook_overrides.pages if hook_overrides.pages else None,
+        content=content,
+        assets=hook_overrides.assets,
+        static_files=extension.static_files,
         vars=config.vars,
         cwd=path,
         current_time=current_time,

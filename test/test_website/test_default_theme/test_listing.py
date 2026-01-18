@@ -73,7 +73,10 @@ def test_listing_element_renders_simple_table(tmpsite, config, default_theme_kwa
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -134,7 +137,10 @@ def test_listing_element_renders_multiple_columns(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -192,7 +198,10 @@ def test_listing_element_with_numbered_rows(tmpsite, config, default_theme_kwarg
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -241,7 +250,10 @@ def test_listing_element_with_artifact_links(tmpsite, config, default_theme_kwar
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then: artifacts should be accessible in templates
@@ -303,7 +315,10 @@ def test_listing_element_conditional_content_when_artifact_missing(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -364,7 +379,10 @@ def test_listing_element_conditional_content_when_metadata_missing(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -425,7 +443,10 @@ def test_listing_element_conditional_content_non_null_metadata(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then

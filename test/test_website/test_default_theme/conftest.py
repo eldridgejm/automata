@@ -9,7 +9,7 @@ import automata.website
 def default_theme_kwargs():
     """Fixture that returns the default theme's components for generate().
 
-    Returns a dictionary containing templates, elements, and extra_assets
+    Returns a dictionary containing templates, elements, and static_files
     that can be splatted into generate().
     """
     extension = automata.website.Extension.from_entry_point(
@@ -18,5 +18,5 @@ def default_theme_kwargs():
     return {
         "templates": extension.templates,
         "elements": extension.elements,
-        "extra_assets": extension.static_files,
+        "static_files": extension.static_files,
     }

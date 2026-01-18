@@ -37,6 +37,7 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config, default_theme_kwar
     automata.website.generate(
         config,
         tmpsite.materials_directory,
+        content=tmpsite.content,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 15),
     )
@@ -49,6 +50,7 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config, default_theme_kwar
     automata.website.generate(
         config,
         tmpsite.materials_directory,
+        content=tmpsite.content,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 17),
     )
@@ -70,6 +72,7 @@ def test_date_pill_with_template_variables(tmpsite, config, default_theme_kwargs
     automata.website.generate(
         config,
         tmpsite.materials_directory,
+        content=tmpsite.content,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 15),
         vars={"foo": "BAR"},

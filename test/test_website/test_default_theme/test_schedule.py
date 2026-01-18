@@ -83,7 +83,10 @@ def test_schedule_element_renders_basic_week(tmpsite, config, default_theme_kwar
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -137,7 +140,10 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, config, default_theme_
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -203,7 +209,10 @@ def test_schedule_element_renders_html_resource(tmpsite, config, default_theme_k
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -273,7 +282,10 @@ def test_schedule_element_renders_markdown_resource(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -355,7 +367,10 @@ def test_schedule_element_renders_metadata_links_resource(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -437,7 +452,10 @@ def test_schedule_element_renders_artifact_links_resource(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -521,7 +539,10 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -595,7 +616,10 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then - title should not appear since content is only whitespace
@@ -661,7 +685,10 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then - title should not appear since content is only whitespace
@@ -737,7 +764,10 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then - title should not appear since there are no items
@@ -815,7 +845,10 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then - title should not appear since metadata key is missing
@@ -886,7 +919,10 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then - title should not appear since there are no artifacts
@@ -951,7 +987,10 @@ def test_schedule_element_resource_with_icon(tmpsite, config, default_theme_kwar
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -1010,7 +1049,10 @@ def test_schedule_element_renders_extra_primary_listings(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -1072,7 +1114,10 @@ def test_schedule_element_renders_extra_secondary_listings(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then

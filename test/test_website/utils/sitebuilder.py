@@ -36,23 +36,29 @@ class SiteBuilder:
 
         self.materials_directory = self.content_directory / "materials"
 
+        # Track content pages as a dict
+        self._content: dict[str, str] = {}
+
         # write an empty materials.json to start
         self.write_materials_json({"collections": {}})
 
     def make_page(self, filepath: str, content: str) -> None:
-        """Create a markdown page under content/.
+        """Create a page and add it to the content dict.
 
         Parameters
         ----------
-        name : str
-            Filename of the page (e.g., "index.md").
+        filepath : str
+            Path of the page (e.g., "index.md", "subdir/about.html").
         content : str
-            Markdown content for the page.
+            Content for the page (markdown or HTML).
 
         """
-        path = self.content_directory / filepath
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
+        self._content[filepath] = content
+
+    @property
+    def content(self) -> dict[str, str]:
+        """Get the content dict for passing to generate()."""
+        return self._content
 
     def get_output(self, filepath: str) -> str:
         """Read rendered output content from _build/.

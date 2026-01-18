@@ -46,7 +46,10 @@ def test_people_element_renders_single_group(tmpsite, config, default_theme_kwar
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -85,7 +88,10 @@ def test_people_element_renders_multiple_groups(tmpsite, config, default_theme_k
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -118,7 +124,10 @@ def test_people_element_person_without_optional_fields(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -148,7 +157,10 @@ def test_people_element_person_with_website_creates_link(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
@@ -177,7 +189,10 @@ def test_people_element_displays_photo_when_provided(
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, **default_theme_kwargs
+        config,
+        tmpsite.materials_directory,
+        content=tmpsite.content,
+        **default_theme_kwargs,
     )
 
     # then
