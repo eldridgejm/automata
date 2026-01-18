@@ -352,14 +352,15 @@ def _load_hooks_from_package(
 
     Example hooks/__init__.py::
 
-        from automata.hooks import PreGenerateWebsiteHook, GenerateOverrides
+        from automata.hooks import PreGenerateWebsiteHook, WebsiteContent
 
         class MyPreGenerateHook(PreGenerateWebsiteHook):
             priority = 50
 
-            def __call__(self, materials, website_config, build_directory,
-                         vars, current_time):
-                return GenerateOverrides(pages={}, assets={})
+            def __call__(self, website_content, materials, website_config,
+                         build_directory, vars, current_time):
+                # Hooks form a pipeline - return modified or unchanged content
+                return website_content
 
         hooks = {
             "pre_generate_website": [MyPreGenerateHook()],

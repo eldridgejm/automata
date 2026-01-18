@@ -67,15 +67,16 @@ file at the root level (that would make it a Python package extension instead).
          from automata.hooks import (
              PreGenerateWebsiteHook,
              PostGenerateWebsiteHook,
-             GenerateOverrides,
+             WebsiteContent,
          )
 
          class MyPreGenerateHook(PreGenerateWebsiteHook):
              priority = 50
 
-             def __call__(self, materials, website_config, build_directory,
-                          vars, current_time):
-                 return GenerateOverrides(pages={}, assets={})
+             def __call__(self, website_content, materials, website_config,
+                          build_directory, vars, current_time):
+                 # Hooks receive and return WebsiteContent, forming a pipeline
+                 return website_content  # Return modified or unchanged content
 
          class MyPostGenerateHook(PostGenerateWebsiteHook):
              priority = 100

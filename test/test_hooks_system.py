@@ -22,13 +22,14 @@ from automata.hooks import (
     ExportOnNodeHook,
     FilterOnHitHook,
     FilterOnMissHook,
-    GenerateOverrides,
     Hooks,
     PostGenerateWebsiteHook,
     PreGenerateWebsiteHook,
     PreResolveHook,
     ResolveOverrides,
+    WebsiteContent,
     execute_hooks,
+    execute_pre_generate_hooks,
     hook_point,
     sort_hooks_by_priority,
     validate_hook_point_names,
@@ -350,25 +351,28 @@ class TestResolveOverrides:
         assert overrides.global_variables["x"] == 1
 
 
-class TestGenerateOverrides:
-    """Tests for GenerateOverrides dataclass."""
+class TestWebsiteContent:
+    """Tests for WebsiteContent dataclass."""
 
-    def test_generate_overrides_defaults_to_empty_dicts(self):
+    def test_website_content_defaults_to_empty_dicts(self):
         """Verify default factory creates empty dicts."""
-        overrides = GenerateOverrides()
+        content = WebsiteContent()
 
-        assert overrides.pages == {}
-        assert overrides.assets == {}
+        assert content.content == {}
+        assert content.assets == {}
+        assert content.static_files == {}
 
-    def test_generate_overrides_with_values(self):
+    def test_website_content_with_values(self):
         """Verify can create with actual values."""
-        overrides = GenerateOverrides(
-            pages={"about.html": "# About"},
-            assets={"style.css": "body {}"},
+        content = WebsiteContent(
+            content={"about.html": "# About"},
+            assets={"image.png": b"PNG..."},
+            static_files={"style.css": "body {}"},
         )
 
-        assert overrides.pages["about.html"] == "# About"
-        assert overrides.assets["style.css"] == "body {}"
+        assert content.content["about.html"] == "# About"
+        assert content.assets["image.png"] == b"PNG..."
+        assert content.static_files["style.css"] == "body {}"
 
 
 # =============================================================================
@@ -550,26 +554,79 @@ class TestMergeResults:
         assert merged.global_variables["x"] == 1
         assert merged.global_variables["y"] == 2
 
-    def test_merge_generate_override_results(self):
-        """Verify later hooks override earlier ones for GenerateOverrides."""
-        results = [
-            GenerateOverrides(
-                pages={"about.html": "First"}, assets={"style.css": "a {}"}
-            ),
-            GenerateOverrides(
-                pages={"about.html": "Second", "contact.html": "Contact"},
-                assets={"script.js": "var x;"},
-            ),
-        ]
+    def test_execute_pre_generate_hooks_pipeline(self):
+        """Verify pre_generate_website hooks form a transformation pipeline."""
+        import datetime
 
-        merged = PreGenerateWebsiteHook.merge_results(results)
+        @dataclass
+        class AddContentHook(PreGenerateWebsiteHook):
+            priority: int = 50
 
-        # about.html should be overwritten
-        assert merged.pages["about.html"] == "Second"
-        assert merged.pages["contact.html"] == "Contact"
-        # Both assets should be present
-        assert merged.assets["style.css"] == "a {}"
-        assert merged.assets["script.js"] == "var x;"
+            def __call__(
+                self,
+                website_content,
+                materials,
+                website_config,
+                build_directory,
+                vars,
+                current_time,
+            ):
+                # Add a new page
+                new_content = dict(website_content.content)
+                new_content["added.html"] = "Added by hook"
+                return WebsiteContent(
+                    content=new_content,
+                    assets=website_content.assets,
+                    static_files=website_content.static_files,
+                )
+
+        @dataclass
+        class ModifyContentHook(PreGenerateWebsiteHook):
+            priority: int = 100  # Runs after AddContentHook
+
+            def __call__(
+                self,
+                website_content,
+                materials,
+                website_config,
+                build_directory,
+                vars,
+                current_time,
+            ):
+                # Modify the content added by previous hook
+                new_content = dict(website_content.content)
+                if "added.html" in new_content:
+                    new_content["added.html"] = "Modified by second hook"
+                return WebsiteContent(
+                    content=new_content,
+                    assets=website_content.assets,
+                    static_files=website_content.static_files,
+                )
+
+        hooks: Hooks = {
+            "pre_generate_website": [AddContentHook(), ModifyContentHook()],
+        }
+
+        initial = WebsiteContent(
+            content={"index.html": "Original"},
+            assets={},
+            static_files={},
+        )
+
+        result = execute_pre_generate_hooks(
+            hooks,
+            initial,
+            materials=Mock(),
+            website_config=Mock(),
+            build_directory=Path("/build"),
+            vars={},
+            current_time=datetime.datetime.now(),
+        )
+
+        # Original content preserved
+        assert result.content["index.html"] == "Original"
+        # Added content was modified by second hook
+        assert result.content["added.html"] == "Modified by second hook"
 
     def test_merge_handles_none_results(self):
         """Verify None results are skipped during merge."""

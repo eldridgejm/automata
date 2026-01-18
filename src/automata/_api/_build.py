@@ -4,7 +4,7 @@ import datetime
 from pathlib import Path
 
 from .. import materials
-from ..hooks import PreGenerateWebsiteHook, execute_hooks
+from ..hooks import WebsiteContent, execute_hooks, execute_pre_generate_hooks
 from ..website import generate
 from ._load import load
 
@@ -59,18 +59,6 @@ def build(
     materials_json.parent.mkdir(parents=True, exist_ok=True)
     materials_json.write_text(materials.serialize(exported_universe))
 
-    # Execute pre_generate_website hooks and merge results
-    pre_generate_results = execute_hooks(
-        extension.hooks,
-        "pre_generate_website",
-        materials=exported_universe,
-        website_config=config.website,
-        build_directory=build_dir,
-        vars=config.vars,
-        current_time=current_time,
-    )
-    hook_overrides = PreGenerateWebsiteHook.merge_results(pre_generate_results)
-
     # Filter out files in the materials directory (they're handled separately)
     materials_dir_name = config.website.materials_directory_name
     content_from_extension = {
@@ -79,10 +67,24 @@ def build(
         if not k.startswith(materials_dir_name + "/") and k != materials_dir_name
     }
 
-    # Merge with hook overrides (hooks take precedence)
-    content = {**content_from_extension, **hook_overrides.pages}
-    assets = {**extension.assets, **hook_overrides.assets}
-    static_files = extension.static_files
+    # Create initial website content from extension
+    initial_content = WebsiteContent(
+        content=content_from_extension,
+        assets=dict(extension.assets),
+        static_files=dict(extension.static_files),
+    )
+
+    # Execute pre_generate_website hooks as a pipeline
+    # Each hook can transform the content, assets, and static_files
+    final_content = execute_pre_generate_hooks(
+        extension.hooks,
+        initial_content,
+        materials=exported_universe,
+        website_config=config.website,
+        build_directory=build_dir,
+        vars=config.vars,
+        current_time=current_time,
+    )
 
     # Generate website (materials are already in place, so no copy needed)
     generate(
@@ -90,9 +92,9 @@ def build(
         materials_output_dir,
         templates=extension.templates,
         elements=extension.elements,
-        content=content,
-        assets=assets,
-        static_files=static_files,
+        content=final_content.content,
+        assets=final_content.assets,
+        static_files=final_content.static_files,
         vars=config.vars,
         cwd=path,
         current_time=current_time,

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
-from .._base import GenerateOverrides, ScriptableHookMixin, hook_point
+from .._base import ScriptableHookMixin, WebsiteContent, hook_point
 
 if TYPE_CHECKING:
     import datetime
@@ -24,7 +24,9 @@ if TYPE_CHECKING:
 class PreGenerateWebsiteHook:
     """Hook called before website generation.
 
-    Can provide extra pages/assets.
+    Hooks form a pipeline: each hook receives the website content (content,
+    assets, static_files) and returns potentially modified content. The output
+    of one hook becomes the input to the next.
 
     Attributes
     ----------
@@ -38,16 +40,20 @@ class PreGenerateWebsiteHook:
     @abstractmethod
     def __call__(
         self,
+        website_content: WebsiteContent,
         materials: "Universe[ExportedArtifact]",
         website_config: "WebsiteConfig",
         build_directory: Path,
         vars: dict[str, Any],
         current_time: "datetime.datetime",
-    ) -> GenerateOverrides | None:
+    ) -> WebsiteContent:
         """Called before website generation.
 
         Parameters
         ----------
+        website_content : WebsiteContent
+            The current website content (content, assets, static_files).
+            Modify and return to affect the generated website.
         materials : Universe[ExportedArtifact]
             The exported materials universe.
         website_config : WebsiteConfig
@@ -61,20 +67,12 @@ class PreGenerateWebsiteHook:
 
         Returns
         -------
-        GenerateOverrides | None
-            Overrides to apply, or None for no overrides.
+        WebsiteContent
+            The (potentially modified) website content to pass to the next
+            hook or to the generator.
 
         """
         ...
-
-    @staticmethod
-    def merge_results(results: Sequence[GenerateOverrides | None]) -> GenerateOverrides:
-        """Merge results from multiple hooks, skipping None values."""
-        merged = GenerateOverrides()
-        for result in results:
-            if result is not None:
-                merged = merged.merge(result)
-        return merged
 
 
 @hook_point("post_generate_website")

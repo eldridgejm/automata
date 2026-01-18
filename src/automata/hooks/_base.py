@@ -81,32 +81,27 @@ class ResolveOverrides:
 
 
 @dataclass
-class GenerateOverrides:
-    """Returned by pre_generate_website hooks to add extra content.
+class WebsiteContent:
+    """Content, assets, and static files for website generation.
+
+    This dataclass is passed through the pre_generate_website hook chain,
+    allowing each hook to transform the content before generation.
 
     Attributes
     ----------
-    pages : dict[str, str]
-        Additional pages to generate. Keys are relative paths (e.g., "about.html"),
-        values are page content (markdown or HTML with frontmatter).
-    assets : dict[str, str | bytes]
-        Additional static assets. Keys are relative paths, values are content.
+    content : dict[str, Any]
+        Content files to render. Keys are relative paths (e.g., "about.html"),
+        values are content (string, bytes, or Traversable).
+    assets : dict[str, Any]
+        Asset files to copy. Keys are relative paths, values are content.
+    static_files : dict[str, Any]
+        Static files to copy. Keys are relative paths, values are content.
 
     """
 
-    pages: dict[str, str] = field(default_factory=dict)
-    assets: dict[str, str | bytes] = field(default_factory=dict)
-
-    def merge(self, other: "GenerateOverrides") -> "GenerateOverrides":
-        """Merge another GenerateOverrides into this one.
-
-        Returns a new instance with combined values. Values from `other`
-        override values from `self` for conflicting keys.
-        """
-        return GenerateOverrides(
-            pages={**self.pages, **other.pages},
-            assets={**self.assets, **other.assets},
-        )
+    content: dict[str, Any] = field(default_factory=dict)
+    assets: dict[str, Any] = field(default_factory=dict)
+    static_files: dict[str, Any] = field(default_factory=dict)
 
 
 # =============================================================================

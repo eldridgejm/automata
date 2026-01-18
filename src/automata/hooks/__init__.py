@@ -45,14 +45,19 @@ from typing import TypedDict
 # Re-export base types
 from ._base import (
     HOOK_POINTS,
-    GenerateOverrides,
     ResolveOverrides,
     ScriptableHookMixin,
+    WebsiteContent,
     hook_point,
 )
 
 # Re-export execution utilities
-from ._execution import execute_hooks, sort_hooks_by_priority, validate_hook_point_names
+from ._execution import (
+    execute_hooks,
+    execute_pre_generate_hooks,
+    sort_hooks_by_priority,
+    validate_hook_point_names,
+)
 
 # Re-export all hook definitions
 from .definitions import (
@@ -114,7 +119,7 @@ __all__ = [
     "hook_point",
     # Return types
     "ResolveOverrides",
-    "GenerateOverrides",
+    "WebsiteContent",
     # Mixin
     "ScriptableHookMixin",
     # materials.discover hooks
@@ -143,6 +148,7 @@ __all__ = [
     "Hooks",
     # Execution utilities
     "execute_hooks",
+    "execute_pre_generate_hooks",
     "validate_hook_point_names",
     "sort_hooks_by_priority",
 ]

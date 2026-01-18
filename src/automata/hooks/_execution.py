@@ -5,12 +5,14 @@ This module provides functions for executing hooks and managing hook collections
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
-from ._base import HOOK_POINTS
+from ._base import HOOK_POINTS, WebsiteContent
 
 if TYPE_CHECKING:
     from . import Hooks
+
+T = TypeVar("T")
 
 
 def execute_hooks(
@@ -113,3 +115,60 @@ def sort_hooks_by_priority(hooks: "Hooks") -> "Hooks":
     for hook_point_name, hook_list in hooks_dict.items():
         sorted_hooks[hook_point_name] = sorted(hook_list, key=lambda h: h.priority)
     return sorted_hooks  # type: ignore[return-value]
+
+
+def execute_pre_generate_hooks(
+    hooks: "Hooks | dict[str, list[Any]] | None",
+    website_content: WebsiteContent,
+    **kwargs,
+) -> WebsiteContent:
+    """Execute pre_generate_website hooks as a pipeline.
+
+    Each hook receives the website content and returns (potentially modified)
+    content. The output of one hook becomes the input to the next, forming
+    a transformation pipeline.
+
+    Hooks are executed in ascending priority order (lower values run first).
+
+    Parameters
+    ----------
+    hooks : Hooks | dict[str, list[Any]] | None
+        The hooks dictionary, or None for no hooks.
+    website_content : WebsiteContent
+        The initial website content (content, assets, static_files).
+    **kwargs : Any
+        Additional keyword arguments to pass to each hook (materials,
+        website_config, build_directory, vars, current_time).
+
+    Returns
+    -------
+    WebsiteContent
+        The final website content after all hooks have processed it.
+
+    Raises
+    ------
+    RuntimeError
+        If any hook fails.
+
+    """
+    if hooks is None:
+        return website_content
+
+    hooks_dict: dict[str, list] = dict(hooks)  # type: ignore[arg-type]
+    hook_list: list = hooks_dict.get("pre_generate_website", [])
+    if not hook_list:
+        return website_content
+
+    # Sort by priority (stable sort preserves insertion order for ties)
+    sorted_hooks = sorted(hook_list, key=lambda h: h.priority)
+
+    current_content = website_content
+    for hook in sorted_hooks:
+        try:
+            current_content = hook(website_content=current_content, **kwargs)
+        except Exception as e:
+            raise RuntimeError(
+                f"Hook 'pre_generate_website' (priority {hook.priority}) failed: {e}"
+            ) from e
+
+    return current_content
