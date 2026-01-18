@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 from automata import constants
 
-from ..hooks import Hooks, execute_hooks
+from ..hooks import Hooks, PreResolveHook, execute_hooks
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file
 from ._types import (
@@ -249,11 +249,20 @@ def _make_publications(
         previous = _last_publication(collection)
 
         file_path = path / constants.PUBLICATION_FILE
+
+        # Execute pre_resolve hooks to get additional functions
+        pre_resolve_results = execute_hooks(
+            hooks, "pre_resolve", call_site="publication", path=file_path
+        )
+        overrides = PreResolveHook.merge_results(pre_resolve_results)
+        functions = overrides.functions if overrides.functions else None
+
         publication = read_publication_file(
             file_path,
             publication_schema=collection.publication_schema,
             vars=vars,
             previous=previous,
+            functions=functions,
         )
 
         collection.publications[publication_key] = publication

@@ -460,3 +460,110 @@ def test_end_to_end_plugin_and_hooks(example_project):
 
     # Verify the first homework's due date is present (Time Complexity topic)
     assert "Time Complexity: 2025-09-29 23:59:00" in lines[0]
+
+
+# Python code for the tomorrow plugin's hooks/__init__.py
+# This creates a pre_resolve hook that provides a "tomorrow" function
+TOMORROW_PLUGIN_INIT = '''"""Tomorrow plugin that provides a !tomorrow function.
+
+This plugin demonstrates the pre_resolve hook, which can inject custom
+functions into the configuration resolution process. The "tomorrow" function
+takes a date/datetime and returns the next day.
+"""
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+
+import smartconfig
+
+from automata.hooks import PreResolveHook, ResolveOverrides
+
+
+def tomorrow_function(args: smartconfig.types.FunctionArgs):
+    """Return the day after the input date.
+
+    Usage in YAML:
+        due: !tomorrow: 2024-01-15 23:59:00
+    Result: 2024-01-16 23:59:00
+    """
+    # The input should be a datetime
+    input_value = args.input
+    if isinstance(input_value, str):
+        # Parse as datetime
+        input_value = datetime.fromisoformat(input_value)
+    elif not isinstance(input_value, datetime):
+        raise ValueError(f"tomorrow expects a datetime, got {type(input_value)}")
+
+    # Add one day
+    return input_value + timedelta(days=1)
+
+
+@dataclass
+class TomorrowFunctionHook(PreResolveHook):
+    """Hook that provides the tomorrow function during resolution."""
+
+    priority: int = 50
+
+    def __call__(self, call_site, path):
+        """Return overrides containing the tomorrow function."""
+        return ResolveOverrides(
+            functions={"tomorrow": tomorrow_function},
+        )
+
+
+# Export hooks dictionary for the plugin loader
+hooks = {
+    "pre_resolve": [TomorrowFunctionHook()],
+}
+'''
+
+
+@pytest.mark.integration
+def test_pre_resolve_hook_provides_custom_function(example_project):
+    """End-to-end test for pre_resolve hook providing custom functions.
+
+    This test exercises the pre_resolve hook by:
+    1. Creating a plugin that provides a "tomorrow" function
+    2. Modifying a homework's publication.yaml to use !tomorrow: <date>
+    3. Running build() through the complete pipeline
+    4. Verifying the due date was transformed to the next day
+    """
+    # Create the plugin directory structure
+    plugin_dir = example_project / "tomorrow_plugin" / "hooks"
+    plugin_dir.mkdir(parents=True, exist_ok=True)
+    (plugin_dir / "__init__.py").write_text(TOMORROW_PLUGIN_INIT)
+
+    # Add the plugin to the existing automata.yaml
+    config_path = example_project / "automata.yaml"
+    config_content = config_path.read_text()
+    config_content += "\nplugins:\n  - tomorrow_plugin\n"
+    config_path.write_text(config_content)
+
+    # Modify hw01's publication.yaml to use !tomorrow for the due date
+    # Original: due: 2025-09-29 23:59:00
+    # After tomorrow: due: 2025-09-30 23:59:00
+    hw01_pub = example_project / "homeworks" / "hw01" / "publication.yaml"
+    hw01_content = hw01_pub.read_text()
+    # Replace the due date with a tomorrow function call
+    hw01_content = hw01_content.replace(
+        "due: 2025-09-29 23:59:00", "due:\n    __tomorrow__: 2025-09-29 23:59:00"
+    )
+    hw01_pub.write_text(hw01_content)
+
+    # Run the full build pipeline
+    build(example_project)
+
+    # Verify the due date was transformed
+    # Read the materials.json to check the transformed due date
+    materials_json = example_project / "_build" / "materials" / "materials.json"
+    assert materials_json.exists(), "materials.json should exist"
+
+    materials_content = json.loads(materials_json.read_text())
+    hw01_metadata = materials_content["collections"]["homeworks"]["publications"][
+        "hw01"
+    ]["metadata"]
+
+    # The due date should now be 2025-09-30 (one day after 2025-09-29)
+    assert hw01_metadata["due"] == "2025-09-30 23:59:00", (
+        f"Expected due date to be 2025-09-30 23:59:00 (tomorrow), "
+        f"got {hw01_metadata['due']}"
+    )

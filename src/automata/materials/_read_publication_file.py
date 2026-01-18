@@ -1,6 +1,7 @@
 """Reads a Publication from a publication.yaml file."""
 
 import pathlib
+from collections.abc import Callable
 from typing import Any, Dict, Mapping, MutableMapping, Optional, cast
 
 import smartconfig
@@ -95,6 +96,7 @@ def _resolve_publication_file(
     vars: Optional[Mapping[str, Any]],
     previous: Optional[Mapping[str, Any]],
     path: pathlib.Path,
+    functions: Optional[Mapping[str, Callable]] = None,
 ) -> dict[str, Any]:
     """Resolves (interpolates and parses) the raw publication file contents.
 
@@ -114,6 +116,8 @@ def _resolve_publication_file(
         interpolation through the ``${previous}`` variable.
     path : pathlib.Path
         The path to the publication file being read. Used to format error messages.
+    functions : Optional[Mapping[str, Callable]]
+        Additional functions to make available during resolution.
 
     Returns
     -------
@@ -147,8 +151,12 @@ def _resolve_publication_file(
 
     combined = cast(smartconfig.types.ConfigurationDict, combined_dict)
 
+    resolve_kwargs: dict[str, Any] = {}
+    if functions is not None:
+        resolve_kwargs["functions"] = functions
+
     try:
-        resolved = resolve(combined, combined_schema)
+        resolved = resolve(combined, combined_schema, **resolve_kwargs)
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 
@@ -160,6 +168,7 @@ def read_publication_file(
     publication_schema: Optional[PublicationSchema] = None,
     vars: Optional[Mapping[str, Any]] = None,
     previous: Optional[Publication] = None,
+    functions: Optional[Mapping[str, Callable]] = None,
 ) -> Publication[UnbuiltArtifact]:
     """Reads a :class:`types.Publication` from a ``publication.yaml`` file.
 
@@ -179,6 +188,9 @@ def read_publication_file(
         The previous publication. If None, there is assumed to be no previous.
         If provided, this will be available during interpolation through the
         ``${previous}`` variable. Default: None.
+    functions : Optional[Mapping[str, Callable]]
+        Additional functions to make available during resolution (e.g., from
+        pre_resolve hooks). Default: None.
 
     Returns
     -------
@@ -211,7 +223,7 @@ def read_publication_file(
     previous_dict = previous._deep_asdict() if previous is not None else None
 
     resolved: Dict[str, Any] = _resolve_publication_file(
-        raw_contents, publication_schema, vars, previous_dict, path
+        raw_contents, publication_schema, vars, previous_dict, path, functions
     )
 
     # convert each artifact to an UnbuiltArtifact object
