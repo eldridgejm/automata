@@ -135,7 +135,7 @@ Helper functions for loading extension components from directories are available
 in the :mod:`automata.loaders` module:
 
 - :func:`~automata.loaders.load_templates_from_directory`
-- :func:`~automata.loaders.load_static_files_from_directory`
+- :func:`~automata.loaders.load_files_from_directory`
 - :func:`~automata.loaders.load_elements_from_directory`
 - :func:`~automata.loaders.load_hooks_from_directory`
 """
@@ -156,8 +156,8 @@ from .hooks import Hooks
 from .loaders import (
     _load_python_module_from_directory,
     load_elements_from_directory,
+    load_files_from_directory,
     load_hooks_from_directory,
-    load_static_files_from_directory,
     load_templates_from_directory,
 )
 
@@ -259,7 +259,7 @@ class Extension:
 
         # Load components using public helper functions
         templates = load_templates_from_directory(templates_dir)
-        static_files = load_static_files_from_directory(directory / "static")
+        static_files = load_files_from_directory(directory / "static")
         elements = load_elements_from_directory(directory / "elements")
         hooks = cast(Hooks, load_hooks_from_directory(directory / "hooks"))
 

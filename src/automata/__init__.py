@@ -29,8 +29,8 @@ from .hooks import (
 )
 from .loaders import (
     load_elements_from_directory,
+    load_files_from_directory,
     load_hooks_from_directory,
-    load_static_files_from_directory,
     load_templates_from_directory,
 )
 
@@ -42,7 +42,7 @@ __all__ = [
     "Extension",
     "merge_extensions",
     "load_templates_from_directory",
-    "load_static_files_from_directory",
+    "load_files_from_directory",
     "load_elements_from_directory",
     "load_hooks_from_directory",
     # Hook system

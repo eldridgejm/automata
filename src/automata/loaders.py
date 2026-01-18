@@ -4,7 +4,7 @@ This module provides helper functions for loading extension components from
 directories, useful when creating Python package extensions:
 
 - :func:`load_templates_from_directory` - Load templates from a directory
-- :func:`load_static_files_from_directory` - Load static files from a directory
+- :func:`load_files_from_directory` - Load static files from a directory
 - :func:`load_elements_from_directory` - Load elements from a Python package
 - :func:`load_hooks_from_directory` - Load hooks from a hooks.py file
 """
@@ -167,7 +167,7 @@ def load_templates_from_directory(directory: Traversable) -> dict[str, str]:
     return templates
 
 
-def load_static_files_from_directory(
+def load_files_from_directory(
     directory: Traversable,
 ) -> dict[str, str | bytes | Traversable]:
     """Load static files from a directory.
@@ -191,8 +191,8 @@ def load_static_files_from_directory(
     Examples
     --------
     >>> from pathlib import Path
-    >>> from automata.loaders import load_static_files_from_directory
-    >>> static = load_static_files_from_directory(Path("my_extension/static"))
+    >>> from automata.loaders import load_files_from_directory
+    >>> static = load_files_from_directory(Path("my_extension/static"))
     >>> # static = {"style.css": <Traversable>, "images/logo.png": <Traversable>}
 
     """
