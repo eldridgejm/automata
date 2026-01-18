@@ -68,9 +68,10 @@ def build(
     }
 
     # Create initial website content from extension
+    # Note: assets are already merged into static_files by _load_site_extension
     initial_content = WebsiteContent(
         content=pages_from_extension,
-        assets=dict(extension.assets),
+        assets={},
         static_files=dict(extension.static_files),
     )
 

@@ -377,3 +377,64 @@ def test_from_directory_raises_if_package_has_no_extension_attribute(
 
     with pytest.raises(ValueError, match="must export an 'extension' attribute"):
         Extension.from_directory(extension_dir)
+
+
+# _load_site_extension =============================================================
+
+
+def test_load_site_extension_splits_content_by_file_type(tmp_path: Path) -> None:
+    """Test that _load_site_extension splits content files by extension.
+
+    Files in content/ with .md or .html extension should go to pages.
+    All other files in content/ should go to static_files.
+    All files in assets/ should go to static_files.
+    """
+    from automata._api._load import _load_site_extension
+
+    site_dir = tmp_path / "site"
+    content_dir = site_dir / "content"
+    assets_dir = site_dir / "assets"
+
+    content_dir.mkdir(parents=True)
+    assets_dir.mkdir(parents=True)
+
+    # Create various content files
+    (content_dir / "index.md").write_text("# Home")
+    (content_dir / "about.html").write_text("<h1>About</h1>")
+    (content_dir / "data.json").write_text('{"key": "value"}')
+    (content_dir / "image.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    (content_dir / "readme.txt").write_text("Read me!")
+
+    # Create a subdirectory with mixed content
+    (content_dir / "docs").mkdir()
+    (content_dir / "docs" / "guide.md").write_text("# Guide")
+    (content_dir / "docs" / "config.yaml").write_text("key: value")
+
+    # Create asset files
+    (assets_dir / "logo.svg").write_text("<svg></svg>")
+    (assets_dir / "styles.css").write_text("body {}")
+
+    # Load the site extension
+    extension = _load_site_extension(site_dir)
+
+    # Verify pages contains only .md and .html files
+    assert set(extension.pages.keys()) == {
+        "index.md",
+        "about.html",
+        "docs/guide.md",
+    }
+
+    # Verify static_files contains non-renderable content files and all assets
+    assert set(extension.static_files.keys()) == {
+        "data.json",
+        "image.png",
+        "readme.txt",
+        "docs/config.yaml",
+        "logo.svg",
+        "styles.css",
+    }
+
+    # Verify the content is accessible
+    assert extension.pages["index.md"].read_text() == "# Home"
+    assert extension.static_files["data.json"].read_text() == '{"key": "value"}'
+    assert extension.static_files["logo.svg"].read_text() == "<svg></svg>"
