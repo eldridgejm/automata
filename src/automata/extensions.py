@@ -189,6 +189,12 @@ class Extension:
         Dictionary mapping hook point names (e.g., "pre_generate_website") to
         lists of hook instances. Each hook instance has a ``priority`` attribute
         and a ``__call__`` method. Lower priority values execute first.
+    content : dict[str, str | bytes | Traversable]
+        Dictionary mapping content file paths to their content. Content files
+        are rendered (Markdown/HTML) during website generation.
+    assets : dict[str, str | bytes | Traversable]
+        Dictionary mapping asset file paths to their content. Assets are copied
+        to the build output.
     """
 
     templates: dict[str, str] = field(default_factory=dict)
@@ -196,6 +202,8 @@ class Extension:
     elements: dict[str, type["Element"]] = field(default_factory=dict)
     schema: smartconfig.types.Schema | None = None
     hooks: Hooks = field(default_factory=lambda: cast(Hooks, {}))
+    content: dict[str, str | bytes | Traversable] = field(default_factory=dict)
+    assets: dict[str, str | bytes | Traversable] = field(default_factory=dict)
 
     @classmethod
     def from_directory(
@@ -386,17 +394,21 @@ def merge_extensions(extensions: Sequence[Extension]) -> Extension:
     -------
     Extension
         A new Extension instance containing the merged templates, static files,
-        elements, and hooks from all input extensions.
+        elements, content, assets, and hooks from all input extensions.
     """
     templates: dict[str, str] = {}
     static_files: dict[str, str | bytes | Traversable] = {}
     elements: dict[str, type["Element"]] = {}
+    content: dict[str, str | bytes | Traversable] = {}
+    assets: dict[str, str | bytes | Traversable] = {}
     hooks_dict: dict[str, list] = {}
 
     for extension in extensions:
         templates.update(extension.templates)
         static_files.update(extension.static_files)
         elements.update(extension.elements)
+        content.update(extension.content)
+        assets.update(extension.assets)
 
         # Accumulate hooks (don't override)
         for hook_point, hook_list in extension.hooks.items():
@@ -410,6 +422,8 @@ def merge_extensions(extensions: Sequence[Extension]) -> Extension:
         elements=elements,
         schema=None,
         hooks=cast(Hooks, hooks_dict),
+        content=content,
+        assets=assets,
     )
 
 

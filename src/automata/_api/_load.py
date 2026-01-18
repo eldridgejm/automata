@@ -6,6 +6,7 @@ from typing import cast
 from .._config import Config, read_config
 from ..extensions import Extension, merge_extensions
 from ..hooks import HOOK_POINTS, Hooks, ScriptableHookMixin
+from ..loaders import load_website_components_from_directory
 
 CONFIGURATION_FILENAME = "automata.yaml"
 
@@ -14,8 +15,9 @@ def load(path: Path | None = None) -> tuple[Config, Extension]:
     """Load the configuration and extensions from an automata project.
 
     This function reads the automata.yaml configuration file, loads the
-    theme extension specified in the configuration, and merges in any hooks
-    defined in the configuration file.
+    theme extension specified in the configuration, loads website components
+    from the site directory, and merges in any hooks defined in the
+    configuration file.
 
     Parameters
     ----------
@@ -28,7 +30,7 @@ def load(path: Path | None = None) -> tuple[Config, Extension]:
     tuple[Config, Extension]
         A tuple containing:
         - The loaded configuration
-        - The merged extension (theme extension + config hooks)
+        - The merged extension (theme + site components + config hooks)
 
     """
     if path is None:
@@ -36,18 +38,57 @@ def load(path: Path | None = None) -> tuple[Config, Extension]:
 
     config = read_config(path / CONFIGURATION_FILENAME)
 
-    # Load the theme as a extension
+    # Load the theme as an extension
     theme_extension = Extension.from_spec(
         config.website.theme.use, group="automata.website.themes"
     )
 
+    # Load website components from the site directory (parent of content_directory)
+    # The site directory is expected to have: content/, assets/, static/, templates/
+    site_dir = path / config.website.content_directory
+    site_extension = _load_site_extension(site_dir.parent)
+
     # Convert config hooks to a synthetic extension
     config_hooks_extension = _config_hooks_to_extension(config, cwd=path)
 
-    # Merge theme extension with config hooks
-    merged_extension = merge_extensions([theme_extension, config_hooks_extension])
+    # Merge extensions: theme < site < config hooks (later = higher priority)
+    merged_extension = merge_extensions(
+        [
+            theme_extension,
+            site_extension,
+            config_hooks_extension,
+        ]
+    )
 
     return config, merged_extension
+
+
+def _load_site_extension(site_dir: Path) -> Extension:
+    """Load website components from a site directory as an Extension.
+
+    The site directory is expected to have subdirectories for content, assets,
+    static files, templates, and elements (all optional).
+
+    Parameters
+    ----------
+    site_dir : Path
+        The site directory containing website components.
+
+    Returns
+    -------
+    Extension
+        An extension containing the loaded website components.
+
+    """
+    components = load_website_components_from_directory(site_dir)
+
+    return Extension(
+        templates=components.templates,
+        static_files=components.static,
+        elements=components.elements,
+        content=components.content,
+        assets=components.assets,
+    )
 
 
 def _config_hooks_to_extension(config: Config, cwd: Path) -> Extension:
