@@ -86,7 +86,7 @@ def _load_site_extension(site_dir: Path) -> Extension:
         templates=components.templates,
         static_files=components.static,
         elements=components.elements,
-        content=components.content,
+        pages=components.pages,
         assets=components.assets,
     )
 

@@ -48,7 +48,7 @@ def test_people_element_renders_single_group(tmpsite, config, default_theme_kwar
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -90,7 +90,7 @@ def test_people_element_renders_multiple_groups(tmpsite, config, default_theme_k
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -126,7 +126,7 @@ def test_people_element_person_without_optional_fields(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -159,7 +159,7 @@ def test_people_element_person_with_website_creates_link(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -191,7 +191,7 @@ def test_people_element_displays_photo_when_provided(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 

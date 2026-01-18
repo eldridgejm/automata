@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Callable, Mapping, cast
 import jinja2
 import smartconfig.types
 
-from .._config import WebsiteConfig
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util import markdown as markdown_util
 from ._frontmatter import Frontmatter, read_frontmatter
@@ -24,14 +23,14 @@ if TYPE_CHECKING:
 class RenderContext:
     """Context available at the time of rendering."""
 
-    # website configuration
-    website_config: WebsiteConfig
-
     # the course materials universe
     materials: Universe[ExportedArtifact]
 
     # function to generate URLs for given paths
     url_for: Callable[[str], str]
+
+    # base path for URL generation (e.g., "/" or "/course/")
+    base_path: str
 
     # elements avaiable during rendering. These should be already bound to the render
     # context, so that they only require one argument: the element configuration.
@@ -147,9 +146,9 @@ def _create_url_for(base_path: str) -> Callable[[str], str]:
 
 
 def _create_render_context(
-    config: WebsiteConfig,
     materials: Universe[ExportedArtifact],
     url_for: Callable[[str], str],
+    base_path: str,
     current_time: datetime.datetime,
     vars: Mapping[str, Any],
     elements: Mapping[str, type["Element"]],
@@ -157,9 +156,9 @@ def _create_render_context(
 ) -> RenderContext:
     """Create the render context with elements bound."""
     context = RenderContext(
-        website_config=config,
         materials=materials,
         url_for=url_for,
+        base_path=base_path,
         current_time=current_time,
         vars=dict(vars),
     )
@@ -174,10 +173,10 @@ def _create_render_context(
 def _copy_materials_to_build(
     materials_directory: pathlib.Path,
     build_directory: pathlib.Path,
-    config: WebsiteConfig,
+    materials_directory_name: str,
 ) -> None:
     """Copy the materials directory to the build directory."""
-    materials_output_path = build_directory / config.materials_directory_name
+    materials_output_path = build_directory / materials_directory_name
 
     # Only copy if source and destination are different
     # (resolve both paths to handle relative paths and symlinks correctly)
@@ -230,7 +229,7 @@ def _render_page(
     if markdown_renderer is not None:
         rendered_content = markdown_renderer(rendered_content)
 
-    base_url_path = context.website_config.base_path
+    base_url_path = context.base_path
     if not base_url_path.endswith("/"):
         base_url_path = f"{base_url_path}/"
 
@@ -362,11 +361,13 @@ def _process_content(
 
 
 def generate(
-    config: WebsiteConfig,
     materials_directory: pathlib.Path,
     templates: Mapping[str, str],
+    build_directory: pathlib.Path | str,
+    base_path: str = "/",
+    materials_directory_name: str = "materials",
     elements: Mapping[str, type["Element"]] | None = None,
-    content: Mapping[str, str | bytes | Traversable] | None = None,
+    pages: Mapping[str, str | bytes | Traversable] | None = None,
     assets: Mapping[str, str | bytes | Traversable] | None = None,
     static_files: Mapping[str, str | bytes | Traversable] | None = None,
     vars: Mapping[str, Any] | None = None,
@@ -378,29 +379,33 @@ def generate(
 
     Parameters
     ----------
-    config : WebsiteConfig
-        The configuration for the website generation. Contains information about
-        the build directory and other settings. See :class:`WebsiteConfig` for
-        more details.
     materials_directory : pathlib.Path
         The path to the directory containing the exported materials. This directory
         should contain a materials.json file and associated artifact files, as
         produced by :func:`automata.materials.export`. The directory will be copied
-        to the build directory at the location specified by
-        config.materials_directory_name.
+        to the build directory at the location specified by materials_directory_name.
     templates : dict[str, str]
         Dictionary mapping template names to their content. Must include at least
         a "page.html" template which serves as the base template for all pages.
+    build_directory : pathlib.Path | str
+        The directory where the generated website will be written. If a relative
+        path, it will be resolved relative to ``cwd``.
+    base_path : str, optional
+        The base URL path for the site. Used for generating URLs when the site
+        is deployed to a subdirectory. Defaults to "/".
+    materials_directory_name : str, optional
+        The name of the subdirectory within build_directory where materials
+        will be copied. Defaults to "materials".
     elements : dict[str, type[Element]], optional
         Dictionary mapping element names to Element classes. Elements are
         callable components that can be used in templates to generate HTML.
-    content : dict[str, str | bytes | Traversable], optional
-        Content files to render and include in the generated output. Each key is
+    pages : dict[str, str | bytes | Traversable], optional
+        Page files to render and include in the generated output. Each key is
         a relative path from the build directory root. Values can be strings,
         bytes, or Traversables containing markdown or HTML content. Files with
         a ``.md`` extension are rendered as markdown; all others are treated as
         HTML. Output paths will have their extension changed to ``.html`` if not
-        already. Each content file is processed through the full rendering pipeline
+        already. Each page file is processed through the full rendering pipeline
         (frontmatter parsing, variable interpolation, markdown rendering if
         applicable, and template wrapping).
     assets : dict[str, str | bytes | Traversable], optional
@@ -425,10 +430,9 @@ def generate(
         :func:`automata.util.markdown.render`, which wraps
         :func:`markdown.markdown` with the TOC extension enabled.
     cwd : pathlib.Path, optional
-        Working directory for resolving relative paths in config. The
-        build_directory path will be resolved relative to this directory.
-        If None, uses the current working directory. Absolute paths in config
-        are used as-is regardless of cwd.
+        Working directory for resolving relative paths. The build_directory path
+        will be resolved relative to this directory. If None, uses the current
+        working directory. Absolute paths are used as-is regardless of cwd.
 
     Raises
     ------
@@ -449,8 +453,8 @@ def generate(
     If this materials directory is not found or is missing required files, an error
     will be raised.
 
-    Content is provided via the ``content`` parameter as a dictionary mapping relative
-    paths to content values. Each content file is processed through the full rendering
+    Pages are provided via the ``pages`` parameter as a dictionary mapping relative
+    paths to page content. Each page file is processed through the full rendering
     pipeline:
 
     - Frontmatter is parsed and made available to templates
@@ -462,7 +466,7 @@ def generate(
     without any processing.
 
     The materials directory will be copied to the build directory at the location
-    specified by ``config.materials_directory_name`` (default: ``materials``).
+    specified by ``materials_directory_name`` (default: ``materials``).
 
     Rendering Context
     ~~~~~~~~~~~~~~~~~
@@ -475,8 +479,8 @@ def generate(
     access to the course materials, if applicable.
 
     The context also provides a ``url_for`` function that can be used to generate URLs
-    that respect the site's ``base_path`` configuration. This is useful when a site is
-    deployed to a subdirectory rather than the root of a domain. For example::
+    that respect the site's ``base_path``. This is useful when a site is deployed to a
+    subdirectory rather than the root of a domain. For example::
 
         <a href="${ url_for('about.html') }">About</a>
 
@@ -512,7 +516,7 @@ def generate(
 
     # set default values for optional parameters
     elements = elements or {}
-    content = content or {}
+    pages = pages or {}
     assets = assets or {}
     static_files = static_files or {}
     vars = vars or {}
@@ -520,10 +524,10 @@ def generate(
     cwd = cwd or pathlib.Path.cwd()
 
     # resolve paths relative to cwd (absolute paths are unchanged)
-    build_directory = cwd / config.build_directory
+    build_directory_path = cwd / build_directory
 
     # set up url_for and jinja environment
-    url_for = _create_url_for(config.base_path)
+    url_for = _create_url_for(base_path)
     jinja_environment = jinja2.Environment(
         loader=jinja2.DictLoader(templates),
         undefined=jinja2.StrictUndefined,
@@ -534,24 +538,26 @@ def generate(
     )
 
     # copy static files and assets
-    _copy_static_files(assets, build_directory)
-    _copy_static_files(static_files, build_directory)
+    _copy_static_files(assets, build_directory_path)
+    _copy_static_files(static_files, build_directory_path)
 
     # load materials and create render context
     materials = _load_materials(materials_directory)
     _fix_artifact_paths(materials, url_for)
     context = _create_render_context(
-        config, materials, url_for, current_time, vars, elements, jinja_environment
+        materials, url_for, base_path, current_time, vars, elements, jinja_environment
     )
 
-    # process content
+    # process pages
     _process_content(
-        content,
-        build_directory,
+        pages,
+        build_directory_path,
         jinja_environment,
         context,
         render_markdown,
     )
 
     # finalize build
-    _copy_materials_to_build(materials_directory, build_directory, config)
+    _copy_materials_to_build(
+        materials_directory, build_directory_path, materials_directory_name
+    )

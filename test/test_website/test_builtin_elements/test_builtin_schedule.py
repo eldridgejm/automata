@@ -13,7 +13,7 @@ import smartconfig.types
 
 import automata.materials
 import automata.website
-from automata.website import ExtensionConfig, RenderContext, WebsiteConfig
+from automata.website import RenderContext
 from automata.website.builtin_elements._schedule import Schedule
 
 # Fixtures ===========================================================================
@@ -25,21 +25,14 @@ def render_context():
     # Create empty materials universe
     materials = automata.materials.Universe(collections={})
 
-    # Create minimal website config
-    website_config = WebsiteConfig(
-        content_directory="/fake/content",
-        build_directory="/fake/build",
-        theme=ExtensionConfig(use="default", config={}),
-    )
-
     # Simple url_for function
     def url_for(path):
         return f"/{path}"
 
     return RenderContext(
-        website_config=website_config,
         materials=materials,
         url_for=url_for,
+        base_path="/",
         current_time=datetime.datetime(2024, 1, 15, 12, 0, 0),
     )
 

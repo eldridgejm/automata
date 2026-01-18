@@ -397,8 +397,8 @@ class WebsiteComponents:
         Dictionary mapping element names to Element classes.
     templates : dict[str, str]
         Dictionary mapping template names to their content.
-    content : dict[str, str | bytes | Traversable]
-        Dictionary mapping content file paths to their entries.
+    pages : dict[str, str | bytes | Traversable]
+        Dictionary mapping page file paths to their entries.
     assets : dict[str, str | bytes | Traversable]
         Dictionary mapping asset file paths to their entries.
     static : dict[str, str | bytes | Traversable]
@@ -407,7 +407,7 @@ class WebsiteComponents:
 
     elements: dict[str, type["Element"]] = field(default_factory=dict)
     templates: dict[str, str] = field(default_factory=dict)
-    content: dict[str, str | bytes | Traversable] = field(default_factory=dict)
+    pages: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     assets: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     static: dict[str, str | bytes | Traversable] = field(default_factory=dict)
 
@@ -417,7 +417,7 @@ def load_website_components_from_directory(
 ) -> WebsiteComponents:
     """Load all website components from a directory.
 
-    Loads elements, templates, content, assets, and static files from their
+    Loads elements, templates, pages, assets, and static files from their
     respective subdirectories within the given directory.
 
     Parameters
@@ -455,7 +455,7 @@ def load_website_components_from_directory(
     return WebsiteComponents(
         elements=load_elements_from_directory(directory / "elements"),
         templates=load_templates_from_directory(directory / "templates"),
-        content=load_files_from_directory(directory / "content"),
+        pages=load_files_from_directory(directory / "content"),
         assets=load_files_from_directory(directory / "assets"),
         static=load_files_from_directory(directory / "static"),
     )

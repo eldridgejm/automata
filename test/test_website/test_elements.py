@@ -3,22 +3,18 @@ from pytest import fixture, raises
 from smartconfig.types import ConfigurationDict
 
 from automata.materials import ExportedArtifact, Universe
-from automata.website import BasicElement, RenderContext, WebsiteConfig
+from automata.website import BasicElement, RenderContext
 
 
 @fixture
 def render_context():
     """A minimal render context for testing."""
-    config = WebsiteConfig(
-        content_directory=".",
-        build_directory=".",
-    )
     materials = Universe[ExportedArtifact](collections={})
 
     return RenderContext(
-        website_config=config,
         materials=materials,
         url_for=lambda x: x,
+        base_path="/",
     )
 
 

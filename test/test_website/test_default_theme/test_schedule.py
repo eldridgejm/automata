@@ -85,7 +85,7 @@ def test_schedule_element_renders_basic_week(tmpsite, config, default_theme_kwar
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -142,7 +142,7 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, config, default_theme_
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -211,7 +211,7 @@ def test_schedule_element_renders_html_resource(tmpsite, config, default_theme_k
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -284,7 +284,7 @@ def test_schedule_element_renders_markdown_resource(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -369,7 +369,7 @@ def test_schedule_element_renders_metadata_links_resource(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -454,7 +454,7 @@ def test_schedule_element_renders_artifact_links_resource(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -541,7 +541,7 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -618,7 +618,7 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -687,7 +687,7 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -766,7 +766,7 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -847,7 +847,7 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -921,7 +921,7 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -989,7 +989,7 @@ def test_schedule_element_resource_with_icon(tmpsite, config, default_theme_kwar
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -1051,7 +1051,7 @@ def test_schedule_element_renders_extra_primary_listings(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -1116,7 +1116,7 @@ def test_schedule_element_renders_extra_secondary_listings(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 

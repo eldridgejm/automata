@@ -36,14 +36,14 @@ class SiteBuilder:
 
         self.materials_directory = self.content_directory / "materials"
 
-        # Track content pages as a dict
-        self._content: dict[str, str] = {}
+        # Track pages as a dict
+        self._pages: dict[str, str] = {}
 
         # write an empty materials.json to start
         self.write_materials_json({"collections": {}})
 
     def make_page(self, filepath: str, content: str) -> None:
-        """Create a page and add it to the content dict.
+        """Create a page and add it to the pages dict.
 
         Parameters
         ----------
@@ -53,12 +53,12 @@ class SiteBuilder:
             Content for the page (markdown or HTML).
 
         """
-        self._content[filepath] = content
+        self._pages[filepath] = content
 
     @property
-    def content(self) -> dict[str, str]:
-        """Get the content dict for passing to generate()."""
-        return self._content
+    def pages(self) -> dict[str, str]:
+        """Get the pages dict for passing to generate()."""
+        return self._pages
 
     def get_output(self, filepath: str) -> str:
         """Read rendered output content from _build/.

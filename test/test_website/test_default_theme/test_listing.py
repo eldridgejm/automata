@@ -75,7 +75,7 @@ def test_listing_element_renders_simple_table(tmpsite, config, default_theme_kwa
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -139,7 +139,7 @@ def test_listing_element_renders_multiple_columns(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -200,7 +200,7 @@ def test_listing_element_with_numbered_rows(tmpsite, config, default_theme_kwarg
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -252,7 +252,7 @@ def test_listing_element_with_artifact_links(tmpsite, config, default_theme_kwar
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -317,7 +317,7 @@ def test_listing_element_conditional_content_when_artifact_missing(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -381,7 +381,7 @@ def test_listing_element_conditional_content_when_metadata_missing(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 
@@ -445,7 +445,7 @@ def test_listing_element_conditional_content_non_null_metadata(
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        content=tmpsite.content,
+        pages=tmpsite.pages,
         **default_theme_kwargs,
     )
 

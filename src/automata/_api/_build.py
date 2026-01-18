@@ -61,15 +61,15 @@ def build(
 
     # Filter out files in the materials directory (they're handled separately)
     materials_dir_name = config.website.materials_directory_name
-    content_from_extension = {
+    pages_from_extension = {
         k: v
-        for k, v in extension.content.items()
+        for k, v in extension.pages.items()
         if not k.startswith(materials_dir_name + "/") and k != materials_dir_name
     }
 
     # Create initial website content from extension
     initial_content = WebsiteContent(
-        content=content_from_extension,
+        content=pages_from_extension,
         assets=dict(extension.assets),
         static_files=dict(extension.static_files),
     )
@@ -88,11 +88,13 @@ def build(
 
     # Generate website (materials are already in place, so no copy needed)
     generate(
-        config.website,
         materials_output_dir,
-        templates=extension.templates,
+        extension.templates,
+        build_directory=build_dir,
+        base_path=config.website.base_path,
+        materials_directory_name=config.website.materials_directory_name,
         elements=extension.elements,
-        content=final_content.content,
+        pages=final_content.content,
         assets=final_content.assets,
         static_files=final_content.static_files,
         vars=config.vars,
