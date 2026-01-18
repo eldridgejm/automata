@@ -74,6 +74,10 @@ class Config(smartconfig.Prototype):
     # shell hooks to run at various points in the build process
     hooks: dict[str, ShellHookConfig] = {}
 
+    # list of paths to plugin directories. Each plugin directory should contain
+    # a hooks/ subdirectory with an __init__.py that exports a `hooks` dictionary
+    plugins: list[str] = []
+
 
 def find_config(start_path: Path) -> Path | None:
     """Find the automata.yaml config file by searching upwards from start_path.

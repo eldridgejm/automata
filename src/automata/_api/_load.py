@@ -6,7 +6,7 @@ from typing import cast
 from .._config import Config, read_config
 from ..extensions import Extension, merge_extensions
 from ..hooks import HOOK_POINTS, Hooks, ScriptableHookMixin
-from ..loaders import load_website_components_from_directory
+from ..loaders import load_hooks_from_directory, load_website_components_from_directory
 
 CONFIGURATION_FILENAME = "automata.yaml"
 
@@ -16,8 +16,8 @@ def load(path: Path | None = None) -> tuple[Config, Extension]:
 
     This function reads the automata.yaml configuration file, loads the
     theme extension specified in the configuration, loads website components
-    from the site directory, and merges in any hooks defined in the
-    configuration file.
+    from the site directory, loads any configured plugins, and merges in any
+    hooks defined in the configuration file.
 
     Parameters
     ----------
@@ -30,7 +30,7 @@ def load(path: Path | None = None) -> tuple[Config, Extension]:
     tuple[Config, Extension]
         A tuple containing:
         - The loaded configuration
-        - The merged extension (theme + site components + config hooks)
+        - The merged extension (theme + site components + plugins + config hooks)
 
     """
     if path is None:
@@ -48,14 +48,18 @@ def load(path: Path | None = None) -> tuple[Config, Extension]:
     site_dir = path / config.website.content_directory
     site_extension = _load_site_extension(site_dir.parent)
 
+    # Load plugins from configured paths
+    plugin_extensions = _load_plugins(config.plugins, cwd=path)
+
     # Convert config hooks to a synthetic extension
     config_hooks_extension = _config_hooks_to_extension(config, cwd=path)
 
-    # Merge extensions: theme < site < config hooks (later = higher priority)
+    # Merge extensions: theme < site < plugins < config hooks (later = higher priority)
     merged_extension = merge_extensions(
         [
             theme_extension,
             site_extension,
+            *plugin_extensions,
             config_hooks_extension,
         ]
     )
@@ -89,6 +93,33 @@ def _load_site_extension(site_dir: Path) -> Extension:
         pages=components.pages,
         assets=components.assets,
     )
+
+
+def _load_plugins(plugin_paths: list[str], cwd: Path) -> list[Extension]:
+    """Load plugins from configured paths.
+
+    Each plugin path should point to a directory containing a hooks/
+    subdirectory with an __init__.py that exports a ``hooks`` dictionary.
+
+    Parameters
+    ----------
+    plugin_paths : list[str]
+        List of paths to plugin directories (relative to cwd).
+    cwd : Path
+        The base directory for resolving relative paths.
+
+    Returns
+    -------
+    list[Extension]
+        List of Extension objects, one for each plugin.
+
+    """
+    extensions = []
+    for plugin_path in plugin_paths:
+        plugin_dir = cwd / plugin_path
+        hooks = load_hooks_from_directory(plugin_dir / "hooks")
+        extensions.append(Extension(hooks=cast(Hooks, hooks)))
+    return extensions
 
 
 def _config_hooks_to_extension(config: Config, cwd: Path) -> Extension:

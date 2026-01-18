@@ -223,8 +223,10 @@ class Extension:
         - ``static/`` subdirectory with static files (CSS, JS, images, etc.)
         - ``elements/`` subdirectory containing a Python package that exports
           an ``elements`` dictionary
+        - ``pages/`` subdirectory with page files (markdown, HTML) to be rendered
+        - ``assets/`` subdirectory with asset files (images, etc.) to be copied
         - ``schema.json`` file with a smartconfig schema for configuration
-        - ``hooks.py`` file with hook functions
+        - ``hooks/`` subdirectory containing a Python package with hook definitions
 
         All components are optional unless ``require_templates`` is True.
 
@@ -270,6 +272,8 @@ class Extension:
         templates = load_templates_from_directory(templates_dir)
         static_files = load_files_from_directory(directory / "static")
         elements = load_elements_from_directory(directory / "elements")
+        pages = load_files_from_directory(directory / "pages")
+        assets = load_files_from_directory(directory / "assets")
         hooks = cast(Hooks, load_hooks_from_directory(directory / "hooks"))
 
         # Load schema from schema.json if present
@@ -292,6 +296,8 @@ class Extension:
             elements=elements,
             schema=schema,
             hooks=hooks,
+            pages=pages,
+            assets=assets,
         )
 
     @classmethod

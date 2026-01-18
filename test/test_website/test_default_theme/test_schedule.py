@@ -5,27 +5,8 @@ testing through the full generate() pipeline and inspecting HTML output.
 """
 
 from bs4 import BeautifulSoup, Tag
-from pytest import fixture
 
 import automata.website
-from automata.website import ExtensionConfig
-
-
-@fixture
-def config(tmpsite):
-    return automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        theme=ExtensionConfig(
-            use="default",
-            config={
-                "short_title": "DSC 40B",
-                "long_title": "Theoretical Foundations of Data Science II",
-                "navigation": [],
-                "rebuild_tailwind": False,  # Disable for faster tests
-            },
-        ),
-    )
 
 
 def find_week(html: str, week: int) -> Tag:
@@ -38,7 +19,7 @@ def find_week(html: str, week: int) -> Tag:
     return week_section
 
 
-def test_schedule_element_renders_basic_week(tmpsite, config, default_theme_kwargs):
+def test_schedule_element_renders_basic_week(tmpsite, default_theme_kwargs):
     """Test rendering a basic schedule with one week."""
     # given: empty materials for now
     tmpsite.write_materials_json(
@@ -82,9 +63,11 @@ def test_schedule_element_renders_basic_week(tmpsite, config, default_theme_kwar
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -95,7 +78,7 @@ def test_schedule_element_renders_basic_week(tmpsite, config, default_theme_kwar
     assert "Introduction" in output
 
 
-def test_schedule_element_renders_multiple_weeks(tmpsite, config, default_theme_kwargs):
+def test_schedule_element_renders_multiple_weeks(tmpsite, default_theme_kwargs):
     """Test rendering multiple weeks with topics."""
     # given
     tmpsite.write_materials_json(
@@ -139,9 +122,11 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, config, default_theme_
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -153,7 +138,7 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, config, default_theme_
     assert "Data" in output
 
 
-def test_schedule_element_renders_html_resource(tmpsite, config, default_theme_kwargs):
+def test_schedule_element_renders_html_resource(tmpsite, default_theme_kwargs):
     """Test rendering HTML resource type."""
     # given
     tmpsite.write_materials_json(
@@ -208,9 +193,11 @@ def test_schedule_element_renders_html_resource(tmpsite, config, default_theme_k
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -222,9 +209,7 @@ def test_schedule_element_renders_html_resource(tmpsite, config, default_theme_k
     assert "href='slides.pdf'" in output or 'href="slides.pdf"' in output
 
 
-def test_schedule_element_renders_markdown_resource(
-    tmpsite, config, default_theme_kwargs
-):
+def test_schedule_element_renders_markdown_resource(tmpsite, default_theme_kwargs):
     """Test rendering Markdown resource type."""
     # given
     tmpsite.write_materials_json(
@@ -281,9 +266,11 @@ def test_schedule_element_renders_markdown_resource(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -297,7 +284,7 @@ def test_schedule_element_renders_markdown_resource(
 
 
 def test_schedule_element_renders_metadata_links_resource(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test rendering metadata links resource type."""
     # given
@@ -366,9 +353,11 @@ def test_schedule_element_renders_metadata_links_resource(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -383,7 +372,7 @@ def test_schedule_element_renders_metadata_links_resource(
 
 
 def test_schedule_element_renders_artifact_links_resource(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test rendering artifact links resource type when all artifacts exist."""
     # given
@@ -451,9 +440,11 @@ def test_schedule_element_renders_artifact_links_resource(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -468,7 +459,7 @@ def test_schedule_element_renders_artifact_links_resource(
 
 
 def test_schedule_element_artifact_links_only_shows_existing_artifacts(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test that artifact links only shows links for artifacts that exist."""
     # given
@@ -538,9 +529,11 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -559,7 +552,7 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(
 
 
 def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test that HTML resource with only whitespace does not render."""
     # given
@@ -615,9 +608,11 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -628,7 +623,7 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
 
 
 def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test that Markdown resource with only whitespace does not render."""
     # given
@@ -684,9 +679,11 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -697,7 +694,7 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
 
 
 def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test that metadata links resource does not render when there are no links."""
     # given
@@ -763,9 +760,11 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -776,7 +775,7 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
 
 
 def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """
     Test that metadata links resource does not render when metadata key is missing.
@@ -844,9 +843,11 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -857,7 +858,7 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
 
 
 def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test that artifact links does not render when no artifacts."""
     # given
@@ -918,9 +919,11 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -930,7 +933,7 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
     assert "Slides" not in output
 
 
-def test_schedule_element_resource_with_icon(tmpsite, config, default_theme_kwargs):
+def test_schedule_element_resource_with_icon(tmpsite, default_theme_kwargs):
     """Test that resources can display Lucide icons."""
     # given
     tmpsite.write_materials_json(
@@ -986,9 +989,11 @@ def test_schedule_element_resource_with_icon(tmpsite, config, default_theme_kwar
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -999,9 +1004,7 @@ def test_schedule_element_resource_with_icon(tmpsite, config, default_theme_kwar
     assert 'data-lucide="file-text"' in output
 
 
-def test_schedule_element_renders_extra_primary_listings(
-    tmpsite, config, default_theme_kwargs
-):
+def test_schedule_element_renders_extra_primary_listings(tmpsite, default_theme_kwargs):
     """Test rendering extra_primary_activities that are not tied to a publication."""
     # given
     tmpsite.write_materials_json(
@@ -1048,9 +1051,11 @@ def test_schedule_element_renders_extra_primary_listings(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -1065,7 +1070,7 @@ def test_schedule_element_renders_extra_primary_listings(
 
 
 def test_schedule_element_renders_extra_secondary_listings(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test rendering extra_secondary_activities (not tied to a publication)."""
     # given
@@ -1113,9 +1118,11 @@ def test_schedule_element_renders_extra_secondary_listings(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )

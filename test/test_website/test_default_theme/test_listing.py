@@ -1,29 +1,9 @@
 """Tests for the listing element."""
 
-from pytest import fixture
-
 import automata.website
-from automata.website import ExtensionConfig
 
 
-@fixture
-def config(tmpsite):
-    return automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        theme=ExtensionConfig(
-            use="default",
-            config={
-                "short_title": "DSC 40B",
-                "long_title": "Theoretical Foundations of Data Science II",
-                "navigation": [],
-                "rebuild_tailwind": False,  # Disable for faster tests
-            },
-        ),
-    )
-
-
-def test_listing_element_renders_simple_table(tmpsite, config, default_theme_kwargs):
+def test_listing_element_renders_simple_table(tmpsite, default_theme_kwargs):
     """Test rendering a simple listing with one column."""
     # given: a course with homeworks
     tmpsite.write_materials_json(
@@ -72,9 +52,11 @@ def test_listing_element_renders_simple_table(tmpsite, config, default_theme_kwa
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -87,9 +69,7 @@ def test_listing_element_renders_simple_table(tmpsite, config, default_theme_kwa
     assert "Homework 2" in output
 
 
-def test_listing_element_renders_multiple_columns(
-    tmpsite, config, default_theme_kwargs
-):
+def test_listing_element_renders_multiple_columns(tmpsite, default_theme_kwargs):
     """Test rendering a listing with multiple columns."""
     # given
     tmpsite.write_materials_json(
@@ -136,9 +116,11 @@ def test_listing_element_renders_multiple_columns(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -151,7 +133,7 @@ def test_listing_element_renders_multiple_columns(
     assert "2024-01-15" in output
 
 
-def test_listing_element_with_numbered_rows(tmpsite, config, default_theme_kwargs):
+def test_listing_element_with_numbered_rows(tmpsite, default_theme_kwargs):
     """Test that numbered=true adds row numbers."""
     # given
     tmpsite.write_materials_json(
@@ -197,9 +179,11 @@ def test_listing_element_with_numbered_rows(tmpsite, config, default_theme_kwarg
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -210,7 +194,7 @@ def test_listing_element_with_numbered_rows(tmpsite, config, default_theme_kwarg
     assert "<th" in output and "#" in output
 
 
-def test_listing_element_with_artifact_links(tmpsite, config, default_theme_kwargs):
+def test_listing_element_with_artifact_links(tmpsite, default_theme_kwargs):
     """Test listing with links to artifacts."""
     # given
     tmpsite.write_materials_json(
@@ -249,9 +233,11 @@ def test_listing_element_with_artifact_links(tmpsite, config, default_theme_kwar
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -262,7 +248,7 @@ def test_listing_element_with_artifact_links(tmpsite, config, default_theme_kwar
 
 
 def test_listing_element_conditional_content_when_artifact_missing(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test that missing artifacts show fallback content."""
     # given: hw01 has artifact, hw02 does not
@@ -314,9 +300,11 @@ def test_listing_element_conditional_content_when_artifact_missing(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -328,7 +316,7 @@ def test_listing_element_conditional_content_when_artifact_missing(
 
 
 def test_listing_element_conditional_content_when_metadata_missing(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test that missing metadata shows fallback content."""
     # given: hw01 has due date, hw02 does not
@@ -378,9 +366,11 @@ def test_listing_element_conditional_content_when_metadata_missing(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -392,7 +382,7 @@ def test_listing_element_conditional_content_when_metadata_missing(
 
 
 def test_listing_element_conditional_content_non_null_metadata(
-    tmpsite, config, default_theme_kwargs
+    tmpsite, default_theme_kwargs
 ):
     """Test that null metadata values show fallback content."""
     # given: hw01 has non-null due date, hw02 has null due date
@@ -442,9 +432,11 @@ def test_listing_element_conditional_content_non_null_metadata(
     )
 
     # when
+    templates = default_theme_kwargs.pop("templates")
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )

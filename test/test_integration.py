@@ -88,6 +88,10 @@ def test_release_time_and_ready_flag_behavior(temporary_course):
 vars:
   schedule_config:
     __include__: "schedule.yaml"
+  short_title: "Test Course"
+  long_title: "Test Course - Release Time Behavior"
+  navigation: []
+  rebuild_tailwind: false
 
 website:
   content_directory: "content"
@@ -96,10 +100,6 @@ website:
   base_path: "."
   theme:
     use: "default"
-    config:
-      short_title: "Test Course"
-      long_title: "Test Course - Release Time Behavior"
-      navigation: []
 """
     )
 
@@ -358,3 +358,105 @@ ${ elements.schedule(vars.schedule_config) }
         "in current week's schedule, even though artifacts are available "
         "in materials.json"
     )
+
+
+# Python code for the calendar plugin's hooks/__init__.py
+# This creates a pre_generate_website hook that injects calendar.txt into static files
+CALENDAR_PLUGIN_INIT = '''"""Calendar plugin that injects static/calendar.txt.
+
+This plugin demonstrates the pre_generate_website hook, which can modify
+website content before generation. It extracts homework due dates from
+materials and injects them as a static file.
+"""
+from dataclasses import dataclass
+
+from automata.hooks import PreGenerateWebsiteHook, WebsiteContent
+
+
+@dataclass
+class CalendarGeneratorHook(PreGenerateWebsiteHook):
+    """Hook that generates calendar.txt from homework due dates."""
+
+    priority: int = 50
+
+    def __call__(
+        self,
+        website_content,
+        materials,
+        website_config,
+        build_directory,
+        vars,
+        current_time,
+    ):
+        """Generate calendar.txt and inject it into static files."""
+        # Collect due dates from homeworks collection
+        lines = []
+        if "homeworks" in materials.collections:
+            homeworks = materials.collections["homeworks"]
+            for pub_key in sorted(homeworks.publications.keys()):
+                publication = homeworks.publications[pub_key]
+                if "due" in publication.metadata:
+                    # Use topic as the name, falling back to pub_key
+                    name = publication.metadata.get("topic", pub_key)
+                    due = publication.metadata["due"]
+                    lines.append(f"{name}: {due}")
+
+        # Create calendar.txt content (use chr(10) for newline to avoid escaping issues)
+        calendar_content = chr(10).join(lines)
+
+        # Return modified website content with calendar.txt injected
+        # Note: static_files keys are paths relative to build directory
+        new_static_files = dict(website_content.static_files)
+        new_static_files["static/calendar.txt"] = calendar_content
+
+        return WebsiteContent(
+            content=website_content.content,
+            assets=website_content.assets,
+            static_files=new_static_files,
+        )
+
+
+# Export hooks dictionary for the plugin loader
+hooks = {
+    "pre_generate_website": [CalendarGeneratorHook()],
+}
+'''
+
+
+@pytest.mark.integration
+def test_end_to_end_plugin_and_hooks(example_project):
+    """End-to-end test for the plugin/hook system using pre_generate_website.
+
+    This test exercises the full plugin/hook pipeline by:
+    1. Creating a Python package plugin with a pre_generate_website hook
+    2. Configuring the plugin in the `plugins` section of automata.yaml
+    3. The hook extracts homework due dates and injects calendar.txt into static/
+    4. Running build() through the complete pipeline
+    5. Verifying that static/calendar.txt contains homework due dates
+    """
+    # Create the plugin directory structure: calendar_plugin/hooks/__init__.py
+    plugin_dir = example_project / "calendar_plugin" / "hooks"
+    plugin_dir.mkdir(parents=True, exist_ok=True)
+    (plugin_dir / "__init__.py").write_text(CALENDAR_PLUGIN_INIT)
+
+    # Add the plugin to the existing automata.yaml
+    config_path = example_project / "automata.yaml"
+    config_content = config_path.read_text()
+    config_content += "\nplugins:\n  - calendar_plugin\n"
+    config_path.write_text(config_content)
+
+    # Run the full build pipeline
+    build(example_project)
+
+    # Verify calendar.txt was created by the plugin hook
+    calendar_file = example_project / "_build" / "static" / "calendar.txt"
+    assert calendar_file.exists(), "calendar.txt should be created by the plugin hook"
+
+    content = calendar_file.read_text()
+    lines = content.strip().split("\n")
+
+    # The example project has 10 homeworks (hw01-hw10), each with a due date
+    assert len(lines) == 10, f"Expected 10 lines (one per homework), got {len(lines)}"
+
+    # Verify the first homework's due date is present (Time Complexity topic)
+    assert "Time Complexity: 2025-09-29 23:59:00" in lines[0]

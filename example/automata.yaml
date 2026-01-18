@@ -9,6 +9,22 @@ vars:
   schedule_config:
     __include__: "website/schedule.yaml"
 
+  # Theme variables (used by default theme templates)
+  short_title: ${ vars.course_name }
+  long_title: ${ vars.course_title }
+  navigation:
+    - text: |
+        <i data-lucide="home" class="mr-2 text-slate-400"></i>
+        Home
+      url: index.html
+
+    - text: |
+        <i data-lucide="scale" class="mr-2 text-slate-400"></i>
+        Syllabus
+      url: syllabus.html
+
+  rebuild_tailwind: false
+
 website:
   content_directory: "website/content"
   build_directory: "_build"
@@ -16,20 +32,6 @@ website:
 
   theme:
     use: "default"
-    config:
-      short_title: ${ vars.course_name }
-      long_title: ${ vars.course_title }
-
-      navigation:
-          - text: |
-              <i data-lucide="home" class="mr-2 text-slate-400"></i>
-              Home
-            url: index.html
-
-          - text: |
-              <i data-lucide="scale" class="mr-2 text-slate-400"></i>
-              Syllabus
-            url: syllabus.html
 
 hooks:
   post_generate_website:

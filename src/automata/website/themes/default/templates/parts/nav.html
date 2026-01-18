@@ -11,7 +11,7 @@
 
     <div class="pt-6 pr-6 flex">
         <ul class="space-y-2">
-            {% for item in website_config.theme.config.navigation %}
+            {% for item in vars.navigation %}
             <li>
                 <a href="${ url_for(item.url) }" class="flex justify-end px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg font-medium">
                     ${ item.text }

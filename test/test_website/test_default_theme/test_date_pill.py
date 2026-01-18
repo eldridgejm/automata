@@ -1,29 +1,9 @@
 from datetime import datetime
 
-from pytest import fixture
-
 import automata.website
-from automata.website import ExtensionConfig
 
 
-@fixture
-def config(tmpsite):
-    return automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        theme=ExtensionConfig(
-            use="default",
-            config={
-                "short_title": "DSC 40B",
-                "long_title": "Theoretical Foundations of Data Science II",
-                "navigation": [],
-                "rebuild_tailwind": False,  # Disable for faster tests
-            },
-        ),
-    )
-
-
-def test_date_pill_uses_now_for_current_date(tmpsite, config, default_theme_kwargs):
+def test_date_pill_uses_now_for_current_date(tmpsite, default_theme_kwargs):
     # given
     tmpsite.make_page(
         "index.html",
@@ -33,10 +13,14 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config, default_theme_kwar
         ),
     )
 
+    # Extract templates for positional arg, use rest as kwargs
+    templates = default_theme_kwargs.pop("templates")
+
     # when
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 15),
@@ -48,8 +32,9 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config, default_theme_kwar
 
     # when
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 17),
@@ -58,7 +43,7 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config, default_theme_kwar
     assert "After!" in output
 
 
-def test_date_pill_with_template_variables(tmpsite, config, default_theme_kwargs):
+def test_date_pill_with_template_variables(tmpsite, default_theme_kwargs):
     # given
     tmpsite.make_page(
         "index.html",
@@ -68,14 +53,19 @@ def test_date_pill_with_template_variables(tmpsite, config, default_theme_kwargs
         ),
     )
 
+    # Extract templates for positional arg, use rest as kwargs
+    templates = default_theme_kwargs.pop("templates")
+    # Merge test-specific vars with default theme vars
+    default_theme_kwargs["vars"]["foo"] = "BAR"
+
     # when
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
         current_time=datetime(2024, 6, 15),
-        vars={"foo": "BAR"},
     )
 
     # then

@@ -1,27 +1,7 @@
-from pytest import fixture
-
 import automata.website
-from automata.website import ExtensionConfig
 
 
-@fixture
-def config(tmpsite):
-    return automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        theme=ExtensionConfig(
-            use="default",
-            config={
-                "short_title": "DSC 40B",
-                "long_title": "Theoretical Foundations of Data Science II",
-                "navigation": [],
-                "rebuild_tailwind": False,  # Disable for faster tests
-            },
-        ),
-    )
-
-
-def test_people_element_renders_single_group(tmpsite, config, default_theme_kwargs):
+def test_people_element_renders_single_group(tmpsite, default_theme_kwargs):
     """Test rendering a single group with one person."""
     # given
     tmpsite.make_page(
@@ -44,10 +24,14 @@ def test_people_element_renders_single_group(tmpsite, config, default_theme_kwar
         """,
     )
 
+    # Extract templates for positional arg, use rest as kwargs
+    templates = default_theme_kwargs.pop("templates")
+
     # when
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -62,7 +46,7 @@ def test_people_element_renders_single_group(tmpsite, config, default_theme_kwar
     assert "Alice is an expert in algorithms." in output
 
 
-def test_people_element_renders_multiple_groups(tmpsite, config, default_theme_kwargs):
+def test_people_element_renders_multiple_groups(tmpsite, default_theme_kwargs):
     """Test rendering multiple groups with multiple people."""
     # given
     tmpsite.make_page(
@@ -86,10 +70,14 @@ def test_people_element_renders_multiple_groups(tmpsite, config, default_theme_k
         """,
     )
 
+    # Extract templates for positional arg, use rest as kwargs
+    templates = default_theme_kwargs.pop("templates")
+
     # when
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -103,9 +91,7 @@ def test_people_element_renders_multiple_groups(tmpsite, config, default_theme_k
     assert "Charlie Brown" in output
 
 
-def test_people_element_person_without_optional_fields(
-    tmpsite, config, default_theme_kwargs
-):
+def test_people_element_person_without_optional_fields(tmpsite, default_theme_kwargs):
     """Test rendering a person with only required fields."""
     # given
     tmpsite.make_page(
@@ -122,10 +108,14 @@ def test_people_element_person_without_optional_fields(
         """,
     )
 
+    # Extract templates for positional arg, use rest as kwargs
+    templates = default_theme_kwargs.pop("templates")
+
     # when
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -136,9 +126,7 @@ def test_people_element_person_without_optional_fields(
     assert "<h2>Students</h2>" in output
 
 
-def test_people_element_person_with_website_creates_link(
-    tmpsite, config, default_theme_kwargs
-):
+def test_people_element_person_with_website_creates_link(tmpsite, default_theme_kwargs):
     """Test that person with website gets a linked name."""
     # given
     tmpsite.make_page(
@@ -155,10 +143,14 @@ def test_people_element_person_with_website_creates_link(
         """,
     )
 
+    # Extract templates for positional arg, use rest as kwargs
+    templates = default_theme_kwargs.pop("templates")
+
     # when
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
@@ -168,9 +160,7 @@ def test_people_element_person_with_website_creates_link(
     assert '<a href="https://john.example.com">John Doe</a>' in output
 
 
-def test_people_element_displays_photo_when_provided(
-    tmpsite, config, default_theme_kwargs
-):
+def test_people_element_displays_photo_when_provided(tmpsite, default_theme_kwargs):
     """Test that photo is displayed when provided."""
     # given
     tmpsite.make_page(
@@ -187,10 +177,14 @@ def test_people_element_displays_photo_when_provided(
         """,
     )
 
+    # Extract templates for positional arg, use rest as kwargs
+    templates = default_theme_kwargs.pop("templates")
+
     # when
     automata.website.generate(
-        config,
         tmpsite.materials_directory,
+        templates,
+        build_directory=tmpsite.build_directory,
         pages=tmpsite.pages,
         **default_theme_kwargs,
     )
