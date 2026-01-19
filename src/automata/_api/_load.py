@@ -46,7 +46,7 @@ def load(path: Path | None = None) -> tuple[Config, Extension]:
 
     # Load the theme as an extension
     theme_extension = Extension.from_spec(
-        config.website.theme.use, group="automata.website.themes"
+        config.website.theme.use, group="automata.builtin.themes"
     )
 
     # Load website components from the site directory (parent of content_directory)

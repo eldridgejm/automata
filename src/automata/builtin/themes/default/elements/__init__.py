@@ -1,4 +1,4 @@
-from automata.website.builtin_elements import Listing, Schedule
+from automata.builtin.elements import Listing, Schedule
 
 from ._button import Button
 from ._date_pill import DatePill

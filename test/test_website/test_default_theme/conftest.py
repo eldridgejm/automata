@@ -22,7 +22,7 @@ def default_theme_kwargs():
     included because tests provide their own pages via tmpsite.pages.
     """
     extension = automata.website.Extension.from_entry_point(
-        "default", group="automata.website.themes"
+        "default", group="automata.builtin.themes"
     )
     return {
         "templates": extension.templates,

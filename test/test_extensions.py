@@ -181,7 +181,7 @@ def test_from_directory_raises_on_nonexistent_directory() -> None:
 
 def test_from_entry_point_loads_default_theme() -> None:
     """Test that from_entry_point can load the default theme."""
-    extension = Extension.from_entry_point("default", group="automata.website.themes")
+    extension = Extension.from_entry_point("default", group="automata.builtin.themes")
 
     assert "base.html" in extension.templates
     assert extension.templates["base.html"]  # Should have content
@@ -211,7 +211,7 @@ def test_from_spec_loads_from_path_with_separator(tmp_path: Path) -> None:
 
 def test_from_spec_loads_from_entry_point_when_no_separator() -> None:
     """Test that from_spec loads from entry point when no path separator."""
-    extension = Extension.from_spec("default", group="automata.website.themes")
+    extension = Extension.from_spec("default", group="automata.builtin.themes")
 
     assert "base.html" in extension.templates
 

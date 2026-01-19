@@ -13,8 +13,8 @@ import smartconfig.types
 
 import automata.materials
 import automata.website
+from automata.builtin.elements._schedule import Schedule
 from automata.website import RenderContext
-from automata.website.builtin_elements._schedule import Schedule
 
 # Fixtures ===========================================================================
 

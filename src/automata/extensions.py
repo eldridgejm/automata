@@ -325,7 +325,7 @@ class Extension:
             The name of the entry point.
         group : str, optional
             The entry point group to search in. Default is "automata.extensions".
-            Use "automata.website.themes" for theme extensions.
+            Use "automata.builtin.themes" for theme extensions.
 
         Returns
         -------
