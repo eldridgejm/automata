@@ -5,27 +5,19 @@ This module contains hook classes for resolution customization.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from pathlib import Path
 from typing import Sequence
 
-from .._base import ResolveOverrides, hook_point
+from .._base import HookBase, ResolveOverrides, hook_point
 
 
 @hook_point("pre_resolve")
-class PreResolveHook(ABC):
+class PreResolveHook(HookBase):
     """Hook called before resolve() is called.
 
     Can provide extra functions/variables for resolution.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
     """
-
-    priority: int
 
     @abstractmethod
     def __call__(self, call_site: str, path: Path) -> ResolveOverrides | None:

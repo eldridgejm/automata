@@ -145,11 +145,16 @@ class TestHookAbstractBaseClass:
     """Tests for hook ABC enforcement."""
 
     def test_hook_requires_priority_attribute(self):
-        """Verify hooks need a priority attribute."""
-        # All hook classes should have priority in their annotations
-        assert "priority" in DiscoverOnCollectionHook.__annotations__
-        assert "priority" in PreResolveHook.__annotations__
-        assert "priority" in PostGenerateWebsiteHook.__annotations__
+        """Verify hooks inherit priority from HookBase."""
+        from automata.hooks import HookBase
+
+        # All hook classes should inherit from HookBase which defines priority
+        assert issubclass(DiscoverOnCollectionHook, HookBase)
+        assert issubclass(PreResolveHook, HookBase)
+        assert issubclass(PostGenerateWebsiteHook, HookBase)
+        # priority is defined in HookBase
+        assert "priority" in HookBase.__annotations__
+        assert HookBase.priority == 50  # Default value
 
     def test_hook_subclass_must_implement_call(self):
         """Verify ABC enforcement on __call__."""

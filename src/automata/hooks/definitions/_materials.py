@@ -9,11 +9,11 @@ This module contains hook classes for:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .._base import ScriptableHookMixin, hook_point
+from .._base import HookBase, ScriptableHookMixin, hook_point
 
 if TYPE_CHECKING:
     from ...materials import (
@@ -32,17 +32,8 @@ if TYPE_CHECKING:
 
 
 @hook_point("materials.discover:on_collection")
-class DiscoverOnCollectionHook(ScriptableHookMixin, ABC):
-    """Hook called when a collection is discovered.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class DiscoverOnCollectionHook(HookBase, ScriptableHookMixin):
+    """Hook called when a collection is discovered."""
 
     @abstractmethod
     def __call__(self, path: Path, collection: "Collection") -> None:
@@ -58,24 +49,14 @@ class DiscoverOnCollectionHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(path: Path, collection: "Collection") -> dict:
-        """Serialize arguments for script execution."""
-        return {"path": str(path)}
+    def serialize_args(self, path: Path, collection: "Collection") -> dict:
+        """Serialize arguments for script execution (collection is not serialized)."""
+        return {"path": path}
 
 
 @hook_point("materials.discover:on_publication")
-class DiscoverOnPublicationHook(ScriptableHookMixin, ABC):
-    """Hook called when a publication is discovered.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class DiscoverOnPublicationHook(HookBase, ScriptableHookMixin):
+    """Hook called when a publication is discovered."""
 
     @abstractmethod
     def __call__(self, path: Path, publication: "Publication") -> None:
@@ -91,24 +72,14 @@ class DiscoverOnPublicationHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(path: Path, publication: "Publication") -> dict:
-        """Serialize arguments for script execution."""
-        return {"path": str(path)}
+    def serialize_args(self, path: Path, publication: "Publication") -> dict:
+        """Serialize arguments for script execution (publication is not serialized)."""
+        return {"path": path}
 
 
 @hook_point("materials.discover:on_skip")
-class DiscoverOnSkipHook(ScriptableHookMixin, ABC):
-    """Hook called when a directory is skipped during discovery.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class DiscoverOnSkipHook(HookBase, ScriptableHookMixin):
+    """Hook called when a directory is skipped during discovery."""
 
     @abstractmethod
     def __call__(self, path: Path) -> None:
@@ -122,11 +93,6 @@ class DiscoverOnSkipHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(path: Path) -> dict:
-        """Serialize arguments for script execution."""
-        return {"path": str(path)}
-
 
 # =============================================================================
 # Hook Base Classes - materials.build
@@ -134,17 +100,8 @@ class DiscoverOnSkipHook(ScriptableHookMixin, ABC):
 
 
 @hook_point("materials.build:on_start")
-class BuildOnStartHook(ScriptableHookMixin, ABC):
-    """Hook called when building a node begins.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class BuildOnStartHook(HookBase, ScriptableHookMixin):
+    """Hook called when building a node begins."""
 
     @abstractmethod
     def __call__(
@@ -162,26 +119,16 @@ class BuildOnStartHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
     def serialize_args(
-        key: str, node: "Collection | Publication | UnbuiltArtifact"
+        self, key: str, node: "Collection | Publication | UnbuiltArtifact"
     ) -> dict:
-        """Serialize arguments for script execution."""
+        """Serialize arguments for script execution (node serialized as type name)."""
         return {"key": key, "node_type": type(node).__name__}
 
 
 @hook_point("materials.build:on_too_soon")
-class BuildOnTooSoonHook(ScriptableHookMixin, ABC):
-    """Hook called when release time hasn't passed.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class BuildOnTooSoonHook(HookBase, ScriptableHookMixin):
+    """Hook called when release time hasn't passed."""
 
     @abstractmethod
     def __call__(self, artifact: "UnbuiltArtifact") -> None:
@@ -195,30 +142,18 @@ class BuildOnTooSoonHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(artifact: "UnbuiltArtifact") -> dict:
-        """Serialize arguments for script execution."""
+    def serialize_args(self, artifact: "UnbuiltArtifact") -> dict:
+        """Serialize arguments for script execution (artifact expanded to fields)."""
         return {
-            "workdir": str(artifact.workdir),
-            "path": str(artifact.path),
-            "release_time": artifact.release_time.isoformat()
-            if artifact.release_time
-            else None,
+            "workdir": artifact.workdir,
+            "path": artifact.path,
+            "release_time": artifact.release_time,
         }
 
 
 @hook_point("materials.build:on_not_ready")
-class BuildOnNotReadyHook(ScriptableHookMixin, ABC):
-    """Hook called when artifact isn't ready.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class BuildOnNotReadyHook(HookBase, ScriptableHookMixin):
+    """Hook called when artifact isn't ready."""
 
     @abstractmethod
     def __call__(self, artifact: "UnbuiltArtifact") -> None:
@@ -232,27 +167,14 @@ class BuildOnNotReadyHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(artifact: "UnbuiltArtifact") -> dict:
-        """Serialize arguments for script execution."""
-        return {
-            "workdir": str(artifact.workdir),
-            "path": str(artifact.path),
-        }
+    def serialize_args(self, artifact: "UnbuiltArtifact") -> dict:
+        """Serialize arguments for script execution (artifact expanded to fields)."""
+        return {"workdir": artifact.workdir, "path": artifact.path}
 
 
 @hook_point("materials.build:on_missing")
-class BuildOnMissingHook(ScriptableHookMixin, ABC):
-    """Hook called when artifact is missing but missing_ok=True.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class BuildOnMissingHook(HookBase, ScriptableHookMixin):
+    """Hook called when artifact is missing but missing_ok=True."""
 
     @abstractmethod
     def __call__(self, artifact: "UnbuiltArtifact") -> None:
@@ -266,27 +188,14 @@ class BuildOnMissingHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(artifact: "UnbuiltArtifact") -> dict:
-        """Serialize arguments for script execution."""
-        return {
-            "workdir": str(artifact.workdir),
-            "path": str(artifact.path),
-        }
+    def serialize_args(self, artifact: "UnbuiltArtifact") -> dict:
+        """Serialize arguments for script execution (artifact expanded to fields)."""
+        return {"workdir": artifact.workdir, "path": artifact.path}
 
 
 @hook_point("materials.build:on_recipe")
-class BuildOnRecipeHook(ScriptableHookMixin, ABC):
-    """Hook called when recipe is about to execute.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class BuildOnRecipeHook(HookBase, ScriptableHookMixin):
+    """Hook called when recipe is about to execute."""
 
     @abstractmethod
     def __call__(self, artifact: "UnbuiltArtifact") -> None:
@@ -300,28 +209,18 @@ class BuildOnRecipeHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(artifact: "UnbuiltArtifact") -> dict:
-        """Serialize arguments for script execution."""
+    def serialize_args(self, artifact: "UnbuiltArtifact") -> dict:
+        """Serialize arguments for script execution (artifact expanded to fields)."""
         return {
-            "workdir": str(artifact.workdir),
-            "path": str(artifact.path),
+            "workdir": artifact.workdir,
+            "path": artifact.path,
             "recipe": artifact.recipe,
         }
 
 
 @hook_point("materials.build:on_success")
-class BuildOnSuccessHook(ScriptableHookMixin, ABC):
-    """Hook called when build succeeded.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class BuildOnSuccessHook(HookBase, ScriptableHookMixin):
+    """Hook called when build succeeded."""
 
     @abstractmethod
     def __call__(self, artifact: "BuiltArtifact") -> None:
@@ -335,13 +234,9 @@ class BuildOnSuccessHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(artifact: "BuiltArtifact") -> dict:
-        """Serialize arguments for script execution."""
-        return {
-            "workdir": str(artifact.workdir),
-            "path": str(artifact.path),
-        }
+    def serialize_args(self, artifact: "BuiltArtifact") -> dict:
+        """Serialize arguments for script execution (artifact expanded to fields)."""
+        return {"workdir": artifact.workdir, "path": artifact.path}
 
 
 # =============================================================================
@@ -350,17 +245,8 @@ class BuildOnSuccessHook(ScriptableHookMixin, ABC):
 
 
 @hook_point("materials.export:on_copy")
-class ExportOnCopyHook(ScriptableHookMixin, ABC):
-    """Hook called when copying a file during export.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class ExportOnCopyHook(HookBase, ScriptableHookMixin):
+    """Hook called when copying a file during export."""
 
     @abstractmethod
     def __call__(self, src: Path, dst: Path) -> None:
@@ -376,24 +262,10 @@ class ExportOnCopyHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
-    def serialize_args(src: Path, dst: Path) -> dict:
-        """Serialize arguments for script execution."""
-        return {"src": str(src), "dst": str(dst)}
-
 
 @hook_point("materials.export:on_node")
-class ExportOnNodeHook(ScriptableHookMixin, ABC):
-    """Hook called when exporting a node.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class ExportOnNodeHook(HookBase, ScriptableHookMixin):
+    """Hook called when exporting a node."""
 
     @abstractmethod
     def __call__(
@@ -411,11 +283,10 @@ class ExportOnNodeHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
     def serialize_args(
-        key: str, node: "Universe | Collection | Publication | Artifact"
+        self, key: str, node: "Universe | Collection | Publication | Artifact"
     ) -> dict:
-        """Serialize arguments for script execution."""
+        """Serialize arguments for script execution (node serialized as type name)."""
         return {"key": key, "node_type": type(node).__name__}
 
 
@@ -425,17 +296,8 @@ class ExportOnNodeHook(ScriptableHookMixin, ABC):
 
 
 @hook_point("materials.filter:on_hit")
-class FilterOnHitHook(ScriptableHookMixin, ABC):
-    """Hook called when predicate matches.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class FilterOnHitHook(HookBase, ScriptableHookMixin):
+    """Hook called when predicate matches."""
 
     @abstractmethod
     def __call__(
@@ -453,26 +315,16 @@ class FilterOnHitHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
     def serialize_args(
-        key: str, node: "Universe | Collection | Publication | Artifact"
+        self, key: str, node: "Universe | Collection | Publication | Artifact"
     ) -> dict:
-        """Serialize arguments for script execution."""
+        """Serialize arguments for script execution (node serialized as type name)."""
         return {"key": key, "node_type": type(node).__name__}
 
 
 @hook_point("materials.filter:on_miss")
-class FilterOnMissHook(ScriptableHookMixin, ABC):
-    """Hook called when predicate doesn't match.
-
-    Attributes
-    ----------
-    priority : int
-        Execution priority (lower runs first).
-
-    """
-
-    priority: int
+class FilterOnMissHook(HookBase, ScriptableHookMixin):
+    """Hook called when predicate doesn't match."""
 
     @abstractmethod
     def __call__(
@@ -490,9 +342,8 @@ class FilterOnMissHook(ScriptableHookMixin, ABC):
         """
         ...
 
-    @staticmethod
     def serialize_args(
-        key: str, node: "Universe | Collection | Publication | Artifact"
+        self, key: str, node: "Universe | Collection | Publication | Artifact"
     ) -> dict:
-        """Serialize arguments for script execution."""
+        """Serialize arguments for script execution (node serialized as type name)."""
         return {"key": key, "node_type": type(node).__name__}

@@ -11,10 +11,31 @@ from __future__ import annotations
 import inspect
 import json
 import subprocess
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Self
+
+# =============================================================================
+# Base Class
+# =============================================================================
+
+
+class HookBase(ABC):
+    """Base class for all hooks.
+
+    All hooks must have a priority attribute that determines execution order.
+    Lower priority values execute first.
+
+    Attributes
+    ----------
+    priority : int
+        Execution priority (lower runs first). Defaults to 50.
+
+    """
+
+    priority: int = 50
+
 
 # =============================================================================
 # Registry
@@ -109,25 +130,24 @@ class WebsiteContent:
 # =============================================================================
 
 
-class ScriptableHookMixin(ABC):
+class ScriptableHookMixin:
     """Mixin for hooks that support script invocation.
 
     Script hooks are fire-and-forget—they cannot return values or affect
     program flow. This mixin provides a `from_script` factory method that
     creates a hook instance from a shell command.
 
-    Subclasses must implement `serialize_args` to convert call arguments
-    to a JSON-serializable dictionary for passing to the script.
-
+    The default `serialize_args` implementation introspects the `__call__`
+    signature and serializes all arguments. Subclasses can override this
+    method for custom serialization (e.g., expanding complex objects).
     """
 
-    @staticmethod
-    @abstractmethod
-    def serialize_args(*args, **kwargs) -> dict:
+    def serialize_args(self, *args, **kwargs) -> dict:
         """Serialize call arguments to JSON-compatible dict for script stdin.
 
-        This method must be implemented by subclasses to define how the
-        hook's arguments are converted to a dictionary for JSON serialization.
+        The default implementation binds arguments to the `__call__` signature
+        and returns them as a dictionary. Override this method to customize
+        serialization (e.g., to expand complex objects into their fields).
 
         Parameters
         ----------
@@ -142,7 +162,14 @@ class ScriptableHookMixin(ABC):
             A JSON-serializable dictionary containing the arguments.
 
         """
-        ...
+        sig = inspect.signature(self.__call__)  # type: ignore[operator]
+        bound = sig.bind(self, *args, **kwargs)
+        bound.apply_defaults()
+
+        # Remove 'self' and return the rest
+        result = dict(bound.arguments)
+        result.pop("self", None)
+        return result
 
     @classmethod
     def from_script(cls, command: str, cwd: Path, priority: int = 50) -> Self:
@@ -168,7 +195,6 @@ class ScriptableHookMixin(ABC):
             A hook instance that executes the command when called.
 
         """
-        serialize_fn = cls.serialize_args
         parent_sig = inspect.signature(cls.__call__)
 
         class ScriptHookInstance(cls):  # type: ignore[valid-type, misc]
@@ -179,7 +205,7 @@ class ScriptableHookMixin(ABC):
 
             def __call__(self, *args, **kwargs):
                 context_json = json.dumps(
-                    serialize_fn(*args, **kwargs), default=_json_serializer
+                    self.serialize_args(*args, **kwargs), default=_json_serializer
                 )
                 try:
                     subprocess.run(
@@ -197,10 +223,6 @@ class ScriptableHookMixin(ABC):
                     ) from e
                 except subprocess.TimeoutExpired as e:
                     raise RuntimeError("Shell hook timed out after 300 seconds") from e
-
-            @staticmethod
-            def serialize_args(*args, **kwargs) -> dict:
-                return serialize_fn(*args, **kwargs)
 
         # Copy signature from parent's __call__ for introspection
         ScriptHookInstance.__call__.__signature__ = parent_sig  # type: ignore[attr-defined]

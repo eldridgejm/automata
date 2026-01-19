@@ -45,6 +45,7 @@ from typing import TypedDict
 # Re-export base types
 from ._base import (
     HOOK_POINTS,
+    HookBase,
     ResolveOverrides,
     ScriptableHookMixin,
     WebsiteContent,
@@ -117,6 +118,8 @@ __all__ = [
     # Registry
     "HOOK_POINTS",
     "hook_point",
+    # Base class
+    "HookBase",
     # Return types
     "ResolveOverrides",
     "WebsiteContent",

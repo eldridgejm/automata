@@ -53,7 +53,7 @@ In this branch, we will implement the website feature "from scratch". We have al
     - we will handle this with hooks
 - [x] Whenever we pass a lot of arguments to execute_hook, we should consider passing them as kwargs instead.
 - [x] Rename "plugin" to "extension"
-- [ ] Rename "static_files" to "assets"
+- [x] Rename "static_files" to "assets"
 - [x] Explore reorganizing hooks module into a subpackage
 - [-] Rename "build()" to "generate()"? (deferred)
 - [ ] Make sure all tests are in pytest style
