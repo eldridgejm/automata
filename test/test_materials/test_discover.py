@@ -2,7 +2,7 @@ import datetime
 
 from pytest import raises
 
-from automata import DiscoverOnSkipHook, Registry
+from automata import Hooks
 from automata.materials import discover
 from automata.materials.exceptions import DiscoveryError
 
@@ -569,9 +569,9 @@ def test_skip_directories_invokes_hook(default_example_course):
     """Test that the on_skip hook is invoked when directories are skipped."""
     # given
     skipped_paths = []
-    hooks: Registry = {}
+    hooks = Hooks()
 
-    @DiscoverOnSkipHook.register(hooks, priority=50)
+    @hooks.discover_on_skip.register(priority=50)
     def track_skip(path):
         skipped_paths.append(path)
 

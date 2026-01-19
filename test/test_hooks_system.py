@@ -1,4 +1,4 @@
-"""Tests for the unified hook system."""
+"""Tests for the descriptor-based hook system."""
 
 import datetime
 from pathlib import Path
@@ -7,120 +7,78 @@ from unittest.mock import Mock, patch
 import pytest
 
 from automata import (
-    HOOK_POINTS,
-    BuildOnMissingHook,
-    BuildOnNotReadyHook,
-    BuildOnRecipeHook,
-    BuildOnStartHook,
-    BuildOnSuccessHook,
-    BuildOnTooSoonHook,
-    DiscoverOnCollectionHook,
-    DiscoverOnPublicationHook,
-    DiscoverOnSkipHook,
-    ExportOnCopyHook,
-    ExportOnNodeHook,
-    FilterOnHitHook,
-    FilterOnMissHook,
-    Hook,
-    PostGenerateWebsiteHook,
-    PreGenerateWebsiteHook,
-    PreResolveHook,
+    HookDescriptor,
+    HookInteractor,
+    Hooks,
+    HooksBase,
     Registry,
     ResolveOverrides,
     WebsiteContent,
-    define_hook,
-    validate_hook_point_names,
+    hook,
+    merge_resolve_results,
 )
 
 # =============================================================================
-# Registry Tests
+# Hooks Class Tests
 # =============================================================================
 
 
-class TestDefineHookDecorator:
-    """Tests for the @define_hook decorator."""
+class TestHooksClass:
+    """Tests for the centralized Hooks class."""
 
-    def test_define_hook_creates_hook_class(self):
-        """Verify @define_hook creates a proper Hook subclass."""
+    def test_hooks_instance_creation(self):
+        """Verify Hooks can be instantiated."""
+        hooks = Hooks()
+        assert isinstance(hooks, HooksBase)
+        assert isinstance(hooks._registry, dict)
 
-        @define_hook("test:my_hook")
-        def TestHook(arg: str) -> None: ...
-
-        # Verify it's a Hook subclass
-        assert issubclass(TestHook, Hook)
-        assert TestHook.hook_point == "test:my_hook"
-
-        # Clean up
-        del HOOK_POINTS["test:my_hook"]
-
-    def test_define_hook_registers_in_hook_points(self):
-        """Verify @define_hook adds to HOOK_POINTS."""
-
-        @define_hook("test:registered_hook")
-        def RegisteredHook(value: int) -> int: ...
-
-        assert "test:registered_hook" in HOOK_POINTS
-        assert HOOK_POINTS["test:registered_hook"] is RegisteredHook
-
-        # Clean up
-        del HOOK_POINTS["test:registered_hook"]
-
-
-class TestHookPointsRegistry:
-    """Tests for the HOOK_POINTS registry."""
-
-    def test_all_hook_points_registered(self):
-        """Verify all 16 documented hook points exist."""
-        expected_hook_points = [
-            # Resolution
+    def test_hook_names_are_defined(self):
+        """Verify all expected hook points exist on Hooks class."""
+        expected_hooks = [
+            "discover_on_collection",
+            "discover_on_publication",
+            "discover_on_skip",
             "pre_resolve",
-            # Materials discovery
-            "materials.discover:on_collection",
-            "materials.discover:on_publication",
-            "materials.discover:on_skip",
-            # Materials build
-            "materials.build:on_start",
-            "materials.build:on_too_soon",
-            "materials.build:on_not_ready",
-            "materials.build:on_missing",
-            "materials.build:on_recipe",
-            "materials.build:on_success",
-            # Materials export
-            "materials.export:on_copy",
-            "materials.export:on_node",
-            # Materials filter
-            "materials.filter:on_hit",
-            "materials.filter:on_miss",
-            # Website generation
+            "build_on_start",
+            "build_on_too_soon",
+            "build_on_not_ready",
+            "build_on_missing",
+            "build_on_recipe",
+            "build_on_success",
+            "export_on_copy",
+            "export_on_node",
+            "filter_on_hit",
+            "filter_on_miss",
             "pre_generate_website",
             "post_generate_website",
         ]
 
-        for name in expected_hook_points:
-            assert name in HOOK_POINTS, f"Hook point '{name}' not registered"
+        hooks = Hooks()
+        for name in expected_hooks:
+            assert hasattr(hooks, name), f"Hook '{name}' not found on Hooks"
+            interactor = getattr(hooks, name)
+            assert isinstance(interactor, HookInteractor)
 
-        assert len(expected_hook_points) == 16
+    def test_hooks_copy(self):
+        """Verify Hooks.copy() creates independent copy."""
+        hooks1 = Hooks()
 
-    def test_hook_point_returns_correct_type(self):
-        """Verify type lookup works for each hook point."""
-        on_coll = "materials.discover:on_collection"
-        on_pub = "materials.discover:on_publication"
-        assert HOOK_POINTS[on_coll] is DiscoverOnCollectionHook
-        assert HOOK_POINTS[on_pub] is DiscoverOnPublicationHook
-        assert HOOK_POINTS["materials.discover:on_skip"] is DiscoverOnSkipHook
-        assert HOOK_POINTS["materials.build:on_start"] is BuildOnStartHook
-        assert HOOK_POINTS["materials.build:on_too_soon"] is BuildOnTooSoonHook
-        assert HOOK_POINTS["materials.build:on_not_ready"] is BuildOnNotReadyHook
-        assert HOOK_POINTS["materials.build:on_missing"] is BuildOnMissingHook
-        assert HOOK_POINTS["materials.build:on_recipe"] is BuildOnRecipeHook
-        assert HOOK_POINTS["materials.build:on_success"] is BuildOnSuccessHook
-        assert HOOK_POINTS["materials.export:on_copy"] is ExportOnCopyHook
-        assert HOOK_POINTS["materials.export:on_node"] is ExportOnNodeHook
-        assert HOOK_POINTS["materials.filter:on_hit"] is FilterOnHitHook
-        assert HOOK_POINTS["materials.filter:on_miss"] is FilterOnMissHook
-        assert HOOK_POINTS["pre_resolve"] is PreResolveHook
-        assert HOOK_POINTS["pre_generate_website"] is PreGenerateWebsiteHook
-        assert HOOK_POINTS["post_generate_website"] is PostGenerateWebsiteHook
+        @hooks1.discover_on_skip.register(priority=50)
+        def handler1(path):
+            pass
+
+        hooks2 = hooks1.copy()
+
+        # Should have the same handler
+        assert len(hooks2._registry["discover_on_skip"]) == 1
+
+        # Adding to hooks2 shouldn't affect hooks1
+        @hooks2.discover_on_skip.register(priority=60)
+        def handler2(path):
+            pass
+
+        assert len(hooks1._registry["discover_on_skip"]) == 1
+        assert len(hooks2._registry["discover_on_skip"]) == 2
 
 
 # =============================================================================
@@ -133,54 +91,66 @@ class TestHookRegistration:
 
     def test_register_adds_to_registry(self):
         """Verify register() adds hook to registry."""
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @DiscoverOnSkipHook.register(hooks, priority=50)
+        @hooks.discover_on_skip.register(priority=50)
         def my_hook(path: Path) -> None:
             pass
 
-        assert DiscoverOnSkipHook in hooks
-        assert len(hooks[DiscoverOnSkipHook]) == 1
-        assert hooks[DiscoverOnSkipHook][0] == (50, my_hook)
+        assert "discover_on_skip" in hooks._registry
+        assert len(hooks._registry["discover_on_skip"]) == 1
+        assert hooks._registry["discover_on_skip"][0] == (50, my_hook)
 
     def test_register_respects_priority(self):
         """Verify register() stores the priority."""
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @DiscoverOnSkipHook.register(hooks, priority=25)
+        @hooks.discover_on_skip.register(priority=25)
         def hook_25(path: Path) -> None:
             pass
 
-        @DiscoverOnSkipHook.register(hooks, priority=75)
+        @hooks.discover_on_skip.register(priority=75)
         def hook_75(path: Path) -> None:
             pass
 
-        assert hooks[DiscoverOnSkipHook][0] == (25, hook_25)
-        assert hooks[DiscoverOnSkipHook][1] == (75, hook_75)
+        assert hooks._registry["discover_on_skip"][0] == (25, hook_25)
+        assert hooks._registry["discover_on_skip"][1] == (75, hook_75)
 
     def test_register_returns_original_function(self):
         """Verify register() returns the original function."""
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @DiscoverOnSkipHook.register(hooks, priority=50)
-        def my_hook(path: Path) -> None:
+        @hooks.discover_on_skip.register(priority=50)
+        def my_hook(path: Path) -> str:
             return "result"
 
         # The decorator should return the original function
         assert my_hook(Path("/test")) == "result"
 
+    def test_append_adds_to_registry(self):
+        """Verify append() adds hook tuple to registry."""
+        hooks = Hooks()
+
+        def my_hook(path: Path) -> None:
+            pass
+
+        hooks.discover_on_skip.append((50, my_hook))
+
+        assert hooks._registry["discover_on_skip"][0] == (50, my_hook)
+
 
 # =============================================================================
-# ScriptableHook Tests
+# Script Hook Tests
 # =============================================================================
 
 
 class TestFromScript:
-    """Tests for from_script class method."""
+    """Tests for from_script method on HookInteractor."""
 
     def test_from_script_returns_tuple(self):
         """Verify from_script returns (priority, callable) tuple."""
-        result = PostGenerateWebsiteHook.from_script(
+        hooks = Hooks()
+        result = hooks.post_generate_website.from_script(
             command="echo hello",
             cwd=Path("/tmp"),
             priority=50,
@@ -193,7 +163,8 @@ class TestFromScript:
 
     def test_from_script_with_custom_priority(self):
         """Verify from_script respects priority parameter."""
-        result = PostGenerateWebsiteHook.from_script(
+        hooks = Hooks()
+        result = hooks.post_generate_website.from_script(
             command="echo hello",
             cwd=Path("/tmp"),
             priority=75,
@@ -206,7 +177,8 @@ class TestFromScript:
         """Verify script hook executes command with mocked subprocess."""
         mock_run.return_value = Mock(returncode=0)
 
-        _, hook_fn = PostGenerateWebsiteHook.from_script(
+        hooks = Hooks()
+        _, hook_fn = hooks.post_generate_website.from_script(
             command="echo hello",
             cwd=Path("/tmp"),
             priority=50,
@@ -238,7 +210,8 @@ class TestFromScript:
         """Verify serialized arguments are passed on stdin."""
         mock_run.return_value = Mock(returncode=0)
 
-        _, hook_fn = PostGenerateWebsiteHook.from_script(
+        hooks = Hooks()
+        _, hook_fn = hooks.post_generate_website.from_script(
             command="cat",
             cwd=Path("/tmp"),
             priority=50,
@@ -270,9 +243,10 @@ class TestFromScript:
 
     def test_from_script_raises_for_non_scriptable(self):
         """Verify from_script raises for hooks without serialize_args."""
-        # PreGenerateWebsiteHook doesn't have serialize_args
+        hooks = Hooks()
+        # pre_generate_website doesn't have serialize_args
         with pytest.raises(ValueError, match="not scriptable"):
-            PreGenerateWebsiteHook.from_script(
+            hooks.pre_generate_website.from_script(
                 command="echo hello",
                 cwd=Path("/tmp"),
                 priority=50,
@@ -280,7 +254,7 @@ class TestFromScript:
 
 
 # =============================================================================
-# Override Dataclass Tests
+# Dataclass Tests
 # =============================================================================
 
 
@@ -361,26 +335,26 @@ class TestWebsiteContent:
 
 
 class TestHookExecution:
-    """Tests for Hook.execute() method."""
+    """Tests for hook execution via direct call."""
 
     def test_execute_runs_in_priority_order(self):
         """Verify lower priority runs first."""
         call_order = []
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @DiscoverOnSkipHook.register(hooks, priority=50)
+        @hooks.discover_on_skip.register(priority=50)
         def hook_a(path):
             call_order.append("A")
 
-        @DiscoverOnSkipHook.register(hooks, priority=10)
+        @hooks.discover_on_skip.register(priority=10)
         def hook_b(path):
             call_order.append("B")
 
-        @DiscoverOnSkipHook.register(hooks, priority=100)
+        @hooks.discover_on_skip.register(priority=100)
         def hook_c(path):
             call_order.append("C")
 
-        DiscoverOnSkipHook.execute(hooks, {"path": Path("/test")})
+        hooks.discover_on_skip(Path("/test"))
 
         # Should be B (10), A (50), C (100)
         assert call_order == ["B", "A", "C"]
@@ -388,71 +362,63 @@ class TestHookExecution:
     def test_execute_preserves_insertion_order_for_ties(self):
         """Verify stable sort preserves insertion order for ties."""
         call_order = []
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @DiscoverOnSkipHook.register(hooks, priority=50)
+        @hooks.discover_on_skip.register(priority=50)
         def hook_1(path):
             call_order.append("first")
 
-        @DiscoverOnSkipHook.register(hooks, priority=50)
+        @hooks.discover_on_skip.register(priority=50)
         def hook_2(path):
             call_order.append("second")
 
-        @DiscoverOnSkipHook.register(hooks, priority=50)
+        @hooks.discover_on_skip.register(priority=50)
         def hook_3(path):
             call_order.append("third")
 
-        DiscoverOnSkipHook.execute(hooks, {"path": Path("/test")})
+        hooks.discover_on_skip(Path("/test"))
 
         # Same priority, should preserve insertion order
         assert call_order == ["first", "second", "third"]
 
     def test_execute_returns_results(self):
         """Verify hook results are collected."""
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @PreResolveHook.register(hooks, priority=10)
+        @hooks.pre_resolve.register(priority=10)
         def hook_1(call_site, path):
             return ResolveOverrides(global_variables={"x": 1})
 
-        @PreResolveHook.register(hooks, priority=20)
+        @hooks.pre_resolve.register(priority=20)
         def hook_2(call_site, path):
             return ResolveOverrides(global_variables={"y": 2})
 
-        results = PreResolveHook.execute(
-            hooks, {"call_site": "test", "path": Path("/test")}
-        )
+        results = hooks.pre_resolve("test", Path("/test"))
 
         assert len(results) == 2
         assert results[0].global_variables["x"] == 1
         assert results[1].global_variables["y"] == 2
 
-    def test_execute_with_none_registry_returns_empty_list(self):
-        """Verify None hooks returns empty list."""
-        results = DiscoverOnSkipHook.execute(None, {"path": Path("/test")})
+    def test_execute_with_no_hooks_returns_empty_list(self):
+        """Verify no hooks registered returns empty list."""
+        hooks = Hooks()
 
-        assert results == []
-
-    def test_execute_with_empty_registry_returns_empty_list(self):
-        """Verify empty registry returns empty list."""
-        hooks: Registry = {}
-
-        results = DiscoverOnSkipHook.execute(hooks, {"path": Path("/test")})
+        results = hooks.discover_on_skip(Path("/test"))
 
         assert results == []
 
     def test_hook_exception_propagates(self):
         """Verify no silent swallowing of exceptions."""
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @DiscoverOnSkipHook.register(hooks, priority=50)
+        @hooks.discover_on_skip.register(priority=50)
         def failing_hook(path):
             raise ValueError("Hook failed!")
 
         with pytest.raises(RuntimeError) as exc_info:
-            DiscoverOnSkipHook.execute(hooks, {"path": Path("/test")})
+            hooks.discover_on_skip(Path("/test"))
 
-        assert "materials.discover:on_skip" in str(exc_info.value)
+        assert "discover_on_skip" in str(exc_info.value)
         assert "priority 50" in str(exc_info.value)
         assert "Hook failed!" in str(exc_info.value)
 
@@ -467,9 +433,9 @@ class TestPipelineExecution:
 
     def test_pipeline_passes_through_values(self):
         """Verify pipeline passes output from one hook to the next."""
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @PreGenerateWebsiteHook.register(hooks, priority=50)
+        @hooks.pre_generate_website.register(priority=50)
         def add_content(website_content, **kwargs):
             new_content = dict(website_content.content)
             new_content["added.html"] = "Added by hook"
@@ -479,7 +445,7 @@ class TestPipelineExecution:
                 static_files=website_content.static_files,
             )
 
-        @PreGenerateWebsiteHook.register(hooks, priority=100)
+        @hooks.pre_generate_website.register(priority=100)
         def modify_content(website_content, **kwargs):
             new_content = dict(website_content.content)
             if "added.html" in new_content:
@@ -496,16 +462,13 @@ class TestPipelineExecution:
             static_files={},
         )
 
-        result = PreGenerateWebsiteHook.execute(
-            hooks,
-            {
-                "website_content": initial,
-                "materials": Mock(),
-                "website_config": Mock(),
-                "build_directory": Path("/build"),
-                "vars": {},
-                "current_time": datetime.datetime.now(),
-            },
+        result = hooks.pre_generate_website(
+            initial,
+            materials=Mock(),
+            website_config=Mock(),
+            build_directory=Path("/build"),
+            vars={},
+            current_time=datetime.datetime.now(),
         )
 
         # Original content preserved
@@ -515,44 +478,38 @@ class TestPipelineExecution:
 
     def test_pipeline_returns_initial_when_no_hooks(self):
         """Verify pipeline returns initial value when no hooks registered."""
-        hooks: Registry = {}
+        hooks = Hooks()
 
         initial = WebsiteContent(content={"page.html": "Content"})
 
-        result = PreGenerateWebsiteHook.execute(
-            hooks,
-            {
-                "website_content": initial,
-                "materials": Mock(),
-                "website_config": Mock(),
-                "build_directory": Path("/build"),
-                "vars": {},
-                "current_time": datetime.datetime.now(),
-            },
+        result = hooks.pre_generate_website(
+            initial,
+            materials=Mock(),
+            website_config=Mock(),
+            build_directory=Path("/build"),
+            vars={},
+            current_time=datetime.datetime.now(),
         )
 
         assert result is initial
 
     def test_pipeline_skips_none_results(self):
         """Verify pipeline skips hooks that return None."""
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @PreGenerateWebsiteHook.register(hooks, priority=50)
+        @hooks.pre_generate_website.register(priority=50)
         def returns_none(website_content, **kwargs):
             return None  # Should be skipped
 
         initial = WebsiteContent(content={"page.html": "Content"})
 
-        result = PreGenerateWebsiteHook.execute(
-            hooks,
-            {
-                "website_content": initial,
-                "materials": Mock(),
-                "website_config": Mock(),
-                "build_directory": Path("/build"),
-                "vars": {},
-                "current_time": datetime.datetime.now(),
-            },
+        result = hooks.pre_generate_website(
+            initial,
+            materials=Mock(),
+            website_config=Mock(),
+            build_directory=Path("/build"),
+            vars={},
+            current_time=datetime.datetime.now(),
         )
 
         # Should still have original content
@@ -565,10 +522,10 @@ class TestPipelineExecution:
 
 
 class TestReduceResults:
-    """Tests for reduce_results functionality."""
+    """Tests for reduce() method and merge_resolve_results function."""
 
     def test_pre_resolve_hook_reduce_results(self):
-        """Verify PreResolveHook.reduce_results merges overrides."""
+        """Verify pre_resolve reduce merges overrides."""
 
         def fn1():
             return 1
@@ -586,7 +543,7 @@ class TestReduceResults:
             ),
         ]
 
-        merged = PreResolveHook.reduce_results(results)
+        merged = merge_resolve_results(results)
 
         # foo should be overwritten by second hook
         assert merged.functions["foo"] is fn2
@@ -604,50 +561,116 @@ class TestReduceResults:
             ResolveOverrides(global_variables={"x": 1}),
         ]
 
-        merged = PreResolveHook.reduce_results(results)
+        merged = merge_resolve_results(results)
 
         assert "foo" in merged.functions
         assert merged.global_variables["x"] == 1
 
     def test_reduce_empty_results(self):
         """Verify empty results list returns empty overrides."""
-        merged = PreResolveHook.reduce_results([])
+        merged = merge_resolve_results([])
 
         assert merged.functions == {}
         assert merged.global_variables == {}
 
 
 # =============================================================================
-# Validation Tests
+# Registry Merge Tests
 # =============================================================================
 
 
-class TestValidateHookPointNames:
-    """Tests for validate_hook_point_names function."""
+class TestMergeRegistry:
+    """Tests for merge_registry method."""
 
-    def test_validates_known_hook_points(self):
-        """Verify known hook points pass validation."""
-        hooks: Registry = {
-            DiscoverOnCollectionHook: [],
-            PreResolveHook: [],
-            PostGenerateWebsiteHook: [],
+    def test_merge_registry_adds_hooks(self):
+        """Verify merge_registry adds hooks from external registry."""
+        hooks = Hooks()
+
+        def external_hook(path):
+            return "external"
+
+        external_registry: Registry = {
+            "discover_on_skip": [(50, external_hook)],
         }
 
-        # Should not raise
-        validate_hook_point_names(hooks)
+        hooks.merge_registry(external_registry)
 
-    def test_raises_on_unknown_hook_class(self):
-        """Verify unknown hook class raises ValueError."""
+        assert len(hooks._registry["discover_on_skip"]) == 1
+        assert hooks._registry["discover_on_skip"][0] == (50, external_hook)
 
-        class FakeHook:
-            pass
+    def test_merge_registry_accumulates_hooks(self):
+        """Verify merge_registry adds to existing hooks."""
+        hooks = Hooks()
 
-        hooks = {
-            DiscoverOnCollectionHook: [],
-            FakeHook: [],  # Invalid
+        @hooks.discover_on_skip.register(priority=10)
+        def internal_hook(path):
+            return "internal"
+
+        def external_hook(path):
+            return "external"
+
+        external_registry: Registry = {
+            "discover_on_skip": [(50, external_hook)],
         }
 
-        with pytest.raises(ValueError) as exc_info:
-            validate_hook_point_names(hooks)  # type: ignore[arg-type]
+        hooks.merge_registry(external_registry)
 
-        assert "Unknown hook" in str(exc_info.value)
+        assert len(hooks._registry["discover_on_skip"]) == 2
+        assert hooks._registry["discover_on_skip"][0] == (10, internal_hook)
+        assert hooks._registry["discover_on_skip"][1] == (50, external_hook)
+
+
+# =============================================================================
+# Custom Hook Decorator Tests
+# =============================================================================
+
+
+class TestHookDecorator:
+    """Tests for the @hook decorator."""
+
+    def test_hook_decorator_creates_descriptor(self):
+        """Verify @hook creates a HookDescriptor."""
+
+        class TestHooks(HooksBase):
+            @hook
+            @staticmethod
+            def my_test_hook(arg: str) -> str:
+                raise NotImplementedError
+
+        # The class attribute should be a HookDescriptor
+        assert isinstance(TestHooks.__dict__["my_test_hook"], HookDescriptor)
+
+    def test_hook_decorator_with_options(self):
+        """Verify @hook accepts options."""
+
+        def custom_reduce(results):
+            return results[0] if results else None
+
+        class TestHooks(HooksBase):
+            @hook(reduce_results=custom_reduce)
+            @staticmethod
+            def my_test_hook(arg: str) -> str:
+                raise NotImplementedError
+
+        hooks = TestHooks()
+        # The reduce method should use our custom reducer
+        result = hooks.my_test_hook.reduce(["a", "b", "c"])
+        assert result == "a"
+
+    def test_custom_hooks_class(self):
+        """Verify custom HooksBase subclass works correctly."""
+
+        class MyHooks(HooksBase):
+            @hook
+            @staticmethod
+            def on_event(name: str, value: int) -> str:
+                raise NotImplementedError
+
+        hooks = MyHooks()
+
+        @hooks.on_event.register(priority=50)
+        def handler(name, value):
+            return f"{name}:{value}"
+
+        results = hooks.on_event("test", 42)
+        assert results == ["test:42"]

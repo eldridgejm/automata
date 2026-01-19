@@ -55,7 +55,7 @@ file at the root level (that would make it a Python package extension instead).
 - **hooks/**: Can be structured in one of two ways:
 
   1. **Python package** (contains ``__init__.py``): The module must export a
-     ``hooks`` variable containing a Registry (dict mapping hook classes to
+     ``hooks`` variable containing a Registry (dict mapping hook names to
      lists of (priority, callable) tuples)::
 
          hooks/
@@ -64,25 +64,24 @@ file at the root level (that would make it a Python package extension instead).
 
      The ``__init__.py`` defines hook implementations and registers them::
 
-         from automata.hooks import (
-             PreGenerateWebsiteHook,
-             PostGenerateWebsiteHook,
-             Registry,
-             WebsiteContent,
-         )
+         from automata.hooks import Hooks, Registry
 
-         hooks: Registry = {}
+         # Create a Hooks instance to register hooks
+         _hooks = Hooks()
 
-         @PreGenerateWebsiteHook.register(hooks, priority=50)
+         @_hooks.pre_generate_website.register(priority=50)
          def my_pre_generate_hook(website_content, materials, website_config,
                                   build_directory, vars, current_time):
-             # Hooks receive and return WebsiteContent, forming a pipeline
-             return website_content  # Return modified or unchanged content
+             # Hooks form a pipeline - return modified or unchanged content
+             return website_content
 
-         @PostGenerateWebsiteHook.register(hooks, priority=100)
+         @_hooks.post_generate_website.register(priority=100)
          def my_post_generate_hook(materials, website_config, build_directory,
                                    vars, current_time):
              pass
+
+         # Export the registry
+         hooks = _hooks._registry
 
   2. **Script directory** (no ``__init__.py``): Contains executable scripts
      named after hook points::
@@ -182,7 +181,7 @@ class Extension:
     schema : smartconfig.types.Schema | None
         Optional smartconfig schema for validating extension configuration.
     hooks : Registry
-        Dictionary mapping hook classes to lists of (priority, callable) tuples.
+        Dictionary mapping hook names to lists of (priority, callable) tuples.
         Lower priority values execute first.
     pages : dict[str, str | bytes | Traversable]
         Dictionary mapping page file paths to their content. Pages are
@@ -421,10 +420,10 @@ def merge_extensions(extensions: Sequence[Extension]) -> Extension:
         pages.update(extension.pages)
 
         # Accumulate hooks (don't override)
-        for hook_class, hook_list in extension.hooks.items():
-            if hook_class not in hooks:
-                hooks[hook_class] = []
-            hooks[hook_class].extend(cast(list[tuple[int, Callable]], hook_list))
+        for hook_name, hook_list in extension.hooks.items():
+            if hook_name not in hooks:
+                hooks[hook_name] = []
+            hooks[hook_name].extend(cast(list[tuple[int, Callable]], hook_list))
 
     return Extension(
         templates=templates,

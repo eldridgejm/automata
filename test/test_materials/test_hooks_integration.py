@@ -3,31 +3,16 @@
 import pathlib
 
 import automata.materials
-from automata import (
-    BuildOnMissingHook,
-    BuildOnNotReadyHook,
-    BuildOnRecipeHook,
-    BuildOnStartHook,
-    BuildOnSuccessHook,
-    BuildOnTooSoonHook,
-    DiscoverOnCollectionHook,
-    DiscoverOnPublicationHook,
-    DiscoverOnSkipHook,
-    ExportOnCopyHook,
-    ExportOnNodeHook,
-    FilterOnHitHook,
-    FilterOnMissHook,
-    Registry,
-)
+from automata import Hooks
 
 # =============================================================================
 # Helper Functions for Testing
 # =============================================================================
 
 
-def make_tracking_registry():
-    """Create a registry with tracking hooks for all materials hook points."""
-    hooks: Registry = {}
+def make_tracking_hooks():
+    """Create a Hooks instance with tracking hooks for all materials hook points."""
+    hooks = Hooks()
     calls = []
 
     def make_tracker(event_name):
@@ -37,21 +22,19 @@ def make_tracking_registry():
         return tracker
 
     # Register trackers for all hook points
-    DiscoverOnCollectionHook.register(hooks, priority=50)(make_tracker("on_collection"))
-    DiscoverOnPublicationHook.register(hooks, priority=50)(
-        make_tracker("on_publication")
-    )
-    DiscoverOnSkipHook.register(hooks, priority=50)(make_tracker("on_skip"))
-    BuildOnStartHook.register(hooks, priority=50)(make_tracker("on_start"))
-    BuildOnRecipeHook.register(hooks, priority=50)(make_tracker("on_recipe"))
-    BuildOnSuccessHook.register(hooks, priority=50)(make_tracker("on_success"))
-    BuildOnTooSoonHook.register(hooks, priority=50)(make_tracker("on_too_soon"))
-    BuildOnNotReadyHook.register(hooks, priority=50)(make_tracker("on_not_ready"))
-    BuildOnMissingHook.register(hooks, priority=50)(make_tracker("on_missing"))
-    ExportOnCopyHook.register(hooks, priority=50)(make_tracker("on_copy"))
-    ExportOnNodeHook.register(hooks, priority=50)(make_tracker("on_node"))
-    FilterOnHitHook.register(hooks, priority=50)(make_tracker("on_hit"))
-    FilterOnMissHook.register(hooks, priority=50)(make_tracker("on_miss"))
+    hooks.discover_on_collection.register(priority=50)(make_tracker("on_collection"))
+    hooks.discover_on_publication.register(priority=50)(make_tracker("on_publication"))
+    hooks.discover_on_skip.register(priority=50)(make_tracker("on_skip"))
+    hooks.build_on_start.register(priority=50)(make_tracker("on_start"))
+    hooks.build_on_recipe.register(priority=50)(make_tracker("on_recipe"))
+    hooks.build_on_success.register(priority=50)(make_tracker("on_success"))
+    hooks.build_on_too_soon.register(priority=50)(make_tracker("on_too_soon"))
+    hooks.build_on_not_ready.register(priority=50)(make_tracker("on_not_ready"))
+    hooks.build_on_missing.register(priority=50)(make_tracker("on_missing"))
+    hooks.export_on_copy.register(priority=50)(make_tracker("on_copy"))
+    hooks.export_on_node.register(priority=50)(make_tracker("on_node"))
+    hooks.filter_on_hit.register(priority=50)(make_tracker("on_hit"))
+    hooks.filter_on_miss.register(priority=50)(make_tracker("on_miss"))
 
     return hooks, calls
 
@@ -66,10 +49,10 @@ class TestDiscoverWithHooks:
 
     def test_discover_calls_on_collection_hooks(self, default_example_course):
         """Verify on_collection hooks are called for each collection."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @DiscoverOnCollectionHook.register(hooks, priority=50)
+        @hooks.discover_on_collection.register(priority=50)
         def track_collection(path, collection):
             calls.append(("on_collection", path, collection))
 
@@ -82,10 +65,10 @@ class TestDiscoverWithHooks:
 
     def test_discover_calls_on_publication_hooks(self, default_example_course):
         """Verify on_publication hooks are called for each publication."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @DiscoverOnPublicationHook.register(hooks, priority=50)
+        @hooks.discover_on_publication.register(priority=50)
         def track_publication(path, publication):
             calls.append(("on_publication", path, publication))
 
@@ -111,10 +94,10 @@ class TestDiscoverWithHooks:
             """,
         )
 
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @DiscoverOnSkipHook.register(hooks, priority=50)
+        @hooks.discover_on_skip.register(priority=50)
         def track_skip(path):
             calls.append(("on_skip", path))
 
@@ -134,13 +117,13 @@ class TestDiscoverWithHooks:
     ):
         """Verify hooks run in priority order."""
         call_order = []
-        hooks: Registry = {}
+        hooks = Hooks()
 
-        @DiscoverOnCollectionHook.register(hooks, priority=10)
+        @hooks.discover_on_collection.register(priority=10)
         def first_hook(path, collection):
             call_order.append("first")
 
-        @DiscoverOnCollectionHook.register(hooks, priority=50)
+        @hooks.discover_on_collection.register(priority=50)
         def second_hook(path, collection):
             call_order.append("second")
 
@@ -159,10 +142,10 @@ class TestBuildWithHooks:
 
     def test_build_calls_on_start_hooks(self, default_example_course):
         """Verify on_start hooks are called."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @BuildOnStartHook.register(hooks, priority=50)
+        @hooks.build_on_start.register(priority=50)
         def track_start(key, node):
             calls.append(("on_start", key, type(node).__name__))
 
@@ -175,10 +158,10 @@ class TestBuildWithHooks:
 
     def test_build_calls_on_recipe_hooks(self, default_example_course):
         """Verify on_recipe hooks are called when recipe runs."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @BuildOnRecipeHook.register(hooks, priority=50)
+        @hooks.build_on_recipe.register(priority=50)
         def track_recipe(artifact):
             calls.append(("on_recipe", artifact.path))
 
@@ -191,10 +174,10 @@ class TestBuildWithHooks:
 
     def test_build_calls_on_success_hooks(self, default_example_course):
         """Verify on_success hooks are called on successful build."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @BuildOnSuccessHook.register(hooks, priority=50)
+        @hooks.build_on_success.register(priority=50)
         def track_success(artifact):
             calls.append(("on_success", artifact.path))
 
@@ -228,10 +211,10 @@ class TestBuildWithHooks:
             """,
         )
 
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @BuildOnTooSoonHook.register(hooks, priority=50)
+        @hooks.build_on_too_soon.register(priority=50)
         def track_too_soon(artifact):
             calls.append(("on_too_soon", artifact.path))
 
@@ -265,10 +248,10 @@ class TestBuildWithHooks:
             """,
         )
 
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @BuildOnNotReadyHook.register(hooks, priority=50)
+        @hooks.build_on_not_ready.register(priority=50)
         def track_not_ready(artifact):
             calls.append(("on_not_ready", artifact.path))
 
@@ -290,10 +273,10 @@ class TestExportWithHooks:
 
     def test_export_calls_on_copy_hooks(self, default_example_course, tmp_path):
         """Verify on_copy hooks are called when copying files."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @ExportOnCopyHook.register(hooks, priority=50)
+        @hooks.export_on_copy.register(priority=50)
         def track_copy(src, dst):
             calls.append(("on_copy", str(src), str(dst)))
 
@@ -311,10 +294,10 @@ class TestExportWithHooks:
 
     def test_export_calls_on_node_hooks(self, default_example_course, tmp_path):
         """Verify on_node hooks are called for each node."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @ExportOnNodeHook.register(hooks, priority=50)
+        @hooks.export_on_node.register(priority=50)
         def track_node(key, node):
             calls.append(("on_node", key, type(node).__name__))
 
@@ -341,10 +324,10 @@ class TestFilterWithHooks:
 
     def test_filter_calls_on_hit_hooks(self, default_example_course):
         """Verify on_hit hooks are called for matching nodes."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @FilterOnHitHook.register(hooks, priority=50)
+        @hooks.filter_on_hit.register(priority=50)
         def track_hit(key, node):
             calls.append(("on_hit", key, type(node).__name__))
 
@@ -363,10 +346,10 @@ class TestFilterWithHooks:
 
     def test_filter_calls_on_miss_hooks(self, default_example_course):
         """Verify on_miss hooks are called for non-matching nodes."""
-        hooks: Registry = {}
+        hooks = Hooks()
         calls = []
 
-        @FilterOnMissHook.register(hooks, priority=50)
+        @hooks.filter_on_miss.register(priority=50)
         def track_miss(key, node):
             calls.append(("on_miss", key, type(node).__name__))
 

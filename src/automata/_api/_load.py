@@ -4,10 +4,17 @@ from pathlib import Path
 
 from .._config import Config, read_config
 from ..extensions import Extension, merge_extensions
-from ..hooks import HOOK_POINTS, Registry
+from ..hooks import Hooks, Registry
 from ..loaders import load_hooks_from_directory, load_website_components_from_directory
 
 CONFIGURATION_FILENAME = "automata.yaml"
+
+# Map config hook names to Hooks attribute names
+# Config uses shorter names like "post_generate_website" that map directly
+# to the hook attributes on the Hooks class
+SCRIPTABLE_HOOKS = {
+    "post_generate_website": "post_generate_website",
+}
 
 
 def load(path: Path | None = None) -> tuple[Config, Extension]:
@@ -145,8 +152,8 @@ def _config_hooks_to_extension(config: Config, cwd: Path) -> Extension:
     This wraps each shell command hook in a hook implementation and creates a
     Extension containing those hooks.
 
-    Only hooks that have `serialize_args` set (i.e., are scriptable) can be
-    defined in config, since shell hooks cannot return values.
+    Only hooks that are scriptable (have serialize_args) can be defined in
+    config, since shell hooks cannot return values.
 
     Parameters
     ----------
@@ -166,26 +173,33 @@ def _config_hooks_to_extension(config: Config, cwd: Path) -> Extension:
         If an unknown or non-scriptable hook point is specified.
 
     """
-    hooks: Registry = {}
+    registry: Registry = {}
+
+    # Create a temporary Hooks instance to use from_script
+    temp_hooks = Hooks()
 
     for hook_point, hook_config in config.hooks.items():
-        if hook_point not in HOOK_POINTS:
-            raise ValueError(f"Unknown hook point: {hook_point!r}")
+        if hook_point not in SCRIPTABLE_HOOKS:
+            raise ValueError(
+                f"Unknown or non-scriptable hook point: {hook_point!r}. "
+                f"Scriptable hooks: {list(SCRIPTABLE_HOOKS.keys())}"
+            )
 
-        hook_class = HOOK_POINTS[hook_point]
+        hook_attr_name = SCRIPTABLE_HOOKS[hook_point]
+        hook_interactor = getattr(temp_hooks, hook_attr_name)
 
         # Check if the hook is scriptable (has serialize_args)
-        if hook_class.serialize_args is None:  # type: ignore[attr-defined]
+        if hook_interactor.serialize_args is None:
             raise ValueError(
                 f"Hook point {hook_point!r} does not support shell scripts "
                 f"(it must return a value)"
             )
 
-        hook_tuple = hook_class.from_script(  # type: ignore[attr-defined]
+        hook_tuple = hook_interactor.from_script(
             command=hook_config.command,
             cwd=cwd,
             priority=hook_config.priority,
         )
-        hooks.setdefault(hook_class, []).append(hook_tuple)
+        registry.setdefault(hook_point, []).append(hook_tuple)
 
-    return Extension(hooks=hooks)
+    return Extension(hooks=registry)

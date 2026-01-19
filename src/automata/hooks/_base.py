@@ -1,10 +1,16 @@
-"""Base types and utilities for the hooks system.
+"""Base infrastructure for the hooks system.
 
-This module provides the foundational types used by the hook system:
-- Hook: Generic base class for type-safe hooks using ParamSpec
-- Registry: Type alias for hook storage
-- define_hook: Decorator to create hook classes from function signatures
-- Return types for hooks that provide overrides
+This module provides the foundational types for the descriptor-based hook system:
+
+- HookInteractor: Handles hook registration and execution
+- HookDescriptor: Creates HookInteractor instances bound to a registry
+- HooksBase: Base class for Hooks classes that holds the registry
+- hook: Decorator to create hook points from function signatures
+
+The hook system uses a descriptor pattern where hook points are defined as
+decorated static methods on a Hooks class. Accessing a hook point on an
+instance returns a HookInteractor that can be used to register implementations
+or execute the hook.
 """
 
 from __future__ import annotations
@@ -13,27 +19,52 @@ import json
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, ClassVar
+from typing import Any, Callable
 
 # =============================================================================
 # Registry Type
 # =============================================================================
 
-Registry = dict[type, list[tuple[int, Callable]]]
-"""Maps hook classes to (priority, implementation) pairs."""
+HookImpl = tuple[int, Callable[..., Any]]
+"""A hook implementation: (priority, callable) tuple."""
+
+Registry = dict[str, list[HookImpl]]
+"""Maps hook point names to lists of (priority, callable) tuples."""
 
 
 # =============================================================================
-# Registry
+# JSON Serialization Helper
 # =============================================================================
 
-HOOK_POINTS: dict[str, type] = {}
-"""Registry mapping hook point names to their hook classes."""
 
+def _json_serializer(obj: Any) -> Any:
+    """JSON serializer for types not natively supported.
 
-def _default_serializer(input: Any) -> str:
-    """Serializes input arguments to a json string for script hooks."""
-    return json.dumps(input, default=_json_serializer)
+    Parameters
+    ----------
+    obj : Any
+        Object to serialize.
+
+    Returns
+    -------
+    Any
+        JSON-serializable representation.
+
+    Raises
+    ------
+    TypeError
+        If the object cannot be serialized.
+
+    """
+    # Handle datetime
+    if hasattr(obj, "isoformat"):
+        return obj.isoformat()
+
+    # Handle Path
+    if isinstance(obj, Path):
+        return str(obj)
+
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
 # =============================================================================
@@ -47,15 +78,16 @@ def _default_reduce[T](results: list[T]) -> T | None:
 
 
 # =============================================================================
-# Hook Base Class
+# Hook Interactor
 # =============================================================================
 
 
-class Hook[**P, R]:
-    """Base class for typed hooks using ParamSpec.
+class HookInteractor[**P, R]:
+    """Handles hook registration and execution for a specific hook point.
 
-    Hook implementations are plain functions registered via the `register()`
-    decorator. Hooks are executed via the `execute()` class method.
+    HookInteractor is created by HookDescriptor when accessing a hook point
+    on a Hooks instance. It provides methods to register implementations and
+    execute all registered implementations.
 
     Type Parameters
     ---------------
@@ -64,36 +96,49 @@ class Hook[**P, R]:
     R : TypeVar
         The return type of hook implementations.
 
-    Class Attributes
-    ----------------
-    hook_point : str
-        The hook point name (e.g., "materials.discover:on_skip").
+    Parameters
+    ----------
+    registry_list : list[HookImpl]
+        The list of (priority, callable) tuples for this hook point.
+    hook_name : str
+        The name of this hook point (for error messages).
+    pipeline_arg : str | None
+        If set, this hook uses pipeline execution where the output of one
+        implementation becomes the input to the next.
+    reduce_results : Callable | None
+        Function to reduce multiple results into one.
     serialize_args : Callable | None
         Function to serialize arguments for script execution.
-        None means the hook is not scriptable.
-    reduce_results : Callable
-        Function to reduce multiple results into one.
 
     """
 
-    hook_point: ClassVar[str]
-    serialize_args: Callable[Any, str] | None = _default_serializer
-    reduce_results: Callable[[list[R | None]], R | None] = _default_reduce
-    pipeline_arg: ClassVar[str | None] = None
-    """If set, this hook uses pipeline execution where the output of one
-    implementation becomes the input to the next. The value specifies which
-    argument key holds the pipeline value."""
+    def __init__(
+        self,
+        registry_list: list[HookImpl],
+        hook_name: str,
+        *,
+        pipeline_arg: str | None = None,
+        reduce_results: Callable[[list[R | None]], R | None] | None = None,
+        serialize_args: Callable[..., dict[str, Any]] | None = None,
+    ) -> None:
+        self._registry_list = registry_list
+        self._hook_name = hook_name
+        self._pipeline_arg = pipeline_arg
+        self._reduce_results = reduce_results or _default_reduce
+        self._serialize_args = serialize_args
 
-    @classmethod
+    @property
+    def serialize_args(self) -> Callable[..., dict[str, Any]] | None:
+        """Get the serialize_args function for this hook."""
+        return self._serialize_args
+
     def register(
-        cls, registry: Registry, /, priority: int = 50
+        self, priority: int = 50
     ) -> Callable[[Callable[P, R]], Callable[P, R]]:
         """Register a hook implementation.
 
         Parameters
         ----------
-        registry : Registry
-            The registry to add the implementation to.
         priority : int, optional
             Execution priority (lower runs first). Default is 50.
 
@@ -104,51 +149,51 @@ class Hook[**P, R]:
 
         Example
         -------
-        >>> @DiscoverOnSkipHook.register(hooks, priority=10)
+        >>> @hooks.on_skip.register(priority=10)
         ... def my_hook(path: Path) -> None:
         ...     print(f"Skipped {path}")
 
         """
 
         def decorator(hook_impl: Callable[P, R]) -> Callable[P, R]:
-            registry.setdefault(cls, []).append((priority, hook_impl))
+            self._registry_list.append((priority, hook_impl))
             return hook_impl
 
         return decorator
 
-    @classmethod
-    def execute(
-        cls,
-        registry: Registry | None,
-        /,
-        args: dict[str, Any],
-    ) -> Any:
+    def append(self, impl: HookImpl) -> None:
+        """Append a (priority, callable) tuple directly to the registry.
+
+        This is useful for programmatically adding hook implementations,
+        such as script hooks created via from_script().
+
+        Parameters
+        ----------
+        impl : HookImpl
+            A (priority, callable) tuple to add.
+
+        """
+        self._registry_list.append(impl)
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> list[R] | R:
         """Execute all registered implementations for this hook.
 
         Implementations are executed in ascending priority order (lower first).
         Ties are resolved by insertion order.
 
-        The execution mode depends on the ``pipeline_arg`` class attribute:
+        The execution mode depends on the pipeline_arg setting:
 
-        - If ``pipeline_arg`` is None (default): Each implementation receives
+        - If pipeline_arg is None (default): Each implementation receives
           the same arguments and all results are collected into a list.
 
-        - If ``pipeline_arg`` is set: The hook runs as a pipeline where the
+        - If pipeline_arg is set: The hook runs as a pipeline where the
           output of one implementation becomes the input to the next. The
-          ``pipeline_arg`` specifies which argument key holds the pipeline
-          value. Returns the final transformed value instead of a list.
-
-        Parameters
-        ----------
-        registry : Registry | None
-            The hook registry, or None for no hooks.
-        args : dict[str, Any]
-            Arguments to pass to each implementation as keyword arguments.
-            For pipeline hooks, must include the key specified by ``pipeline_arg``.
+          pipeline_arg specifies which argument receives the pipeline value.
+          Returns the final transformed value instead of a list.
 
         Returns
         -------
-        list[R | None] | R
+        list[R] | R
             For regular hooks: List of results from each implementation.
             For pipeline hooks: The final transformed value.
 
@@ -158,50 +203,62 @@ class Hook[**P, R]:
             If any implementation fails.
 
         """
-        # Pipeline execution mode
-        if cls.pipeline_arg is not None:
-            if registry is None:
-                return args[cls.pipeline_arg]
+        # Sort by priority
+        impls = sorted(self._registry_list, key=lambda x: x[0])
 
-            impls = sorted(registry.get(cls, []), key=lambda x: x[0])
-            current = args[cls.pipeline_arg]
-            # Create a copy of args without the pipeline value for passing as kwargs
-            other_args = {k: v for k, v in args.items() if k != cls.pipeline_arg}
+        # Pipeline execution mode
+        if self._pipeline_arg is not None:
+            # First positional arg is the pipeline value
+            if args:
+                current = args[0]
+                other_kwargs = kwargs
+            else:
+                current = kwargs.pop(self._pipeline_arg)
+                other_kwargs = kwargs
 
             for priority, impl in impls:
                 try:
-                    result = impl(current, **other_args)
+                    result = impl(current, **other_kwargs)
                     if result is not None:
                         current = result
                 except Exception as e:
                     raise RuntimeError(
-                        f"Hook '{cls.hook_point}' (priority {priority}) failed: {e}"
+                        f"Hook '{self._hook_name}' (priority {priority}) failed: {e}"
                     ) from e
 
             return current
 
         # Regular execution mode
-        if registry is None:
-            return []
-
-        impls = sorted(registry.get(cls, []), key=lambda x: x[0])
-        results = []
+        results: list[R] = []
 
         for priority, impl in impls:
             try:
-                result = impl(**args)
+                result = impl(*args, **kwargs)
                 results.append(result)
             except Exception as e:
                 raise RuntimeError(
-                    f"Hook '{cls.hook_point}' (priority {priority}) failed: {e}"
+                    f"Hook '{self._hook_name}' (priority {priority}) failed: {e}"
                 ) from e
 
         return results
 
-    @classmethod
-    def from_script(
-        cls, command: str, cwd: Path, priority: int = 50
-    ) -> tuple[int, Callable[..., None]]:
+    def reduce(self, results: list[R | None]) -> R | None:
+        """Reduce multiple hook results into a single value.
+
+        Parameters
+        ----------
+        results : list[R | None]
+            The list of results from hook execution.
+
+        Returns
+        -------
+        R | None
+            The reduced result.
+
+        """
+        return self._reduce_results(results)
+
+    def from_script(self, command: str, cwd: Path, priority: int = 50) -> HookImpl:
         """Create a script-based hook implementation.
 
         The shell command receives a JSON-serialized context on stdin.
@@ -218,8 +275,8 @@ class Hook[**P, R]:
 
         Returns
         -------
-        tuple[int, Callable]
-            A (priority, implementation) tuple ready to append to a registry.
+        HookImpl
+            A (priority, implementation) tuple ready to append to the registry.
 
         Raises
         ------
@@ -227,13 +284,12 @@ class Hook[**P, R]:
             If the hook is not scriptable (serialize_args is None).
 
         """
-        if cls.serialize_args is None:
-            raise ValueError(f"{cls.__name__} is not scriptable")
+        if self._serialize_args is None:
+            raise ValueError(f"Hook '{self._hook_name}' is not scriptable")
 
-        # Get the signature from serialize_args for the wrapper
-        serialize_fn = cls.serialize_args
+        serialize_fn = self._serialize_args
 
-        def script_hook(**kwargs) -> None:
+        def script_hook(**kwargs: Any) -> None:
             context_json = json.dumps(serialize_fn(**kwargs), default=_json_serializer)
             try:
                 subprocess.run(
@@ -256,54 +312,191 @@ class Hook[**P, R]:
 
 
 # =============================================================================
-# Hook Definition Decorator
+# Hook Descriptor
 # =============================================================================
 
 
-def define_hook[**P, R](
-    hook_point: str,
-) -> Callable[[Callable[P, R]], type[Hook[P, R | None]]]:
-    """Create a hook class from a function signature.
+class HookDescriptor[**P, R]:
+    """Descriptor that creates HookInteractor instances for hook points.
 
-    The function body is not used; only the signature matters. The return
-    type is automatically widened to `R | None` to allow implementations
-    to return None.
+    When accessed on a Hooks instance, returns a HookInteractor bound to
+    that instance's registry.
 
-    Parameters
-    ----------
-    hook_point : str
-        The hook point name (e.g., "materials.discover:on_skip").
-
-    Returns
-    -------
-    Callable
-        A decorator that creates a Hook subclass with the given signature.
-
-    Example
-    -------
-    >>> @define_hook("materials.discover:on_skip")
-    ... def DiscoverOnSkipHook(path: Path) -> None: ...
-    >>>
-    >>> # Make it scriptable
-    >>> DiscoverOnSkipHook.serialize_args = lambda path: {"path": path}
+    Type Parameters
+    ---------------
+    P : ParamSpec
+        The parameter specification for hook implementations.
+    R : TypeVar
+        The return type of hook implementations.
 
     """
 
-    def decorator(hook_proto: Callable[P, R]) -> type[Hook[P, R | None]]:
-        class HookClass(Hook[P, R | None]):
-            pass
+    def __init__(
+        self,
+        hook_impl: Callable[P, R],
+        *,
+        pipeline_arg: str | None = None,
+        reduce_results: Callable[[list[R | None]], R | None] | None = None,
+        serialize_args: Callable[..., dict[str, Any]] | None = None,
+    ) -> None:
+        self._hook_impl = hook_impl
+        self._hook_name = hook_impl.__name__
+        self._pipeline_arg = pipeline_arg
+        self._reduce_results = reduce_results
+        self._serialize_args = serialize_args
+        self.__doc__ = hook_impl.__doc__
 
-        HookClass.__name__ = hook_proto.__name__
-        HookClass.__qualname__ = hook_proto.__qualname__
-        HookClass.__doc__ = hook_proto.__doc__
-        HookClass.hook_point = hook_point
+    def __get__(
+        self, obj: "HooksBase | None", objtype: type | None = None
+    ) -> HookInteractor[P, R]:
+        if obj is None:
+            # Accessed on the class, return descriptor for introspection
+            raise AttributeError(
+                f"Hook '{self._hook_name}' must be accessed on an instance"
+            )
+        return HookInteractor[P, R](
+            obj._registry.setdefault(self._hook_name, []),
+            self._hook_name,
+            pipeline_arg=self._pipeline_arg,
+            reduce_results=self._reduce_results,
+            serialize_args=self._serialize_args,
+        )
 
-        # Register in the global hook points registry
-        HOOK_POINTS[hook_point] = HookClass
+    @property
+    def hook_name(self) -> str:
+        """The name of this hook point."""
+        return self._hook_name
 
-        return HookClass
 
+# =============================================================================
+# hook Decorator
+# =============================================================================
+
+
+def hook[**P, R](
+    hook_impl: Callable[P, R] | None = None,
+    *,
+    pipeline_arg: str | None = None,
+    reduce_results: Callable[[list[R | None]], R | None] | None = None,
+    serialize_args: Callable[..., dict[str, Any]] | None = None,
+) -> HookDescriptor[P, R] | Callable[[Callable[P, R]], HookDescriptor[P, R]]:
+    """Decorator to create a hook point from a function signature.
+
+    The function body is not used; only the signature matters. Use @staticmethod
+    on the decorated function for type checking purposes.
+
+    Parameters
+    ----------
+    hook_impl : Callable, optional
+        The function defining the hook signature.
+    pipeline_arg : str | None, optional
+        If set, this hook uses pipeline execution. The value specifies which
+        argument is passed through the pipeline.
+    reduce_results : Callable | None, optional
+        Function to reduce multiple results into one.
+    serialize_args : Callable | None, optional
+        Function to serialize arguments for script execution. If provided,
+        the hook becomes scriptable.
+
+    Returns
+    -------
+    HookDescriptor
+        A descriptor that creates HookInteractor instances.
+
+    Example
+    -------
+    >>> class Hooks(HooksBase):
+    ...     @hook
+    ...     @staticmethod
+    ...     def on_collection(path: Path, collection: Collection) -> None:
+    ...         '''Called when a collection is discovered.'''
+    ...         raise NotImplementedError
+
+    """
+
+    def decorator(fn: Callable[P, R]) -> HookDescriptor[P, R]:
+        return HookDescriptor[P, R](
+            fn,
+            pipeline_arg=pipeline_arg,
+            reduce_results=reduce_results,
+            serialize_args=serialize_args,
+        )
+
+    if hook_impl is not None:
+        return decorator(hook_impl)
     return decorator
+
+
+# =============================================================================
+# Hooks Base Class
+# =============================================================================
+
+
+class HooksBase:
+    """Base class for Hooks classes that holds the registry.
+
+    Subclass this to create a Hooks class with hook point definitions.
+    Each instance maintains its own registry of hook implementations.
+
+    Example
+    -------
+    >>> class Hooks(HooksBase):
+    ...     @hook
+    ...     @staticmethod
+    ...     def on_skip(path: Path) -> None:
+    ...         '''Called when a directory is skipped.'''
+    ...         raise NotImplementedError
+    ...
+    >>> hooks = Hooks()
+    >>> @hooks.on_skip.register(priority=10)
+    ... def my_handler(path: Path) -> None:
+    ...     print(f"Skipped: {path}")
+
+    """
+
+    def __init__(self) -> None:
+        self._registry: Registry = {}
+
+    def copy(self) -> "HooksBase":
+        """Create a shallow copy of this Hooks instance.
+
+        The new instance has its own registry with copies of all hook lists.
+        """
+        new = self.__class__.__new__(self.__class__)
+        new._registry = {name: list(impls) for name, impls in self._registry.items()}
+        return new
+
+    @classmethod
+    def get_hook_names(cls) -> list[str]:
+        """Get all hook point names defined on this class.
+
+        Returns
+        -------
+        list[str]
+            List of hook point names.
+
+        """
+        names = []
+        for name in dir(cls):
+            attr = getattr(cls, name, None)
+            if isinstance(attr, HookDescriptor):
+                names.append(attr.hook_name)
+        return names
+
+    def merge_registry(self, registry: Registry) -> None:
+        """Merge a registry dictionary into this Hooks instance.
+
+        This is useful for loading hooks from extensions or files. The
+        registry uses hook names (strings) as keys.
+
+        Parameters
+        ----------
+        registry : Registry
+            A dictionary mapping hook names to lists of (priority, callable) tuples.
+
+        """
+        for hook_name, impls in registry.items():
+            self._registry.setdefault(hook_name, []).extend(impls)
 
 
 # =============================================================================
@@ -364,35 +557,16 @@ class WebsiteContent:
 
 
 # =============================================================================
-# JSON Serialization Helper
+# Merge Resolve Results
 # =============================================================================
 
 
-def _json_serializer(obj: Any) -> Any:
-    """JSON serializer for types not natively supported.
-
-    Parameters
-    ----------
-    obj : Any
-        Object to serialize.
-
-    Returns
-    -------
-    Any
-        JSON-serializable representation.
-
-    Raises
-    ------
-    TypeError
-        If the object cannot be serialized.
-
-    """
-    # Handle datetime
-    if hasattr(obj, "isoformat"):
-        return obj.isoformat()
-
-    # Handle Path
-    if isinstance(obj, Path):
-        return str(obj)
-
-    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+def merge_resolve_results(
+    results: list[ResolveOverrides | None],
+) -> ResolveOverrides | None:
+    """Merge results from multiple hooks, skipping None values."""
+    merged = ResolveOverrides()
+    for result in results:
+        if result is not None:
+            merged = merged.merge(result)
+    return merged

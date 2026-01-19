@@ -2,15 +2,16 @@ from . import exceptions
 from ._api import build, load, resolve
 from .extensions import Extension, merge_extensions
 from .hooks import (
-    HOOK_POINTS,
-    Hook,
-    PostGenerateWebsiteHook,
-    PreGenerateWebsiteHook,
+    HookDescriptor,
+    HookImpl,
+    HookInteractor,
+    Hooks,
+    HooksBase,
     Registry,
     ResolveOverrides,
     WebsiteContent,
-    define_hook,
-    validate_hook_point_names,
+    hook,
+    merge_resolve_results,
 )
 from .loaders import (
     WebsiteComponents,
@@ -20,30 +21,17 @@ from .loaders import (
     load_templates_from_directory,
     load_website_components_from_directory,
 )
-from .materials._build import (
-    BuildOnMissingHook,
-    BuildOnNotReadyHook,
-    BuildOnRecipeHook,
-    BuildOnStartHook,
-    BuildOnSuccessHook,
-    BuildOnTooSoonHook,
-)
-from .materials._discover import (
-    DiscoverOnCollectionHook,
-    DiscoverOnPublicationHook,
-    DiscoverOnSkipHook,
-    PreResolveHook,
-)
-from .materials._export import ExportOnCopyHook, ExportOnNodeHook
-from .materials._filter import FilterOnHitHook, FilterOnMissHook
 
 __all__ = [
+    # Core API
     "exceptions",
     "build",
     "load",
     "resolve",
+    # Extensions
     "Extension",
     "merge_extensions",
+    # Loaders
     "load_templates_from_directory",
     "load_files_from_directory",
     "load_elements_from_directory",
@@ -51,28 +39,15 @@ __all__ = [
     "load_website_components_from_directory",
     "WebsiteComponents",
     # Hook system
-    "HOOK_POINTS",
-    "Hook",
+    "Hooks",
+    "HooksBase",
+    "HookInteractor",
+    "HookDescriptor",
+    "HookImpl",
     "Registry",
-    "define_hook",
-    "validate_hook_point_names",
+    "hook",
+    "merge_resolve_results",
+    # Hook return types
     "ResolveOverrides",
     "WebsiteContent",
-    # Hook classes
-    "DiscoverOnCollectionHook",
-    "DiscoverOnPublicationHook",
-    "DiscoverOnSkipHook",
-    "BuildOnStartHook",
-    "BuildOnTooSoonHook",
-    "BuildOnNotReadyHook",
-    "BuildOnMissingHook",
-    "BuildOnRecipeHook",
-    "BuildOnSuccessHook",
-    "ExportOnCopyHook",
-    "ExportOnNodeHook",
-    "FilterOnHitHook",
-    "FilterOnMissHook",
-    "PreResolveHook",
-    "PreGenerateWebsiteHook",
-    "PostGenerateWebsiteHook",
 ]

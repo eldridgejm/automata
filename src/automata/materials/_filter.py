@@ -2,7 +2,7 @@
 
 from typing import Callable, TypeVar, overload
 
-from ..hooks._base import Registry, define_hook
+from ..hooks import Hooks
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -12,65 +12,6 @@ from ._types import (
     UnbuiltArtifact,
     Universe,
 )
-
-# =============================================================================
-# Hook Definitions
-# =============================================================================
-
-
-@define_hook("materials.filter:on_hit")
-def FilterOnHitHook(
-    key: str, node: Universe | Collection | Publication | Artifact
-) -> None:
-    """Called when predicate matches.
-
-    Parameters
-    ----------
-    key : str
-        The key of the matching node.
-    node : Universe | Collection | Publication | Artifact
-        The matching node.
-
-    """
-    ...
-
-
-def _serialize_filter_hit_args(
-    key: str, node: Universe | Collection | Publication | Artifact
-) -> dict:
-    """Serialize arguments for script execution (node serialized as type name)."""
-    return {"key": key, "node_type": type(node).__name__}
-
-
-FilterOnHitHook.serialize_args = _serialize_filter_hit_args
-
-
-@define_hook("materials.filter:on_miss")
-def FilterOnMissHook(
-    key: str, node: Universe | Collection | Publication | Artifact
-) -> None:
-    """Called when predicate doesn't match.
-
-    Parameters
-    ----------
-    key : str
-        The key of the non-matching node.
-    node : Universe | Collection | Publication | Artifact
-        The non-matching node.
-
-    """
-    ...
-
-
-def _serialize_filter_miss_args(
-    key: str, node: Universe | Collection | Publication | Artifact
-) -> dict:
-    """Serialize arguments for script execution (node serialized as type name)."""
-    return {"key": key, "node_type": type(node).__name__}
-
-
-FilterOnMissHook.serialize_args = _serialize_filter_miss_args
-
 
 # =============================================================================
 # Filter Implementation
@@ -99,7 +40,7 @@ def filter(
     root: Universe[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Registry | None = ...,
+    hooks: Hooks | None = ...,
 ) -> Universe[ArtifactType]: ...
 
 
@@ -108,7 +49,7 @@ def filter(
     root: Collection[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Registry | None = ...,
+    hooks: Hooks | None = ...,
 ) -> Collection[ArtifactType]: ...
 
 
@@ -117,7 +58,7 @@ def filter(
     root: Publication[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Registry | None = ...,
+    hooks: Hooks | None = ...,
 ) -> Publication[ArtifactType]: ...
 
 
@@ -126,7 +67,7 @@ def filter(
     root: ArtifactType,
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Registry | None = ...,
+    hooks: Hooks | None = ...,
 ) -> ArtifactType: ...
 
 
@@ -140,7 +81,7 @@ def filter(
     | Artifact,
     predicate: Callable[[str, Universe | Collection | Publication | Artifact], bool],
     remove_empty_nodes: bool = False,
-    hooks: Registry | None = None,
+    hooks: Hooks | None = None,
 ) -> (
     Universe[ArtifactType]
     | Collection[ArtifactType]
@@ -160,10 +101,10 @@ def filter(
         Whether nodes without children should be removed (True) or preserved
         (False). The exception is the root node: if all of its children are
         removed, it remains. Default: False.
-    hooks : Registry | None
-        Hooks to be invoked during the filtering. Supports:
-        - ``materials.filter:on_hit``
-        - ``materials.filter:on_miss``
+    hooks : Hooks | None
+        Hooks instance to invoke during filtering. Supports:
+        - ``filter_on_hit``
+        - ``filter_on_miss``
 
     Returns
     -------
@@ -181,10 +122,11 @@ def filter(
 
     def predicate_with_hooks(key, node):
         result = predicate(key, node)
-        if result:
-            FilterOnHitHook.execute(hooks, {"key": key, "node": node})
-        else:
-            FilterOnMissHook.execute(hooks, {"key": key, "node": node})
+        if hooks is not None:
+            if result:
+                hooks.filter_on_hit(key, node)
+            else:
+                hooks.filter_on_miss(key, node)
         return result
 
     new_children = {}

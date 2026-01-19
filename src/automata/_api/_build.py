@@ -4,7 +4,7 @@ import datetime
 from pathlib import Path
 
 from .. import materials
-from ..hooks import PostGenerateWebsiteHook, PreGenerateWebsiteHook, WebsiteContent
+from ..hooks import Hooks, WebsiteContent
 from ..website import generate
 from ._load import load
 
@@ -37,10 +37,14 @@ def build(
 
     config, extension = load(path)
 
+    # Create Hooks instance and merge extension hooks
+    hooks = Hooks()
+    hooks.merge_registry(extension.hooks)
+
     # Discover and build materials
-    unbuilt_universe = materials.discover(path, vars=config.vars, hooks=extension.hooks)
+    unbuilt_universe = materials.discover(path, vars=config.vars, hooks=hooks)
     built_universe = materials.build(
-        unbuilt_universe, current_time=current_time, hooks=extension.hooks
+        unbuilt_universe, current_time=current_time, hooks=hooks
     )
 
     # Export materials directly to the build directory
@@ -51,7 +55,7 @@ def build(
         built_universe,
         outdir=build_dir,
         prefix=config.website.materials_directory_name,
-        hooks=extension.hooks,
+        hooks=hooks,
     )
 
     # Write materials.json
@@ -87,16 +91,13 @@ def build(
 
     # Execute pre_generate_website hooks as a pipeline
     # Each hook can transform the content, assets, and static_files
-    final_content = PreGenerateWebsiteHook.execute(
-        extension.hooks,
-        {
-            "website_content": initial_content,
-            "materials": exported_universe,
-            "website_config": config.website,
-            "build_directory": build_dir,
-            "vars": config.vars,
-            "current_time": current_time,
-        },
+    final_content = hooks.pre_generate_website(
+        initial_content,
+        materials=exported_universe,
+        website_config=config.website,
+        build_directory=build_dir,
+        vars=config.vars,
+        current_time=current_time,
     )
 
     # execute always returns a value for pipeline hooks (initial if no hooks),
@@ -123,13 +124,10 @@ def build(
     )
 
     # Execute post_generate_website hooks
-    PostGenerateWebsiteHook.execute(
-        extension.hooks,
-        {
-            "materials": exported_universe,
-            "website_config": config.website,
-            "build_directory": build_dir,
-            "vars": config.vars,
-            "current_time": current_time,
-        },
+    hooks.post_generate_website(
+        materials=exported_universe,
+        website_config=config.website,
+        build_directory=build_dir,
+        vars=config.vars,
+        current_time=current_time,
     )

@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from typing import TYPE_CHECKING, Callable
 
-from .hooks import PostGenerateWebsiteHook, Registry
+from .hooks import Hooks, Registry
 
 if TYPE_CHECKING:
     from .website._elements import Element
@@ -275,7 +275,7 @@ def load_hooks_from_directory(directory: Traversable) -> Registry:
     The directory can be either:
 
     1. A Python package (contains ``__init__.py``) that exports a ``hooks``
-       variable - a Registry (dict mapping hook classes to lists of
+       variable - a Registry (dict mapping hook names to lists of
        (priority, callable) tuples).
 
     2. A directory containing executable scripts named after hook points
@@ -291,7 +291,7 @@ def load_hooks_from_directory(directory: Traversable) -> Registry:
     Returns
     -------
     Registry
-        Mapping from hook classes to lists of (priority, callable) tuples.
+        Mapping from hook names to lists of (priority, callable) tuples.
         Returns an empty dict if the directory doesn't exist or has no hooks.
 
     Raises
@@ -304,7 +304,7 @@ def load_hooks_from_directory(directory: Traversable) -> Registry:
     --------
     >>> from pathlib import Path
     >>> from automata.loaders import load_hooks_from_directory
-    >>> hooks = load_hooks_from_directory(Path("my_extension/hooks"))
+    >>> hooks_registry = load_hooks_from_directory(Path("my_extension/hooks"))
 
     """
     if not directory.is_dir():
@@ -316,7 +316,7 @@ def load_hooks_from_directory(directory: Traversable) -> Registry:
         return _load_hooks_from_package(directory)
 
     # Otherwise, load as script hooks
-    hooks: Registry = {}
+    registry: Registry = {}
 
     # Need actual filesystem path for script execution
     with importlib.resources.as_file(directory) as dir_path:
@@ -324,34 +324,41 @@ def load_hooks_from_directory(directory: Traversable) -> Registry:
         script_file = directory / "post_generate_website"
         if script_file.is_file():
             script_path = dir_path / "post_generate_website"
-            # Create hook tuple from script
-            hook_tuple = PostGenerateWebsiteHook.from_script(
+            # Create a Hooks instance to use from_script
+            temp_hooks = Hooks()
+            hook_tuple = temp_hooks.post_generate_website.from_script(
                 command=str(script_path),
                 cwd=dir_path,
                 priority=50,
             )
-            hooks[PostGenerateWebsiteHook] = [hook_tuple]
+            registry["post_generate_website"] = [hook_tuple]
 
-    return hooks
+    return registry
 
 
 def _load_hooks_from_package(directory: Traversable) -> Registry:
     """Load hooks from a Python package (directory with __init__.py).
 
     The package must export a ``hooks`` variable that is a Registry
-    (dict mapping hook classes to lists of (priority, callable) tuples).
+    (dict mapping hook names to lists of (priority, callable) tuples).
 
     Example hooks/__init__.py::
 
-        from automata.hooks import PreGenerateWebsiteHook, Registry, WebsiteContent
+        from automata.hooks import Hooks, Registry
 
         hooks: Registry = {}
 
-        @PreGenerateWebsiteHook.register(hooks, priority=50)
+        # Create a temporary Hooks instance for registration
+        _hooks = Hooks()
+
+        @_hooks.pre_generate_website.register(priority=50)
         def my_pre_generate_hook(website_content, materials, website_config,
                                  build_directory, vars, current_time):
             # Hooks form a pipeline - return modified or unchanged content
             return website_content
+
+        # Export the registry
+        hooks = _hooks._registry
 
     """
     module = _load_python_module_from_directory(

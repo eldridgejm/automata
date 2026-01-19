@@ -7,7 +7,13 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 
-def _post_generate(context):
+def _post_generate(
+    materials,
+    website_config,
+    build_directory,
+    vars,
+    current_time,
+):
     """Rebuild Tailwind CSS after site generation to include custom classes.
 
     This hook runs the Tailwind CLI to regenerate CSS by scanning the built
@@ -21,27 +27,24 @@ def _post_generate(context):
 
     Parameters
     ----------
-    context : dict
-        Hook context containing:
-        - config: dict with build_directory, content_directory, etc.
-        - vars: dict of global variables
-        - materials: serialized materials universe
-        - current_time: ISO format timestamp
-        - build_directory: path to build output
-
-    Returns
-    -------
-    dict
-        Empty dict (post_generate hooks don't return pages/assets).
+    materials : Universe[ExportedArtifact]
+        The exported materials universe.
+    website_config : WebsiteConfig
+        The website configuration.
+    build_directory : Path
+        Path to the build output directory.
+    vars : dict
+        Variables available for rendering.
+    current_time : datetime
+        The current build time.
 
     """
     # Check if rebuild is disabled via vars
-    vars_dict = context.get("vars", {})
-    if not vars_dict.get("rebuild_tailwind", True):
-        return {}
+    if not vars.get("rebuild_tailwind", True):
+        return
 
     # Get build directory from context
-    build_dir = pathlib.Path(context["build_directory"])
+    build_dir = pathlib.Path(build_directory)
     css_output = build_dir / "static" / "style.css"
 
     # Check if npx is available
@@ -50,18 +53,18 @@ def _post_generate(context):
             "npx not found - using pre-built Tailwind CSS. "
             "Install Node.js to enable automatic Tailwind rebuilds with custom classes."
         )
-        return {}
+        return
 
     # Get theme directory (where style.input.css is located)
     theme_dir = _get_theme_directory()
     if theme_dir is None:
         logger.warning("Could not locate theme directory - skipping Tailwind rebuild")
-        return {}
+        return
 
     css_input = theme_dir / "style.input.css"
     if not css_input.exists():
         logger.warning(f"Tailwind input file not found at {css_input}")
-        return {}
+        return
 
     # Rebuild Tailwind CSS
     try:
@@ -70,8 +73,6 @@ def _post_generate(context):
         logger.info("Tailwind CSS rebuilt successfully")
     except Exception as e:
         logger.warning(f"Failed to rebuild Tailwind CSS: {e}. Using pre-built CSS.")
-
-    return {}
 
 
 def _is_npx_available() -> bool:
@@ -170,5 +171,5 @@ def _rebuild_tailwind(
 # Export hooks in the expected format
 # Priority 100 means this runs after other hooks (lower priority runs first)
 hooks = {
-    "post_generate": [(100, _post_generate)],
+    "post_generate_website": [(100, _post_generate)],
 }
