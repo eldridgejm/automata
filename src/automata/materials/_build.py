@@ -12,7 +12,15 @@ from typing import (
     overload,
 )
 
-from ..hooks import Hooks, execute_hooks
+from ..hooks import (
+    BuildOnMissingHook,
+    BuildOnNotReadyHook,
+    BuildOnRecipeHook,
+    BuildOnStartHook,
+    BuildOnSuccessHook,
+    BuildOnTooSoonHook,
+    Registry,
+)
 from ._types import (
     BuiltArtifact,
     Collection,
@@ -33,7 +41,7 @@ def _build_artifact(
     verbose=False,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    hooks: Hooks | None = None,
+    hooks: Registry | None = None,
 ) -> BuiltArtifact | None:
     """Build an artifact using its recipe.
 
@@ -72,11 +80,11 @@ def _build_artifact(
         and artifact.release_time is not None
         and artifact.release_time > current_time
     ):
-        execute_hooks(hooks, "materials.build:on_too_soon", artifact)
+        BuildOnTooSoonHook.execute(hooks, artifact)
         return None
 
     if not artifact.ready and not ignore_ready:
-        execute_hooks(hooks, "materials.build:on_not_ready", artifact)
+        BuildOnNotReadyHook.execute(hooks, artifact)
         return None
 
     if artifact.recipe is None:
@@ -84,7 +92,7 @@ def _build_artifact(
         stderr = None
         returncode = None
     else:
-        execute_hooks(hooks, "materials.build:on_recipe", artifact)
+        BuildOnRecipeHook.execute(hooks, artifact)
 
         kwargs = {
             "cwd": artifact.workdir,
@@ -108,7 +116,7 @@ def _build_artifact(
     path = artifact.workdir / artifact.path
     if not exists(path):
         if artifact.missing_ok:
-            execute_hooks(hooks, "materials.build:on_missing", artifact)
+            BuildOnMissingHook.execute(hooks, artifact)
             return None
         else:
             raise BuildError(f"Artifact {path} does not exist at {path}.")
@@ -116,7 +124,7 @@ def _build_artifact(
     output = dataclasses.replace(
         output, returncode=returncode, stdout=stdout, stderr=stderr
     )
-    execute_hooks(hooks, "materials.build:on_success", output)
+    BuildOnSuccessHook.execute(hooks, output)
     return output
 
 
@@ -131,7 +139,7 @@ class BuildOptions(TypedDict, total=False):
     ignore_release_time: bool
     ignore_ready: bool
     verbose: bool
-    hooks: Hooks | None
+    hooks: Registry | None
     run: Any
     current_time: datetime.datetime | None
     exists: Any
@@ -173,7 +181,7 @@ def build(
     ignore_release_time: bool = False,
     ignore_ready: bool = False,
     verbose: bool = False,
-    hooks: Hooks | None = None,
+    hooks: Registry | None = None,
     current_time: datetime.datetime | None = None,
     run=subprocess.run,
     exists=pathlib.Path.exists,
@@ -199,7 +207,7 @@ def build(
     ignore_ready : bool
         If ``True``, all artifacts will be built, even if they are marked as
         not ready.
-    hooks : Optional[Hooks]
+    hooks : Optional[Registry]
         Hooks to be invoked during the build. Supports:
         - ``materials.build:on_start``
         - ``materials.build:on_too_soon``
@@ -250,7 +258,7 @@ def build(
 
         assert isinstance(child, (Collection, Publication, UnbuiltArtifact))
 
-        execute_hooks(hooks, "materials.build:on_start", child_key, child)
+        BuildOnStartHook.execute(hooks, child_key, child)
         result = build(
             child,
             ignore_release_time=ignore_release_time,

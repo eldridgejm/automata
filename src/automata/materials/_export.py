@@ -4,7 +4,7 @@ import pathlib
 import shutil
 from typing import cast, overload
 
-from ..hooks import Hooks, execute_hooks
+from ..hooks import ExportOnCopyHook, ExportOnNodeHook, Registry
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -19,7 +19,7 @@ def _export_artifact(
     built_artifact: BuiltArtifact,
     outdir: pathlib.Path,
     filename: str,
-    hooks: Hooks | None = None,
+    hooks: Registry | None = None,
 ) -> ExportedArtifact:
     """Copies an artifact to another directory.
 
@@ -32,7 +32,7 @@ def _export_artifact(
     filename : str
         The filename (or directory name) that will be given to the new file,
         including extension, if applicable.
-    hooks : Hooks | None
+    hooks : Registry | None
         Hooks to invoke during the export.
 
     """
@@ -41,7 +41,7 @@ def _export_artifact(
     full_dst.parent.mkdir(parents=True, exist_ok=True)
     full_src = built_artifact.workdir / built_artifact.path
 
-    execute_hooks(hooks, "materials.export:on_copy", full_src, full_dst)
+    ExportOnCopyHook.execute(hooks, full_src, full_dst)
 
     if full_src.is_dir():
         shutil.copytree(full_src, full_dst)
@@ -62,7 +62,7 @@ def export(
     root: Universe[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = ...,
-    hooks: Hooks | None = ...,
+    hooks: Registry | None = ...,
 ) -> Universe[ExportedArtifact]: ...
 
 
@@ -71,7 +71,7 @@ def export(
     root: Collection[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
-    hooks: Hooks | None = None,
+    hooks: Registry | None = None,
 ) -> Collection[ExportedArtifact]: ...
 
 
@@ -80,7 +80,7 @@ def export(
     root: Publication[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
-    hooks: Hooks | None = None,
+    hooks: Registry | None = None,
 ) -> Publication[ExportedArtifact]: ...
 
 
@@ -89,7 +89,7 @@ def export(
     root: BuiltArtifact,
     outdir: pathlib.Path,
     prefix: str = "",
-    hooks: Hooks | None = None,
+    hooks: Registry | None = None,
 ) -> ExportedArtifact: ...
 
 
@@ -103,7 +103,7 @@ def export(
     | BuiltArtifact,
     outdir: pathlib.Path,
     prefix: str = "",
-    hooks: Hooks | None = None,
+    hooks: Registry | None = None,
 ) -> (
     Universe[ExportedArtifact]
     | Collection[ExportedArtifact]
@@ -130,7 +130,7 @@ def export(
         String to prepend between output directory path and the keys of the
         children. If the thing being exported is a :class:`BuiltArtifact`,
         this is simply the filename.
-    hooks : Hooks | None
+    hooks : Registry | None
         Hooks to be invoked during the export. Supports:
         - ``materials.export:on_copy``
         - ``materials.export:on_node``
@@ -158,7 +158,7 @@ def export(
 
     new_children = {}
     for child_key, child in root._children.items():
-        execute_hooks(hooks, "materials.export:on_node", child_key, child)
+        ExportOnNodeHook.execute(hooks, child_key, child)
         new_prefix = str(pathlib.Path(prefix) / child_key)
 
         assert isinstance(child, (Universe, Collection, Publication, Artifact))

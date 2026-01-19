@@ -368,58 +368,48 @@ This plugin demonstrates the pre_generate_website hook, which can modify
 website content before generation. It extracts homework due dates from
 materials and injects them as a static file.
 """
-from dataclasses import dataclass
-
-from automata.hooks import PreGenerateWebsiteHook, WebsiteContent
+from automata.hooks import PreGenerateWebsiteHook, Registry, WebsiteContent
 
 
-@dataclass
-class CalendarGeneratorHook(PreGenerateWebsiteHook):
-    """Hook that generates calendar.txt from homework due dates."""
-
-    priority: int = 50
-
-    def __call__(
-        self,
-        website_content,
-        materials,
-        website_config,
-        build_directory,
-        vars,
-        current_time,
-    ):
-        """Generate calendar.txt and inject it into static files."""
-        # Collect due dates from homeworks collection
-        lines = []
-        if "homeworks" in materials.collections:
-            homeworks = materials.collections["homeworks"]
-            for pub_key in sorted(homeworks.publications.keys()):
-                publication = homeworks.publications[pub_key]
-                if "due" in publication.metadata:
-                    # Use topic as the name, falling back to pub_key
-                    name = publication.metadata.get("topic", pub_key)
-                    due = publication.metadata["due"]
-                    lines.append(f"{name}: {due}")
-
-        # Create calendar.txt content (use chr(10) for newline to avoid escaping issues)
-        calendar_content = chr(10).join(lines)
-
-        # Return modified website content with calendar.txt injected
-        # Note: static_files keys are paths relative to build directory
-        new_static_files = dict(website_content.static_files)
-        new_static_files["static/calendar.txt"] = calendar_content
-
-        return WebsiteContent(
-            content=website_content.content,
-            assets=website_content.assets,
-            static_files=new_static_files,
-        )
+# Create the hooks registry
+hooks: Registry = {}
 
 
-# Export hooks dictionary for the plugin loader
-hooks = {
-    "pre_generate_website": [CalendarGeneratorHook()],
-}
+@PreGenerateWebsiteHook.register(hooks, priority=50)
+def calendar_generator_hook(
+    website_content,
+    materials,
+    website_config,
+    build_directory,
+    vars,
+    current_time,
+):
+    """Generate calendar.txt and inject it into static files."""
+    # Collect due dates from homeworks collection
+    lines = []
+    if "homeworks" in materials.collections:
+        homeworks = materials.collections["homeworks"]
+        for pub_key in sorted(homeworks.publications.keys()):
+            publication = homeworks.publications[pub_key]
+            if "due" in publication.metadata:
+                # Use topic as the name, falling back to pub_key
+                name = publication.metadata.get("topic", pub_key)
+                due = publication.metadata["due"]
+                lines.append(f"{name}: {due}")
+
+    # Create calendar.txt content (use chr(10) for newline to avoid escaping issues)
+    calendar_content = chr(10).join(lines)
+
+    # Return modified website content with calendar.txt injected
+    # Note: static_files keys are paths relative to build directory
+    new_static_files = dict(website_content.static_files)
+    new_static_files["static/calendar.txt"] = calendar_content
+
+    return WebsiteContent(
+        content=website_content.content,
+        assets=website_content.assets,
+        static_files=new_static_files,
+    )
 '''
 
 
@@ -470,12 +460,11 @@ This plugin demonstrates the pre_resolve hook, which can inject custom
 functions into the configuration resolution process. The "tomorrow" function
 takes a date/datetime and returns the next day.
 """
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import smartconfig
 
-from automata.hooks import PreResolveHook, ResolveOverrides
+from automata.hooks import PreResolveHook, Registry, ResolveOverrides
 
 
 def tomorrow_function(args: smartconfig.types.FunctionArgs):
@@ -497,23 +486,16 @@ def tomorrow_function(args: smartconfig.types.FunctionArgs):
     return input_value + timedelta(days=1)
 
 
-@dataclass
-class TomorrowFunctionHook(PreResolveHook):
-    """Hook that provides the tomorrow function during resolution."""
-
-    priority: int = 50
-
-    def __call__(self, call_site, path):
-        """Return overrides containing the tomorrow function."""
-        return ResolveOverrides(
-            functions={"tomorrow": tomorrow_function},
-        )
+# Create the hooks registry
+hooks: Registry = {}
 
 
-# Export hooks dictionary for the plugin loader
-hooks = {
-    "pre_resolve": [TomorrowFunctionHook()],
-}
+@PreResolveHook.register(hooks, priority=50)
+def tomorrow_function_hook(call_site, path):
+    """Return overrides containing the tomorrow function."""
+    return ResolveOverrides(
+        functions={"tomorrow": tomorrow_function},
+    )
 '''
 
 

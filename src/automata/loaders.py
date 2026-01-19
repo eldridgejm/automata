@@ -18,14 +18,10 @@ from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from typing import TYPE_CHECKING, Callable
 
-from .hooks import PostGenerateWebsiteHook
+from .hooks import PostGenerateWebsiteHook, Registry
 
 if TYPE_CHECKING:
-    from .hooks import PreGenerateWebsiteHook
     from .website._elements import Element
-
-# Standard hook points supported by script hooks
-HOOK_POINTS = ["post_generate_website"]
 
 
 def _is_hidden(parts: list[str]) -> bool:
@@ -273,16 +269,14 @@ def load_elements_from_directory(
     return elements
 
 
-def load_hooks_from_directory(
-    directory: Traversable,
-) -> dict[str, list["PreGenerateWebsiteHook | PostGenerateWebsiteHook"]]:
+def load_hooks_from_directory(directory: Traversable) -> Registry:
     """Load hooks from a directory.
 
     The directory can be either:
 
     1. A Python package (contains ``__init__.py``) that exports a ``hooks``
-       variable - a dictionary mapping hook point names to lists of hook
-       instances (objects with a ``priority`` attribute and ``__call__`` method).
+       variable - a Registry (dict mapping hook classes to lists of
+       (priority, callable) tuples).
 
     2. A directory containing executable scripts named after hook points
        (e.g., ``post_generate_website``). Scripts receive JSON on stdin and
@@ -296,8 +290,8 @@ def load_hooks_from_directory(
 
     Returns
     -------
-    dict[str, list]
-        Mapping from hook point names to lists of hook instances.
+    Registry
+        Mapping from hook classes to lists of (priority, callable) tuples.
         Returns an empty dict if the directory doesn't exist or has no hooks.
 
     Raises
@@ -322,49 +316,42 @@ def load_hooks_from_directory(
         return _load_hooks_from_package(directory)
 
     # Otherwise, load as script hooks
-    hooks: dict[str, list["PreGenerateWebsiteHook | PostGenerateWebsiteHook"]] = {}
+    hooks: Registry = {}
 
     # Need actual filesystem path for script execution
     with importlib.resources.as_file(directory) as dir_path:
-        for hook_point in HOOK_POINTS:
-            script_file = directory / hook_point
-            if script_file.is_file():
-                script_path = dir_path / hook_point
-                # Create hook instance from script
-                hook = PostGenerateWebsiteHook.from_script(
-                    command=str(script_path),
-                    cwd=dir_path,
-                    priority=50,
-                )
-                hooks[hook_point] = [hook]
+        # Only post_generate_website supports script hooks
+        script_file = directory / "post_generate_website"
+        if script_file.is_file():
+            script_path = dir_path / "post_generate_website"
+            # Create hook tuple from script
+            hook_tuple = PostGenerateWebsiteHook.from_script(
+                command=str(script_path),
+                cwd=dir_path,
+                priority=50,
+            )
+            hooks[PostGenerateWebsiteHook] = [hook_tuple]
 
     return hooks
 
 
-def _load_hooks_from_package(
-    directory: Traversable,
-) -> dict[str, list["PreGenerateWebsiteHook | PostGenerateWebsiteHook"]]:
+def _load_hooks_from_package(directory: Traversable) -> Registry:
     """Load hooks from a Python package (directory with __init__.py).
 
-    The package must export a ``hooks`` variable that is a dictionary mapping
-    hook point names to lists of hook instances (objects with a ``priority``
-    attribute and ``__call__`` method).
+    The package must export a ``hooks`` variable that is a Registry
+    (dict mapping hook classes to lists of (priority, callable) tuples).
 
     Example hooks/__init__.py::
 
-        from automata.hooks import PreGenerateWebsiteHook, WebsiteContent
+        from automata.hooks import PreGenerateWebsiteHook, Registry, WebsiteContent
 
-        class MyPreGenerateHook(PreGenerateWebsiteHook):
-            priority = 50
+        hooks: Registry = {}
 
-            def __call__(self, website_content, materials, website_config,
-                         build_directory, vars, current_time):
-                # Hooks form a pipeline - return modified or unchanged content
-                return website_content
-
-        hooks = {
-            "pre_generate_website": [MyPreGenerateHook()],
-        }
+        @PreGenerateWebsiteHook.register(hooks, priority=50)
+        def my_pre_generate_hook(website_content, materials, website_config,
+                                 build_directory, vars, current_time):
+            # Hooks form a pipeline - return modified or unchanged content
+            return website_content
 
     """
     module = _load_python_module_from_directory(

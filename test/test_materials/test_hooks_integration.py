@@ -1,7 +1,6 @@
 """Integration tests for hooks in the materials module."""
 
 import pathlib
-from dataclasses import dataclass
 
 import automata.materials
 from automata.hooks import (
@@ -18,207 +17,43 @@ from automata.hooks import (
     ExportOnNodeHook,
     FilterOnHitHook,
     FilterOnMissHook,
-    Hooks,
+    Registry,
 )
 
 # =============================================================================
-# Helper Classes for Testing
+# Helper Functions for Testing
 # =============================================================================
 
 
-@dataclass
-class TrackingDiscoverOnCollectionHook(DiscoverOnCollectionHook):
-    """Hook that tracks calls."""
+def make_tracking_registry():
+    """Create a registry with tracking hooks for all materials hook points."""
+    hooks: Registry = {}
+    calls = []
 
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
+    def make_tracker(event_name):
+        def tracker(*args, **kwargs):
+            calls.append((event_name, args, kwargs))
 
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
+        return tracker
 
-    def __call__(self, path, collection):
-        self.calls.append(("on_collection", path, collection))
+    # Register trackers for all hook points
+    DiscoverOnCollectionHook.register(hooks, priority=50)(make_tracker("on_collection"))
+    DiscoverOnPublicationHook.register(hooks, priority=50)(
+        make_tracker("on_publication")
+    )
+    DiscoverOnSkipHook.register(hooks, priority=50)(make_tracker("on_skip"))
+    BuildOnStartHook.register(hooks, priority=50)(make_tracker("on_start"))
+    BuildOnRecipeHook.register(hooks, priority=50)(make_tracker("on_recipe"))
+    BuildOnSuccessHook.register(hooks, priority=50)(make_tracker("on_success"))
+    BuildOnTooSoonHook.register(hooks, priority=50)(make_tracker("on_too_soon"))
+    BuildOnNotReadyHook.register(hooks, priority=50)(make_tracker("on_not_ready"))
+    BuildOnMissingHook.register(hooks, priority=50)(make_tracker("on_missing"))
+    ExportOnCopyHook.register(hooks, priority=50)(make_tracker("on_copy"))
+    ExportOnNodeHook.register(hooks, priority=50)(make_tracker("on_node"))
+    FilterOnHitHook.register(hooks, priority=50)(make_tracker("on_hit"))
+    FilterOnMissHook.register(hooks, priority=50)(make_tracker("on_miss"))
 
-
-@dataclass
-class TrackingDiscoverOnPublicationHook(DiscoverOnPublicationHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, path, publication):
-        self.calls.append(("on_publication", path, publication))
-
-
-@dataclass
-class TrackingDiscoverOnSkipHook(DiscoverOnSkipHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, path):
-        self.calls.append(("on_skip", path))
-
-
-@dataclass
-class TrackingBuildOnStartHook(BuildOnStartHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, key, node):
-        self.calls.append(("on_start", key, type(node).__name__))
-
-
-@dataclass
-class TrackingBuildOnRecipeHook(BuildOnRecipeHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, artifact):
-        self.calls.append(("on_recipe", artifact.path))
-
-
-@dataclass
-class TrackingBuildOnSuccessHook(BuildOnSuccessHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, artifact):
-        self.calls.append(("on_success", artifact.path))
-
-
-@dataclass
-class TrackingBuildOnTooSoonHook(BuildOnTooSoonHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, artifact):
-        self.calls.append(("on_too_soon", artifact.path))
-
-
-@dataclass
-class TrackingBuildOnNotReadyHook(BuildOnNotReadyHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, artifact):
-        self.calls.append(("on_not_ready", artifact.path))
-
-
-@dataclass
-class TrackingBuildOnMissingHook(BuildOnMissingHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, artifact):
-        self.calls.append(("on_missing", artifact.path))
-
-
-@dataclass
-class TrackingExportOnCopyHook(ExportOnCopyHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, src, dst):
-        self.calls.append(("on_copy", str(src), str(dst)))
-
-
-@dataclass
-class TrackingExportOnNodeHook(ExportOnNodeHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, key, node):
-        self.calls.append(("on_node", key, type(node).__name__))
-
-
-@dataclass
-class TrackingFilterOnHitHook(FilterOnHitHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, key, node):
-        self.calls.append(("on_hit", key, type(node).__name__))
-
-
-@dataclass
-class TrackingFilterOnMissHook(FilterOnMissHook):
-    """Hook that tracks calls."""
-
-    priority: int = 50
-    calls: list = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.calls is None:
-            self.calls = []
-
-    def __call__(self, key, node):
-        self.calls.append(("on_miss", key, type(node).__name__))
+    return hooks, calls
 
 
 # =============================================================================
@@ -231,26 +66,34 @@ class TestDiscoverWithHooks:
 
     def test_discover_calls_on_collection_hooks(self, default_example_course):
         """Verify on_collection hooks are called for each collection."""
-        hook = TrackingDiscoverOnCollectionHook()
-        hooks: Hooks = {"materials.discover:on_collection": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @DiscoverOnCollectionHook.register(hooks, priority=50)
+        def track_collection(path, collection):
+            calls.append(("on_collection", path, collection))
 
         automata.materials.discover(default_example_course.path, hooks=hooks)
 
         # Should have been called once for the "homeworks" collection
-        assert len(hook.calls) == 1
-        assert hook.calls[0][0] == "on_collection"
-        assert "homeworks" in str(hook.calls[0][1])
+        assert len(calls) == 1
+        assert calls[0][0] == "on_collection"
+        assert "homeworks" in str(calls[0][1])
 
     def test_discover_calls_on_publication_hooks(self, default_example_course):
         """Verify on_publication hooks are called for each publication."""
-        hook = TrackingDiscoverOnPublicationHook()
-        hooks: Hooks = {"materials.discover:on_publication": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @DiscoverOnPublicationHook.register(hooks, priority=50)
+        def track_publication(path, publication):
+            calls.append(("on_publication", path, publication))
 
         automata.materials.discover(default_example_course.path, hooks=hooks)
 
         # Should have been called for each publication
-        assert len(hook.calls) >= 1
-        for call in hook.calls:
+        assert len(calls) >= 1
+        for call in calls:
             assert call[0] == "on_publication"
 
     def test_discover_calls_on_skip_hooks(self, temporary_course):
@@ -268,8 +111,12 @@ class TestDiscoverWithHooks:
             """,
         )
 
-        hook = TrackingDiscoverOnSkipHook()
-        hooks: Hooks = {"materials.discover:on_skip": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @DiscoverOnSkipHook.register(hooks, priority=50)
+        def track_skip(path):
+            calls.append(("on_skip", path))
 
         automata.materials.discover(
             temporary_course.path,
@@ -278,31 +125,24 @@ class TestDiscoverWithHooks:
         )
 
         # Should have been called for the skipped directory
-        assert len(hook.calls) == 1
-        assert hook.calls[0][0] == "on_skip"
-        assert "_build" in str(hook.calls[0][1])
+        assert len(calls) == 1
+        assert calls[0][0] == "on_skip"
+        assert "_build" in str(calls[0][1])
 
     def test_discover_with_multiple_hooks_runs_in_priority_order(
         self, default_example_course
     ):
         """Verify hooks run in priority order."""
         call_order = []
+        hooks: Registry = {}
 
-        @dataclass
-        class FirstHook(DiscoverOnCollectionHook):
-            priority: int = 10
+        @DiscoverOnCollectionHook.register(hooks, priority=10)
+        def first_hook(path, collection):
+            call_order.append("first")
 
-            def __call__(self, path, collection):
-                call_order.append("first")
-
-        @dataclass
-        class SecondHook(DiscoverOnCollectionHook):
-            priority: int = 50
-
-            def __call__(self, path, collection):
-                call_order.append("second")
-
-        hooks: Hooks = {"materials.discover:on_collection": [SecondHook(), FirstHook()]}
+        @DiscoverOnCollectionHook.register(hooks, priority=50)
+        def second_hook(path, collection):
+            call_order.append("second")
 
         automata.materials.discover(default_example_course.path, hooks=hooks)
 
@@ -319,40 +159,51 @@ class TestBuildWithHooks:
 
     def test_build_calls_on_start_hooks(self, default_example_course):
         """Verify on_start hooks are called."""
-        hook = TrackingBuildOnStartHook()
-        hooks: Hooks = {"materials.build:on_start": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @BuildOnStartHook.register(hooks, priority=50)
+        def track_start(key, node):
+            calls.append(("on_start", key, type(node).__name__))
 
         universe = automata.materials.discover(default_example_course.path)
         automata.materials.build(universe, hooks=hooks)
 
         # Should have been called for collections, publications
-        assert len(hook.calls) >= 1
-        # Check that we got some calls
-        assert any("on_start" in call for call in hook.calls)
+        assert len(calls) >= 1
+        assert any("on_start" in call for call in calls)
 
     def test_build_calls_on_recipe_hooks(self, default_example_course):
         """Verify on_recipe hooks are called when recipe runs."""
-        hook = TrackingBuildOnRecipeHook()
-        hooks: Hooks = {"materials.build:on_recipe": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @BuildOnRecipeHook.register(hooks, priority=50)
+        def track_recipe(artifact):
+            calls.append(("on_recipe", artifact.path))
 
         universe = automata.materials.discover(default_example_course.path)
         automata.materials.build(universe, hooks=hooks)
 
         # Should have been called for artifacts with recipes
-        assert len(hook.calls) >= 1
-        assert all(call[0] == "on_recipe" for call in hook.calls)
+        assert len(calls) >= 1
+        assert all(call[0] == "on_recipe" for call in calls)
 
     def test_build_calls_on_success_hooks(self, default_example_course):
         """Verify on_success hooks are called on successful build."""
-        hook = TrackingBuildOnSuccessHook()
-        hooks: Hooks = {"materials.build:on_success": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @BuildOnSuccessHook.register(hooks, priority=50)
+        def track_success(artifact):
+            calls.append(("on_success", artifact.path))
 
         universe = automata.materials.discover(default_example_course.path)
         automata.materials.build(universe, hooks=hooks)
 
         # Should have been called for successfully built artifacts
-        assert len(hook.calls) >= 1
-        assert all(call[0] == "on_success" for call in hook.calls)
+        assert len(calls) >= 1
+        assert all(call[0] == "on_success" for call in calls)
 
     def test_build_calls_on_too_soon_hooks(self, temporary_course):
         """Verify on_too_soon hooks are called for unreleased artifacts."""
@@ -377,15 +228,19 @@ class TestBuildWithHooks:
             """,
         )
 
-        hook = TrackingBuildOnTooSoonHook()
-        hooks: Hooks = {"materials.build:on_too_soon": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @BuildOnTooSoonHook.register(hooks, priority=50)
+        def track_too_soon(artifact):
+            calls.append(("on_too_soon", artifact.path))
 
         universe = automata.materials.discover(temporary_course.path)
         automata.materials.build(universe, hooks=hooks)
 
         # Should have been called for the unreleased artifact
-        assert len(hook.calls) >= 1
-        assert all(call[0] == "on_too_soon" for call in hook.calls)
+        assert len(calls) >= 1
+        assert all(call[0] == "on_too_soon" for call in calls)
 
     def test_build_calls_on_not_ready_hooks(self, temporary_course):
         """Verify on_not_ready hooks are called for unready artifacts."""
@@ -410,15 +265,19 @@ class TestBuildWithHooks:
             """,
         )
 
-        hook = TrackingBuildOnNotReadyHook()
-        hooks: Hooks = {"materials.build:on_not_ready": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @BuildOnNotReadyHook.register(hooks, priority=50)
+        def track_not_ready(artifact):
+            calls.append(("on_not_ready", artifact.path))
 
         universe = automata.materials.discover(temporary_course.path)
         automata.materials.build(universe, hooks=hooks)
 
         # Should have been called for the not-ready artifact
-        assert len(hook.calls) >= 1
-        assert all(call[0] == "on_not_ready" for call in hook.calls)
+        assert len(calls) >= 1
+        assert all(call[0] == "on_not_ready" for call in calls)
 
 
 # =============================================================================
@@ -431,8 +290,12 @@ class TestExportWithHooks:
 
     def test_export_calls_on_copy_hooks(self, default_example_course, tmp_path):
         """Verify on_copy hooks are called when copying files."""
-        hook = TrackingExportOnCopyHook()
-        hooks: Hooks = {"materials.export:on_copy": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @ExportOnCopyHook.register(hooks, priority=50)
+        def track_copy(src, dst):
+            calls.append(("on_copy", str(src), str(dst)))
 
         universe = automata.materials.discover(default_example_course.path)
         built = automata.materials.build(universe)
@@ -443,13 +306,17 @@ class TestExportWithHooks:
         automata.materials.export(built, output_dir, hooks=hooks)
 
         # Should have been called for each copied file
-        assert len(hook.calls) >= 1
-        assert all(call[0] == "on_copy" for call in hook.calls)
+        assert len(calls) >= 1
+        assert all(call[0] == "on_copy" for call in calls)
 
     def test_export_calls_on_node_hooks(self, default_example_course, tmp_path):
         """Verify on_node hooks are called for each node."""
-        hook = TrackingExportOnNodeHook()
-        hooks: Hooks = {"materials.export:on_node": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @ExportOnNodeHook.register(hooks, priority=50)
+        def track_node(key, node):
+            calls.append(("on_node", key, type(node).__name__))
 
         universe = automata.materials.discover(default_example_course.path)
         built = automata.materials.build(universe)
@@ -460,8 +327,8 @@ class TestExportWithHooks:
         automata.materials.export(built, output_dir, hooks=hooks)
 
         # Should have been called for nodes
-        assert len(hook.calls) >= 1
-        assert all(call[0] == "on_node" for call in hook.calls)
+        assert len(calls) >= 1
+        assert all(call[0] == "on_node" for call in calls)
 
 
 # =============================================================================
@@ -474,8 +341,12 @@ class TestFilterWithHooks:
 
     def test_filter_calls_on_hit_hooks(self, default_example_course):
         """Verify on_hit hooks are called for matching nodes."""
-        hook = TrackingFilterOnHitHook()
-        hooks: Hooks = {"materials.filter:on_hit": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @FilterOnHitHook.register(hooks, priority=50)
+        def track_hit(key, node):
+            calls.append(("on_hit", key, type(node).__name__))
 
         universe = automata.materials.discover(default_example_course.path)
 
@@ -487,13 +358,17 @@ class TestFilterWithHooks:
         )
 
         # Should have been called for matching nodes
-        assert len(hook.calls) >= 1
-        assert all(call[0] == "on_hit" for call in hook.calls)
+        assert len(calls) >= 1
+        assert all(call[0] == "on_hit" for call in calls)
 
     def test_filter_calls_on_miss_hooks(self, default_example_course):
         """Verify on_miss hooks are called for non-matching nodes."""
-        hook = TrackingFilterOnMissHook()
-        hooks: Hooks = {"materials.filter:on_miss": [hook]}
+        hooks: Registry = {}
+        calls = []
+
+        @FilterOnMissHook.register(hooks, priority=50)
+        def track_miss(key, node):
+            calls.append(("on_miss", key, type(node).__name__))
 
         universe = automata.materials.discover(default_example_course.path)
 
@@ -505,5 +380,5 @@ class TestFilterWithHooks:
         )
 
         # Should have been called for non-matching nodes
-        assert len(hook.calls) >= 1
-        assert all(call[0] == "on_miss" for call in hook.calls)
+        assert len(calls) >= 1
+        assert all(call[0] == "on_miss" for call in calls)

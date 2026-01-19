@@ -1,11 +1,10 @@
 """High-level function for loading configuration and extensions."""
 
 from pathlib import Path
-from typing import cast
 
 from .._config import Config, read_config
 from ..extensions import Extension, merge_extensions
-from ..hooks import HOOK_POINTS, Hooks, ScriptableHookMixin
+from ..hooks import HOOK_POINTS, Registry
 from ..loaders import load_hooks_from_directory, load_website_components_from_directory
 
 CONFIGURATION_FILENAME = "automata.yaml"
@@ -136,18 +135,18 @@ def _load_plugins(plugin_paths: list[str], cwd: Path) -> list[Extension]:
     for plugin_path in plugin_paths:
         plugin_dir = cwd / plugin_path
         hooks = load_hooks_from_directory(plugin_dir / "hooks")
-        extensions.append(Extension(hooks=cast(Hooks, hooks)))
+        extensions.append(Extension(hooks=hooks))
     return extensions
 
 
 def _config_hooks_to_extension(config: Config, cwd: Path) -> Extension:
     """Convert hooks defined in config to a Extension.
 
-    This wraps each shell command hook in a hook instance and creates a
+    This wraps each shell command hook in a hook implementation and creates a
     Extension containing those hooks.
 
-    Only hooks that inherit from ScriptableHookMixin can be defined in config,
-    since shell hooks cannot return values.
+    Only hooks that have `serialize_args` set (i.e., are scriptable) can be
+    defined in config, since shell hooks cannot return values.
 
     Parameters
     ----------
@@ -167,7 +166,7 @@ def _config_hooks_to_extension(config: Config, cwd: Path) -> Extension:
         If an unknown or non-scriptable hook point is specified.
 
     """
-    hooks_dict: dict[str, list] = {}
+    hooks: Registry = {}
 
     for hook_point, hook_config in config.hooks.items():
         if hook_point not in HOOK_POINTS:
@@ -175,17 +174,18 @@ def _config_hooks_to_extension(config: Config, cwd: Path) -> Extension:
 
         hook_class = HOOK_POINTS[hook_point]
 
-        if not issubclass(hook_class, ScriptableHookMixin):
+        # Check if the hook is scriptable (has serialize_args)
+        if hook_class.serialize_args is None:  # type: ignore[attr-defined]
             raise ValueError(
                 f"Hook point {hook_point!r} does not support shell scripts "
                 f"(it must return a value)"
             )
 
-        hook = hook_class.from_script(
+        hook_tuple = hook_class.from_script(  # type: ignore[attr-defined]
             command=hook_config.command,
             cwd=cwd,
             priority=hook_config.priority,
         )
-        hooks_dict[hook_point] = [hook]
+        hooks.setdefault(hook_class, []).append(hook_tuple)
 
-    return Extension(hooks=cast(Hooks, hooks_dict))
+    return Extension(hooks=hooks)

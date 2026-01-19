@@ -2,7 +2,7 @@
 
 from typing import Callable, TypeVar, overload
 
-from ..hooks import Hooks, execute_hooks
+from ..hooks import FilterOnHitHook, FilterOnMissHook, Registry
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -36,7 +36,7 @@ def filter(
     root: Universe[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Hooks | None = ...,
+    hooks: Registry | None = ...,
 ) -> Universe[ArtifactType]: ...
 
 
@@ -45,7 +45,7 @@ def filter(
     root: Collection[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Hooks | None = ...,
+    hooks: Registry | None = ...,
 ) -> Collection[ArtifactType]: ...
 
 
@@ -54,7 +54,7 @@ def filter(
     root: Publication[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Hooks | None = ...,
+    hooks: Registry | None = ...,
 ) -> Publication[ArtifactType]: ...
 
 
@@ -63,7 +63,7 @@ def filter(
     root: ArtifactType,
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    hooks: Hooks | None = ...,
+    hooks: Registry | None = ...,
 ) -> ArtifactType: ...
 
 
@@ -77,7 +77,7 @@ def filter(
     | Artifact,
     predicate: Callable[[str, Universe | Collection | Publication | Artifact], bool],
     remove_empty_nodes: bool = False,
-    hooks: Hooks | None = None,
+    hooks: Registry | None = None,
 ) -> (
     Universe[ArtifactType]
     | Collection[ArtifactType]
@@ -97,7 +97,7 @@ def filter(
         Whether nodes without children should be removed (True) or preserved
         (False). The exception is the root node: if all of its children are
         removed, it remains. Default: False.
-    hooks : Hooks | None
+    hooks : Registry | None
         Hooks to be invoked during the filtering. Supports:
         - ``materials.filter:on_hit``
         - ``materials.filter:on_miss``
@@ -119,9 +119,9 @@ def filter(
     def predicate_with_hooks(key, node):
         result = predicate(key, node)
         if result:
-            execute_hooks(hooks, "materials.filter:on_hit", key, node)
+            FilterOnHitHook.execute(hooks, key, node)
         else:
-            execute_hooks(hooks, "materials.filter:on_miss", key, node)
+            FilterOnMissHook.execute(hooks, key, node)
         return result
 
     new_children = {}

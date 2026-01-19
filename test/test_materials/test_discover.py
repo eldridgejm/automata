@@ -1,9 +1,8 @@
 import datetime
-from dataclasses import dataclass
 
 from pytest import raises
 
-from automata.hooks import DiscoverOnSkipHook
+from automata.hooks import DiscoverOnSkipHook, Registry
 from automata.materials import discover
 from automata.materials.exceptions import DiscoveryError
 
@@ -570,19 +569,17 @@ def test_skip_directories_invokes_hook(default_example_course):
     """Test that the on_skip hook is invoked when directories are skipped."""
     # given
     skipped_paths = []
+    hooks: Registry = {}
 
-    @dataclass
-    class TrackingSkipHook(DiscoverOnSkipHook):
-        priority: int = 50
-
-        def __call__(self, path):
-            skipped_paths.append(path)
+    @DiscoverOnSkipHook.register(hooks, priority=50)
+    def track_skip(path):
+        skipped_paths.append(path)
 
     # when
     discover(
         default_example_course.path,
         skip_directories={"01-intro"},
-        hooks={"materials.discover:on_skip": [TrackingSkipHook()]},
+        hooks=hooks,
     )
 
     # then

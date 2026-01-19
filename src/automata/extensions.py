@@ -55,40 +55,34 @@ file at the root level (that would make it a Python package extension instead).
 - **hooks/**: Can be structured in one of two ways:
 
   1. **Python package** (contains ``__init__.py``): The module must export a
-     ``hooks`` variable containing a dictionary mapping hook point names to
-     lists of hook instances::
+     ``hooks`` variable containing a Registry (dict mapping hook classes to
+     lists of (priority, callable) tuples)::
 
          hooks/
          ├── __init__.py     # Must export `hooks` dict
          └── _helpers.py     # Optional helper modules
 
-     The ``__init__.py`` defines hook classes and exports them::
+     The ``__init__.py`` defines hook implementations and registers them::
 
          from automata.hooks import (
              PreGenerateWebsiteHook,
              PostGenerateWebsiteHook,
+             Registry,
              WebsiteContent,
          )
 
-         class MyPreGenerateHook(PreGenerateWebsiteHook):
-             priority = 50
+         hooks: Registry = {}
 
-             def __call__(self, website_content, materials, website_config,
-                          build_directory, vars, current_time):
-                 # Hooks receive and return WebsiteContent, forming a pipeline
-                 return website_content  # Return modified or unchanged content
+         @PreGenerateWebsiteHook.register(hooks, priority=50)
+         def my_pre_generate_hook(website_content, materials, website_config,
+                                  build_directory, vars, current_time):
+             # Hooks receive and return WebsiteContent, forming a pipeline
+             return website_content  # Return modified or unchanged content
 
-         class MyPostGenerateHook(PostGenerateWebsiteHook):
-             priority = 100
-
-             def __call__(self, materials, website_config, build_directory,
-                          vars, current_time):
-                 pass
-
-         hooks = {
-             "pre_generate_website": [MyPreGenerateHook()],
-             "post_generate_website": [MyPostGenerateHook()],
-         }
+         @PostGenerateWebsiteHook.register(hooks, priority=100)
+         def my_post_generate_hook(materials, website_config, build_directory,
+                                   vars, current_time):
+             pass
 
   2. **Script directory** (no ``__init__.py``): Contains executable scripts
      named after hook points::
@@ -148,12 +142,12 @@ import os
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import TYPE_CHECKING, Sequence, cast
+from typing import TYPE_CHECKING, Callable, Sequence, cast
 
 import smartconfig.exceptions
 import smartconfig.types
 
-from .hooks import Hooks
+from .hooks import Registry
 from .loaders import (
     _load_python_module_from_directory,
     load_elements_from_directory,
@@ -187,10 +181,9 @@ class Extension:
         Dictionary mapping element names to Element classes.
     schema : smartconfig.types.Schema | None
         Optional smartconfig schema for validating extension configuration.
-    hooks : dict[str, list]
-        Dictionary mapping hook point names (e.g., "pre_generate_website") to
-        lists of hook instances. Each hook instance has a ``priority`` attribute
-        and a ``__call__`` method. Lower priority values execute first.
+    hooks : Registry
+        Dictionary mapping hook classes to lists of (priority, callable) tuples.
+        Lower priority values execute first.
     pages : dict[str, str | bytes | Traversable]
         Dictionary mapping page file paths to their content. Pages are
         rendered (Markdown/HTML) during website generation.
@@ -200,7 +193,7 @@ class Extension:
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     elements: dict[str, type["Element"]] = field(default_factory=dict)
     schema: smartconfig.types.Schema | None = None
-    hooks: Hooks = field(default_factory=lambda: cast(Hooks, {}))
+    hooks: Registry = field(default_factory=dict)
     pages: dict[str, str | bytes | Traversable] = field(default_factory=dict)
 
     @classmethod
@@ -270,7 +263,7 @@ class Extension:
         # Load components using public helper functions
         templates = load_templates_from_directory(templates_dir)
         elements = load_elements_from_directory(directory / "elements")
-        hooks = cast(Hooks, load_hooks_from_directory(directory / "hooks"))
+        hooks = load_hooks_from_directory(directory / "hooks")
 
         # Load content and assets
         content = load_files_from_directory(directory / "content")
@@ -419,7 +412,7 @@ def merge_extensions(extensions: Sequence[Extension]) -> Extension:
     static_files: dict[str, str | bytes | Traversable] = {}
     elements: dict[str, type["Element"]] = {}
     pages: dict[str, str | bytes | Traversable] = {}
-    hooks_dict: dict[str, list] = {}
+    hooks: Registry = {}
 
     for extension in extensions:
         templates.update(extension.templates)
@@ -428,17 +421,17 @@ def merge_extensions(extensions: Sequence[Extension]) -> Extension:
         pages.update(extension.pages)
 
         # Accumulate hooks (don't override)
-        for hook_point, hook_list in extension.hooks.items():
-            if hook_point not in hooks_dict:
-                hooks_dict[hook_point] = []
-            hooks_dict[hook_point].extend(cast(list, hook_list))
+        for hook_class, hook_list in extension.hooks.items():
+            if hook_class not in hooks:
+                hooks[hook_class] = []
+            hooks[hook_class].extend(cast(list[tuple[int, Callable]], hook_list))
 
     return Extension(
         templates=templates,
         static_files=static_files,
         elements=elements,
         schema=None,
-        hooks=cast(Hooks, hooks_dict),
+        hooks=hooks,
         pages=pages,
     )
 

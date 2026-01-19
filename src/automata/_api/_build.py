@@ -4,7 +4,7 @@ import datetime
 from pathlib import Path
 
 from .. import materials
-from ..hooks import WebsiteContent, execute_hooks, execute_pre_generate_hooks
+from ..hooks import PostGenerateWebsiteHook, PreGenerateWebsiteHook, WebsiteContent
 from ..website import generate
 from ._load import load
 
@@ -57,13 +57,23 @@ def build(
     # Write materials.json
     materials_json = materials_output_dir / "materials.json"
     materials_json.parent.mkdir(parents=True, exist_ok=True)
-    materials_json.write_text(materials.serialize(exported_universe))
+
+    serialized = materials.serialize(exported_universe)
+    materials_json.write_text(serialized)
 
     # Filter out files in the materials directory (they're handled separately)
+    # This applies to both pages and static_files to prevent stale content
+    # from the content/materials/ directory from overwriting freshly-generated
+    # materials.json and artifact files.
     materials_dir_name = config.website.materials_directory_name
     pages_from_extension = {
         k: v
         for k, v in extension.pages.items()
+        if not k.startswith(materials_dir_name + "/") and k != materials_dir_name
+    }
+    static_files_from_extension = {
+        k: v
+        for k, v in extension.static_files.items()
         if not k.startswith(materials_dir_name + "/") and k != materials_dir_name
     }
 
@@ -72,12 +82,12 @@ def build(
     initial_content = WebsiteContent(
         content=pages_from_extension,
         assets={},
-        static_files=dict(extension.static_files),
+        static_files=static_files_from_extension,
     )
 
     # Execute pre_generate_website hooks as a pipeline
     # Each hook can transform the content, assets, and static_files
-    final_content = execute_pre_generate_hooks(
+    final_content = PreGenerateWebsiteHook.execute_pipeline(
         extension.hooks,
         initial_content,
         materials=exported_universe,
@@ -87,9 +97,15 @@ def build(
         current_time=current_time,
     )
 
+    # execute_pipeline always returns a value (initial if no hooks), but
+    # the type system doesn't know this, so use initial_content as fallback
+    if final_content is None:
+        final_content = initial_content
+
     # Generate website (materials are already in place, so no copy needed)
     # Merge assets into static_files
     merged_static_files = {**final_content.assets, **final_content.static_files}
+
     generate(
         final_content.content,
         materials_output_dir,
@@ -105,9 +121,8 @@ def build(
     )
 
     # Execute post_generate_website hooks
-    execute_hooks(
+    PostGenerateWebsiteHook.execute(
         extension.hooks,
-        "post_generate_website",
         materials=exported_universe,
         website_config=config.website,
         build_directory=build_dir,

@@ -4,8 +4,8 @@ This module provides a typed hook system that replaces the separate callbacks
 and hooks systems with a single, unified approach.
 
 Hooks allow extensions and configuration to inject custom logic at specific
-points in the build process. Each hook is a class with a `priority` attribute
-and a `__call__` method with a hook-specific signature.
+points in the build process. Each hook is defined using the `@define_hook`
+decorator and registered using the `HookClass.register()` method.
 
 Hook Point Naming
 -----------------
@@ -36,28 +36,40 @@ Script Hooks
 ------------
 
 Script hooks are fire-and-forget—they cannot return values or affect program flow.
-Scriptable hooks inherit from `ScriptableHookMixin` and implement `serialize_args`.
-Output from script hooks is passed through to the terminal.
-"""
+Scriptable hooks have a `serialize_args` function assigned. Call `from_script()`
+to create a script-based implementation.
 
-from typing import TypedDict
+Usage
+-----
+
+Define a hook::
+
+    @define_hook("materials.discover:on_skip")
+    def DiscoverOnSkipHook(path: Path) -> None: ...
+
+    # Make it scriptable
+    DiscoverOnSkipHook.serialize_args = lambda path: {"path": path}
+
+Register an implementation::
+
+    @DiscoverOnSkipHook.register(hooks, priority=10)
+    def my_hook(path: Path) -> None:
+        print(f"Skipped {path}")
+
+Execute hooks::
+
+    DiscoverOnSkipHook.execute(hooks, path)
+
+"""
 
 # Re-export base types
 from ._base import (
     HOOK_POINTS,
-    HookBase,
+    Hook,
+    Registry,
     ResolveOverrides,
-    ScriptableHookMixin,
     WebsiteContent,
-    hook_point,
-)
-
-# Re-export execution utilities
-from ._execution import (
-    execute_hooks,
-    execute_pre_generate_hooks,
-    sort_hooks_by_priority,
-    validate_hook_point_names,
+    define_hook,
 )
 
 # Re-export all hook definitions
@@ -80,51 +92,37 @@ from .definitions import (
     PreResolveHook,
 )
 
-# =============================================================================
-# Hooks TypedDict
-# =============================================================================
 
-# Using functional syntax due to special characters in keys
-Hooks = TypedDict(
-    "Hooks",
-    {
-        # Resolution
-        "pre_resolve": list[PreResolveHook],
-        # Materials discovery
-        "materials.discover:on_collection": list[DiscoverOnCollectionHook],
-        "materials.discover:on_publication": list[DiscoverOnPublicationHook],
-        "materials.discover:on_skip": list[DiscoverOnSkipHook],
-        # Materials build
-        "materials.build:on_start": list[BuildOnStartHook],
-        "materials.build:on_too_soon": list[BuildOnTooSoonHook],
-        "materials.build:on_not_ready": list[BuildOnNotReadyHook],
-        "materials.build:on_missing": list[BuildOnMissingHook],
-        "materials.build:on_recipe": list[BuildOnRecipeHook],
-        "materials.build:on_success": list[BuildOnSuccessHook],
-        # Materials export
-        "materials.export:on_copy": list[ExportOnCopyHook],
-        "materials.export:on_node": list[ExportOnNodeHook],
-        # Materials filter
-        "materials.filter:on_hit": list[FilterOnHitHook],
-        "materials.filter:on_miss": list[FilterOnMissHook],
-        # Website generation
-        "pre_generate_website": list[PreGenerateWebsiteHook],
-        "post_generate_website": list[PostGenerateWebsiteHook],
-    },
-    total=False,
-)
+def validate_hook_point_names(hooks: Registry) -> None:
+    """Validate that all hook classes in a registry are known.
+
+    Parameters
+    ----------
+    hooks : Registry
+        The hooks registry to validate.
+
+    Raises
+    ------
+    ValueError
+        If an unknown hook class is found.
+
+    """
+    for hook_class in hooks:
+        if not hasattr(hook_class, "hook_point"):
+            raise ValueError(f"Unknown hook class: {hook_class.__name__}")
+        if hook_class.hook_point not in HOOK_POINTS:
+            raise ValueError(f"Unknown hook point: {hook_class.hook_point!r}")
+
 
 __all__ = [
-    # Registry
+    # Registry types
     "HOOK_POINTS",
-    "hook_point",
-    # Base class
-    "HookBase",
+    "Hook",
+    "Registry",
+    "define_hook",
     # Return types
     "ResolveOverrides",
     "WebsiteContent",
-    # Mixin
-    "ScriptableHookMixin",
     # materials.discover hooks
     "DiscoverOnCollectionHook",
     "DiscoverOnPublicationHook",
@@ -147,11 +145,6 @@ __all__ = [
     # website hooks
     "PreGenerateWebsiteHook",
     "PostGenerateWebsiteHook",
-    # TypedDict
-    "Hooks",
-    # Execution utilities
-    "execute_hooks",
-    "execute_pre_generate_hooks",
+    # Validation
     "validate_hook_point_names",
-    "sort_hooks_by_priority",
 ]
