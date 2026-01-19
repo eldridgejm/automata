@@ -31,6 +31,11 @@ HOOK_POINTS: dict[str, type] = {}
 """Registry mapping hook point names to their hook classes."""
 
 
+def _default_serializer(input: Any) -> str:
+    """Serializes input arguments to a json string for script hooks."""
+    return json.dumps(input, default=_json_serializer)
+
+
 # =============================================================================
 # Default Reducers
 # =============================================================================
@@ -72,8 +77,12 @@ class Hook[**P, R]:
     """
 
     hook_point: ClassVar[str]
-    serialize_args: Callable[..., dict] | None = None
+    serialize_args: Callable[Any, str] | None = _default_serializer
     reduce_results: Callable[[list[R | None]], R | None] = _default_reduce
+    pipeline_arg: ClassVar[str | None] = None
+    """If set, this hook uses pipeline execution where the output of one
+    implementation becomes the input to the next. The value specifies which
+    argument key holds the pipeline value."""
 
     @classmethod
     def register(
@@ -112,27 +121,36 @@ class Hook[**P, R]:
         cls,
         registry: Registry | None,
         /,
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> list[R | None]:
+        args: dict[str, Any],
+    ) -> Any:
         """Execute all registered implementations for this hook.
 
         Implementations are executed in ascending priority order (lower first).
         Ties are resolved by insertion order.
 
+        The execution mode depends on the ``pipeline_arg`` class attribute:
+
+        - If ``pipeline_arg`` is None (default): Each implementation receives
+          the same arguments and all results are collected into a list.
+
+        - If ``pipeline_arg`` is set: The hook runs as a pipeline where the
+          output of one implementation becomes the input to the next. The
+          ``pipeline_arg`` specifies which argument key holds the pipeline
+          value. Returns the final transformed value instead of a list.
+
         Parameters
         ----------
         registry : Registry | None
             The hook registry, or None for no hooks.
-        *args : P.args
-            Positional arguments to pass to each implementation.
-        **kwargs : P.kwargs
-            Keyword arguments to pass to each implementation.
+        args : dict[str, Any]
+            Arguments to pass to each implementation as keyword arguments.
+            For pipeline hooks, must include the key specified by ``pipeline_arg``.
 
         Returns
         -------
-        list[R | None]
-            List of results from each implementation, in execution order.
+        list[R | None] | R
+            For regular hooks: List of results from each implementation.
+            For pipeline hooks: The final transformed value.
 
         Raises
         ------
@@ -140,6 +158,29 @@ class Hook[**P, R]:
             If any implementation fails.
 
         """
+        # Pipeline execution mode
+        if cls.pipeline_arg is not None:
+            if registry is None:
+                return args[cls.pipeline_arg]
+
+            impls = sorted(registry.get(cls, []), key=lambda x: x[0])
+            current = args[cls.pipeline_arg]
+            # Create a copy of args without the pipeline value for passing as kwargs
+            other_args = {k: v for k, v in args.items() if k != cls.pipeline_arg}
+
+            for priority, impl in impls:
+                try:
+                    result = impl(current, **other_args)
+                    if result is not None:
+                        current = result
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Hook '{cls.hook_point}' (priority {priority}) failed: {e}"
+                    ) from e
+
+            return current
+
+        # Regular execution mode
         if registry is None:
             return []
 
@@ -148,7 +189,7 @@ class Hook[**P, R]:
 
         for priority, impl in impls:
             try:
-                result = impl(*args, **kwargs)
+                result = impl(**args)
                 results.append(result)
             except Exception as e:
                 raise RuntimeError(
@@ -158,60 +199,9 @@ class Hook[**P, R]:
         return results
 
     @classmethod
-    def execute_pipeline(
-        cls,
-        registry: Registry | None,
-        initial: R,
-        /,
-        **kwargs,
-    ) -> R:
-        """Execute implementations as a pipeline, passing output through.
-
-        Each implementation receives the output of the previous one as its
-        first argument. This is useful for hooks that transform content.
-
-        Parameters
-        ----------
-        registry : Registry | None
-            The hook registry, or None for no hooks.
-        initial : R
-            The initial value to pass to the first implementation.
-        **kwargs : P.kwargs
-            Additional keyword arguments to pass to each implementation.
-
-        Returns
-        -------
-        R
-            The final value after all implementations have processed it.
-
-        Raises
-        ------
-        RuntimeError
-            If any implementation fails.
-
-        """
-        if registry is None:
-            return initial
-
-        impls = sorted(registry.get(cls, []), key=lambda x: x[0])
-        current = initial
-
-        for priority, impl in impls:
-            try:
-                result = impl(current, **kwargs)
-                if result is not None:
-                    current = result
-            except Exception as e:
-                raise RuntimeError(
-                    f"Hook '{cls.hook_point}' (priority {priority}) failed: {e}"
-                ) from e
-
-        return current
-
-    @classmethod
     def from_script(
         cls, command: str, cwd: Path, priority: int = 50
-    ) -> tuple[int, Callable[P, None]]:
+    ) -> tuple[int, Callable[..., None]]:
         """Create a script-based hook implementation.
 
         The shell command receives a JSON-serialized context on stdin.
@@ -243,10 +233,8 @@ class Hook[**P, R]:
         # Get the signature from serialize_args for the wrapper
         serialize_fn = cls.serialize_args
 
-        def script_hook(*args, **kwargs) -> None:
-            context_json = json.dumps(
-                serialize_fn(*args, **kwargs), default=_json_serializer
-            )
+        def script_hook(**kwargs) -> None:
+            context_json = json.dumps(serialize_fn(**kwargs), default=_json_serializer)
             try:
                 subprocess.run(
                     command,

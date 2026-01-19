@@ -464,7 +464,7 @@ from datetime import datetime, timedelta
 
 import smartconfig
 
-from automata.hooks import PreResolveHook, Registry, ResolveOverrides
+from automata import PreResolveHook, Registry, ResolveOverrides
 
 
 def tomorrow_function(args: smartconfig.types.FunctionArgs):

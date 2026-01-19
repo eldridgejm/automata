@@ -3,7 +3,7 @@
 import pathlib
 
 import automata.materials
-from automata.hooks import (
+from automata import (
     BuildOnMissingHook,
     BuildOnNotReadyHook,
     BuildOnRecipeHook,

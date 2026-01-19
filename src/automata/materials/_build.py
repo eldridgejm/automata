@@ -12,15 +12,7 @@ from typing import (
     overload,
 )
 
-from ..hooks import (
-    BuildOnMissingHook,
-    BuildOnNotReadyHook,
-    BuildOnRecipeHook,
-    BuildOnStartHook,
-    BuildOnSuccessHook,
-    BuildOnTooSoonHook,
-    Registry,
-)
+from ..hooks._base import Registry, define_hook
 from ._types import (
     BuiltArtifact,
     Collection,
@@ -30,6 +22,155 @@ from ._types import (
     Universe,
 )
 from .exceptions import BuildError
+
+# =============================================================================
+# Hook Definitions
+# =============================================================================
+
+
+@define_hook("materials.build:on_start")
+def BuildOnStartHook(
+    key: str, node: Collection | Publication | UnbuiltArtifact
+) -> None:
+    """Called when building a node begins.
+
+    Parameters
+    ----------
+    key : str
+        The key of the node being built.
+    node : Collection | Publication | UnbuiltArtifact
+        The node being built.
+
+    """
+    ...
+
+
+def _serialize_start_args(
+    key: str, node: Collection | Publication | UnbuiltArtifact
+) -> dict:
+    """Serialize arguments for script execution (node serialized as type name)."""
+    return {"key": key, "node_type": type(node).__name__}
+
+
+BuildOnStartHook.serialize_args = _serialize_start_args
+
+
+@define_hook("materials.build:on_too_soon")
+def BuildOnTooSoonHook(artifact: UnbuiltArtifact) -> None:
+    """Called when release time hasn't passed.
+
+    Parameters
+    ----------
+    artifact : UnbuiltArtifact
+        The artifact that cannot be built yet.
+
+    """
+    ...
+
+
+def _serialize_too_soon_args(artifact: UnbuiltArtifact) -> dict:
+    """Serialize arguments for script execution (artifact expanded to fields)."""
+    return {
+        "workdir": artifact.workdir,
+        "path": artifact.path,
+        "release_time": artifact.release_time,
+    }
+
+
+BuildOnTooSoonHook.serialize_args = _serialize_too_soon_args
+
+
+@define_hook("materials.build:on_not_ready")
+def BuildOnNotReadyHook(artifact: UnbuiltArtifact) -> None:
+    """Called when artifact isn't ready.
+
+    Parameters
+    ----------
+    artifact : UnbuiltArtifact
+        The artifact that isn't ready.
+
+    """
+    ...
+
+
+def _serialize_not_ready_args(artifact: UnbuiltArtifact) -> dict:
+    """Serialize arguments for script execution (artifact expanded to fields)."""
+    return {"workdir": artifact.workdir, "path": artifact.path}
+
+
+BuildOnNotReadyHook.serialize_args = _serialize_not_ready_args
+
+
+@define_hook("materials.build:on_missing")
+def BuildOnMissingHook(artifact: UnbuiltArtifact) -> None:
+    """Called when artifact is missing but missing_ok=True.
+
+    Parameters
+    ----------
+    artifact : UnbuiltArtifact
+        The missing artifact.
+
+    """
+    ...
+
+
+def _serialize_missing_args(artifact: UnbuiltArtifact) -> dict:
+    """Serialize arguments for script execution (artifact expanded to fields)."""
+    return {"workdir": artifact.workdir, "path": artifact.path}
+
+
+BuildOnMissingHook.serialize_args = _serialize_missing_args
+
+
+@define_hook("materials.build:on_recipe")
+def BuildOnRecipeHook(artifact: UnbuiltArtifact) -> None:
+    """Called when recipe is about to execute.
+
+    Parameters
+    ----------
+    artifact : UnbuiltArtifact
+        The artifact whose recipe is about to run.
+
+    """
+    ...
+
+
+def _serialize_recipe_args(artifact: UnbuiltArtifact) -> dict:
+    """Serialize arguments for script execution (artifact expanded to fields)."""
+    return {
+        "workdir": artifact.workdir,
+        "path": artifact.path,
+        "recipe": artifact.recipe,
+    }
+
+
+BuildOnRecipeHook.serialize_args = _serialize_recipe_args
+
+
+@define_hook("materials.build:on_success")
+def BuildOnSuccessHook(artifact: BuiltArtifact) -> None:
+    """Called when build succeeded.
+
+    Parameters
+    ----------
+    artifact : BuiltArtifact
+        The successfully built artifact.
+
+    """
+    ...
+
+
+def _serialize_success_args(artifact: BuiltArtifact) -> dict:
+    """Serialize arguments for script execution (artifact expanded to fields)."""
+    return {"workdir": artifact.workdir, "path": artifact.path}
+
+
+BuildOnSuccessHook.serialize_args = _serialize_success_args
+
+
+# =============================================================================
+# Build Implementation
+# =============================================================================
 
 
 def _build_artifact(
@@ -80,11 +221,11 @@ def _build_artifact(
         and artifact.release_time is not None
         and artifact.release_time > current_time
     ):
-        BuildOnTooSoonHook.execute(hooks, artifact)
+        BuildOnTooSoonHook.execute(hooks, {"artifact": artifact})
         return None
 
     if not artifact.ready and not ignore_ready:
-        BuildOnNotReadyHook.execute(hooks, artifact)
+        BuildOnNotReadyHook.execute(hooks, {"artifact": artifact})
         return None
 
     if artifact.recipe is None:
@@ -92,7 +233,7 @@ def _build_artifact(
         stderr = None
         returncode = None
     else:
-        BuildOnRecipeHook.execute(hooks, artifact)
+        BuildOnRecipeHook.execute(hooks, {"artifact": artifact})
 
         kwargs = {
             "cwd": artifact.workdir,
@@ -116,7 +257,7 @@ def _build_artifact(
     path = artifact.workdir / artifact.path
     if not exists(path):
         if artifact.missing_ok:
-            BuildOnMissingHook.execute(hooks, artifact)
+            BuildOnMissingHook.execute(hooks, {"artifact": artifact})
             return None
         else:
             raise BuildError(f"Artifact {path} does not exist at {path}.")
@@ -124,7 +265,7 @@ def _build_artifact(
     output = dataclasses.replace(
         output, returncode=returncode, stdout=stdout, stderr=stderr
     )
-    BuildOnSuccessHook.execute(hooks, output)
+    BuildOnSuccessHook.execute(hooks, {"artifact": output})
     return output
 
 
@@ -258,7 +399,7 @@ def build(
 
         assert isinstance(child, (Collection, Publication, UnbuiltArtifact))
 
-        BuildOnStartHook.execute(hooks, child_key, child)
+        BuildOnStartHook.execute(hooks, {"key": child_key, "node": child})
         result = build(
             child,
             ignore_release_time=ignore_release_time,

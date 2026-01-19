@@ -58,11 +58,10 @@ Register an implementation::
 
 Execute hooks::
 
-    DiscoverOnSkipHook.execute(hooks, path)
+    DiscoverOnSkipHook.execute(hooks, {"path": path})
 
 """
 
-# Re-export base types
 from ._base import (
     HOOK_POINTS,
     Hook,
@@ -71,26 +70,12 @@ from ._base import (
     WebsiteContent,
     define_hook,
 )
+from ._website import PostGenerateWebsiteHook, PreGenerateWebsiteHook
 
-# Re-export all hook definitions
-from .definitions import (
-    BuildOnMissingHook,
-    BuildOnNotReadyHook,
-    BuildOnRecipeHook,
-    BuildOnStartHook,
-    BuildOnSuccessHook,
-    BuildOnTooSoonHook,
-    DiscoverOnCollectionHook,
-    DiscoverOnPublicationHook,
-    DiscoverOnSkipHook,
-    ExportOnCopyHook,
-    ExportOnNodeHook,
-    FilterOnHitHook,
-    FilterOnMissHook,
-    PostGenerateWebsiteHook,
-    PreGenerateWebsiteHook,
-    PreResolveHook,
-)
+# NOTE: Materials hooks (DiscoverOn*, BuildOn*, ExportOn*, FilterOn*, PreResolve*)
+# are not re-exported here to avoid circular imports. Import them from their
+# source modules: automata.materials._discover, automata.materials._build, etc.
+# The main automata package re-exports them for convenience.
 
 
 def validate_hook_point_names(hooks: Registry) -> None:
@@ -123,25 +108,6 @@ __all__ = [
     # Return types
     "ResolveOverrides",
     "WebsiteContent",
-    # materials.discover hooks
-    "DiscoverOnCollectionHook",
-    "DiscoverOnPublicationHook",
-    "DiscoverOnSkipHook",
-    # materials.build hooks
-    "BuildOnStartHook",
-    "BuildOnTooSoonHook",
-    "BuildOnNotReadyHook",
-    "BuildOnMissingHook",
-    "BuildOnRecipeHook",
-    "BuildOnSuccessHook",
-    # materials.export hooks
-    "ExportOnCopyHook",
-    "ExportOnNodeHook",
-    # materials.filter hooks
-    "FilterOnHitHook",
-    "FilterOnMissHook",
-    # resolution hooks
-    "PreResolveHook",
     # website hooks
     "PreGenerateWebsiteHook",
     "PostGenerateWebsiteHook",

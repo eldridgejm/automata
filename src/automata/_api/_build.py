@@ -87,18 +87,20 @@ def build(
 
     # Execute pre_generate_website hooks as a pipeline
     # Each hook can transform the content, assets, and static_files
-    final_content = PreGenerateWebsiteHook.execute_pipeline(
+    final_content = PreGenerateWebsiteHook.execute(
         extension.hooks,
-        initial_content,
-        materials=exported_universe,
-        website_config=config.website,
-        build_directory=build_dir,
-        vars=config.vars,
-        current_time=current_time,
+        {
+            "website_content": initial_content,
+            "materials": exported_universe,
+            "website_config": config.website,
+            "build_directory": build_dir,
+            "vars": config.vars,
+            "current_time": current_time,
+        },
     )
 
-    # execute_pipeline always returns a value (initial if no hooks), but
-    # the type system doesn't know this, so use initial_content as fallback
+    # execute always returns a value for pipeline hooks (initial if no hooks),
+    # but the type system doesn't know this, so use initial_content as fallback
     if final_content is None:
         final_content = initial_content
 
@@ -123,9 +125,11 @@ def build(
     # Execute post_generate_website hooks
     PostGenerateWebsiteHook.execute(
         extension.hooks,
-        materials=exported_universe,
-        website_config=config.website,
-        build_directory=build_dir,
-        vars=config.vars,
-        current_time=current_time,
+        {
+            "materials": exported_universe,
+            "website_config": config.website,
+            "build_directory": build_dir,
+            "vars": config.vars,
+            "current_time": current_time,
+        },
     )

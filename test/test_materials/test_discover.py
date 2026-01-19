@@ -2,7 +2,7 @@ import datetime
 
 from pytest import raises
 
-from automata.hooks import DiscoverOnSkipHook, Registry
+from automata import DiscoverOnSkipHook, Registry
 from automata.materials import discover
 from automata.materials.exceptions import DiscoveryError
 

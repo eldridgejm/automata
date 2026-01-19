@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from automata.hooks import (
+from automata import (
     HOOK_POINTS,
     BuildOnMissingHook,
     BuildOnNotReadyHook,
@@ -221,11 +221,11 @@ class TestFromScript:
         mock_website_config.base_path = "/"
 
         hook_fn(
-            mock_materials,
-            mock_website_config,
-            Path("/build"),
-            {"var": "value"},
-            datetime.datetime(2024, 1, 1),
+            materials=mock_materials,
+            website_config=mock_website_config,
+            build_directory=Path("/build"),
+            vars={"var": "value"},
+            current_time=datetime.datetime(2024, 1, 1),
         )
 
         mock_run.assert_called_once()
@@ -255,11 +255,11 @@ class TestFromScript:
         mock_website_config.base_path = "/"
 
         hook_fn(
-            mock_materials,
-            mock_website_config,
-            Path("/build"),
-            {"key": "value"},
-            datetime.datetime(2024, 1, 1),
+            materials=mock_materials,
+            website_config=mock_website_config,
+            build_directory=Path("/build"),
+            vars={"key": "value"},
+            current_time=datetime.datetime(2024, 1, 1),
         )
 
         call_kwargs = mock_run.call_args[1]
@@ -380,7 +380,7 @@ class TestHookExecution:
         def hook_c(path):
             call_order.append("C")
 
-        DiscoverOnSkipHook.execute(hooks, Path("/test"))
+        DiscoverOnSkipHook.execute(hooks, {"path": Path("/test")})
 
         # Should be B (10), A (50), C (100)
         assert call_order == ["B", "A", "C"]
@@ -402,7 +402,7 @@ class TestHookExecution:
         def hook_3(path):
             call_order.append("third")
 
-        DiscoverOnSkipHook.execute(hooks, Path("/test"))
+        DiscoverOnSkipHook.execute(hooks, {"path": Path("/test")})
 
         # Same priority, should preserve insertion order
         assert call_order == ["first", "second", "third"]
@@ -419,7 +419,9 @@ class TestHookExecution:
         def hook_2(call_site, path):
             return ResolveOverrides(global_variables={"y": 2})
 
-        results = PreResolveHook.execute(hooks, "test", Path("/test"))
+        results = PreResolveHook.execute(
+            hooks, {"call_site": "test", "path": Path("/test")}
+        )
 
         assert len(results) == 2
         assert results[0].global_variables["x"] == 1
@@ -427,7 +429,7 @@ class TestHookExecution:
 
     def test_execute_with_none_registry_returns_empty_list(self):
         """Verify None hooks returns empty list."""
-        results = DiscoverOnSkipHook.execute(None, Path("/test"))
+        results = DiscoverOnSkipHook.execute(None, {"path": Path("/test")})
 
         assert results == []
 
@@ -435,7 +437,7 @@ class TestHookExecution:
         """Verify empty registry returns empty list."""
         hooks: Registry = {}
 
-        results = DiscoverOnSkipHook.execute(hooks, Path("/test"))
+        results = DiscoverOnSkipHook.execute(hooks, {"path": Path("/test")})
 
         assert results == []
 
@@ -448,7 +450,7 @@ class TestHookExecution:
             raise ValueError("Hook failed!")
 
         with pytest.raises(RuntimeError) as exc_info:
-            DiscoverOnSkipHook.execute(hooks, Path("/test"))
+            DiscoverOnSkipHook.execute(hooks, {"path": Path("/test")})
 
         assert "materials.discover:on_skip" in str(exc_info.value)
         assert "priority 50" in str(exc_info.value)
@@ -461,9 +463,9 @@ class TestHookExecution:
 
 
 class TestPipelineExecution:
-    """Tests for Hook.execute_pipeline() method."""
+    """Tests for pipeline execution mode (hooks with pipeline_arg set)."""
 
-    def test_execute_pipeline_passes_through_values(self):
+    def test_pipeline_passes_through_values(self):
         """Verify pipeline passes output from one hook to the next."""
         hooks: Registry = {}
 
@@ -494,14 +496,16 @@ class TestPipelineExecution:
             static_files={},
         )
 
-        result = PreGenerateWebsiteHook.execute_pipeline(
+        result = PreGenerateWebsiteHook.execute(
             hooks,
-            initial,
-            materials=Mock(),
-            website_config=Mock(),
-            build_directory=Path("/build"),
-            vars={},
-            current_time=datetime.datetime.now(),
+            {
+                "website_content": initial,
+                "materials": Mock(),
+                "website_config": Mock(),
+                "build_directory": Path("/build"),
+                "vars": {},
+                "current_time": datetime.datetime.now(),
+            },
         )
 
         # Original content preserved
@@ -509,25 +513,27 @@ class TestPipelineExecution:
         # Added content was modified by second hook
         assert result.content["added.html"] == "Modified by second hook"
 
-    def test_execute_pipeline_returns_initial_when_no_hooks(self):
+    def test_pipeline_returns_initial_when_no_hooks(self):
         """Verify pipeline returns initial value when no hooks registered."""
         hooks: Registry = {}
 
         initial = WebsiteContent(content={"page.html": "Content"})
 
-        result = PreGenerateWebsiteHook.execute_pipeline(
+        result = PreGenerateWebsiteHook.execute(
             hooks,
-            initial,
-            materials=Mock(),
-            website_config=Mock(),
-            build_directory=Path("/build"),
-            vars={},
-            current_time=datetime.datetime.now(),
+            {
+                "website_content": initial,
+                "materials": Mock(),
+                "website_config": Mock(),
+                "build_directory": Path("/build"),
+                "vars": {},
+                "current_time": datetime.datetime.now(),
+            },
         )
 
         assert result is initial
 
-    def test_execute_pipeline_skips_none_results(self):
+    def test_pipeline_skips_none_results(self):
         """Verify pipeline skips hooks that return None."""
         hooks: Registry = {}
 
@@ -537,14 +543,16 @@ class TestPipelineExecution:
 
         initial = WebsiteContent(content={"page.html": "Content"})
 
-        result = PreGenerateWebsiteHook.execute_pipeline(
+        result = PreGenerateWebsiteHook.execute(
             hooks,
-            initial,
-            materials=Mock(),
-            website_config=Mock(),
-            build_directory=Path("/build"),
-            vars={},
-            current_time=datetime.datetime.now(),
+            {
+                "website_content": initial,
+                "materials": Mock(),
+                "website_config": Mock(),
+                "build_directory": Path("/build"),
+                "vars": {},
+                "current_time": datetime.datetime.now(),
+            },
         )
 
         # Should still have original content

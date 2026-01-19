@@ -3,23 +3,9 @@ from ._api import build, load, resolve
 from .extensions import Extension, merge_extensions
 from .hooks import (
     HOOK_POINTS,
-    BuildOnMissingHook,
-    BuildOnNotReadyHook,
-    BuildOnRecipeHook,
-    BuildOnStartHook,
-    BuildOnSuccessHook,
-    BuildOnTooSoonHook,
-    DiscoverOnCollectionHook,
-    DiscoverOnPublicationHook,
-    DiscoverOnSkipHook,
-    ExportOnCopyHook,
-    ExportOnNodeHook,
-    FilterOnHitHook,
-    FilterOnMissHook,
     Hook,
     PostGenerateWebsiteHook,
     PreGenerateWebsiteHook,
-    PreResolveHook,
     Registry,
     ResolveOverrides,
     WebsiteContent,
@@ -34,6 +20,22 @@ from .loaders import (
     load_templates_from_directory,
     load_website_components_from_directory,
 )
+from .materials._build import (
+    BuildOnMissingHook,
+    BuildOnNotReadyHook,
+    BuildOnRecipeHook,
+    BuildOnStartHook,
+    BuildOnSuccessHook,
+    BuildOnTooSoonHook,
+)
+from .materials._discover import (
+    DiscoverOnCollectionHook,
+    DiscoverOnPublicationHook,
+    DiscoverOnSkipHook,
+    PreResolveHook,
+)
+from .materials._export import ExportOnCopyHook, ExportOnNodeHook
+from .materials._filter import FilterOnHitHook, FilterOnMissHook
 
 __all__ = [
     "exceptions",

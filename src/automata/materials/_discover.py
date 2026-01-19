@@ -7,13 +7,7 @@ from typing import Any, Dict, Optional
 
 from automata import constants
 
-from ..hooks import (
-    DiscoverOnCollectionHook,
-    DiscoverOnPublicationHook,
-    DiscoverOnSkipHook,
-    PreResolveHook,
-    Registry,
-)
+from ..hooks._base import Registry, ResolveOverrides, define_hook
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file
 from ._types import (
@@ -25,7 +19,93 @@ from ._types import (
 )
 from .exceptions import DiscoveryError
 
-# helper functions =====================================================================
+# =============================================================================
+# Hook Definitions
+# =============================================================================
+
+
+@define_hook("materials.discover:on_collection")
+def DiscoverOnCollectionHook(path: pathlib.Path, collection: Collection) -> None:
+    """Called when a collection is discovered.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the collection.yaml file.
+    collection : Collection
+        The discovered collection.
+
+    """
+    ...
+
+
+@define_hook("materials.discover:on_publication")
+def DiscoverOnPublicationHook(path: pathlib.Path, publication: Publication) -> None:
+    """Called when a publication is discovered.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the publication.yaml file.
+    publication : Publication
+        The discovered publication.
+
+    """
+    ...
+
+
+@define_hook("materials.discover:on_skip")
+def DiscoverOnSkipHook(path: pathlib.Path) -> None:
+    """Called when a directory is skipped during discovery.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the skipped directory.
+
+    """
+    ...
+
+
+@define_hook("pre_resolve")
+def PreResolveHook(call_site: str, path: pathlib.Path) -> ResolveOverrides | None:
+    """Called before resolve() is called.
+
+    Can provide extra functions/variables for resolution.
+
+    Parameters
+    ----------
+    call_site : str
+        Identifier for where resolve() is being called from.
+    path : Path
+        Path to the file being resolved.
+
+    Returns
+    -------
+    ResolveOverrides | None
+        Overrides to apply, or None for no overrides.
+
+    """
+    ...
+
+
+def _merge_resolve_results(
+    results: list[ResolveOverrides | None],
+) -> ResolveOverrides | None:
+    """Merge results from multiple hooks, skipping None values."""
+    merged = ResolveOverrides()
+    for result in results:
+        if result is not None:
+            merged = merged.merge(result)
+    return merged
+
+
+PreResolveHook.reduce_results = _merge_resolve_results
+
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
 
 
 def _is_collection(dirpath: pathlib.Path) -> bool:
@@ -115,7 +195,7 @@ def _search_for_collections_and_publications(
         for subpath in current_path.iterdir():
             if subpath.is_dir():
                 if subpath.name in skip_directories:
-                    DiscoverOnSkipHook.execute(hooks, subpath)
+                    DiscoverOnSkipHook.execute(hooks, {"path": subpath})
                     continue
                 queue.append((subpath, parent_collection_path))  # type: ignore
 
@@ -176,7 +256,9 @@ def _make_collections(
         key = str(path.relative_to(root_directory))
         collections[key] = collection
 
-        DiscoverOnCollectionHook.execute(hooks, file_path, collection)
+        DiscoverOnCollectionHook.execute(
+            hooks, {"path": file_path, "collection": collection}
+        )
 
     collections["default"] = _make_default_collection()
     return collections
@@ -258,7 +340,7 @@ def _make_publications(
 
         # Execute pre_resolve hooks to get additional functions
         pre_resolve_results = PreResolveHook.execute(
-            hooks, call_site="publication", path=file_path
+            hooks, {"call_site": "publication", "path": file_path}
         )
         overrides = PreResolveHook.reduce_results(pre_resolve_results)
         functions = overrides.functions if overrides and overrides.functions else None
@@ -273,7 +355,9 @@ def _make_publications(
 
         collection.publications[publication_key] = publication
 
-        DiscoverOnPublicationHook.execute(hooks, file_path, publication)
+        DiscoverOnPublicationHook.execute(
+            hooks, {"path": file_path, "publication": publication}
+        )
 
 
 def _sort_dictionary(dct) -> OrderedDict:
@@ -284,7 +368,9 @@ def _sort_dictionary(dct) -> OrderedDict:
     return result
 
 
-# discover() ===========================================================================
+# =============================================================================
+# discover()
+# =============================================================================
 
 
 def discover(

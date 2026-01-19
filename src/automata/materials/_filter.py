@@ -2,7 +2,7 @@
 
 from typing import Callable, TypeVar, overload
 
-from ..hooks import FilterOnHitHook, FilterOnMissHook, Registry
+from ..hooks._base import Registry, define_hook
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -12,6 +12,69 @@ from ._types import (
     UnbuiltArtifact,
     Universe,
 )
+
+# =============================================================================
+# Hook Definitions
+# =============================================================================
+
+
+@define_hook("materials.filter:on_hit")
+def FilterOnHitHook(
+    key: str, node: Universe | Collection | Publication | Artifact
+) -> None:
+    """Called when predicate matches.
+
+    Parameters
+    ----------
+    key : str
+        The key of the matching node.
+    node : Universe | Collection | Publication | Artifact
+        The matching node.
+
+    """
+    ...
+
+
+def _serialize_filter_hit_args(
+    key: str, node: Universe | Collection | Publication | Artifact
+) -> dict:
+    """Serialize arguments for script execution (node serialized as type name)."""
+    return {"key": key, "node_type": type(node).__name__}
+
+
+FilterOnHitHook.serialize_args = _serialize_filter_hit_args
+
+
+@define_hook("materials.filter:on_miss")
+def FilterOnMissHook(
+    key: str, node: Universe | Collection | Publication | Artifact
+) -> None:
+    """Called when predicate doesn't match.
+
+    Parameters
+    ----------
+    key : str
+        The key of the non-matching node.
+    node : Universe | Collection | Publication | Artifact
+        The non-matching node.
+
+    """
+    ...
+
+
+def _serialize_filter_miss_args(
+    key: str, node: Universe | Collection | Publication | Artifact
+) -> dict:
+    """Serialize arguments for script execution (node serialized as type name)."""
+    return {"key": key, "node_type": type(node).__name__}
+
+
+FilterOnMissHook.serialize_args = _serialize_filter_miss_args
+
+
+# =============================================================================
+# Filter Implementation
+# =============================================================================
 
 # overloads for filter() ---------------------------------------------------------------
 
@@ -119,9 +182,9 @@ def filter(
     def predicate_with_hooks(key, node):
         result = predicate(key, node)
         if result:
-            FilterOnHitHook.execute(hooks, key, node)
+            FilterOnHitHook.execute(hooks, {"key": key, "node": node})
         else:
-            FilterOnMissHook.execute(hooks, key, node)
+            FilterOnMissHook.execute(hooks, {"key": key, "node": node})
         return result
 
     new_children = {}

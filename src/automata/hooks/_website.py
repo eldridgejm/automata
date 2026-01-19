@@ -7,16 +7,15 @@ This module contains hook classes for:
 
 from __future__ import annotations
 
+import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .._base import WebsiteContent, define_hook
+from ._base import WebsiteContent, define_hook
 
 if TYPE_CHECKING:
-    import datetime
-
-    from ..._config import WebsiteConfig
-    from ...materials import ExportedArtifact, Universe
+    from .._config import WebsiteConfig
+    from ..materials import ExportedArtifact, Universe
 
 
 @define_hook("pre_generate_website")
@@ -26,7 +25,7 @@ def PreGenerateWebsiteHook(
     website_config: "WebsiteConfig",
     build_directory: Path,
     vars: dict[str, Any],
-    current_time: "datetime.datetime",
+    current_time: datetime.datetime,
 ) -> WebsiteContent:
     """Called before website generation.
 
@@ -60,13 +59,17 @@ def PreGenerateWebsiteHook(
     raise NotImplementedError("This is a hook signature, not an implementation")
 
 
+# Mark as a pipeline hook - website_content is passed through the chain
+PreGenerateWebsiteHook.pipeline_arg = "website_content"
+
+
 @define_hook("post_generate_website")
 def PostGenerateWebsiteHook(
     materials: "Universe[ExportedArtifact]",
     website_config: "WebsiteConfig",
     build_directory: Path,
     vars: dict[str, Any],
-    current_time: "datetime.datetime",
+    current_time: datetime.datetime,
 ) -> None:
     """Called after website generation.
 
@@ -94,10 +97,10 @@ def _serialize_post_generate_args(
     website_config: "WebsiteConfig",
     build_directory: Path,
     vars: dict[str, Any],
-    current_time: "datetime.datetime",
+    current_time: datetime.datetime,
 ) -> dict:
     """Serialize arguments for script execution."""
-    from ... import materials as materials_module
+    from .. import materials as materials_module
 
     return {
         "materials": materials_module.serialize(materials),

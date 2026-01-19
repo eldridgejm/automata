@@ -4,7 +4,7 @@ import pathlib
 import shutil
 from typing import cast, overload
 
-from ..hooks import ExportOnCopyHook, ExportOnNodeHook, Registry
+from ..hooks._base import Registry, define_hook
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -13,6 +13,65 @@ from ._types import (
     Publication,
     Universe,
 )
+
+# =============================================================================
+# Hook Definitions
+# =============================================================================
+
+
+@define_hook("materials.export:on_copy")
+def ExportOnCopyHook(src: pathlib.Path, dst: pathlib.Path) -> None:
+    """Called when copying a file during export.
+
+    Parameters
+    ----------
+    src : Path
+        Source path of the file being copied.
+    dst : Path
+        Destination path of the file.
+
+    """
+    ...
+
+
+def _serialize_copy_args(src: pathlib.Path, dst: pathlib.Path) -> dict:
+    """Serialize arguments for script execution."""
+    return {"src": src, "dst": dst}
+
+
+ExportOnCopyHook.serialize_args = _serialize_copy_args
+
+
+@define_hook("materials.export:on_node")
+def ExportOnNodeHook(
+    key: str, node: Universe | Collection | Publication | Artifact
+) -> None:
+    """Called when exporting a node.
+
+    Parameters
+    ----------
+    key : str
+        The key of the node being exported.
+    node : Universe | Collection | Publication | Artifact
+        The node being exported.
+
+    """
+    ...
+
+
+def _serialize_node_args(
+    key: str, node: Universe | Collection | Publication | Artifact
+) -> dict:
+    """Serialize arguments for script execution (node serialized as type name)."""
+    return {"key": key, "node_type": type(node).__name__}
+
+
+ExportOnNodeHook.serialize_args = _serialize_node_args
+
+
+# =============================================================================
+# Export Implementation
+# =============================================================================
 
 
 def _export_artifact(
@@ -41,7 +100,7 @@ def _export_artifact(
     full_dst.parent.mkdir(parents=True, exist_ok=True)
     full_src = built_artifact.workdir / built_artifact.path
 
-    ExportOnCopyHook.execute(hooks, full_src, full_dst)
+    ExportOnCopyHook.execute(hooks, {"src": full_src, "dst": full_dst})
 
     if full_src.is_dir():
         shutil.copytree(full_src, full_dst)
@@ -158,7 +217,7 @@ def export(
 
     new_children = {}
     for child_key, child in root._children.items():
-        ExportOnNodeHook.execute(hooks, child_key, child)
+        ExportOnNodeHook.execute(hooks, {"key": child_key, "node": child})
         new_prefix = str(pathlib.Path(prefix) / child_key)
 
         assert isinstance(child, (Universe, Collection, Publication, Artifact))
