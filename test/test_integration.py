@@ -86,7 +86,7 @@ def test_release_time_and_ready_flag_behavior(temporary_course):
         Path(__file__).parent.parent
         / "src"
         / "automata"
-        / "website"
+        / "builtin"
         / "themes"
         / "default"
     )

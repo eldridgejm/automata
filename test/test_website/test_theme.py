@@ -106,7 +106,7 @@ def test_default_entry_point_is_registered() -> None:
     """Test that the 'default' theme entry point is registered."""
     # Verify the entry point exists
     entry_points = metadata.entry_points()
-    theme_eps = entry_points.select(group="automata.website.themes")
+    theme_eps = entry_points.select(group="automata.themes")
 
     # Check that "default" is in the registered entry points
     default_ep = theme_eps["default"]

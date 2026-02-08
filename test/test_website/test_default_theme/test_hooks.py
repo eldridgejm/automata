@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from automata.website.themes.default import hooks
+from automata.builtin.themes.default import hooks
 
 # _is_npx_available tests ==================================================
 
@@ -147,7 +147,7 @@ def test_post_generate_skips_when_npx_not_available():
     mock_config.theme.config = {}
 
     with mock.patch.object(hooks, "_is_npx_available", return_value=False):
-        with mock.patch("automata.website.themes.default.hooks.logger") as mock_logger:
+        with mock.patch("automata.builtin.themes.default.hooks.logger") as mock_logger:
             # Should not raise, just warn
             hooks.post_generate(mock_config)
             mock_logger.warning.assert_called_once()
@@ -163,7 +163,7 @@ def test_post_generate_skips_when_theme_dir_not_found():
     with mock.patch.object(hooks, "_is_npx_available", return_value=True):
         with mock.patch.object(hooks, "_get_theme_directory", return_value=None):
             with mock.patch(
-                "automata.website.themes.default.hooks.logger"
+                "automata.builtin.themes.default.hooks.logger"
             ) as mock_logger:
                 hooks.post_generate(mock_config)
                 mock_logger.warning.assert_called_once()
@@ -183,7 +183,7 @@ def test_post_generate_skips_when_input_css_missing(tmp_path):
     with mock.patch.object(hooks, "_is_npx_available", return_value=True):
         with mock.patch.object(hooks, "_get_theme_directory", return_value=theme_dir):
             with mock.patch(
-                "automata.website.themes.default.hooks.logger"
+                "automata.builtin.themes.default.hooks.logger"
             ) as mock_logger:
                 hooks.post_generate(mock_config)
                 mock_logger.warning.assert_called_once()
@@ -207,7 +207,7 @@ def test_post_generate_handles_rebuild_errors_gracefully(tmp_path):
                 hooks, "_rebuild_tailwind", side_effect=RuntimeError("Build failed")
             ):
                 with mock.patch(
-                    "automata.website.themes.default.hooks.logger"
+                    "automata.builtin.themes.default.hooks.logger"
                 ) as mock_logger:
                     # Should not raise, just warn
                     hooks.post_generate(mock_config)

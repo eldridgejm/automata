@@ -672,11 +672,11 @@ def generate(
     Themes can be loaded in two ways:
 
     1. **Entry Point Name** (default): If ``config.theme.use`` does not contain slashes,
-       it is treated as an entry point name in the ``"automata.website.themes"`` group.
+       it is treated as an entry point name in the ``"automata.themes"`` group.
        The default theme is ``"default"``. Custom themes can be registered as entry
        points in a package's ``pyproject.toml``::
 
-           [project.entry-points."automata.website.themes"]
+           [project.entry-points."automata.themes"]
            my-theme = "my_package.themes.custom"
 
        The referenced module can either export a ``theme`` variable containing a

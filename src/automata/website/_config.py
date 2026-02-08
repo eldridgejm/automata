@@ -8,7 +8,7 @@ class ThemeConfig(smartconfig.Prototype):
 
     # which theme to use. If this contains slashes, it is treated as a path to a
     # custom theme directory. Otherwise, it is treated as the name of an entry
-    # point under the "automata.website.themes" group.
+    # point under the "automata.themes" group.
     use: str = "default"
 
     # path to a directory containing overrides. If specified, this directory should

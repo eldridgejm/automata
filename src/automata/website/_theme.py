@@ -211,9 +211,7 @@ class Theme:
 
         """
         entry_points = metadata.entry_points()
-        entry_point = entry_points.select(group="automata.website.themes")[
-            entry_point_name
-        ]
+        entry_point = entry_points.select(group="automata.themes")[entry_point_name]
 
         module = entry_point.load()
         if hasattr(module, "theme"):
