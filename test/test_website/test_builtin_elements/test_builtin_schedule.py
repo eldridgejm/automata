@@ -87,7 +87,7 @@ def test_schedule_element_raises_on_missing_resource_type(
                 "collection": "lectures",
                 "for_each_publication": {
                     "start_displaying_on": {
-                        "__raw__": "${ publication.metadata.date }"
+                        "__template__": "${ publication.metadata.date }"
                     },
                     "title": "Lecture",
                     "resources": [{"html": "<p>Content</p>"}],  # Missing 'type' field
@@ -132,7 +132,7 @@ def test_schedule_element_raises_on_invalid_resource_type(
                 "collection": "lectures",
                 "for_each_publication": {
                     "start_displaying_on": {
-                        "__raw__": "${ publication.metadata.date }"
+                        "__template__": "${ publication.metadata.date }"
                     },
                     "title": "Lecture",
                     "resources": [{"type": "invalid_type", "content": "Some content"}],
@@ -174,7 +174,7 @@ def test_schedule_validates_html_resource_config(schedule_element):
                 "collection": "lectures",
                 "for_each_publication": {
                     "start_displaying_on": {
-                        "__raw__": "${ publication.metadata.date }"
+                        "__template__": "${ publication.metadata.date }"
                     },
                     "title": "Lecture",
                     "resources": [
@@ -215,7 +215,7 @@ def test_schedule_validates_markdown_resource_config(schedule_element):
                 "collection": "lectures",
                 "for_each_publication": {
                     "start_displaying_on": {
-                        "__raw__": "${ publication.metadata.date }"
+                        "__template__": "${ publication.metadata.date }"
                     },
                     "title": "Lecture",
                     "resources": [
@@ -262,7 +262,7 @@ def test_schedule_validates_metadata_links_resource_config(schedule_element):
                 "collection": "lectures",
                 "for_each_publication": {
                     "start_displaying_on": {
-                        "__raw__": "${ publication.metadata.date }"
+                        "__template__": "${ publication.metadata.date }"
                     },
                     "title": "Lecture",
                     "resources": [
@@ -306,7 +306,7 @@ def test_schedule_validates_artifact_links_resource_config(schedule_element):
                 "collection": "lectures",
                 "for_each_publication": {
                     "start_displaying_on": {
-                        "__raw__": "${ publication.metadata.date }"
+                        "__template__": "${ publication.metadata.date }"
                     },
                     "title": "Lecture",
                     "resources": [
@@ -350,7 +350,7 @@ def test_schedule_validates_artifact_link_config(schedule_element):
                 "collection": "lectures",
                 "for_each_publication": {
                     "start_displaying_on": {
-                        "__raw__": "${ publication.metadata.date }"
+                        "__template__": "${ publication.metadata.date }"
                     },
                     "title": "Lecture",
                     "resources": [
@@ -415,9 +415,9 @@ def test_activities_placed_in_correct_week(schedule_element):
             {
                 "collection": "lectures",
                 "for_each_publication": {
-                    "start_displaying_on": smartconfig.types.RawString(
-                        "${ publication.metadata.date }"
-                    ),
+                    "start_displaying_on": {
+                        "__template__": "${ publication.metadata.date }"
+                    },
                     "title": "Lecture",
                     "resources": [],
                 },
@@ -468,9 +468,9 @@ def test_activities_outside_week_range_placed_in_none_week(schedule_element):
             {
                 "collection": "lectures",
                 "for_each_publication": {
-                    "start_displaying_on": smartconfig.types.RawString(
-                        "${ publication.metadata.date }"
-                    ),
+                    "start_displaying_on": {
+                        "__template__": "${ publication.metadata.date }"
+                    },
                     "title": "Lecture",
                     "resources": [],
                 },
@@ -536,8 +536,8 @@ def test_metadata_links_resources_are_expanded(schedule_element):
                             "style": "buttons",
                             "metadata_key_for_links": "videos",
                             "for_each_link": {
-                                "text": {"__raw__": "${ link.text }"},
-                                "url": {"__raw__": "${ link.url }"},
+                                "text": {"__template__": "${ link.text }"},
+                                "url": {"__template__": "${ link.url }"},
                             },
                         }
                     ],
@@ -605,8 +605,8 @@ def test_metadata_links_with_missing_metadata_key(schedule_element):
                             "title": "Videos",
                             "metadata_key_for_links": "videos",
                             "for_each_link": {
-                                "text": {"__raw__": "${ link.text }"},
-                                "url": {"__raw__": "${ link.url }"},
+                                "text": {"__template__": "${ link.text }"},
+                                "url": {"__template__": "${ link.url }"},
                             },
                         }
                     ],

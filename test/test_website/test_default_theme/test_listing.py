@@ -63,7 +63,7 @@ def test_listing_element_renders_simple_table(tmpsite, config):
             "columns": [
                 {
                     "heading": "Assignment",
-                    "cell_content": {"__raw__": "${ publication.metadata.name }"}
+                    "cell_content": {"__template__": "${ publication.metadata.name }"}
                 }
             ]
         }) }
@@ -116,11 +116,11 @@ def test_listing_element_renders_multiple_columns(tmpsite, config):
             "columns": [
                 {
                     "heading": "Assignment",
-                    "cell_content": {"__raw__": "${ publication.metadata.name }"}
+                    "cell_content": {"__template__": "${ publication.metadata.name }"}
                 },
                 {
                     "heading": "Due Date",
-                    "cell_content": {"__raw__": "${ publication.metadata.due }"}
+                    "cell_content": {"__template__": "${ publication.metadata.due }"}
                 }
             ]
         }) }
@@ -176,7 +176,7 @@ def test_listing_element_with_numbered_rows(tmpsite, config):
             "columns": [
                 {
                     "heading": "Assignment",
-                    "cell_content": {"__raw__": "${ publication.metadata.name }"}
+                    "cell_content": {"__template__": "${ publication.metadata.name }"}
                 }
             ]
         }) }
@@ -224,7 +224,7 @@ def test_listing_element_with_artifact_links(tmpsite, config):
             "collection": "homeworks",
             "columns": [{
                 "heading": "Problems",
-                "cell_content": {"__raw__": "${ publication.metadata.name }"}
+                "cell_content": {"__template__": "${ publication.metadata.name }"}
             }]
         }) }
         """,
@@ -334,7 +334,7 @@ def test_listing_element_conditional_content_when_metadata_missing(tmpsite, conf
             "columns": [
                 {
                     "heading": "Due",
-                    "cell_content": {"__raw__": "${ publication.metadata.due }"},
+                    "cell_content": {"__template__": "${ publication.metadata.due }"},
                     "requires": {
                         "metadata": ["due"],
                         "cell_content_if_missing": "TBD"
@@ -391,7 +391,7 @@ def test_listing_element_conditional_content_non_null_metadata(tmpsite, config):
             "columns": [
                 {
                     "heading": "Due",
-                    "cell_content": {"__raw__": "${ publication.metadata.due }"},
+                    "cell_content": {"__template__": "${ publication.metadata.due }"},
                     "requires": {
                         "non_null_metadata": ["due"],
                         "cell_content_if_missing": "TBD"

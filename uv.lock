@@ -39,7 +39,7 @@ requires-dist = [
     { name = "jinja2" },
     { name = "mistune" },
     { name = "ruamel-yaml" },
-    { name = "smartconfig", git = "https://github.com/eldridgejm/smartconfig.git?rev=0.4.0" },
+    { name = "smartconfig", git = "https://github.com/eldridgejm/smartconfig.git?rev=0.5.3" },
     { name = "typer" },
 ]
 
@@ -483,8 +483,8 @@ wheels = [
 
 [[package]]
 name = "smartconfig"
-version = "0.4.0"
-source = { git = "https://github.com/eldridgejm/smartconfig.git?rev=0.4.0#b78901ff80814b3397ab57f04275e66e64fc0381" }
+version = "0.5.3"
+source = { git = "https://github.com/eldridgejm/smartconfig.git?rev=0.5.3#fa4104f41de45f36cec4d0bb6c1d0c1baf81e4c4" }
 dependencies = [
     { name = "jinja2" },
 ]

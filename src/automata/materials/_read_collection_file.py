@@ -73,24 +73,24 @@ def _resolve_collection_file(
         If the collection file is invalid.
 
     """
-    # Combine the configuration and external variables into a single dictionary.
-    # This avoids using global_variables, which can cause namespace pollution.
-    # References use ${this.key} for config values and ${vars.key} for external vars.
     combined = cast(
         smartconfig.types.ConfigurationDict,
-        {"this": raw_contents, "vars": vars if vars is not None else {}},
+        {"this": raw_contents},
     )
 
     combined_schema = {
         "type": "dict",
         "required_keys": {
             "this": COLLECTION_FILE_SCHEMA,
-            "vars": {"type": "any"},
         },
     }
 
     try:
-        resolved: Dict[str, Any] = resolve(combined, combined_schema)
+        resolved: Dict[str, Any] = resolve(
+            combined,
+            combined_schema,
+            global_variables={"vars": vars if vars is not None else {}},
+        )
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 

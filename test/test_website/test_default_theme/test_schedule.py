@@ -68,7 +68,7 @@ def test_schedule_element_renders_basic_week(tmpsite, config):
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": "Lecture {{ publication.metadata.number }}",
                         "resources": []
@@ -120,7 +120,7 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, config):
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": "Lecture",
                         "resources": []
@@ -178,7 +178,7 @@ def test_schedule_element_renders_html_resource(tmpsite, config):
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": "Lecture {{ publication.metadata.number }}",
                         "resources": [
@@ -242,7 +242,7 @@ def test_schedule_element_renders_markdown_resource(tmpsite, config):
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": "Lecture {{ publication.metadata.number }}",
                         "resources": [
@@ -316,10 +316,10 @@ def test_schedule_element_renders_metadata_links_resource(tmpsite, config):
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": {
-                            "__raw__": "Lecture ${ publication.metadata.number }"
+                            "__template__": "Lecture ${ publication.metadata.number }"
                         },
                         "resources": [
                             {
@@ -327,8 +327,8 @@ def test_schedule_element_renders_metadata_links_resource(tmpsite, config):
                                 "title": "Videos",
                                 "metadata_key_for_links": "videos",
                                 "for_each_link": {
-                                    "text": {"__raw__": "${ link.text }"},
-                                    "url": {"__raw__": "${ link.url }"}
+                                    "text": {"__template__": "${ link.text }"},
+                                    "url": {"__template__": "${ link.url }"}
                                 }
                             }
                         ]
@@ -395,10 +395,10 @@ def test_schedule_element_renders_artifact_links_resource(tmpsite, config):
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": {
-                            "__raw__": "Lecture ${ publication.metadata.number }"
+                            "__template__": "Lecture ${ publication.metadata.number }"
                         },
                         "resources": [
                             {
@@ -474,10 +474,10 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(tmpsite, 
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": {
-                            "__raw__": "Lecture ${ publication.metadata.number }"
+                            "__template__": "Lecture ${ publication.metadata.number }"
                         },
                         "resources": [
                             {
@@ -552,7 +552,7 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": "Lecture {{ publication.metadata.number }}",
                         "resources": [
@@ -616,7 +616,7 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": "Lecture {{ publication.metadata.number }}",
                         "resources": [
@@ -684,10 +684,10 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": {
-                            "__raw__": "Lecture ${ publication.metadata.number }"
+                            "__template__": "Lecture ${ publication.metadata.number }"
                         },
                         "resources": [
                             {
@@ -695,8 +695,8 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
                                 "title": "Videos",
                                 "metadata_key_for_links": "videos",
                                 "for_each_link": {
-                                    "text": {"__raw__": "${ link.text }"},
-                                    "url": {"__raw__": "${ link.url }"}
+                                    "text": {"__template__": "${ link.text }"},
+                                    "url": {"__template__": "${ link.url }"}
                                 }
                             }
                         ]
@@ -760,10 +760,10 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": {
-                            "__raw__": "Lecture ${ publication.metadata.number }"
+                            "__template__": "Lecture ${ publication.metadata.number }"
                         },
                         "resources": [
                             {
@@ -771,8 +771,8 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
                                 "title": "Videos",
                                 "metadata_key_for_links": "videos",
                                 "for_each_link": {
-                                    "text": {"__raw__": "${ link.text }"},
-                                    "url": {"__raw__": "${ link.url }"}
+                                    "text": {"__template__": "${ link.text }"},
+                                    "url": {"__template__": "${ link.url }"}
                                 }
                             }
                         ]
@@ -830,10 +830,10 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": {
-                            "__raw__": "Lecture ${ publication.metadata.number }"
+                            "__template__": "Lecture ${ publication.metadata.number }"
                         },
                         "resources": [
                             {
@@ -897,7 +897,7 @@ def test_schedule_element_resource_with_icon(tmpsite, config):
                     "collection": "lectures",
                     "for_each_publication": {
                         "start_displaying_on": {
-                            "__raw__": "${ publication.metadata.date }"
+                            "__template__": "${ publication.metadata.date }"
                         },
                         "title": "Lecture {{ publication.metadata.number }}",
                         "resources": [

@@ -127,9 +127,9 @@ primary_activity_collections:
   - collection: assignments
     for_each_publication:
       start_displaying_on:
-        __raw__: "${ publication.metadata.released }"
+        __template__: "${ publication.metadata.released }"
       title:
-        __raw__: "${ publication.metadata.name }"
+        __template__: "${ publication.metadata.name }"
       resources:
         - type: artifact_links
           links:

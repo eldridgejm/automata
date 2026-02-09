@@ -1,6 +1,7 @@
 metadata:
   number: 2
-  date: first tuesday, thursday after ${ previous.metadata.date }
+  date:
+    __datetime.parse__: "first tuesday, thursday after ${ previous.metadata.date }"
   topic: "Time Complexity"
 
 artifacts:

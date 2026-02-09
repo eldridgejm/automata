@@ -12,11 +12,40 @@ T = typing.TypeVar("T")
 P = typing.TypeVar("P", bound=smartconfig.Prototype)
 
 
-def unwrap_raw_strings(
+def string_or_template_string(**extras: typing.Any) -> smartconfig.types.DynamicSchema:
+    """Return a dynamic schema that accepts a plain string or a __template__ dict.
+
+    Additional schema entries (e.g., nullable, default) can be passed as keyword
+    arguments and will be included in the returned schema when the value is not
+    a template.
+
+    """
+
+    def schema(
+        config: smartconfig.types.Configuration, keypath: typing.Any
+    ) -> smartconfig.types.Schema:
+        if isinstance(config, dict) and "__template__" in config:
+            return {
+                "type": "dict",
+                "required_keys": {
+                    "__template__": {"type": "any"},
+                },
+            }
+        return {"type": "string", **extras}
+
+    return schema
+
+
+def unwrap_templates(
     config: smartconfig.types.Configuration,
     preserve: typing.Callable[[smartconfig.types.Configuration], bool] | None = None,
 ) -> smartconfig.types.Configuration:
-    """Recursively convert RawString instances to regular strings in a config dict.
+    """Recursively unwrap ``{"__template__": ...}`` dicts to plain strings.
+
+    After smartconfig resolution, fields that used the ``__template__`` function
+    are represented as single-key dicts ``{"__template__": "<string>"}``. This
+    function walks a configuration tree and replaces each such dict with the
+    inner string value.
 
     Parameters
     ----------
@@ -24,25 +53,25 @@ def unwrap_raw_strings(
         The configuration to process.
     preserve : Callable[[smartconfig.types.Configuration], bool] | None
         A function that takes a configuration node and returns True if it should be
-        left unchanged. This can be used to selectively preserve certain instances
-        of RawString. If None, all RawString instances will be converted.
+        left unchanged. This can be used to selectively preserve certain template
+        dicts. If None, all template dicts will be unwrapped.
 
     Returns
     -------
     smartconfig.types.Configuration
-        The processed configuration with RawString instances converted to strings.
+        The processed configuration with template dicts converted to strings.
 
     """
     if preserve is not None:
         if preserve(config):
             return config
 
-    if isinstance(config, smartconfig.types.RawString):
-        return str(config)
+    if isinstance(config, dict) and len(config) == 1 and "__template__" in config:
+        return config["__template__"]
     elif isinstance(config, dict):
-        return {k: unwrap_raw_strings(v, preserve) for k, v in config.items()}
+        return {k: unwrap_templates(v, preserve) for k, v in config.items()}
     elif isinstance(config, list):
-        return [unwrap_raw_strings(item, preserve) for item in config]
+        return [unwrap_templates(item, preserve) for item in config]
     else:
         return config
 

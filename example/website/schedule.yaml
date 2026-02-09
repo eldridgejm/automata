@@ -43,8 +43,8 @@ announcements:
 primary_activity_collections:
   - collection: lectures
     for_each_publication:
-      start_displaying_on: !raw "${ publication.metadata.date }"
-      title: !raw "Lecture ${ publication.metadata.number } - ${ publication.metadata.topic }"
+      start_displaying_on: !template "${ publication.metadata.date }"
+      title: !template "Lecture ${ publication.metadata.number } - ${ publication.metadata.topic }"
       resources:
         - type: artifact_links
           title: Slides
@@ -58,7 +58,7 @@ primary_activity_collections:
         - type: markdown
           title: Reading
           icon: book-open
-          markdown: !raw |
+          markdown: !template |
             {% if "reading" in publication.metadata %}
               {% if publication.metadata.reading.url %}
                 [${ publication.metadata.reading.title }](${ publication.metadata.reading.url })
@@ -81,8 +81,8 @@ primary_activity_collections:
           icon: film
           metadata_key_for_links: videos
           for_each_link:
-            text: !raw "${ link.title }"
-            url: !raw "${ link.url }"
+            text: !template "${ link.title }"
+            url: !template "${ link.url }"
 
         - type: artifact_links
           links:
@@ -97,9 +97,9 @@ secondary_activity_collections:
   - collection: homeworks
     for_each_publication:
       start_displaying_on:
-        !raw "${ publication.metadata.released }"
-      due_datetime: !raw "${ publication.metadata.due }"
-      title: !raw "Homework ${ publication.metadata.number }"
+        !template "${ publication.metadata.released }"
+      due_datetime: !template "${ publication.metadata.due }"
+      title: !template "Homework ${ publication.metadata.number }"
       resources:
         - type: artifact_links
           links:
@@ -110,13 +110,13 @@ secondary_activity_collections:
 
   - collection: labs
     for_each_publication:
-      start_displaying_on:
-        !raw "2 days before ${ publication.metadata.released }"
-      due_datetime: !raw "${ publication.metadata.due }"
+      start_displaying_on: !template
+        __datetime.parse__: "2 days before ${ publication.metadata.released }"
+      due_datetime: !template "${ publication.metadata.due }"
       title: Lab
       resources:
         - type: markdown
-          markdown: !raw |
+          markdown: !template |
             [Instructions](${ publication.artifacts["lab.txt"].path }) and
             [Starter Code](${ publication.artifacts["starter.txt"].path })
 
@@ -130,7 +130,7 @@ extra_primary_activities:
           We will cover key topics and answer your questions.
           However, we won't have food.
       - type: html
-        html: !raw |
+        html: !template |
           ${ elements.button({
               "label": "Join Review Session",
               "url": "https://example.com/review-session",

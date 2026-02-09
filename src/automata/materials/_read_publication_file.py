@@ -123,22 +123,20 @@ def _resolve_publication_file(
     """
     schema = _make_publication_file_schema(publication_schema)
 
-    # Combine the configuration and external variables into a single dictionary.
-    # This avoids using global_variables, which can cause namespace pollution.
-    # References use ${this.key} for config values, ${vars.key} for external vars,
-    # and ${previous.key} for previous publication data.
     combined_dict: dict[str, Any] = {
         "this": raw_contents,
-        "vars": vars if vars is not None else {},
     }
 
     combined_schema: dict[str, Any] = {
         "type": "dict",
         "required_keys": {
             "this": schema,
-            "vars": {"type": "any"},
         },
         "optional_keys": {},
+    }
+
+    global_variables: dict[str, Any] = {
+        "vars": vars if vars is not None else {},
     }
 
     if previous is not None:
@@ -148,7 +146,7 @@ def _resolve_publication_file(
     combined = cast(smartconfig.types.ConfigurationDict, combined_dict)
 
     try:
-        resolved = resolve(combined, combined_schema)
+        resolved = resolve(combined, combined_schema, global_variables=global_variables)
     except smartconfig.exceptions.ResolutionError as exc:
         raise DiscoveryError(str(exc), path)
 

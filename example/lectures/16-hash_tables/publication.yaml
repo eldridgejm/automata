@@ -1,6 +1,7 @@
 metadata:
   number: 16
-  date: first monday, wednesday after ${ previous.metadata.date }
+  date:
+    __datetime.parse__: "first monday, wednesday after ${ previous.metadata.date }"
   topic: "Hash Functions and Collision Resolution"
 
 artifacts:

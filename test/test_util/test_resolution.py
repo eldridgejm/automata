@@ -4,29 +4,29 @@ import smartconfig
 
 from automata import materials
 from automata.materials import resolve_for_each_publication
-from automata.util.resolution import resolve_for_each, unwrap_raw_strings
+from automata.util.resolution import resolve_for_each, unwrap_templates
 
-# unwrap_raw_strings() tests
+# unwrap_templates() tests
 # ============================================================================
 
 
-def test_unwrap_raw_strings_converts_raw_string():
-    """Test that RawString instances are converted to regular strings."""
-    config = smartconfig.types.RawString("hello world")
-    result = unwrap_raw_strings(config)
+def test_unwrap_templates_converts_template():
+    """Test that __template__ dicts are converted to regular strings."""
+    config = {"__template__": "hello world"}
+    result = unwrap_templates(config)
 
     assert isinstance(result, str)
     assert result == "hello world"
 
 
-def test_unwrap_raw_strings_handles_dict():
-    """Test that RawString instances in dicts are converted."""
+def test_unwrap_templates_handles_dict():
+    """Test that __template__ dicts inside dicts are converted."""
     config = {
-        "key1": smartconfig.types.RawString("value1"),
+        "key1": {"__template__": "value1"},
         "key2": "regular_string",
         "key3": 123,
     }
-    result = unwrap_raw_strings(config)
+    result = unwrap_templates(config)
 
     assert isinstance(result, dict)
     assert result["key1"] == "value1"
@@ -35,15 +35,15 @@ def test_unwrap_raw_strings_handles_dict():
     assert result["key3"] == 123
 
 
-def test_unwrap_raw_strings_handles_nested_dict():
-    """Test that RawString instances in nested dicts are converted."""
+def test_unwrap_templates_handles_nested_dict():
+    """Test that __template__ dicts in nested dicts are converted."""
     config: smartconfig.types.Configuration = {
         "outer": {
-            "inner": smartconfig.types.RawString("nested_value"),
+            "inner": {"__template__": "nested_value"},
             "regular": "string",
         }
     }
-    result = unwrap_raw_strings(config)
+    result = unwrap_templates(config)
 
     assert isinstance(result, dict)
     assert isinstance(result["outer"], dict)
@@ -51,15 +51,15 @@ def test_unwrap_raw_strings_handles_nested_dict():
     assert isinstance(result["outer"]["inner"], str)
 
 
-def test_unwrap_raw_strings_handles_list():
-    """Test that RawString instances in lists are converted."""
+def test_unwrap_templates_handles_list():
+    """Test that __template__ dicts in lists are converted."""
     config = [
-        smartconfig.types.RawString("item1"),
+        {"__template__": "item1"},
         "item2",
         123,
-        {"key": smartconfig.types.RawString("value")},
+        {"key": {"__template__": "value"}},
     ]
-    result = unwrap_raw_strings(config)
+    result = unwrap_templates(config)
 
     assert isinstance(result, list)
     assert result[0] == "item1"
@@ -70,64 +70,63 @@ def test_unwrap_raw_strings_handles_list():
     assert result[3]["key"] == "value"
 
 
-def test_unwrap_raw_strings_handles_primitives():
+def test_unwrap_templates_handles_primitives():
     """Test that primitive types are returned unchanged."""
-    assert unwrap_raw_strings("string") == "string"
-    assert unwrap_raw_strings(123) == 123
-    assert unwrap_raw_strings(45.67) == 45.67
-    assert unwrap_raw_strings(True) is True
-    assert unwrap_raw_strings(None) is None
+    assert unwrap_templates("string") == "string"
+    assert unwrap_templates(123) == 123
+    assert unwrap_templates(45.67) == 45.67
+    assert unwrap_templates(True) is True
+    assert unwrap_templates(None) is None
 
 
-def test_unwrap_raw_strings_with_preserve_function():
-    """Test that preserve function prevents conversion of specific nodes."""
+def test_unwrap_templates_with_preserve_function():
+    """Test that preserve function prevents unwrapping of specific nodes."""
     config: smartconfig.types.Configuration = {
-        "convert_me": smartconfig.types.RawString("will_convert"),
-        "keep_me": smartconfig.types.RawString("will_keep"),
+        "convert_me": {"__template__": "will_convert"},
+        "keep_me": {"__template__": "will_keep"},
     }
 
     def preserve(node):
-        # Preserve nodes that are RawStrings with "will_keep"
-        if isinstance(node, smartconfig.types.RawString):
-            return str(node) == "will_keep"
+        if isinstance(node, dict) and "__template__" in node:
+            return node["__template__"] == "will_keep"
         return False
 
-    result = unwrap_raw_strings(config, preserve=preserve)
+    result = unwrap_templates(config, preserve=preserve)
 
-    # The "convert_me" RawString should be converted
     assert isinstance(result, dict)
     assert result["convert_me"] == "will_convert"
     assert isinstance(result["convert_me"], str)
 
-    # The "keep_me" RawString should be preserved
-    assert isinstance(result["keep_me"], smartconfig.types.RawString)
-    assert str(result["keep_me"]) == "will_keep"
+    assert isinstance(result["keep_me"], dict)
+    assert result["keep_me"]["__template__"] == "will_keep"
 
 
-def test_unwrap_raw_strings_preserve_entire_dict():
+def test_unwrap_templates_preserve_entire_dict():
     """Test that preserve function can preserve entire dict structures."""
     config: smartconfig.types.Configuration = {
         "preserve_this": {
-            "foo": smartconfig.types.RawString("keep foo"),
-            "bar": smartconfig.types.RawString("keep bar"),
+            "foo": {"__template__": "keep foo"},
+            "bar": {"__template__": "keep bar"},
         },
         "convert_this": {
-            "inner": smartconfig.types.RawString("change"),
+            "inner": {"__template__": "change"},
         },
     }
 
     def preserve(node):
-        # Preserve dicts that have "preserve_this" key
-        if isinstance(node, dict) and "preserve_this" in node:
+        # Preserve dicts that have both "foo" and "bar" keys
+        if isinstance(node, dict) and "foo" in node and "bar" in node:
             return True
         return False
 
-    result = unwrap_raw_strings(config, preserve=preserve)
+    result = unwrap_templates(config, preserve=preserve)
 
     assert isinstance(result, dict)
     assert isinstance(result["preserve_this"], dict)
-    assert isinstance(result["preserve_this"]["foo"], smartconfig.types.RawString)
-    assert isinstance(result["preserve_this"]["bar"], smartconfig.types.RawString)
+    assert isinstance(result["preserve_this"]["foo"], dict)
+    assert result["preserve_this"]["foo"]["__template__"] == "keep foo"
+    assert isinstance(result["preserve_this"]["bar"], dict)
+    assert result["preserve_this"]["bar"]["__template__"] == "keep bar"
     assert isinstance(result["convert_this"], dict)
     assert result["convert_this"]["inner"] == "change"
     assert isinstance(result["convert_this"]["inner"], str)

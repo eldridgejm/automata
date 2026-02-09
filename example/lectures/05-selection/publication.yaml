@@ -1,6 +1,7 @@
 metadata:
   number: 5
-  date: first monday, wednesday after ${ previous.metadata.date }
+  date:
+    __datetime.parse__: "first monday, wednesday after ${ previous.metadata.date }"
   topic: "Selection"
 
 artifacts:

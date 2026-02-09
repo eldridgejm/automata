@@ -238,7 +238,8 @@ def test_with_relative_release_time_after(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 1 day after ${this.metadata.due}
+                    release_time:
+                        __datetime.parse__: "1 day after ${this.metadata.due}"
             """
         ),
     )
@@ -270,7 +271,8 @@ def test_with_relative_release_time_after_hours(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 hours after ${this.metadata.due}
+                    release_time:
+                        __datetime.parse__: "3 hours after ${this.metadata.due}"
             """
         ),
     )
@@ -302,7 +304,8 @@ def test_with_relative_release_time_after_large(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 11 days after ${this.metadata.due}
+                    release_time:
+                        __datetime.parse__: "11 days after ${this.metadata.due}"
             """
         ),
     )
@@ -334,7 +337,8 @@ def test_with_relative_release_time_after_large_hours(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 1000 hours after ${this.metadata.due}
+                    release_time:
+                        __datetime.parse__: "1000 hours after ${this.metadata.due}"
             """
         ),
     )
@@ -366,7 +370,8 @@ def test_with_relative_release_date_before(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 days before ${this.metadata.due}
+                    release_time:
+                        __datetime.parse__: "3 days before ${this.metadata.due}"
             """
         ),
     )
@@ -398,7 +403,8 @@ def test_with_relative_release_date_before_hours(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 hours before ${this.metadata.due}
+                    release_time:
+                        __datetime.parse__: "3 hours before ${this.metadata.due}"
             """
         ),
     )
@@ -429,7 +435,8 @@ def test_with_relative_release_time_multiple_days(write_file):
                 solution:
                     path: ./solution.pdf
                     recipe: make solution
-                    release_time: 3 days after ${this.metadata.due}
+                    release_time:
+                        __datetime.parse__: "3 days after ${this.metadata.due}"
             """
         ),
     )
@@ -544,7 +551,8 @@ def test_with_relative_dates_in_metadata(write_file):
             metadata:
                 name: Homework 01
                 due: 2020-09-10 23:59:00
-                released: 7 days before ${this.metadata.due}
+                released:
+                    __datetime.parse__: "7 days before ${this.metadata.due}"
 
             artifacts:
                 homework:

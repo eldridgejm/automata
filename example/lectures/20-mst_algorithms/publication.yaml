@@ -1,6 +1,7 @@
 metadata:
   number: 20
-  date: first monday, wednesday after ${ previous.metadata.date }
+  date:
+    __datetime.parse__: "first monday, wednesday after ${ previous.metadata.date }"
   topic: "Kruskal's and Prim's Algorithms"
 
 artifacts:

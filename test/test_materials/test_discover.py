@@ -341,7 +341,10 @@ def test_with_dates_relating_to_previous(temporary_course):
         """
             metadata:
                 name: Lecture 01
-                date: first tuesday or thursday after ${previous.metadata.date}
+                date:
+                    __datetime.parse__: >-
+                        first tuesday or thursday after
+                        ${previous.metadata.date}
 
             artifacts:
                 template.zip:
@@ -356,7 +359,10 @@ def test_with_dates_relating_to_previous(temporary_course):
         """
             metadata:
                 name: Lecture 01
-                date: first tuesday or thursday after ${previous.metadata.date}
+                date:
+                    __datetime.parse__: >-
+                        first tuesday or thursday after
+                        ${previous.metadata.date}
 
             artifacts:
                 template.zip:
@@ -386,7 +392,10 @@ def test_with_dates_relating_to_previous(temporary_course):
         """
             metadata:
                 name: Lecture 01
-                date: first tuesday or thursday after ${previous.metadata.date}
+                date:
+                    __datetime.parse__: >-
+                        first tuesday or thursday after
+                        ${previous.metadata.date}
 
             artifacts:
                 template.zip:
