@@ -1,0 +1,22 @@
+{% set week_announcements = announcements.get(week.number, []) %}
+{% for announcement_config in week_announcements %}
+    {% if announcement_config.urgent %}
+        {% set bg_class = "bg-red-200/20 dark:bg-red-300/15" %}
+        {% set border_class = "border-red-500/30 dark:border-red-400" %}
+    {% else %}
+        {% set bg_class = "bg-gray-100/50 dark:bg-gray-700/50" %}
+        {% set border_class = "border-gray-300 dark:border-gray-700" %}
+    {% endif %}
+
+    <div class="
+        rounded-lg border-l border-l-4
+        prose dark:prose-invert
+        text-black dark:text-white
+        px-3 py-2
+        mt-4 mb-4
+        ${ border_class }
+        ${ bg_class }
+        ">
+    <p>${ resolve(announcement_config.content) | md_to_html }</p>
+    </div>
+{% endfor %}

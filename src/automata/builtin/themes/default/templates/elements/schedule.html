@@ -1,0 +1,293 @@
+{# ============================================================================== #}
+{# Resource rendering macros                                                      #}
+{# ============================================================================== #}
+
+{% macro resource_wrapper(resource, content, alignment='items-center') %}
+    {# Common wrapper for all resource types - handles title and container #}
+    {% if content %}
+    <div class="flex flex-row ${ alignment }">
+        {% if resource.title is not none %}
+            <div class="font-semibold mr-2 flex flex-row items-center gap-1">
+                {% if resource['icon'] is not none %}
+                    <i data-lucide="${ resource.icon }" class="w-5 h-5 text-slate-400"></i>
+                {% endif %}
+                <span>${ resource.title | md_to_html }</span>
+            </div>
+        {% endif %}
+        <div>
+            ${ content }
+        </div>
+    </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro display_html_resource(resource) %}
+    {% set resource_text = resource.html %}
+    ${ resource_wrapper(resource, resource_text.strip()) }
+{% endmacro %}
+
+{% macro display_markdown_resource(resource) %}
+    {% set resource_text = resource.markdown | md_to_html %}
+    {% if resource_text.strip() %}
+        {% set content %}
+        <div class="prose dark:prose-invert">
+            ${ resource_text }
+        </div>
+        {% endset %}
+        ${ resource_wrapper(resource, content) }
+    {% endif %}
+{% endmacro %}
+
+{% macro display_links_resource(resource) %}
+    {% if resource.links %}
+        {% if resource.style == "numbered" %}
+            ${ display_numbered_links_resource(resource) }
+        {% elif resource.style == "bulleted" %}
+            ${ display_bulleted_links_resource(resource) }
+        {% else %}
+            ${ display_button_links_resource(resource) }
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+
+{% set link_classes = "space-y-1 text-blue-500 dark:text-sky-400 no-underline hover:underline hover:text-blue-700 dark:hover:text-sky-600" %}
+
+{% macro display_numbered_links_resource(resource) %}
+    {% set content %}
+    <ol class="list-decimal list-inside">
+        {% for link in resource.links %}
+            <li>
+                <a href="${ link.url }" class="${ link_classes }">
+                    ${ link.text | md_to_html }
+                </a>
+            </li>
+        {% endfor %}
+    </ol>
+    {% endset %}
+    ${ resource_wrapper(resource, content, alignment="items-start") }
+{% endmacro %}
+
+{% macro display_bulleted_links_resource(resource) %}
+    {% set content %}
+    <ul class="list-disc list-inside">
+        {% for link in resource.links %}
+            <li>
+                <a href="${ link.url }" class="${ link_classes }">
+                    ${ link.text | md_to_html }
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+    {% endset %}
+    ${ resource_wrapper(resource, content, alignment="items-start") }
+{% endmacro %}
+
+{% macro display_button_links_resource(resource) %}
+    {% set content %}
+    <div class="flex flex-row gap-2">
+        {% for link in resource.links %}
+            ${ context.elements.button({
+                'label': link.text,
+                'url': link.url,
+            }) }
+        {% endfor %}
+    </div>
+    {% endset %}
+    ${ resource_wrapper(resource, content) }
+{% endmacro %}
+
+
+{# ============================================================================== #}
+{# Resource type dispatcher                                                       #}
+{# ============================================================================== #}
+
+{% macro display_resource(resource) %}
+    {% if resource.type == "html" %}
+        ${ display_html_resource(resource) }
+    {% elif resource.type == "markdown" %}
+        ${ display_markdown_resource(resource) }
+    {% elif resource.type == "links" %}
+        ${ display_links_resource(resource) }
+    {% endif %}
+{% endmacro %}
+
+{# ============================================================================== #}
+{# Content display macros                                                         #}
+{# ============================================================================== #}
+
+{% macro display_due_date(due_date) %}
+    {% if due_date is not none %}
+        <div class="flex flex-row">
+        {% if current_time.date() <= due_date.date() %}
+            <div class="
+                    shrink-0
+                    mt-1 mb-1
+                    text-xs
+                    font-semibold
+                    text-red-500 dark:text-white
+                    bg-red-100 dark:bg-red-500
+                    px-2 py-[2px]
+                    rounded-lg
+                    ">
+                Due ${ due_date.strftime("%A, %b. %-d at %-I:%M %p") }
+            </div>
+        {% else %}
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+                Was due ${ due_date.strftime("%A, %b. %-d") }
+            </div>
+        {% endif %}
+        </div>
+    {% endif %}
+{% endmacro %}
+
+{% macro display_activity(activity, style='primary') %}
+    {% if style == 'primary' %}
+        {% set container_class = "" %}
+        {% set resource_margin = "mt-4" %}
+    {% else %}
+        {% set container_class = "md:p-5 py-3" %}
+        {% set resource_margin = "mt-2" %}
+    {% endif %}
+
+    <div class="${ container_class }">
+        <div>
+            <h3 class="text-2xl">
+                ${ activity.title | md_to_html }
+            </h3>
+        </div>
+        {% if activity.due_datetime is not none %}
+            ${ display_due_date(activity.due_datetime) }
+        {% endif %}
+        <div class="${ resource_margin } flex flex-col gap-y-2">
+            {% for resource in activity.resources %}
+            ${ display_resource(resource) }
+            {% endfor %}
+        </div>
+    </div>
+
+{% endmacro %}
+
+{# ============================================================================== #}
+{# misc.                                                                          #}
+{# ============================================================================== #}
+
+{% macro draw_week_divider(text) %}
+    <div class="flex flex-row items-center">
+        <div class="border-b h-0 grow mr-3 border-gray-300 dark:border-gray-700">
+        </div>
+        <span class="dark:text-gray-500 text-gray-400">
+            <i>${ text }</i>
+        </span>
+        <div class="border-b h-0 grow ml-3 border-gray-300 dark:border-gray-700">
+        </div>
+    </div>
+{% endmacro %}
+
+{# ============================================================================== #}
+{# Main template rendering                                                        #}
+{# ============================================================================== #}
+
+{% include 'parts/title.html' with context %}
+
+<div class="flex flex-col gap-y-8 md:gap-y-10">
+
+{% for week in weeks %}
+    {% if this_week is not none %}
+        {% if week.number == this_week.number + 1 %}
+            ${ draw_week_divider('future weeks') }
+        {% endif %}
+
+        {% if week.number == this_week.number - 1 %}
+            ${ draw_week_divider('past weeks') }
+        {% endif %}
+    {% endif %}
+
+    {% set is_in_future = week.start_date > context.current_time.date() %}
+
+    <!-- schedule week div -->
+    <div class="
+        bg-white dark:bg-gray-800
+        p-8
+        rounded-lg
+        border border-gray-300 dark:border-gray-700
+        "
+        id="week-${ week.number }"
+        >
+
+        <div>
+            <h1 class="text-2xl">
+                {% if this_week is not none and week.number == this_week.number %}
+                This Week
+                {% elif this_week is not none and week.number == this_week.number + 1 %}
+                Next Week
+                {% elif this_week is not none and week.number == this_week.number - 1 %}
+                Last Week
+                {% else %}
+                Week ${ week.number }
+                {% endif %}
+            </h1>
+
+            <h2 class="text-4xl">${ topics[week.number]  }</h2>
+
+            {% include 'elements/schedule-events.html' with context %}
+            {% include 'elements/schedule-announcements.html' with context %}
+
+            {# only show separator if there is at least one activity #}
+            {% if primary_activities[week.number] != [] and secondary_activities[week.number] != [] %}
+            <!-- separator div -->
+            <div class="
+                md:hidden
+                border-t border-gray-300 dark:border-gray-700
+                mt-6
+                ">
+            </div>
+            {% endif %}
+
+            <!-- primary and secondary content div -->
+            <div class="flex flex-col md:flex-row">
+
+
+                <!-- primary content div -->
+                {% if primary_activities[week.number] %}
+                <div class="
+                    md:w-9/10 md:min-w-50
+                    pr-10
+                    mt-8
+                    flex flex-col gap-y-8
+                    ">
+                    {% for activity in primary_activities[week.number] %}
+                    ${ display_activity(activity, style='primary') }
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- secondary content div -->
+                {% if secondary_activities[week.number] %}
+                <div class="
+                    mt-8
+                    w-full md:min-w-30 md:max-w-75
+                    self-start
+                    bg-white dark:bg-gray-800
+                    border-t md:rounded-lg md:border
+                    border-gray-300 dark:border-gray-700
+                    pt-5 md:pt-0
+                    ">
+                    <div class="
+                        md:divide-y divide-gray-300 dark:divide-gray-700
+                        ">
+                        {% for activity in secondary_activities[week.number] %}
+                        ${ display_activity(activity, style='secondary') }
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+
+        </div>
+    </div>
+
+{% endfor %}
+
+</div>
