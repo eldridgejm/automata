@@ -1,7 +1,6 @@
 """Utilities for configuration resolution."""
 
 import typing
-from collections.abc import Mapping
 from pathlib import Path
 
 import smartconfig
@@ -82,7 +81,7 @@ def resolve_for_each(
     schema: smartconfig.types.Schema,
     loop_variable: str = "item",
     vars: dict | None = None,
-    functions: Mapping[str, typing.Callable | smartconfig.types.Function] | None = None,
+    functions: smartconfig.types.FunctionMapping | None = None,
     fixup: typing.Callable[
         [smartconfig.types.Configuration, T], smartconfig.types.Configuration
     ]
@@ -103,7 +102,7 @@ def resolve_for_each(
     vars : dict | None, optional
         Additional variables to include in the resolution context. If None, no
         additional variables are included.
-    functions : Mapping[str, Callable | smartconfig.types.Function] | None, optional
+    functions : smartconfig.types.FunctionMapping | None, optional
         A mapping of custom functions to use during resolution. If None, the
         default functions from smartconfig will be used.
     fixup : Callable[

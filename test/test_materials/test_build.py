@@ -5,6 +5,12 @@ from unittest.mock import Mock
 from pytest import raises
 
 import automata.materials
+from automata.hooks import (
+    BuildArtifactHookArgs,
+    BuildHooks,
+    BuildNodeHookArgs,
+    BuildSuccessHookArgs,
+)
 
 
 def test_build_artifact_integration(default_example_course):
@@ -318,3 +324,334 @@ def test_build_raises_when_artifact_already_built():
         automata.materials.build(publication)
 
     assert "Cannot build an already built artifact" in str(exc_info.value)
+
+
+# build hooks tests
+# --------------------------------------------------------------------------------------
+
+
+def _fake_run_success(cmd, **kwargs):
+    """Fake subprocess.run that always succeeds."""
+
+    class FakeProc:
+        returncode = 0
+        stdout = b""
+        stderr = b""
+
+    return FakeProc()
+
+
+def _fake_exists_true(path):
+    """Fake Path.exists that always returns True."""
+    return True
+
+
+def _fake_exists_false(path):
+    """Fake Path.exists that always returns False."""
+    return False
+
+
+def test_build_invokes_on_build_node_hook(default_example_course):
+    """Test that on_build_node hook is invoked for each node."""
+    # given
+    nodes = []
+    hooks = BuildHooks()
+
+    @hooks.on_build_node.register()
+    def track_nodes(args: BuildNodeHookArgs) -> None:
+        nodes.append((args.key, args.node_type))
+
+    universe = automata.materials.discover(default_example_course.path)
+
+    # when
+    automata.materials.build(universe, hooks=hooks)
+
+    # then
+    assert len(nodes) > 0
+    node_types = {node_type for _, node_type in nodes}
+    assert "collection" in node_types
+    assert "publication" in node_types
+
+
+def test_build_invokes_on_build_too_soon_hook():
+    """Test that on_build_too_soon hook is invoked when release time hasn't passed."""
+    # given
+    too_soon_artifacts = []
+    hooks = BuildHooks()
+
+    @hooks.on_build_too_soon.register()
+    def track_too_soon(args: BuildArtifactHookArgs) -> None:
+        too_soon_artifacts.append(args.path)
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="echo hi",
+        release_time=datetime.datetime(2020, 2, 28, 23, 59, 0),
+    )
+    current_time = datetime.datetime(2020, 1, 1, 0, 0, 0)
+
+    # when
+    automata.materials.build(artifact, current_time=current_time, hooks=hooks)
+
+    # then
+    assert len(too_soon_artifacts) == 1
+    assert too_soon_artifacts[0] == "foo.pdf"
+
+
+def test_build_invokes_on_build_not_ready_hook():
+    """Test that on_build_not_ready hook is invoked when artifact is not ready."""
+    # given
+    not_ready_artifacts = []
+    hooks = BuildHooks()
+
+    @hooks.on_build_not_ready.register()
+    def track_not_ready(args: BuildArtifactHookArgs) -> None:
+        not_ready_artifacts.append(args.path)
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="echo hi",
+        ready=False,
+    )
+
+    # when
+    automata.materials.build(artifact, hooks=hooks)
+
+    # then
+    assert len(not_ready_artifacts) == 1
+    assert not_ready_artifacts[0] == "foo.pdf"
+
+
+def test_build_invokes_on_build_missing_hook():
+    """Test that on_build_missing hook is invoked when artifact is missing but ok."""
+    # given
+    missing_artifacts = []
+    hooks = BuildHooks()
+
+    @hooks.on_build_missing.register()
+    def track_missing(args: BuildArtifactHookArgs) -> None:
+        missing_artifacts.append(args.path)
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe=None,
+        missing_ok=True,
+    )
+
+    # when
+    automata.materials.build(artifact, exists=_fake_exists_false, hooks=hooks)
+
+    # then
+    assert len(missing_artifacts) == 1
+    assert missing_artifacts[0] == "foo.pdf"
+
+
+def test_build_invokes_on_build_recipe_hook():
+    """Test that on_build_recipe hook is invoked when running a recipe."""
+    # given
+    recipe_artifacts = []
+    hooks = BuildHooks()
+
+    @hooks.on_build_recipe.register()
+    def track_recipe(args: BuildArtifactHookArgs) -> None:
+        recipe_artifacts.append((args.path, args.recipe))
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="echo hi",
+    )
+
+    # when
+    automata.materials.build(
+        artifact, run=_fake_run_success, exists=_fake_exists_true, hooks=hooks
+    )
+
+    # then
+    assert len(recipe_artifacts) == 1
+    assert recipe_artifacts[0] == ("foo.pdf", "echo hi")
+
+
+def test_build_invokes_on_build_success_hook():
+    """Test that on_build_success hook is invoked when build succeeds."""
+    # given
+    success_artifacts = []
+    hooks = BuildHooks()
+
+    @hooks.on_build_success.register()
+    def track_success(args: BuildSuccessHookArgs) -> None:
+        success_artifacts.append((args.path, args.returncode))
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="echo hi",
+    )
+
+    # when
+    automata.materials.build(
+        artifact, run=_fake_run_success, exists=_fake_exists_true, hooks=hooks
+    )
+
+    # then
+    assert len(success_artifacts) == 1
+    assert success_artifacts[0] == ("foo.pdf", 0)
+
+
+def test_on_build_success_shell_script_receives_json(tmp_path):
+    """Test that shell script on on_build_success receives JSON payload."""
+    # given
+    import json
+
+    output_file = tmp_path / "output.json"
+    hooks = BuildHooks()
+    hooks.on_build_success.register_shell_script(f"cat > {output_file}")
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="echo hi",
+    )
+
+    # when
+    automata.materials.build(
+        artifact, run=_fake_run_success, exists=_fake_exists_true, hooks=hooks
+    )
+
+    # then
+    content = json.loads(output_file.read_text())
+    assert "path" in content
+    assert content["path"] == "foo.pdf"
+    assert content["returncode"] == 0
+
+
+def test_on_build_node_shell_script_receives_json(default_example_course, tmp_path):
+    """Test that shell script on on_build_node receives JSON payload."""
+    # given
+    import json
+
+    output_file = tmp_path / "output.jsonl"
+    hooks = BuildHooks()
+    hooks.on_build_node.register_shell_script(
+        f"cat >> {output_file} && echo >> {output_file}"
+    )
+
+    universe = automata.materials.discover(default_example_course.path)
+
+    # when
+    automata.materials.build(universe, hooks=hooks)
+
+    # then
+    lines = output_file.read_text().strip().split("\n")
+    assert len(lines) > 0
+    for line in lines:
+        content = json.loads(line)
+        assert "key" in content
+        assert "node_type" in content
+        assert content["node_type"] in ("collection", "publication", "artifact")
+
+
+def test_on_build_too_soon_shell_script_receives_json(tmp_path):
+    """Test that shell script on on_build_too_soon receives JSON payload."""
+    # given
+    import json
+
+    output_file = tmp_path / "output.json"
+    hooks = BuildHooks()
+    hooks.on_build_too_soon.register_shell_script(f"cat > {output_file}")
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="echo hi",
+        release_time=datetime.datetime(2020, 2, 28, 23, 59, 0),
+    )
+    current_time = datetime.datetime(2020, 1, 1, 0, 0, 0)
+
+    # when
+    automata.materials.build(artifact, current_time=current_time, hooks=hooks)
+
+    # then
+    content = json.loads(output_file.read_text())
+    assert content["path"] == "foo.pdf"
+    assert content["recipe"] == "echo hi"
+    assert "release_time" in content
+
+
+def test_on_build_not_ready_shell_script_receives_json(tmp_path):
+    """Test that shell script on on_build_not_ready receives JSON payload."""
+    # given
+    import json
+
+    output_file = tmp_path / "output.json"
+    hooks = BuildHooks()
+    hooks.on_build_not_ready.register_shell_script(f"cat > {output_file}")
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="echo hi",
+        ready=False,
+    )
+
+    # when
+    automata.materials.build(artifact, hooks=hooks)
+
+    # then
+    content = json.loads(output_file.read_text())
+    assert content["path"] == "foo.pdf"
+    assert content["ready"] is False
+
+
+def test_on_build_missing_shell_script_receives_json(tmp_path):
+    """Test that shell script on on_build_missing receives JSON payload."""
+    # given
+    import json
+
+    output_file = tmp_path / "output.json"
+    hooks = BuildHooks()
+    hooks.on_build_missing.register_shell_script(f"cat > {output_file}")
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe=None,
+        missing_ok=True,
+    )
+
+    # when
+    automata.materials.build(artifact, exists=_fake_exists_false, hooks=hooks)
+
+    # then
+    content = json.loads(output_file.read_text())
+    assert content["path"] == "foo.pdf"
+    assert content["missing_ok"] is True
+
+
+def test_on_build_recipe_shell_script_receives_json(tmp_path):
+    """Test that shell script on on_build_recipe receives JSON payload."""
+    # given
+    import json
+
+    output_file = tmp_path / "output.json"
+    hooks = BuildHooks()
+    hooks.on_build_recipe.register_shell_script(f"cat > {output_file}")
+
+    artifact = automata.materials.UnbuiltArtifact(
+        workdir=pathlib.Path.cwd(),
+        path="foo.pdf",
+        recipe="echo hi",
+    )
+
+    # when
+    automata.materials.build(
+        artifact, run=_fake_run_success, exists=_fake_exists_true, hooks=hooks
+    )
+
+    # then
+    content = json.loads(output_file.read_text())
+    assert content["path"] == "foo.pdf"
+    assert content["recipe"] == "echo hi"

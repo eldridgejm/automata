@@ -4,6 +4,7 @@ from textwrap import dedent
 from pytest import fixture, raises
 
 import automata.materials
+from automata.hooks import ExportCopyHookArgs, ExportHooks, ExportNodeHookArgs
 
 
 @fixture
@@ -109,3 +110,109 @@ def test_export_raises_when_artifact_not_built(outdir):
         automata.materials.export(publication, outdir)
 
     assert "Cannot export an unbuilt artifact" in str(exc_info.value)
+
+
+# export hooks tests
+# --------------------------------------------------------------------------------------
+
+
+def test_export_invokes_on_export_node_hook(default_example_course, outdir):
+    """Test that on_export_node hook is invoked for each node."""
+    # given
+    nodes = []
+    hooks = ExportHooks()
+
+    @hooks.on_export_node.register()
+    def track_nodes(args: ExportNodeHookArgs) -> None:
+        nodes.append((args.key, args.node_type))
+
+    discovered = automata.materials.discover(default_example_course.path)
+    built = automata.materials.build(discovered)
+
+    # when
+    automata.materials.export(built, outdir, hooks=hooks)
+
+    # then
+    assert len(nodes) > 0
+    node_types = {node_type for _, node_type in nodes}
+    assert "collection" in node_types
+    assert "publication" in node_types
+
+
+def test_export_invokes_on_export_copy_hook(default_example_course, outdir):
+    """Test that on_export_copy hook is invoked when copying files."""
+    # given
+    copies = []
+    hooks = ExportHooks()
+
+    @hooks.on_export_copy.register()
+    def track_copies(args: ExportCopyHookArgs) -> None:
+        copies.append((args.src, args.dst))
+
+    discovered = automata.materials.discover(default_example_course.path)
+    built = automata.materials.build(discovered)
+
+    # when
+    automata.materials.export(built, outdir, hooks=hooks)
+
+    # then
+    assert len(copies) > 0
+    # Check that all destinations are under outdir
+    assert all(str(dst).startswith(str(outdir)) for _, dst in copies)
+
+
+def test_on_export_node_shell_script_receives_json(
+    default_example_course, outdir, tmp_path
+):
+    """Test that shell script on on_export_node receives JSON payload."""
+    # given
+    import json
+
+    output_file = tmp_path / "output.jsonl"
+    hooks = ExportHooks()
+    hooks.on_export_node.register_shell_script(
+        f"cat >> {output_file} && echo >> {output_file}"
+    )
+
+    discovered = automata.materials.discover(default_example_course.path)
+    built = automata.materials.build(discovered)
+
+    # when
+    automata.materials.export(built, outdir, hooks=hooks)
+
+    # then
+    lines = output_file.read_text().strip().split("\n")
+    assert len(lines) > 0
+    for line in lines:
+        content = json.loads(line)
+        assert "key" in content
+        assert "node_type" in content
+        assert content["node_type"] in ("collection", "publication", "artifact")
+
+
+def test_on_export_copy_shell_script_receives_json(
+    default_example_course, outdir, tmp_path
+):
+    """Test that shell script on on_export_copy receives JSON payload."""
+    # given
+    import json
+
+    output_file = tmp_path / "output.jsonl"
+    hooks = ExportHooks()
+    hooks.on_export_copy.register_shell_script(
+        f"cat >> {output_file} && echo >> {output_file}"
+    )
+
+    discovered = automata.materials.discover(default_example_course.path)
+    built = automata.materials.build(discovered)
+
+    # when
+    automata.materials.export(built, outdir, hooks=hooks)
+
+    # then
+    lines = output_file.read_text().strip().split("\n")
+    assert len(lines) > 0
+    for line in lines:
+        content = json.loads(line)
+        assert "src" in content
+        assert "dst" in content

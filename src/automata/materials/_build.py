@@ -4,7 +4,14 @@ import dataclasses
 import datetime
 import pathlib
 import subprocess
-from typing import Any, Optional, TypedDict, Union, Unpack, cast, overload
+from typing import Any, Optional, TypedDict, Unpack, cast, overload
+
+from automata.hooks import (
+    BuildArtifactHookArgs,
+    BuildHooks,
+    BuildNodeHookArgs,
+    BuildSuccessHookArgs,
+)
 
 from ._types import (
     BuiltArtifact,
@@ -13,52 +20,22 @@ from ._types import (
     Publication,
     UnbuiltArtifact,
     Universe,
+    node_type_name,
 )
 from .exceptions import BuildError
 
 
-class BuildCallbacks:
-    """Callbacks used by :func:`build`.
-
-    To provide callbacks to :func:`build`, subclass this class and override
-    the methods you want to use. The methods that are not overridden will be
-    no-ops.
-
-    """
-
-    def on_build(self, key: str, node: Union[Collection, Publication, UnbuiltArtifact]):
-        """Called when building a collection/publication/artifact.
-
-        Parameters
-        ----------
-        key : str
-            The key of the node. Generally, this is the relative path to the
-            node from the root.
-        node : Collection | Publication | UnbuiltArtifact
-            The node whose artifacts are being built.
-
-        """
-        return key, node
-
-    def on_too_soon(self, artifact: UnbuiltArtifact):
-        """Called when it is too soon to release the artifact."""
-        return artifact
-
-    def on_not_ready(self, artifact: UnbuiltArtifact):
-        """Called when the artifact is not ready."""
-        return artifact
-
-    def on_missing(self, artifact: UnbuiltArtifact):
-        """Called when the artifact is missing, but missing is OK."""
-        return artifact
-
-    def on_recipe(self, artifact: UnbuiltArtifact):
-        """Called when artifact is being built using its recipe."""
-        return artifact
-
-    def on_success(self, artifact: BuiltArtifact):
-        """Called when the build succeeded."""
-        return artifact
+def _artifact_to_hook_args(artifact: UnbuiltArtifact) -> BuildArtifactHookArgs:
+    """Convert an UnbuiltArtifact to BuildArtifactHookArgs."""
+    release_time = artifact.release_time.isoformat() if artifact.release_time else None
+    return BuildArtifactHookArgs(
+        workdir=artifact.workdir,
+        path=artifact.path,
+        recipe=artifact.recipe,
+        release_time=release_time,
+        ready=artifact.ready,
+        missing_ok=artifact.missing_ok,
+    )
 
 
 def _build_artifact(
@@ -70,7 +47,7 @@ def _build_artifact(
     verbose=False,
     run=subprocess.run,
     exists=pathlib.Path.exists,
-    callbacks: BuildCallbacks,
+    hooks: BuildHooks,
 ):
     """Build an artifact using its recipe.
 
@@ -109,11 +86,11 @@ def _build_artifact(
         and artifact.release_time is not None
         and artifact.release_time > current_time
     ):
-        callbacks.on_too_soon(artifact)
+        hooks.on_build_too_soon(_artifact_to_hook_args(artifact))
         return None
 
     if not artifact.ready and not ignore_ready:
-        callbacks.on_not_ready(artifact)
+        hooks.on_build_not_ready(_artifact_to_hook_args(artifact))
         return None
 
     if artifact.recipe is None:
@@ -121,7 +98,7 @@ def _build_artifact(
         stderr = None
         returncode = None
     else:
-        callbacks.on_recipe(artifact)
+        hooks.on_build_recipe(_artifact_to_hook_args(artifact))
 
         kwargs = {
             "cwd": artifact.workdir,
@@ -145,7 +122,7 @@ def _build_artifact(
     path = artifact.workdir / artifact.path
     if not exists(path):
         if artifact.missing_ok:
-            callbacks.on_missing(artifact)
+            hooks.on_build_missing(_artifact_to_hook_args(artifact))
             return None
         else:
             raise BuildError(f"Artifact {path} does not exist at {path}.")
@@ -153,7 +130,13 @@ def _build_artifact(
     output = dataclasses.replace(
         output, returncode=returncode, stdout=stdout, stderr=stderr
     )
-    callbacks.on_success(output)
+    hooks.on_build_success(
+        BuildSuccessHookArgs(
+            workdir=output.workdir,
+            path=output.path,
+            returncode=output.returncode,
+        )
+    )
     return output
 
 
@@ -168,7 +151,7 @@ class BuildOptions(TypedDict, total=False):
     ignore_release_time: bool
     ignore_ready: bool
     verbose: bool
-    callbacks: Optional[BuildCallbacks]
+    hooks: Optional[BuildHooks]
     run: Any
     current_time: Optional[datetime.datetime]
     exists: Any
@@ -208,7 +191,7 @@ def build(
     ignore_release_time: bool = False,
     ignore_ready: bool = False,
     verbose: bool = False,
-    callbacks: Optional[BuildCallbacks] = None,
+    hooks: Optional[BuildHooks] = None,
     current_time: datetime.datetime | None = None,
     run=subprocess.run,
     exists=pathlib.Path.exists,
@@ -233,12 +216,10 @@ def build(
     ignore_ready : bool
         If ``True``, all artifacts will be built, even if they are marked as
         not ready.
-    callbacks : BuildCallbacks
-        An instance of :class:`BuildCallbacks` that contains methods that will
-        be invoked as callbacks at various points during the build process. See
-        :class:`BuildCallbacks` for the possible methods and their meanings. If
-        this argument is not provided, a default set of no-op callbacks will be
-        used.
+    hooks : BuildHooks
+        A :class:`Hooks` instance containing hooks to be invoked at various
+        points during the build process. If not provided, a default instance
+        with no registered implementations will be used.
 
     Returns
     -------
@@ -261,8 +242,8 @@ def build(
     an exception is raised.
 
     """
-    if callbacks is None:
-        callbacks = BuildCallbacks()
+    if hooks is None:
+        hooks = BuildHooks()
 
     kwargs = dict(
         ignore_release_time=ignore_release_time,
@@ -271,7 +252,7 @@ def build(
         run=run,
         verbose=verbose,
         exists=exists,
-        callbacks=callbacks,
+        hooks=hooks,
     )
 
     if isinstance(root, UnbuiltArtifact):
@@ -286,7 +267,9 @@ def build(
 
         assert isinstance(child, (Collection, Publication, UnbuiltArtifact))
 
-        callbacks.on_build(child_key, child)
+        hook_args = BuildNodeHookArgs(key=child_key, node_type=node_type_name(child))
+        hooks.on_build_node(hook_args)
+
         result = build(child, **kwargs)  # type: ignore
         # if a node is not built (perhaps due to it not being ready), the
         # result is None. this next conditional prevents such nodes from

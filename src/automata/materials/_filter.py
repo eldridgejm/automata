@@ -2,6 +2,8 @@
 
 from typing import Callable, Optional, TypeVar, overload
 
+from automata.hooks import FilterHookArgs, FilterHooks
+
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -10,20 +12,8 @@ from ._types import (
     Publication,
     UnbuiltArtifact,
     Universe,
+    node_type_name,
 )
-
-
-class FilterCallbacks:
-    """Callbacks used by :func:`filter`."""
-
-    def on_hit(self, key: str, node: Universe | Collection | Publication | Artifact):
-        """Called when a node matches the predicate."""
-        return key, node
-
-    def on_miss(self, key: str, node: Universe | Collection | Publication | Artifact):
-        """Called when a node does not match the predicate."""
-        return key, node
-
 
 # overloads for filter() ---------------------------------------------------------------
 
@@ -48,7 +38,7 @@ def filter(
     root: Universe[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    callbacks: Optional[FilterCallbacks] = ...,
+    hooks: Optional[FilterHooks] = ...,
 ) -> Universe[ArtifactType]: ...
 
 
@@ -57,7 +47,7 @@ def filter(
     root: Collection[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    callbacks: Optional[FilterCallbacks] = ...,
+    hooks: Optional[FilterHooks] = ...,
 ) -> Collection[ArtifactType]: ...
 
 
@@ -66,7 +56,7 @@ def filter(
     root: Publication[ArtifactType],
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    callbacks: Optional[FilterCallbacks] = ...,
+    hooks: Optional[FilterHooks] = ...,
 ) -> Publication[ArtifactType]: ...
 
 
@@ -75,7 +65,7 @@ def filter(
     root: ArtifactType,
     predicate: Predicate,
     remove_empty_nodes: bool = ...,
-    callbacks: Optional[FilterCallbacks] = ...,
+    hooks: Optional[FilterHooks] = ...,
 ) -> ArtifactType: ...
 
 
@@ -89,7 +79,7 @@ def filter(
     | Artifact,
     predicate: Callable[[str, Universe | Collection | Publication | Artifact], bool],
     remove_empty_nodes: bool = False,
-    callbacks: Optional[FilterCallbacks] = None,
+    hooks: Optional[FilterHooks] = None,
 ) -> (
     Universe[ArtifactType]
     | Collection[ArtifactType]
@@ -109,9 +99,9 @@ def filter(
         Whether nodes without children should be removed (True) or preserved
         (False). The exception is the root node: if all of its children are
         removed, it remains. Default: False.
-    callbacks : Optional[FilterCallbacks]
-        Callbacks to be invoked during the filtering. If None, no callbacks
-        are invoked.
+    hooks : Optional[FilterHooks]
+        Hooks to be invoked during filtering. If not provided, a default
+        instance with no registered implementations will be used.
 
     Returns
     -------
@@ -126,21 +116,22 @@ def filter(
     if isinstance(root, Artifact):
         return root
 
-    if callbacks is None:
-        callbacks = FilterCallbacks()
+    if hooks is None:
+        hooks = FilterHooks()
 
-    def predicate_with_callbacks(key, node):
+    def predicate_with_hooks(key, node):
         result = predicate(key, node)
+        hook_args = FilterHookArgs(key=key, node_type=node_type_name(node))
         if result:
-            callbacks.on_hit(key, node)
+            hooks.on_filter_hit(hook_args)
         else:
-            callbacks.on_miss(key, node)
+            hooks.on_filter_miss(hook_args)
         return result
 
     new_children = {}
     for child_key, child in root._children.items():
         new_child = filter(
-            child, predicate, remove_empty_nodes=remove_empty_nodes, callbacks=callbacks
+            child, predicate, remove_empty_nodes=remove_empty_nodes, hooks=hooks
         )
         if (
             isinstance(new_child, Artifact)
@@ -150,7 +141,7 @@ def filter(
             new_children[child_key] = new_child
 
     new_children = {
-        k: v for (k, v) in new_children.items() if predicate_with_callbacks(k, v)
+        k: v for (k, v) in new_children.items() if predicate_with_hooks(k, v)
     }
 
     return root._replace_children(new_children)

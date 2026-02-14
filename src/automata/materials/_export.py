@@ -4,6 +4,8 @@ import pathlib
 import shutil
 from typing import Optional, cast, overload
 
+from automata.hooks import ExportCopyHookArgs, ExportHooks, ExportNodeHookArgs
+
 from ._types import (
     Artifact,
     BuiltArtifact,
@@ -11,29 +13,15 @@ from ._types import (
     ExportedArtifact,
     Publication,
     Universe,
+    node_type_name,
 )
-
-# exporting
-# --------------------------------------------------------------------------------------
-
-
-class ExportCallbacks:
-    """Callbacks used by :func:`export`."""
-
-    def on_copy(self, src: pathlib.Path, dst: pathlib.Path):
-        """Called when copying a file."""
-        return src, dst
-
-    def on_export(self, key: str, node: Universe | Collection | Publication | Artifact):
-        """When export is called on a node."""
-        return key, node
 
 
 def _export_artifact(
     built_artifact: BuiltArtifact,
     outdir: pathlib.Path,
     filename: str,
-    callbacks: ExportCallbacks,
+    hooks: ExportHooks,
 ) -> ExportedArtifact:
     """Copies an artifact to another directory.
 
@@ -46,15 +34,15 @@ def _export_artifact(
     filename : str
         The filename (or directory name) that will be given to the new file,
         including extension, if applicable.
-    callbacks : ExportCallbacks
-        Callbacks to be invoked during the publication.
+    hooks : ExportHooks
+        Hooks to be invoked during the export.
 
     """
     # actually copy the artifact
     full_dst = outdir / filename
     full_dst.parent.mkdir(parents=True, exist_ok=True)
     full_src = built_artifact.workdir / built_artifact.path
-    callbacks.on_copy(full_src, full_dst)
+    hooks.on_export_copy(ExportCopyHookArgs(src=full_src, dst=full_dst))
 
     if full_src.is_dir():
         shutil.copytree(full_src, full_dst)
@@ -75,7 +63,7 @@ def export(
     root: Universe[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = ...,
-    callbacks: Optional[ExportCallbacks] = ...,
+    hooks: Optional[ExportHooks] = ...,
 ) -> Universe[ExportedArtifact]: ...
 
 
@@ -84,7 +72,7 @@ def export(
     root: Collection[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
-    callbacks: Optional[ExportCallbacks] = None,
+    hooks: Optional[ExportHooks] = None,
 ) -> Collection[ExportedArtifact]: ...
 
 
@@ -93,7 +81,7 @@ def export(
     root: Publication[BuiltArtifact],
     outdir: pathlib.Path,
     prefix: str = "",
-    callbacks: Optional[ExportCallbacks] = None,
+    hooks: Optional[ExportHooks] = None,
 ) -> Publication[ExportedArtifact]: ...
 
 
@@ -102,7 +90,7 @@ def export(
     root: BuiltArtifact,
     outdir: pathlib.Path,
     prefix: str = "",
-    callbacks: Optional[ExportCallbacks] = None,
+    hooks: Optional[ExportHooks] = None,
 ) -> ExportedArtifact: ...
 
 
@@ -116,7 +104,7 @@ def export(
     | BuiltArtifact,
     outdir: pathlib.Path,
     prefix: str = "",
-    callbacks: Optional[ExportCallbacks] = None,
+    hooks: Optional[ExportHooks] = None,
 ) -> (
     Universe[ExportedArtifact]
     | Collection[ExportedArtifact]
@@ -143,10 +131,9 @@ def export(
         String to prepend between output directory path and the keys of the
         children. If the thing being exported is a :class:`BuiltArtifact`,
         this is simply the filename.
-    callbacks : Optional[ExportCallbacks]
-        Callbacks to be invoked during the publication. If omitted, no
-        callbacks are executed. See :class:`ExportCallbacks` for the possible
-        callbacks and their arguments.
+    hooks : Optional[ExportHooks]
+        Hooks to be invoked during export. If not provided, a default instance
+        with no registered implementations will be used.
 
     Returns
     -------
@@ -163,22 +150,23 @@ def export(
     ``<prefix><collection_key>/<publication_key>/<artifact_key>``
 
     """
-    if callbacks is None:
-        callbacks = ExportCallbacks()
+    if hooks is None:
+        hooks = ExportHooks()
 
     if isinstance(root, BuiltArtifact):
-        return _export_artifact(root, outdir, prefix, callbacks)
+        return _export_artifact(root, outdir, prefix, hooks)
 
     if isinstance(root, Artifact) and not isinstance(root, BuiltArtifact):
         raise ValueError("Cannot export an unbuilt artifact.")
 
     new_children = {}
     for child_key, child in root._children.items():
-        callbacks.on_export(child_key, child)
+        hook_args = ExportNodeHookArgs(key=child_key, node_type=node_type_name(child))
+        hooks.on_export_node(hook_args)
         new_prefix = str(pathlib.Path(prefix) / child_key)
 
         assert isinstance(child, (Universe, Collection, Publication, Artifact))
-        new_children[child_key] = export(child, outdir, new_prefix, callbacks)
+        new_children[child_key] = export(child, outdir, new_prefix, hooks)
 
     result = root._replace_children(new_children)
     return cast(

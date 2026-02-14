@@ -1,10 +1,10 @@
 """This module provides low-level tools for working with course materials."""
 
 from . import exceptions
-from ._build import BuildCallbacks, build
-from ._discover import DiscoverCallbacks, discover
-from ._export import ExportCallbacks, export
-from ._filter import FilterCallbacks, filter
+from ._build import build
+from ._discover import discover
+from ._export import export
+from ._filter import filter
 from ._read_collection_file import read_collection_file
 from ._read_publication_file import read_publication_file
 from ._resolution import resolve_for_each_publication
@@ -36,12 +36,8 @@ __all__ = [
     "read_publication_file",
     "resolve_for_each_publication",
     "discover",
-    "DiscoverCallbacks",
     "build",
-    "BuildCallbacks",
     "export",
-    "ExportCallbacks",
     "filter",
-    "FilterCallbacks",
     "exceptions",
 ]

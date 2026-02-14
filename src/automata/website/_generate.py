@@ -11,6 +11,7 @@ import smartconfig
 import smartconfig.exceptions
 import smartconfig.types
 
+from ..hooks import GenerateHooks, GeneratePostHookArgs, GeneratePreHookArgs
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util import markdown as markdown_util
 from ..util.resolution import resolve
@@ -242,43 +243,42 @@ def _create_url_for(base_path: str) -> Callable[[str], str]:
 _ExtraContent = dict[str, str | bytes | pathlib.Path]
 
 
-def _run_pre_generate_hook(
-    hook: Callable[[WebsiteConfig], _ExtraContent | None] | None,
-    config: WebsiteConfig,
-    extra_content: _ExtraContent | None,
-) -> _ExtraContent | None:
-    """Execute the pre_generate theme hook and merge any extra content it provides.
+def _register_theme_hooks(hooks: GenerateHooks, theme: Theme) -> None:
+    """Register theme-provided hooks onto the hooks instance.
 
-    The hook's extra content is merged with the provided extra_content, with the
-    provided extra_content taking precedence over hook content for duplicate keys.
-
-    Returns the merged extra content, or None if neither source provides content.
+    Theme hooks are registered at a lower priority (100) so that user-registered
+    hooks can run before or after them by choosing appropriate priorities.
     """
-    if hook is None:
-        return extra_content
+    if theme.hooks.pre_generate is not None:
+        theme_pre_generate = theme.hooks.pre_generate
 
-    try:
-        hook_extra_content = hook(config)
-    except Exception as e:
-        raise WebsiteError(f"Error in theme pre_generate hook: {e}") from e
+        @hooks.on_generate_pre.register(priority=100)
+        def _theme_pre_generate(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+            try:
+                hook_extra_content = theme_pre_generate(args.config)
+            except Exception as e:
+                raise WebsiteError(f"Error in theme pre_generate hook: {e}") from e
 
-    if hook_extra_content is None:
-        return extra_content
-    if extra_content is None:
-        return hook_extra_content
-    return {**hook_extra_content, **extra_content}
+            if hook_extra_content is None:
+                return args
+            if args.extra_content is None:
+                return GeneratePreHookArgs(
+                    config=args.config, extra_content=hook_extra_content
+                )
+            return GeneratePreHookArgs(
+                config=args.config,
+                extra_content={**hook_extra_content, **args.extra_content},
+            )
 
+    if theme.hooks.post_generate is not None:
+        theme_post_generate = theme.hooks.post_generate
 
-def _run_post_generate_hook(
-    hook: Callable[[WebsiteConfig], None] | None,
-    config: WebsiteConfig,
-) -> None:
-    """Execute the post_generate theme hook."""
-    if hook is not None:
-        try:
-            hook(config)
-        except Exception as e:
-            raise WebsiteError(f"Error in theme post_generate hook: {e}") from e
+        @hooks.on_generate_post.register(priority=100)
+        def _theme_post_generate(args: GeneratePostHookArgs) -> None:
+            try:
+                theme_post_generate(args.config)
+            except Exception as e:
+                raise WebsiteError(f"Error in theme post_generate hook: {e}") from e
 
 
 def _create_render_context(
@@ -547,6 +547,7 @@ def generate(
     render_markdown: Callable[[str], str] = markdown_util.render,
     cwd: pathlib.Path | None = None,
     extra_content: dict[str, str | bytes | pathlib.Path] | None = None,
+    hooks: GenerateHooks | None = None,
 ):
     """Generates a static website from course materials.
 
@@ -591,6 +592,13 @@ def generate(
           rendering, and template wrapping), then written as text.
         - A bytes object: written directly as binary.
         - A pathlib.Path: the file at that path is copied to the destination.
+
+    hooks : GenerateHooks, optional
+        Hooks instance for customizing the generation process. If not provided, a
+        default instance is created. Theme-provided hooks (from hooks.py) are
+        automatically registered onto this instance at priority 100, allowing
+        user-registered hooks to run before (lower priority) or after (higher
+        priority) them.
 
     Notes
     -----
@@ -721,6 +729,7 @@ def generate(
     vars = vars or {}
     current_time = current_time or datetime.datetime.now()
     cwd = cwd or pathlib.Path.cwd()
+    hooks = hooks or GenerateHooks()
 
     # resolve paths relative to cwd (absolute paths are unchanged)
     content_directory = cwd / config.content_directory
@@ -731,9 +740,12 @@ def generate(
     theme = _get_theme(config, extra_themes=extra_themes, cwd=cwd)
     config.theme.config = _resolve_theme_config(config.theme.config, theme.schema)
 
-    extra_content = _run_pre_generate_hook(
-        theme.hooks.pre_generate, config, extra_content
+    # register theme hooks and run pre-generate
+    _register_theme_hooks(hooks, theme)
+    pre_args = hooks.on_generate_pre(
+        GeneratePreHookArgs(config=config, extra_content=extra_content)
     )
+    extra_content = pre_args.extra_content
 
     # set up jinja environment and copy theme static files
     jinja_environment = theme.create_jinja_environment()
@@ -767,4 +779,4 @@ def generate(
 
     # finalize build
     _copy_materials_to_build(materials_directory, build_directory, config)
-    _run_post_generate_hook(theme.hooks.post_generate, config)
+    hooks.on_generate_post(GeneratePostHookArgs(config=config))

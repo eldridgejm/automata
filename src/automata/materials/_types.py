@@ -286,6 +286,28 @@ class Universe[
         )
 
 
+def node_type_name(node: Collection | Publication | Artifact) -> str:
+    """Get the type name of a node for hook args.
+
+    Parameters
+    ----------
+    node : Collection | Publication | Artifact
+        A node in the materials hierarchy.
+
+    Returns
+    -------
+    str
+        One of "collection", "publication", or "artifact".
+
+    """
+    if isinstance(node, Collection):
+        return "collection"
+    elif isinstance(node, Publication):
+        return "publication"
+    else:
+        return "artifact"
+
+
 # other ================================================================================
 
 # publication schema -------------------------------------------------------------------

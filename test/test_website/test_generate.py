@@ -1446,3 +1446,116 @@ def test_extra_content_with_multiple_items(tmpsite, config, tmp_path):
     assert "<h1>A Page</h1>" in tmpsite.get_output("page.html")
     assert (tmpsite.build_directory / "binary.bin").read_bytes() == b"\x00\x01\x02"
     assert tmpsite.get_output("data.json") == '{"key": "value"}'
+
+
+# hooks parameter =====================================================================
+
+
+def test_generate_accepts_hooks_parameter(tmpsite, config):
+    """Test that generate() accepts a hooks parameter."""
+    from automata.hooks import GenerateHooks
+
+    hooks = GenerateHooks()
+    tmpsite.make_page("index.md", "# Test")
+
+    # should not raise
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+
+    assert "Test" in tmpsite.get_output("index.html")
+
+
+def test_user_pre_generate_hook_is_called(tmpsite, config):
+    """Test that user-registered pre-generate hooks are called."""
+    from automata.hooks import GenerateHooks, GeneratePreHookArgs
+
+    hooks = GenerateHooks()
+    call_log = []
+
+    @hooks.on_generate_pre.register()
+    def my_pre_hook(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+        call_log.append("pre_generate called")
+        return args
+
+    tmpsite.make_page("index.md", "# Test")
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+
+    assert "pre_generate called" in call_log
+
+
+def test_user_post_generate_hook_is_called(tmpsite, config):
+    """Test that user-registered post-generate hooks are called."""
+    from automata.hooks import GenerateHooks, GeneratePostHookArgs
+
+    hooks = GenerateHooks()
+    call_log = []
+
+    @hooks.on_generate_post.register()
+    def my_post_hook(args: GeneratePostHookArgs) -> None:
+        call_log.append("post_generate called")
+
+    tmpsite.make_page("index.md", "# Test")
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+
+    assert "post_generate called" in call_log
+
+
+def test_user_pre_generate_hook_can_add_extra_content(tmpsite, config):
+    """Test that user pre-generate hooks can add extra content."""
+    from automata.hooks import GenerateHooks, GeneratePreHookArgs
+
+    hooks = GenerateHooks()
+
+    @hooks.on_generate_pre.register()
+    def add_extra_page(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+        extra = args.extra_content or {}
+        extra["from-hook.html"] = "# Added by hook"
+        return GeneratePreHookArgs(config=args.config, extra_content=extra)
+
+    tmpsite.make_page("index.md", "# Test")
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+
+    assert "<h1>Added by hook</h1>" in tmpsite.get_output("from-hook.html")
+
+
+def test_pre_generate_pipeline_chains_transformations(tmpsite, config):
+    """Test that pre-generate pipeline hooks chain their transformations."""
+    from automata.hooks import GenerateHooks, GeneratePreHookArgs
+
+    hooks = GenerateHooks()
+
+    @hooks.on_generate_pre.register()
+    def add_page_a(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+        extra = dict(args.extra_content or {})
+        extra["a.html"] = "# Page A"
+        return GeneratePreHookArgs(config=args.config, extra_content=extra)
+
+    @hooks.on_generate_pre.register()
+    def add_page_b(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+        extra = dict(args.extra_content or {})
+        extra["b.html"] = "# Page B"
+        return GeneratePreHookArgs(config=args.config, extra_content=extra)
+
+    tmpsite.make_page("index.md", "# Test")
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+
+    # Both pages should be generated (pipeline chains results)
+    assert "<h1>Page A</h1>" in tmpsite.get_output("a.html")
+    assert "<h1>Page B</h1>" in tmpsite.get_output("b.html")
+
+
+def test_hooks_receive_correct_config(tmpsite, config):
+    """Test that hooks receive the correct WebsiteConfig."""
+    from automata.hooks import GenerateHooks, GeneratePostHookArgs
+
+    hooks = GenerateHooks()
+    received_config = []
+
+    @hooks.on_generate_post.register()
+    def capture_config(args: GeneratePostHookArgs) -> None:
+        received_config.append(args.config)
+
+    tmpsite.make_page("index.md", "# Test")
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+
+    assert len(received_config) == 1
+    assert received_config[0] is config

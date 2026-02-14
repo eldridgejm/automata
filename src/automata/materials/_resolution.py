@@ -1,7 +1,6 @@
 """Configuration resolution helpers for materials workflows."""
 
 import typing
-from collections.abc import Mapping
 
 import smartconfig
 
@@ -15,7 +14,7 @@ def resolve_for_each_publication(
     schema: smartconfig.types.Schema,
     vars: dict | None = None,
     loop_variable: str = "publication",
-    functions: Mapping[str, typing.Callable | smartconfig.types.Function] | None = None,
+    functions: smartconfig.types.FunctionMapping | None = None,
     fixup: typing.Callable[
         [smartconfig.types.Configuration, Publication], smartconfig.types.Configuration
     ]
@@ -42,7 +41,7 @@ def resolve_for_each_publication(
     loop_variable : str, optional
         The variable name that will be used to represent the current publication
         on each iteration. Default: "publication".
-    functions : Mapping[str, Callable | smartconfig.types.Function] | None, optional
+    functions : smartconfig.types.FunctionMapping | None, optional
         A mapping of custom functions to use during resolution. If None, the
         default functions from smartconfig will be used, plus an added
         `use_metadata` function for accessing publication metadata.

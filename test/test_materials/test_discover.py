@@ -2,7 +2,8 @@ import datetime
 
 from pytest import raises
 
-from automata.materials import DiscoverCallbacks, discover
+from automata.hooks import DiscoverHookArgs, Hooks
+from automata.materials import discover
 from automata.materials.exceptions import DiscoveryError
 
 
@@ -573,23 +574,126 @@ def test_interpolates_vars_in_collection_metadata_schema(temporary_course):
     assert schema["required_keys"]["name"]["type"] == "string"
 
 
-def test_skip_directories_invokes_callback(default_example_course):
-    """Test that the on_skip callback is invoked when directories are skipped."""
+def test_skip_directories_invokes_hook(default_example_course):
+    """Test that the on_discover_skip hook is invoked when directories are skipped."""
     # given
     skipped_paths = []
+    hooks = Hooks()
 
-    class TrackingCallbacks(DiscoverCallbacks):
-        def on_skip(self, path):
-            skipped_paths.append(path)
-            return path
+    @hooks.on_discover_skip.register()
+    def track_skipped(args: DiscoverHookArgs) -> None:
+        skipped_paths.append(args.path)
 
     # when
     discover(
         default_example_course.path,
         skip_directories={"01-intro"},
-        callbacks=TrackingCallbacks(),
+        hooks=hooks,
     )
 
     # then
     assert len(skipped_paths) == 1
     assert skipped_paths[0].name == "01-intro"
+
+
+def test_discover_invokes_on_discover_collection_hook(default_example_course):
+    """Test that on_discover_collection hook is invoked for each collection."""
+    # given
+    collection_paths = []
+    hooks = Hooks()
+
+    @hooks.on_discover_collection.register()
+    def track_collections(args: DiscoverHookArgs) -> None:
+        collection_paths.append(args.path)
+
+    # when
+    discover(default_example_course.path, hooks=hooks)
+
+    # then
+    assert len(collection_paths) == 1
+    assert collection_paths[0].name == "collection.yaml"
+
+
+def test_discover_invokes_on_discover_publication_hook(default_example_course):
+    """Test that on_discover_publication hook is invoked for each publication."""
+    # given
+    publication_paths = []
+    hooks = Hooks()
+
+    @hooks.on_discover_publication.register()
+    def track_publications(args: DiscoverHookArgs) -> None:
+        publication_paths.append(args.path)
+
+    # when
+    discover(default_example_course.path, hooks=hooks)
+
+    # then
+    assert len(publication_paths) > 0
+    assert all(p.name == "publication.yaml" for p in publication_paths)
+
+
+def test_on_discover_collection_shell_script_receives_json(
+    default_example_course, tmp_path
+):
+    """Test that shell script on on_discover_collection receives JSON payload."""
+    # given
+    output_file = tmp_path / "output.json"
+    hooks = Hooks()
+    hooks.on_discover_collection.register_shell_script(f"cat > {output_file}")
+
+    # when
+    discover(default_example_course.path, hooks=hooks)
+
+    # then
+    import json
+
+    content = json.loads(output_file.read_text())
+    assert "path" in content
+    assert content["path"].endswith("collection.yaml")
+
+
+def test_on_discover_publication_shell_script_receives_json(
+    default_example_course, tmp_path
+):
+    """Test that shell script on on_discover_publication receives JSON payload."""
+    # given
+    output_file = tmp_path / "output.jsonl"
+    hooks = Hooks()
+    hooks.on_discover_publication.register_shell_script(
+        f"cat >> {output_file} && echo >> {output_file}"
+    )
+
+    # when
+    discover(default_example_course.path, hooks=hooks)
+
+    # then
+    import json
+
+    lines = output_file.read_text().strip().split("\n")
+    assert len(lines) > 0
+    for line in lines:
+        content = json.loads(line)
+        assert "path" in content
+        assert content["path"].endswith("publication.yaml")
+
+
+def test_on_discover_skip_shell_script_receives_json(default_example_course, tmp_path):
+    """Test that shell script on on_discover_skip receives JSON payload."""
+    # given
+    output_file = tmp_path / "output.json"
+    hooks = Hooks()
+    hooks.on_discover_skip.register_shell_script(f"cat > {output_file}")
+
+    # when
+    discover(
+        default_example_course.path,
+        skip_directories={"01-intro"},
+        hooks=hooks,
+    )
+
+    # then
+    import json
+
+    content = json.loads(output_file.read_text())
+    assert "path" in content
+    assert "01-intro" in content["path"]
