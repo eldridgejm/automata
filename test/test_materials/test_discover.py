@@ -697,3 +697,221 @@ def test_on_discover_skip_shell_script_receives_json(default_example_course, tmp
     content = json.loads(output_file.read_text())
     assert "path" in content
     assert "01-intro" in content["path"]
+
+
+# inline publications tests ============================================================
+
+
+def test_inline_publications_in_collection(temporary_course):
+    """Test that publications can be defined inline in collection.yaml."""
+    # given
+    (temporary_course.path / "homeworks").mkdir(parents=True, exist_ok=True)
+    (temporary_course.path / "homeworks" / "collection.yaml").write_text(
+        """
+publication_schema:
+    required_artifacts:
+        - homework.pdf
+    is_ordered: true
+
+publications:
+    01-intro:
+        metadata:
+            name: Homework 01
+        artifacts:
+            homework.pdf:
+                recipe: touch homework.pdf
+    02-python:
+        metadata:
+            name: Homework 02
+        artifacts:
+            homework.pdf:
+                recipe: touch homework.pdf
+"""
+    )
+
+    # when
+    universe = discover(temporary_course.path)
+
+    # then
+    assert universe.collections.keys() == {"homeworks", "default"}
+    assert universe.collections["homeworks"].publications.keys() == {
+        "01-intro",
+        "02-python",
+    }
+    assert (
+        universe.collections["homeworks"].publications["01-intro"].metadata["name"]
+        == "Homework 01"
+    )
+    assert (
+        universe.collections["homeworks"].publications["02-python"].metadata["name"]
+        == "Homework 02"
+    )
+
+
+def test_inline_publications_with_this_reference(temporary_course):
+    """Test that ${this} self-references work in inline publications."""
+    # given
+    (temporary_course.path / "homeworks").mkdir(parents=True, exist_ok=True)
+    (temporary_course.path / "homeworks" / "collection.yaml").write_text(
+        """
+publication_schema:
+    required_artifacts:
+        - homework.pdf
+    optional_artifacts:
+        - solution.pdf
+    metadata_schema:
+        required_keys:
+            name:
+                type: string
+            due:
+                type: datetime
+
+publications:
+    01-intro:
+        metadata:
+            name: Homework 01
+            due: 2024-09-20 23:59:00
+        artifacts:
+            homework.pdf:
+                recipe: touch homework.pdf
+            solution.pdf:
+                release_time: ${this.metadata.due}
+"""
+    )
+
+    # when
+    universe = discover(temporary_course.path)
+
+    # then
+    pub = universe.collections["homeworks"].publications["01-intro"]
+    assert pub.metadata["name"] == "Homework 01"
+    assert pub.artifacts["solution.pdf"].release_time == pub.metadata["due"]
+
+
+def test_inline_publications_with_previous_reference(temporary_course):
+    """Test that ${previous} references work in ordered inline collections."""
+    # given
+    (temporary_course.path / "lectures").mkdir(parents=True, exist_ok=True)
+    (temporary_course.path / "lectures" / "collection.yaml").write_text(
+        """
+publication_schema:
+    required_artifacts: []
+    metadata_schema:
+        required_keys:
+            name:
+                type: string
+            date:
+                type: datetime
+    is_ordered: true
+
+publications:
+    01-intro:
+        metadata:
+            name: Lecture 01
+            date: 2024-01-05 14:00:00
+        artifacts: {}
+    02-basics:
+        metadata:
+            name: Lecture 02
+            date:
+                __datetime.parse__: 7 days after ${previous.metadata.date}
+        artifacts: {}
+    03-advanced:
+        metadata:
+            name: Lecture 03
+            date:
+                __datetime.parse__: 7 days after ${previous.metadata.date}
+        artifacts: {}
+"""
+    )
+
+    # when
+    universe = discover(temporary_course.path)
+
+    # then
+    lectures = universe.collections["lectures"].publications
+    assert lectures["01-intro"].metadata["date"] == datetime.datetime(2024, 1, 5, 14, 0)
+    assert lectures["02-basics"].metadata["date"] == datetime.datetime(
+        2024, 1, 12, 14, 0
+    )
+    assert lectures["03-advanced"].metadata["date"] == datetime.datetime(
+        2024, 1, 19, 14, 0
+    )
+
+
+def test_inline_publications_with_vars(temporary_course):
+    """Test that ${vars} work in inline publications."""
+    # given
+    (temporary_course.path / "homeworks").mkdir(parents=True, exist_ok=True)
+    (temporary_course.path / "homeworks" / "collection.yaml").write_text(
+        """
+publication_schema:
+    required_artifacts:
+        - ${vars.primary_artifact}
+    allow_unspecified_artifacts: true
+
+publications:
+    01-intro:
+        metadata:
+            course: ${vars.course_name}
+        artifacts:
+            homework.pdf:
+                recipe: touch homework.pdf
+"""
+    )
+
+    vars = {"course_name": "CS101", "primary_artifact": "homework.pdf"}
+
+    # when
+    universe = discover(temporary_course.path, vars=vars)
+
+    # then
+    assert (
+        universe.collections["homeworks"].publications["01-intro"].metadata["course"]
+        == "CS101"
+    )
+    assert universe.collections["homeworks"].publication_schema.required_artifacts == [
+        "homework.pdf"
+    ]
+
+
+def test_error_when_both_inline_and_separate_publications(temporary_course):
+    """Test that an error is raised when both inline and separate publications exist."""
+    # given - create collection with inline publications
+    (temporary_course.path / "homeworks").mkdir(parents=True, exist_ok=True)
+    (temporary_course.path / "homeworks" / "collection.yaml").write_text(
+        """
+publication_schema:
+    required_artifacts:
+        - homework.pdf
+
+publications:
+    01-inline:
+        metadata: {}
+        artifacts:
+            homework.pdf:
+                recipe: touch homework.pdf
+"""
+    )
+
+    # also create a separate publication.yaml
+    temporary_course.create_publication(
+        "homeworks",
+        "02-separate",
+        """
+            metadata: {}
+            artifacts:
+                homework.pdf:
+                    recipe: touch homework.pdf
+        """,
+    )
+
+    # when/then
+    with raises(DiscoveryError) as exc_info:
+        discover(temporary_course.path)
+
+    assert "inline" in str(exc_info.value).lower()
+    assert (
+        "separate" in str(exc_info.value).lower()
+        or "publication.yaml" in str(exc_info.value).lower()
+    )

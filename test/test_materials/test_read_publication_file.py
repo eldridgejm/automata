@@ -783,74 +783,103 @@ def test_external_vars_missing_raises_error(write_file):
         read_publication_file(path, vars={})
 
 
-# previous publication variable
+# previous publication variable (via parent collection)
 # --------------------------------------------------------------------------------------
 
 
-def test_previous_publication_metadata_reference(write_file):
-    """Test that previous publication metadata can be referenced."""
-    from automata.materials import Publication
+def test_previous_publication_metadata_reference(temporary_course):
+    """Test that previous publication metadata can be referenced via collection."""
+    # The ${previous} reference now requires a parent collection to determine
+    # what "previous" means. read_publication_file resolves the entire collection.
 
     # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: Homework 02
-                previous_name: ${previous.metadata.name}
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+                is_ordered: true
+        """,
+    )
 
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        """
+            metadata:
+                name: Homework 01
             artifacts:
                 homework:
                     path: ./homework.pdf
-            """
-        ),
+        """,
     )
 
-    previous = Publication(
-        metadata={"name": "Homework 01", "due": datetime.date(2020, 9, 1)},
-        artifacts={},
+    temporary_course.create_publication(
+        "homeworks",
+        "02-python",
+        """
+            metadata:
+                name: Homework 02
+                previous_name: ${previous.metadata.name}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
     )
+
+    pub_path = temporary_course.path / "homeworks" / "02-python" / "publication.yaml"
 
     # when
-    publication = read_publication_file(path, previous=previous)
+    publication = read_publication_file(pub_path)
 
     # then
     assert publication.metadata["name"] == "Homework 02"
     assert publication.metadata["previous_name"] == "Homework 01"
 
 
-def test_previous_publication_with_vars(write_file):
-    """Test that previous and vars can be used together."""
-    from automata.materials import Publication
-
+def test_previous_publication_with_vars(temporary_course):
+    """Test that previous and vars can be used together via collection."""
     # given
-    path = write_file(
-        "publication.yaml",
-        contents=dedent(
-            """
-            metadata:
-                name: ${vars.course_code} - Homework 02
-                follows: ${previous.metadata.name}
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+                is_ordered: true
+        """,
+    )
 
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        """
+            metadata:
+                name: CS101 - Homework 01
             artifacts:
                 homework:
                     path: ./homework.pdf
-            """
-        ),
+        """,
     )
 
-    previous = Publication(
-        metadata={"name": "CS101 - Homework 01"},
-        artifacts={},
+    temporary_course.create_publication(
+        "homeworks",
+        "02-python",
+        """
+            metadata:
+                name: ${vars.course_code} - Homework 02
+                follows: ${previous.metadata.name}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
     )
+
+    pub_path = temporary_course.path / "homeworks" / "02-python" / "publication.yaml"
 
     # when
-    publication = read_publication_file(
-        path,
-        vars={"course_code": "CS101"},
-        previous=previous,
-    )
+    publication = read_publication_file(pub_path, vars={"course_code": "CS101"})
 
     # then
     assert publication.metadata["name"] == "CS101 - Homework 02"

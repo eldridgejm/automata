@@ -2,14 +2,16 @@
 
 import pathlib
 import typing
-from collections import OrderedDict, deque
-from typing import Any, Dict, Optional
+from collections import deque
+from typing import Any, MutableMapping, Optional
+
+import smartconfig
 
 from automata import constants
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
 
-from ._read_collection_file import read_collection_file
-from ._read_publication_file import read_publication_file
+from ..util.resolution import resolve
+from ..util.yaml import parse_yaml
 from ._types import (
     Collection,
     Publication,
@@ -19,43 +21,154 @@ from ._types import (
 )
 from .exceptions import DiscoveryError
 
-# helper functions =====================================================================
+# Type aliases for raw unresolved data
+RawPublication = dict[str, Any]
+RawCollection = dict[str, Any]
 
 
-def _is_collection(dirpath: pathlib.Path) -> bool:
-    """Determines if the directory at the given path is a collection.
+# schemas ==============================================================================
 
-    It does this by checking to see if collection.yaml exists at the path.
+# Schema for a single artifact within a publication.
+ARTIFACT_SCHEMA: dict = {
+    "type": "dict",
+    "optional_keys": {
+        "path": {"type": "string", "nullable": True, "default": None},
+        "recipe": {"type": "string", "nullable": True, "default": None},
+        "ready": {"type": "boolean", "default": True},
+        "missing_ok": {"type": "boolean", "default": False},
+        "release_time": {"type": "datetime", "nullable": True, "default": None},
+    },
+}
+
+
+def _make_publication_schema(
+    publication_schema: Optional[PublicationSchema],
+) -> dict:
+    """Construct a smartconfig schema for validating and resolving publication data.
 
     Parameters
     ----------
-    dirpath : pathlib.Path
-        The path to a directory to check.
+    publication_schema : Optional[PublicationSchema]
+        The schema that describes the necessary artifacts of the publication
+        and what metadata it should have. If None, a default schema is assumed.
+
+    Returns
+    -------
+    dict
+        The smartconfig schema for the publication.
 
     """
+    if publication_schema is None:
+        publication_schema = PublicationSchema([], allow_unspecified_artifacts=True)
+
+    artifacts_schema: dict[str, Any] = {
+        "type": "dict",
+        "required_keys": {},
+        "optional_keys": {},
+    }
+
+    if publication_schema.required_artifacts is not None:
+        for artifact_key in publication_schema.required_artifacts:
+            artifacts_schema["required_keys"][artifact_key] = ARTIFACT_SCHEMA
+
+    if publication_schema.optional_artifacts is not None:
+        for artifact_key in publication_schema.optional_artifacts:
+            artifacts_schema["optional_keys"][artifact_key] = ARTIFACT_SCHEMA
+
+    if publication_schema.allow_unspecified_artifacts:
+        artifacts_schema["extra_keys_schema"] = ARTIFACT_SCHEMA
+
+    schema: dict[str, Any] = {
+        "type": "dict",
+        "required_keys": {"artifacts": artifacts_schema},
+        "optional_keys": {},
+    }
+
+    if publication_schema.metadata_schema is not None:
+        schema["optional_keys"]["metadata"] = {
+            "type": "dict",
+            **publication_schema.metadata_schema,
+        }
+    else:
+        schema["optional_keys"]["metadata"] = {"type": "any", "default": {}}
+
+    return schema
+
+
+PUBLICATION_SCHEMA = {
+    "type": "dict",
+    "required_keys": {
+        "artifacts": {
+            "type": "dict",
+            "extra_keys_schema": ARTIFACT_SCHEMA,
+        }
+    },
+    "optional_keys": {
+        "metadata": {"type": "any", "default": {}},
+    },
+}
+
+COLLECTION_SCHEMA = {
+    "type": "dict",
+    "required_keys": {
+        "publication_schema": {
+            "type": "dict",
+            "required_keys": {
+                "required_artifacts": {
+                    "type": "list",
+                    "element_schema": {"type": "string"},
+                }
+            },
+            "optional_keys": {
+                "optional_artifacts": {
+                    "type": "list",
+                    "element_schema": {"type": "string"},
+                    "default": [],
+                },
+                "metadata_schema": {
+                    "type": "dict",
+                    "extra_keys_schema": {"type": "any"},
+                    "default": None,
+                    "nullable": True,
+                },
+                "allow_unspecified_artifacts": {
+                    "type": "boolean",
+                    "default": False,
+                },
+                "is_ordered": {"type": "boolean", "default": False},
+            },
+        }
+    },
+    "optional_keys": {
+        "publications": {
+            "type": "dict",
+            "extra_keys_schema": PUBLICATION_SCHEMA,
+            "default": None,
+            "nullable": True,
+        }
+    },
+}
+
+
+# Phase A: Scanning ====================================================================
+
+
+def _is_collection(dirpath: pathlib.Path) -> bool:
+    """Determines if the directory at the given path is a collection."""
     return (dirpath / constants.COLLECTION_FILE).is_file()
 
 
 def _is_publication(dirpath: pathlib.Path) -> bool:
-    """Determine if the directory at the given path is a publication.
-
-    It does this by checking to see if publication.yaml exists at the path.
-
-    Parameters
-    ----------
-    dirpath : pathlib.Path
-        The path to a directory to check.
-
-    """
+    """Determine if the directory at the given path is a publication."""
     return (dirpath / constants.PUBLICATION_FILE).is_file()
 
 
-def _search_for_collections_and_publications(
+def _scan_filesystem(
     root_directory: pathlib.Path,
     skip_directories: Optional[typing.Collection[str]] = None,
     *,
     hooks: DiscoverHooks,
-):
+) -> tuple[list[pathlib.Path], dict[pathlib.Path, Optional[pathlib.Path]]]:
     """Perform a BFS to find all collections and publications in the filesystem.
 
     Parameters
@@ -63,21 +176,17 @@ def _search_for_collections_and_publications(
     root_directory : pathlib.Path
         Path to the root directory that will be recursively searched.
     skip_directories : Optional[Collection[str]]
-        A collection of folder names that, if found, will be skipped over. If None,
-        every folder is searched.
-    hooks: DiscoverHooks
+        A collection of folder names that, if found, will be skipped over.
+    hooks : DiscoverHooks
         Callbacks invoked when interesting things happen.
 
     Returns
     -------
     List[Path]
-        The path to every collection discovered. The "default" collection is
-        not included.
+        The path to every collection discovered.
     Mapping[Path, Union[Path, None]]
-        A mapping whose keys are the paths to all discovered publications. The values
-        are paths to the collections containing the publications. If a publication has
-        no collection (or rather, belongs to the "default" collection), its value will
-        be ``None``.
+        A mapping from publication paths to their parent collection paths.
+        None means the publication belongs to the "default" collection.
 
     Raises
     ------
@@ -88,10 +197,12 @@ def _search_for_collections_and_publications(
     if skip_directories is None:
         skip_directories = set()
 
-    queue = deque([(root_directory, None)])
+    queue: deque[tuple[pathlib.Path, Optional[pathlib.Path]]] = deque(
+        [(root_directory, None)]
+    )
 
-    collections = []
-    publications = {}
+    collections: list[pathlib.Path] = []
+    publications: dict[pathlib.Path, Optional[pathlib.Path]] = {}
 
     while queue:
         current_path, parent_collection_path = queue.pop()
@@ -111,180 +222,447 @@ def _search_for_collections_and_publications(
                 if subpath.name in skip_directories:
                     hooks.on_discover_skip(DiscoverHookArgs(path=subpath))
                     continue
-                queue.append((subpath, parent_collection_path))  # type: ignore
+                queue.append((subpath, parent_collection_path))
 
     return collections, publications
 
 
-def _make_default_collection() -> Collection:
-    """Create a "default" collection."""
-    default_schema = PublicationSchema(
-        required_artifacts=[],
-        metadata_schema=None,
-        allow_unspecified_artifacts=True,
-    )
-    return Collection(publication_schema=default_schema, publications={})
-
-
-def _make_collections(
-    collection_paths: typing.Collection[pathlib.Path],
-    root_directory,
-    hooks: DiscoverHooks,
-    vars: Optional[Dict[str, Any]] = None,
-) -> typing.MutableMapping[str, Collection]:
-    """Given a collection of paths to collections, create Collection objects.
-
-    In other words, this function reads the collection.yaml files and creates
-    Collection objects from them. It is a relatively thin wrapper around
-    :func:`read_collection_file`. Beyond reading the collection files, this
-    function assigns each collection a key, which is the string form of the
-    path relative to the input directory. It also adds a "default" collection
-    to the output for publications that are not part of any collection.
-
-    Parameters
-    ----------
-    collection_paths : Collection[pathlib.Path]
-        A collection containing paths to directories representing collections.
-    root_directory : Path
-        Path to the root directory containing all course materials. All collection keys
-        will be relative to this path.
-    hooks
-        The hooks to be invoked when interesting things happen.
-    vars : Optional[dict]
-        A dictionary of extra variables to be used during interpolation of fields in
-        collection.yaml.
-
-    Returns
-    -------
-    Mapping[str, Collection]
-        A mapping from collection keys to new Collection objects. A collection's key is
-        the string form of its path relative to the input directory.
-
-    """
-    collections = {}
-    for path in collection_paths:
-        file_path = path / constants.COLLECTION_FILE
-
-        collection = read_collection_file(file_path, vars=vars)
-
-        key = str(path.relative_to(root_directory))
-        collections[key] = collection
-
-        hooks.on_discover_collection(DiscoverHookArgs(path=file_path))
-
-    collections["default"] = _make_default_collection()
-    return collections
-
-
-def _last_publication(collection: Collection) -> Optional[Publication]:
-    """Finds the last publication in an (ordered) collection.
-
-    Returns
-    -------
-    Optional[Publication]
-        The last publication, if it exists. If the collection is unordered,
-        this function returns None. If there is no last publication, as is the
-        case when the collection is empty, this function also returns None.
-
-    """
-    if not collection.publication_schema.is_ordered:
-        return None
-
+def _parse_yaml_file(path: pathlib.Path) -> Any:
+    """Parse a YAML file without resolving references."""
+    yaml_content = path.read_text()
     try:
-        key_of_last = list(collection.publications)[-1]
-    except IndexError:
-        return None
-
-    return collection.publications[key_of_last]
+        return parse_yaml(yaml_content)
+    except Exception as exc:
+        raise DiscoveryError(str(exc), path)
 
 
-def _make_publications(
-    publication_paths: typing.Mapping[pathlib.Path, typing.Optional[pathlib.Path]],
+def _scan_single_collection(
+    collection_path: pathlib.Path,
+    publication_paths: dict[pathlib.Path, Optional[pathlib.Path]],
     root_directory: pathlib.Path,
-    collections: typing.MutableMapping[str, Collection],
-    *,
-    hooks: DiscoverHooks,
-    vars: Optional[Dict[str, Any]] = None,
-) -> None:
-    """Given a collection of paths to publications, create Publication objects.
+) -> tuple[str, RawCollection]:
+    """Scan a single collection and its publications without resolving.
 
     Parameters
     ----------
-    publication_paths : Mapping[Path, Union[Path, None]]
-        Mapping from publication paths to the paths of the collections containing them
-        (or ``None`` if the publication is part of the "default" collection.
-    root_directory : Path
-        Path to the root directory containing all course materials. All publication keys
-        will be relative to this path.
-    collections : MutableMapping[str, Collection]
-        A mapping from collection keys to Collection objects. The newly-created
-        Publication objects will be added to these Collection objects in-place.
-    hooks: DiscoverHooks
-        The hooks to be invoked when interesting things happen.
-    vars : Optional[dict]
-        A dictionary of extra variables to be used during interpolation of fields in
-        publication.yaml.
+    collection_path : pathlib.Path
+        Path to the collection directory (containing collection.yaml).
+    publication_paths : dict[pathlib.Path, pathlib.Path]
+        Mapping from publication directory paths to their collection directory paths.
+    root_directory : pathlib.Path
+        Root directory for computing relative keys.
 
     Returns
     -------
-    None
-        This function has no return value. Instead, the created Publication
-        objects are added to the collections passed to this function in the
-        `collections` parameter.
+    tuple[str, RawCollection]
+        The collection key and raw unresolved collection data.
+
+    Raises
+    ------
+    DiscoveryError
+        If both inline publications and separate publication.yaml files exist.
 
     """
-    if vars is None:
-        vars = {}
+    collection_file = collection_path / constants.COLLECTION_FILE
+    raw_yaml = _parse_yaml_file(collection_file)
 
-    for path, collection_path in publication_paths.items():
-        if collection_path is None:
-            collection_key = "default"
-            publication_key = str(path.relative_to(root_directory))
-        else:
-            collection_key = str(collection_path.relative_to(root_directory))
-            publication_key = str(path.relative_to(collection_path))
+    # Extract publication_schema (will be resolved later)
+    publication_schema_raw = raw_yaml.get("publication_schema", {})
 
-        collection = collections[collection_key]
+    # Check for inline publications
+    inline_publications = raw_yaml.get("publications")
 
-        previous = _last_publication(collection)
+    # Find separate publication files for this collection
+    separate_pub_paths = [
+        pub_path
+        for pub_path, col_path in publication_paths.items()
+        if col_path == collection_path
+    ]
 
-        file_path = path / constants.PUBLICATION_FILE
-        publication = read_publication_file(
-            file_path,
-            publication_schema=collection.publication_schema,
-            vars=vars,
-            previous=previous,
+    # Validate: can't have both inline and separate
+    if inline_publications is not None and separate_pub_paths:
+        raise DiscoveryError(
+            "Collection has both inline 'publications:' key and separate "
+            "publication.yaml files. Use one approach, not both.",
+            collection_file,
         )
 
-        collection.publications[publication_key] = publication
+    # Gather publications
+    publications: dict[str, RawPublication] = {}
 
-        hooks.on_discover_publication(DiscoverHookArgs(path=file_path))
+    if inline_publications is not None:
+        # Use inline publications
+        for pub_key, pub_data in inline_publications.items():
+            pub_data = dict(pub_data) if pub_data else {}
+            pub_data["_path"] = collection_file
+            publications[pub_key] = pub_data
+    else:
+        # Use separate publication.yaml files
+        for pub_path in sorted(separate_pub_paths):
+            pub_file = pub_path / constants.PUBLICATION_FILE
+            pub_data = _parse_yaml_file(pub_file)
+            pub_data["_path"] = pub_file
+            pub_key = str(pub_path.relative_to(collection_path))
+            publications[pub_key] = pub_data
+
+    collection_key = str(collection_path.relative_to(root_directory))
+
+    return collection_key, RawCollection(
+        publication_schema=publication_schema_raw,
+        publications=publications,
+        _path=collection_file,
+    )
 
 
-def _sort_dictionary(dct) -> OrderedDict:
-    """Utility function that sorts a dictionary by its keys."""
-    result = OrderedDict()
-    for key in sorted(dct):
-        result[key] = dct[key]
-    return result
+def _scan_default_collection(
+    publication_paths: dict[pathlib.Path, Optional[pathlib.Path]],
+    root_directory: pathlib.Path,
+) -> RawCollection:
+    """Create a "default" collection for orphan publications.
+
+    Parameters
+    ----------
+    publication_paths : dict[pathlib.Path, Optional[pathlib.Path]]
+        Mapping from publication paths to their parent collection paths.
+    root_directory : pathlib.Path
+        Root directory for computing relative keys.
+
+    Returns
+    -------
+    RawCollection
+        Raw collection data for the default collection.
+
+    """
+    # Find publications without a parent collection
+    orphan_pubs = [
+        pub_path for pub_path, col_path in publication_paths.items() if col_path is None
+    ]
+
+    publications: dict[str, RawPublication] = {}
+    for pub_path in sorted(orphan_pubs):
+        pub_file = pub_path / constants.PUBLICATION_FILE
+        pub_data = _parse_yaml_file(pub_file)
+        pub_data["_path"] = pub_file
+        pub_key = str(pub_path.relative_to(root_directory))
+        publications[pub_key] = pub_data
+
+    return RawCollection(
+        publication_schema={
+            "required_artifacts": [],
+            "allow_unspecified_artifacts": True,
+        },
+        publications=publications,
+        _path=root_directory,
+    )
 
 
-# discover() ===========================================================================
+def _scan_collections(
+    root_directory: pathlib.Path,
+    skip_directories: Optional[typing.Collection[str]],
+    hooks: DiscoverHooks,
+) -> dict[str, RawCollection]:
+    """Phase A: Scan filesystem and parse YAML without resolving.
+
+    Returns
+    -------
+    dict[str, RawCollection]
+        Mapping from collection keys to raw unresolved collection data.
+
+    """
+    collection_paths, publication_paths = _scan_filesystem(
+        root_directory, skip_directories, hooks=hooks
+    )
+
+    raw_collections: dict[str, RawCollection] = {}
+
+    # Process each collection
+    for col_path in collection_paths:
+        key, raw_col = _scan_single_collection(
+            col_path, publication_paths, root_directory
+        )
+        raw_collections[key] = raw_col
+        hooks.on_discover_collection(
+            DiscoverHookArgs(path=col_path / constants.COLLECTION_FILE)
+        )
+
+    # Add default collection for orphan publications
+    raw_collections["default"] = _scan_default_collection(
+        publication_paths, root_directory
+    )
+
+    return raw_collections
+
+
+# Phase B: Wrapping with __let__ =======================================================
+
+
+def _wrap_publication_with_let(pub_data: dict) -> dict:
+    """Wrap a publication dict with __let__ for this self-reference.
+
+    Parameters
+    ----------
+    pub_data : dict
+        The raw publication data (without _path).
+
+    Returns
+    -------
+    dict
+        The publication wrapped with __let__ for ${this} references.
+
+    Note
+    ----
+    The ${previous} reference is handled separately by passing it as a
+    global variable during resolution, since smartconfig's __previous__
+    only works inside lists, not dicts.
+
+    """
+    return {"__let__": {"references": {"this": "__this__"}, "in": pub_data}}
+
+
+def _wrap_collections_with_let(
+    raw_collections: dict[str, RawCollection],
+) -> dict[str, dict]:
+    """Wrap all publications with __let__ for resolution.
+
+    Parameters
+    ----------
+    raw_collections : dict[str, RawCollection]
+        Mapping from collection keys to raw collection data.
+
+    Returns
+    -------
+    dict[str, dict]
+        The collections with publications wrapped for resolution.
+
+    """
+    wrapped: dict[str, dict] = {}
+
+    for col_key, raw_col in raw_collections.items():
+        wrapped_publications: dict[str, dict] = {}
+
+        for pub_key in raw_col["publications"]:
+            pub_data = dict(raw_col["publications"][pub_key])
+            # Remove internal _path before wrapping
+            pub_data.pop("_path", None)
+            wrapped_publications[pub_key] = _wrap_publication_with_let(pub_data)
+
+        wrapped[col_key] = {
+            "publication_schema": raw_col["publication_schema"],
+            "publications": wrapped_publications,
+        }
+
+    return wrapped
+
+
+# Phase C: Resolution ==================================================================
+
+
+def _validate_metadata_schema(
+    metadata_schema: Optional[typing.Mapping[str, str]], path: pathlib.Path
+) -> None:
+    """Ensures that the publication metadata schema provided is valid."""
+    if metadata_schema is None:
+        return
+
+    try:
+        smartconfig.validate_schema({"type": "dict", **metadata_schema})
+    except smartconfig.exceptions.InvalidSchemaError as exc:
+        raise DiscoveryError(exc, path)
+
+
+def _resolve_collection_schema(
+    raw_schema: dict,
+    vars: Optional[dict[str, Any]],
+    path: pathlib.Path,
+) -> PublicationSchema:
+    """Resolve a collection's publication_schema and return PublicationSchema."""
+    # Wrap with "this" for self-references
+    combined: Any = {"this": {"publication_schema": raw_schema}}
+
+    combined_schema: Any = {
+        "type": "dict",
+        "required_keys": {
+            "this": COLLECTION_SCHEMA,
+        },
+    }
+
+    try:
+        resolved = resolve(
+            combined,
+            combined_schema,
+            global_variables={"vars": vars if vars is not None else {}},
+        )
+    except smartconfig.exceptions.ResolutionError as exc:
+        raise DiscoveryError(str(exc), path)
+
+    schema_dict = resolved["this"]["publication_schema"]
+    _validate_metadata_schema(schema_dict.get("metadata_schema"), path)
+
+    return PublicationSchema(**schema_dict)
+
+
+def _resolve_publications(
+    wrapped_publications: dict[str, dict],
+    publication_schema: PublicationSchema,
+    raw_publications: dict[str, RawPublication],
+    vars: Optional[dict[str, Any]],
+) -> MutableMapping[str, Publication[UnbuiltArtifact]]:
+    """Resolve all wrapped publications in a collection.
+
+    Parameters
+    ----------
+    wrapped_publications : dict[str, dict]
+        Publications wrapped with __let__ for resolution.
+    publication_schema : PublicationSchema
+        The resolved publication schema.
+    raw_publications : dict[str, RawPublication]
+        Original raw publication data (for _path).
+    vars : Optional[dict[str, Any]]
+        User-provided variables.
+
+    Returns
+    -------
+    MutableMapping[str, Publication[UnbuiltArtifact]]
+        Resolved publications.
+
+    """
+    schema = _make_publication_schema(publication_schema)
+    publications: MutableMapping[str, Publication[UnbuiltArtifact]] = {}
+
+    pub_keys = list(wrapped_publications.keys())
+    previous_resolved: Optional[dict] = None
+
+    for pub_key in pub_keys:
+        wrapped = wrapped_publications[pub_key]
+        raw = raw_publications[pub_key]
+        path = raw.get("_path", pathlib.Path("unknown"))
+
+        # Build combined dict for resolution
+        combined_dict: dict = {"this": wrapped}
+        combined_schema: dict = {
+            "type": "dict",
+            "required_keys": {"this": schema},
+            "optional_keys": {},
+        }
+
+        global_variables: dict = {"vars": vars if vars is not None else {}}
+
+        if previous_resolved is not None:
+            combined_dict["previous"] = previous_resolved
+            combined_schema["optional_keys"]["previous"] = {"type": "any"}
+
+        try:
+            resolved = resolve(
+                combined_dict, combined_schema, global_variables=global_variables
+            )
+        except smartconfig.exceptions.ResolutionError as exc:
+            raise DiscoveryError(str(exc), path)
+
+        resolved_pub = resolved["this"]
+
+        # Convert artifacts to UnbuiltArtifact objects
+        if isinstance(path, pathlib.Path):
+            workdir = path.parent.absolute()
+        else:
+            workdir = pathlib.Path.cwd()
+        artifacts: MutableMapping[str, UnbuiltArtifact] = {}
+
+        for artifact_key, definition in resolved_pub["artifacts"].items():
+            if definition["path"] is None:
+                definition["path"] = artifact_key
+            artifacts[artifact_key] = UnbuiltArtifact(workdir=workdir, **definition)
+
+        publication = Publication[UnbuiltArtifact](
+            metadata=resolved_pub["metadata"],
+            artifacts=artifacts,
+        )
+
+        publications[pub_key] = publication
+        previous_resolved = publication._deep_asdict()
+
+    return publications
+
+
+def _resolve_universe(
+    raw_collections: dict[str, RawCollection],
+    vars: Optional[dict[str, Any]],
+    hooks: DiscoverHooks,
+) -> Universe[UnbuiltArtifact]:
+    """Phase B+C: Wrap with __let__, resolve, and build Universe.
+
+    Parameters
+    ----------
+    raw_collections : dict[str, RawCollection]
+        Mapping from collection keys to raw unresolved collection data.
+    vars : Optional[dict[str, Any]]
+        User-provided variables.
+    hooks : DiscoverHooks
+        Hooks for discovery events.
+
+    Returns
+    -------
+    Universe[UnbuiltArtifact]
+        The fully resolved universe.
+
+    """
+    wrapped_collections = _wrap_collections_with_let(raw_collections)
+    collections: MutableMapping[str, Collection[UnbuiltArtifact]] = {}
+
+    for col_key, raw_col in raw_collections.items():
+        path = raw_col["_path"]
+
+        # Resolve the publication schema
+        pub_schema = _resolve_collection_schema(
+            raw_col["publication_schema"], vars, path
+        )
+
+        # Resolve publications
+        publications = _resolve_publications(
+            wrapped_collections[col_key]["publications"],
+            pub_schema,
+            raw_col["publications"],
+            vars,
+        )
+
+        # Fire hooks for each publication
+        for pub_key in publications:
+            raw_pub = raw_col["publications"][pub_key]
+            pub_path = raw_pub.get("_path")
+            if pub_path is not None:
+                hooks.on_discover_publication(DiscoverHookArgs(path=pub_path))
+
+        collections[col_key] = Collection(
+            publication_schema=pub_schema,
+            publications=publications,
+        )
+
+    return Universe(collections)
+
+
+# Public API ===========================================================================
 
 
 def discover(
     root_directory: pathlib.Path,
     skip_directories: Optional[typing.Collection[str]] = None,
     hooks: Optional[DiscoverHooks] = None,
-    vars: Optional[Dict[str, Any]] = None,
+    vars: Optional[dict[str, Any]] = None,
 ) -> Universe[UnbuiltArtifact]:
     """Discover the course materials in the filesystem.
 
     This function recursively searches down from the given root directory for
-    collections and publications defined by ``collection.yaml'' and
-    ``publication.yaml'' files, respectively. It then reads these files and
+    collections and publications defined by ``collection.yaml`` and
+    ``publication.yaml`` files, respectively. It then reads these files and
     creates a :class:`Universe` object containing all information about the
     discovered course materials.
+
+    Publications can be defined in two ways:
+    1. **Separate files**: Each publication has its own ``publication.yaml`` file
+       in a subdirectory under the collection.
+    2. **Inline**: Publications are defined directly in the ``publications:`` key
+       of the collection's ``collection.yaml`` file.
+
+    A collection cannot use both approaches simultaneously - this will raise an error.
 
     All of the discovered collections are represented as :class:`Collection`
     objects. All of the discovered publications are represented as
@@ -319,8 +697,7 @@ def discover(
         are executed. See below for the possible hooks and their arguments.
     vars : Optional[dict]
         A dictionary of user-defined variables to be available during
-        interpolation. Passed to :func:`read_publication_file` and
-        :func:`read_collection_file`.
+        interpolation.
 
     Returns
     -------
@@ -332,19 +709,113 @@ def discover(
     if hooks is None:
         hooks = DiscoverHooks()
 
-    collection_paths, publication_paths = _search_for_collections_and_publications(
-        root_directory, skip_directories=skip_directories, hooks=hooks
+    # Phase A: Scan filesystem and parse YAML without resolving
+    raw_collections = _scan_collections(root_directory, skip_directories, hooks)
+
+    # Phase B+C: Wrap with __let__, resolve, and build Universe
+    return _resolve_universe(raw_collections, vars, hooks)
+
+
+# Helpers for read_collection_file and read_publication_file ===========================
+
+
+def _scan_collection_from_file(
+    collection_file: pathlib.Path,
+) -> RawCollection:
+    """Scan a single collection.yaml file and its publications.
+
+    This is used by read_collection_file() to handle both inline and
+    separate publication.yaml files.
+    """
+    collection_path = collection_file.parent
+    raw_yaml = _parse_yaml_file(collection_file)
+
+    publication_schema_raw = raw_yaml.get("publication_schema", {})
+    inline_publications = raw_yaml.get("publications")
+
+    publications: dict[str, RawPublication] = {}
+
+    if inline_publications is not None:
+        # Use inline publications
+        for pub_key, pub_data in inline_publications.items():
+            pub_data = dict(pub_data) if pub_data else {}
+            pub_data["_path"] = collection_file
+            publications[pub_key] = pub_data
+    else:
+        # Scan subdirectories for publication.yaml files
+        separate_pub_paths: list[pathlib.Path] = []
+        for subpath in collection_path.iterdir():
+            if subpath.is_dir() and _is_publication(subpath):
+                separate_pub_paths.append(subpath)
+
+        for pub_path in sorted(separate_pub_paths):
+            pub_file = pub_path / constants.PUBLICATION_FILE
+            pub_data = _parse_yaml_file(pub_file)
+            pub_data["_path"] = pub_file
+            pub_key = str(pub_path.relative_to(collection_path))
+            publications[pub_key] = pub_data
+
+    return RawCollection(
+        publication_schema=publication_schema_raw,
+        publications=publications,
+        _path=collection_file,
     )
 
-    publication_paths = _sort_dictionary(publication_paths)
 
-    collections = _make_collections(collection_paths, root_directory, hooks, vars=vars)
-    _make_publications(
-        publication_paths,
-        root_directory,
-        collections,
-        hooks=hooks,
-        vars=vars,
+def _resolve_single_collection(
+    raw_col: RawCollection,
+    vars: Optional[dict[str, Any]],
+) -> Collection[UnbuiltArtifact]:
+    """Resolve a single collection from raw data.
+
+    Used by read_collection_file().
+    """
+    path = raw_col["_path"]
+
+    # Resolve the publication schema
+    pub_schema = _resolve_collection_schema(raw_col["publication_schema"], vars, path)
+
+    # Wrap and resolve publications
+    wrapped_publications = {}
+    pub_keys = list(raw_col["publications"].keys())
+
+    for pub_key in pub_keys:
+        pub_data = dict(raw_col["publications"][pub_key])
+        pub_data.pop("_path", None)
+        wrapped_publications[pub_key] = _wrap_publication_with_let(pub_data)
+
+    publications = _resolve_publications(
+        wrapped_publications, pub_schema, raw_col["publications"], vars
     )
 
-    return Universe(collections)
+    return Collection(publication_schema=pub_schema, publications=publications)
+
+
+def _find_parent_collection(pub_path: pathlib.Path) -> Optional[pathlib.Path]:
+    """Find the parent collection.yaml for a publication.yaml file.
+
+    Walks up the directory tree looking for collection.yaml.
+
+    Returns
+    -------
+    Optional[pathlib.Path]
+        Path to the collection.yaml file, or None if not found.
+
+    """
+    current = pub_path.parent
+    while current != current.parent:
+        collection_file = current / constants.COLLECTION_FILE
+        if collection_file.is_file():
+            return collection_file
+        current = current.parent
+    return None
+
+
+def _get_publication_key_from_path(
+    pub_file: pathlib.Path,
+    collection_file: pathlib.Path,
+) -> str:
+    """Get the publication key from its path relative to the collection."""
+    pub_dir = pub_file.parent
+    collection_dir = collection_file.parent
+    return str(pub_dir.relative_to(collection_dir))

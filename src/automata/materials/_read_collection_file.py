@@ -1,135 +1,10 @@
 """Provides read_collection_file(), which reads a Collection from a collection.yaml."""
 
 import pathlib
-from typing import Any, Dict, Mapping, Optional, cast
+from typing import Any, Mapping, Optional
 
-import smartconfig
-
-from ..util.resolution import resolve
-from ..util.yaml import parse_yaml
-from ._types import Collection, PublicationSchema, UnbuiltArtifact
-from .exceptions import DiscoveryError
-
-# the dictconfig schema describing a valid collection file.
-COLLECTION_FILE_SCHEMA = {
-    "type": "dict",
-    "required_keys": {
-        "publication_schema": {
-            "type": "dict",
-            "required_keys": {
-                "required_artifacts": {
-                    "type": "list",
-                    "element_schema": {"type": "string"},
-                }
-            },
-            "optional_keys": {
-                "optional_artifacts": {
-                    "type": "list",
-                    "element_schema": {"type": "string"},
-                    "default": [],
-                },
-                "metadata_schema": {
-                    "type": "dict",
-                    "extra_keys_schema": {"type": "any"},
-                    "default": None,
-                    "nullable": True,
-                },
-                "allow_unspecified_artifacts": {
-                    "type": "boolean",
-                    "default": False,
-                },
-                "is_ordered": {"type": "boolean", "default": False},
-            },
-        }
-    },
-}
-
-
-def _resolve_collection_file(
-    raw_contents: smartconfig.types.ConfigurationDict,
-    vars: Optional[Mapping[str, Any]],
-    path: pathlib.Path,
-) -> dict:
-    """Resolves (interpolates and parses) the raw collection file contents.
-
-    Parameters
-    ----------
-    raw_contents : smartconfig.types.ConfigurationDict
-        The raw dictionary loaded from the publication file.
-    vars : Optional[Mapping[str, Any]]
-        A dictionary of variables available during interpolation through the
-        ``${vars}`` variable.
-    path : pathlib.Path
-        The path to the collection file being read. Used to format error messages.
-
-    Returns
-    -------
-    dict
-        The resolved dictionary.
-
-    Raises
-    ------
-    DiscoveryError
-        If the collection file is invalid.
-
-    """
-    combined = cast(
-        smartconfig.types.ConfigurationDict,
-        {"this": raw_contents},
-    )
-
-    combined_schema = {
-        "type": "dict",
-        "required_keys": {
-            "this": COLLECTION_FILE_SCHEMA,
-        },
-    }
-
-    try:
-        resolved: Dict[str, Any] = resolve(
-            combined,
-            combined_schema,
-            global_variables={"vars": vars if vars is not None else {}},
-        )
-    except smartconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), path)
-
-    _validate_metadata_schema(
-        resolved["this"]["publication_schema"]["metadata_schema"], path
-    )
-
-    return cast(Dict[str, Any], resolved["this"])
-
-
-def _validate_metadata_schema(
-    metadata_schema: Optional[Mapping[str, str]], path: pathlib.Path
-):
-    """Ensures that the publication metadata schema provided is valid.
-
-    If the function runs without raising an exception, the schema is valid.
-    Otherwise, it raises a DiscoveryError.
-
-    Parameters
-    ----------
-    metadata_schema : Optional[Mapping[str, str]]
-        The metadata schema to validate. If the schema is None, this function
-        automatically returns.
-    path : pathlib.Path
-        The path to the collection file being read. Used to format error messages.
-
-    Raises
-    ------
-    DiscoveryError
-        If the metadata schema is invalid.
-
-    """
-    if metadata_schema is None:
-        return
-
-    try:
-        smartconfig.validate_schema({"type": "dict", **metadata_schema})
-    except smartconfig.exceptions.InvalidSchemaError as exc:
-        raise DiscoveryError(exc, path)
+from ._discover import _resolve_single_collection, _scan_collection_from_file
+from ._types import Collection, UnbuiltArtifact
 
 
 def read_collection_file(
@@ -137,29 +12,42 @@ def read_collection_file(
 ) -> Collection[UnbuiltArtifact]:
     """Reads a :class:`types.Collection` from a ``collection.yaml`` file.
 
-    See the documentation for a description of the format of the file.
+    This function reads the collection file and resolves all publications,
+    whether they are defined inline in the collection file or in separate
+    ``publication.yaml`` files in subdirectories.
+
+    For inline publications, the ``publications:`` key in the collection file
+    should contain a dict mapping publication keys to publication definitions.
+
+    For separate publications, each subdirectory containing a ``publication.yaml``
+    file is treated as a publication.
+
+    The publications are fully resolved, including ``${this}`` self-references
+    and ``${previous}`` references (for ordered collections).
 
     Parameters
     ----------
     path : pathlib.Path
         Path to the ``collection.yaml`` file.
-    vars : Optional[Mapping[str, str]]
+    vars : Optional[Mapping[str, Any]]
         A dictionary of variables available during interpolation through the
         ``${vars}`` variable. If None, no variables will be made available.
 
     Returns
     -------
     Collection
-        The collection object with no attached publications.
+        The collection object with all its publications resolved.
+
+    Raises
+    ------
+    DiscoveryError
+        If the collection file is invalid or cannot be resolved.
 
     """
-    if vars is None:
-        vars = {}
+    vars_dict = dict(vars) if vars is not None else None
 
-    yaml_content = path.read_text()
-    raw_contents = parse_yaml(yaml_content)
+    # Scan the collection file (handles both inline and separate publications)
+    raw_col = _scan_collection_from_file(path)
 
-    resolved = _resolve_collection_file(raw_contents, vars, path)
-
-    publication_schema = PublicationSchema(**resolved["publication_schema"])
-    return Collection(publication_schema=publication_schema, publications={})
+    # Resolve the collection (wraps with __let__ for this/previous)
+    return _resolve_single_collection(raw_col, vars_dict)

@@ -390,3 +390,158 @@ def test_error_message_for_schema_violation(write_file):
     error_message = str(exc_info.value)
     assert "collection.yaml" in error_message
     assert "required_artifacts" in error_message or "list" in error_message
+
+
+# inline publications tests
+# --------------------------------------------------------------------------------------
+
+
+def test_inline_publications_resolved(write_file, tmp_path):
+    """Test that read_collection_file resolves inline publications."""
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+
+            publications:
+                01-intro:
+                    metadata:
+                        name: Homework 01
+                    artifacts:
+                        homework.pdf:
+                            recipe: touch homework.pdf
+                02-python:
+                    metadata:
+                        name: Homework 02
+                    artifacts:
+                        homework.pdf:
+                            recipe: touch homework.pdf
+            """
+        ),
+    )
+
+    # when
+    collection = read_collection_file(path)
+
+    # then
+    assert collection.publications.keys() == {"01-intro", "02-python"}
+    assert collection.publications["01-intro"].metadata["name"] == "Homework 01"
+    assert collection.publications["02-python"].metadata["name"] == "Homework 02"
+
+
+def test_inline_publications_with_this_reference(write_file, tmp_path):
+    """Test that ${this} works in inline publications."""
+    import datetime
+
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+                optional_artifacts:
+                    - solution.pdf
+                metadata_schema:
+                    required_keys:
+                        due:
+                            type: datetime
+
+            publications:
+                01-intro:
+                    metadata:
+                        due: 2024-09-20 23:59:00
+                    artifacts:
+                        homework.pdf:
+                            recipe: touch homework.pdf
+                        solution.pdf:
+                            release_time: ${this.metadata.due}
+            """
+        ),
+    )
+
+    # when
+    collection = read_collection_file(path)
+
+    # then
+    pub = collection.publications["01-intro"]
+    assert pub.artifacts["solution.pdf"].release_time == datetime.datetime(
+        2024, 9, 20, 23, 59
+    )
+
+
+def test_inline_publications_with_previous_reference(write_file, tmp_path):
+    """Test that ${previous} works in ordered inline collections."""
+    import datetime
+
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts: []
+                metadata_schema:
+                    required_keys:
+                        date:
+                            type: datetime
+                is_ordered: true
+
+            publications:
+                01-intro:
+                    metadata:
+                        date: 2024-01-05 14:00:00
+                    artifacts: {}
+                02-basics:
+                    metadata:
+                        date:
+                            __datetime.parse__: 7 days after ${previous.metadata.date}
+                    artifacts: {}
+            """
+        ),
+    )
+
+    # when
+    collection = read_collection_file(path)
+
+    # then
+    assert collection.publications["01-intro"].metadata["date"] == datetime.datetime(
+        2024, 1, 5, 14, 0
+    )
+    assert collection.publications["02-basics"].metadata["date"] == datetime.datetime(
+        2024, 1, 12, 14, 0
+    )
+
+
+def test_inline_publications_with_vars(write_file, tmp_path):
+    """Test that ${vars} work in inline publications."""
+    # given
+    path = write_file(
+        "collection.yaml",
+        contents=dedent(
+            """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+
+            publications:
+                01-intro:
+                    metadata:
+                        course: ${vars.course_name}
+                    artifacts:
+                        homework.pdf:
+                            recipe: touch homework.pdf
+            """
+        ),
+    )
+
+    # when
+    collection = read_collection_file(path, vars={"course_name": "CS101"})
+
+    # then
+    assert collection.publications["01-intro"].metadata["course"] == "CS101"
