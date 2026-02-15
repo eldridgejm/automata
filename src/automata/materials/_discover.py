@@ -419,41 +419,6 @@ def _wrap_publication_with_let(pub_data: dict) -> dict:
     return {"__let__": {"references": {"this": "__this__"}, "in": pub_data}}
 
 
-def _wrap_collections_with_let(
-    raw_collections: dict[str, RawCollection],
-) -> dict[str, dict]:
-    """Wrap all publications with __let__ for resolution.
-
-    Parameters
-    ----------
-    raw_collections : dict[str, RawCollection]
-        Mapping from collection keys to raw collection data.
-
-    Returns
-    -------
-    dict[str, dict]
-        The collections with publications wrapped for resolution.
-
-    """
-    wrapped: dict[str, dict] = {}
-
-    for col_key, raw_col in raw_collections.items():
-        wrapped_publications: dict[str, dict] = {}
-
-        for pub_key in raw_col["publications"]:
-            pub_data = dict(raw_col["publications"][pub_key])
-            # Remove internal _path before wrapping
-            pub_data.pop("_path", None)
-            wrapped_publications[pub_key] = _wrap_publication_with_let(pub_data)
-
-        wrapped[col_key] = {
-            "publication_schema": raw_col["publication_schema"],
-            "publications": wrapped_publications,
-        }
-
-    return wrapped
-
-
 # Phase C: Resolution ==================================================================
 
 
@@ -605,36 +570,17 @@ def _resolve_universe(
         The fully resolved universe.
 
     """
-    wrapped_collections = _wrap_collections_with_let(raw_collections)
     collections: MutableMapping[str, Collection[UnbuiltArtifact]] = {}
 
     for col_key, raw_col in raw_collections.items():
-        path = raw_col["_path"]
-
-        # Resolve the publication schema
-        pub_schema = _resolve_collection_schema(
-            raw_col["publication_schema"], vars, path
-        )
-
-        # Resolve publications
-        publications = _resolve_publications(
-            wrapped_collections[col_key]["publications"],
-            pub_schema,
-            raw_col["publications"],
-            vars,
-        )
+        collections[col_key] = _resolve_single_collection(raw_col, vars)
 
         # Fire hooks for each publication
-        for pub_key in publications:
+        for pub_key in raw_col["publications"]:
             raw_pub = raw_col["publications"][pub_key]
             pub_path = raw_pub.get("_path")
             if pub_path is not None:
                 hooks.on_discover_publication(DiscoverHookArgs(path=pub_path))
-
-        collections[col_key] = Collection(
-            publication_schema=pub_schema,
-            publications=publications,
-        )
 
     return Universe(collections)
 
@@ -728,38 +674,17 @@ def _scan_collection_from_file(
     separate publication.yaml files.
     """
     collection_path = collection_file.parent
-    raw_yaml = _parse_yaml_file(collection_file)
 
-    publication_schema_raw = raw_yaml.get("publication_schema", {})
-    inline_publications = raw_yaml.get("publications")
+    # Build publication_paths by scanning subdirectories
+    publication_paths: dict[pathlib.Path, Optional[pathlib.Path]] = {}
+    for subpath in collection_path.iterdir():
+        if subpath.is_dir() and _is_publication(subpath):
+            publication_paths[subpath] = collection_path
 
-    publications: dict[str, RawPublication] = {}
-
-    if inline_publications is not None:
-        # Use inline publications
-        for pub_key, pub_data in inline_publications.items():
-            pub_data = dict(pub_data) if pub_data else {}
-            pub_data["_path"] = collection_file
-            publications[pub_key] = pub_data
-    else:
-        # Scan subdirectories for publication.yaml files
-        separate_pub_paths: list[pathlib.Path] = []
-        for subpath in collection_path.iterdir():
-            if subpath.is_dir() and _is_publication(subpath):
-                separate_pub_paths.append(subpath)
-
-        for pub_path in sorted(separate_pub_paths):
-            pub_file = pub_path / constants.PUBLICATION_FILE
-            pub_data = _parse_yaml_file(pub_file)
-            pub_data["_path"] = pub_file
-            pub_key = str(pub_path.relative_to(collection_path))
-            publications[pub_key] = pub_data
-
-    return RawCollection(
-        publication_schema=publication_schema_raw,
-        publications=publications,
-        _path=collection_file,
+    _, raw_col = _scan_single_collection(
+        collection_path, publication_paths, collection_path
     )
+    return raw_col
 
 
 def _resolve_single_collection(

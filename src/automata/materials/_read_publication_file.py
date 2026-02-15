@@ -1,18 +1,16 @@
 """Reads a Publication from a publication.yaml file."""
 
 import pathlib
-from typing import Any, Mapping, MutableMapping, Optional
+from typing import Any, Mapping, Optional
 
-import smartconfig
-
-from ..util.resolution import resolve
-from ..util.yaml import parse_yaml
 from ._discover import (
     _find_parent_collection,
     _get_publication_key_from_path,
-    _make_publication_schema,
+    _parse_yaml_file,
+    _resolve_publications,
     _resolve_single_collection,
     _scan_collection_from_file,
+    _wrap_publication_with_let,
 )
 from ._types import Publication, PublicationSchema, UnbuiltArtifact
 from .exceptions import DiscoveryError
@@ -104,49 +102,23 @@ def _resolve_standalone_publication(
     This is used for publications in the "default" collection or when
     read_publication_file is called on a file without a parent collection.
     """
-    yaml_content = path.read_text()
-    try:
-        raw_contents = parse_yaml(yaml_content)
-    except Exception as exc:
-        raise DiscoveryError(str(exc), path)
+    raw_contents = _parse_yaml_file(path)
 
-    schema = _make_publication_schema(publication_schema)
+    if publication_schema is None:
+        publication_schema = PublicationSchema([], allow_unspecified_artifacts=True)
 
-    # Wrap with __let__ for this self-reference
-    wrapped = {
-        "__let__": {
-            "references": {"this": "__this__"},
-            "in": raw_contents,
-        }
-    }
+    # Prepare raw data with _path for _resolve_publications
+    raw_with_path = dict(raw_contents)
+    raw_with_path["_path"] = path
 
-    combined_dict: dict[str, Any] = {"this": wrapped}
-    combined_schema: dict[str, Any] = {
-        "type": "dict",
-        "required_keys": {"this": schema},
-    }
+    # Wrap with __let__ for ${this} self-reference
+    wrapped = _wrap_publication_with_let(raw_contents)
 
-    global_variables: dict[str, Any] = {"vars": vars}
-
-    try:
-        resolved = resolve(
-            combined_dict, combined_schema, global_variables=global_variables
-        )
-    except smartconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), path)
-
-    resolved_pub = resolved["this"]
-
-    # Convert artifacts to UnbuiltArtifact objects
-    workdir = path.parent.absolute()
-    artifacts: MutableMapping[str, UnbuiltArtifact] = {}
-
-    for artifact_key, definition in resolved_pub["artifacts"].items():
-        if definition["path"] is None:
-            definition["path"] = artifact_key
-        artifacts[artifact_key] = UnbuiltArtifact(workdir=workdir, **definition)
-
-    return Publication[UnbuiltArtifact](
-        metadata=resolved_pub["metadata"],
-        artifacts=artifacts,
+    publications = _resolve_publications(
+        wrapped_publications={"_standalone": wrapped},
+        publication_schema=publication_schema,
+        raw_publications={"_standalone": raw_with_path},
+        vars=vars,
     )
+
+    return publications["_standalone"]
