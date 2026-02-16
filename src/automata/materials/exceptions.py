@@ -1,5 +1,7 @@
 """Exceptions used in :mod:`automata.materials`."""
 
+import pathlib
+
 from ..exceptions import Error as _Error
 
 
@@ -22,7 +24,7 @@ class DiscoveryError(MaterialsError):
 
     """
 
-    def __init__(self, msg, path):
+    def __init__(self, msg: str, path: pathlib.Path):
         self.path = path
         self.msg = msg
 

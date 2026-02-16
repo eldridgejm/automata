@@ -2,7 +2,7 @@
 
 import pathlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from ._internals import HooksBase, ObserverHook, PipelineHook
 
@@ -19,6 +19,9 @@ class DiscoverHookArgs:
     """Argument passed to discovery hooks."""
 
     path: pathlib.Path
+    # Not all discovery hooks have a meaningful key. For example, on_discover_skip
+    # fires for directories that are skipped entirely, before any key is determined.
+    key: Optional[str] = None
 
 
 class DiscoverHooks(HooksBase):

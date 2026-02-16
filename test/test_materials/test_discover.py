@@ -241,10 +241,29 @@ def test_skip_directories(default_example_course):
     assert "01-intro" in universe.collections["homeworks"].publications
 
     # when we do skip a directory
-    universe = discover(default_example_course.path, skip_directories={"01-intro"})
+    universe = discover(
+        default_example_course.path, skip=lambda p: p.name == "01-intro"
+    )
 
     # then
     assert "01-intro" not in universe.collections["homeworks"].publications
+
+
+def test_skip_with_glob_pattern(default_example_course):
+    import fnmatch
+
+    # when we skip publications matching a glob pattern
+    universe = discover(
+        default_example_course.path,
+        skip=lambda p: fnmatch.fnmatch(p.name, "0[12]-*"),
+    )
+
+    # then
+    pubs = universe.collections["homeworks"].publications
+    assert "01-intro" not in pubs
+    assert "02-python" not in pubs
+    assert "03-not_ready" in pubs
+    assert "04-normal_publication" in pubs
 
 
 def test_key_used_for_path_if_path_not_provided(default_example_course):
@@ -577,23 +596,24 @@ def test_interpolates_vars_in_collection_metadata_schema(temporary_course):
 def test_skip_directories_invokes_hook(default_example_course):
     """Test that the on_discover_skip hook is invoked when directories are skipped."""
     # given
-    skipped_paths = []
+    skipped_args = []
     hooks = Hooks()
 
     @hooks.on_discover_skip.register()
     def track_skipped(args: DiscoverHookArgs) -> None:
-        skipped_paths.append(args.path)
+        skipped_args.append(args)
 
     # when
     discover(
         default_example_course.path,
-        skip_directories={"01-intro"},
+        skip=lambda p: p.name == "01-intro",
         hooks=hooks,
     )
 
     # then
-    assert len(skipped_paths) == 1
-    assert skipped_paths[0].name == "01-intro"
+    assert len(skipped_args) == 1
+    assert skipped_args[0].path.name == "01-intro"
+    assert skipped_args[0].key is None
 
 
 def test_discover_invokes_on_discover_collection_hook(default_example_course):
@@ -617,19 +637,20 @@ def test_discover_invokes_on_discover_collection_hook(default_example_course):
 def test_discover_invokes_on_discover_publication_hook(default_example_course):
     """Test that on_discover_publication hook is invoked for each publication."""
     # given
-    publication_paths = []
+    publication_args = []
     hooks = Hooks()
 
     @hooks.on_discover_publication.register()
     def track_publications(args: DiscoverHookArgs) -> None:
-        publication_paths.append(args.path)
+        publication_args.append(args)
 
     # when
     discover(default_example_course.path, hooks=hooks)
 
     # then
-    assert len(publication_paths) > 0
-    assert all(p.name == "publication.yaml" for p in publication_paths)
+    expected_keys = {"01-intro", "02-python", "03-not_ready", "04-normal_publication"}
+    assert {a.key for a in publication_args} == expected_keys
+    assert all(a.path.name == "publication.yaml" for a in publication_args)
 
 
 def test_on_discover_collection_shell_script_receives_json(
@@ -669,12 +690,15 @@ def test_on_discover_publication_shell_script_receives_json(
     # then
     import json
 
+    expected_keys = {"01-intro", "02-python", "03-not_ready", "04-normal_publication"}
     lines = output_file.read_text().strip().split("\n")
-    assert len(lines) > 0
+    assert len(lines) == len(expected_keys)
+    keys = set()
     for line in lines:
         content = json.loads(line)
-        assert "path" in content
         assert content["path"].endswith("publication.yaml")
+        keys.add(content["key"])
+    assert keys == expected_keys
 
 
 def test_on_discover_skip_shell_script_receives_json(default_example_course, tmp_path):
@@ -687,7 +711,7 @@ def test_on_discover_skip_shell_script_receives_json(default_example_course, tmp
     # when
     discover(
         default_example_course.path,
-        skip_directories={"01-intro"},
+        skip=lambda p: p.name == "01-intro",
         hooks=hooks,
     )
 
@@ -697,3 +721,1025 @@ def test_on_discover_skip_shell_script_receives_json(default_example_course, tmp
     content = json.loads(output_file.read_text())
     assert "path" in content
     assert "01-intro" in content["path"]
+
+
+# inline publications
+# --------------------------------------------------------------------------------------
+
+
+def test_inline_publications(temporary_course):
+    """Test that publications defined inline in collection.yaml are discovered."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+
+            publications:
+                01-intro:
+                    metadata: {}
+                    artifacts:
+                        homework.pdf:
+                            recipe: touch homework.pdf
+                02-python:
+                    metadata: {}
+                    artifacts:
+                        homework.pdf:
+                            recipe: touch homework.pdf
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+
+    assert universe.collections["homeworks"].publications.keys() == {
+        "01-intro",
+        "02-python",
+    }
+
+
+def test_inline_publications_with_metadata(temporary_course):
+    """Test that inline publications have correct metadata."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+
+            publications:
+                01-intro:
+                    metadata:
+                        name: Homework 01
+                    artifacts:
+                        homework.pdf:
+                            recipe: touch homework.pdf
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+
+    pub = universe.collections["homeworks"].publications["01-intro"]
+    assert pub.metadata["name"] == "Homework 01"
+
+
+def test_inline_publications_conflict_with_filesystem(temporary_course):
+    """Test that inline + filesystem publications raise an error."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+
+            publications:
+                01-intro:
+                    metadata: {}
+                    artifacts:
+                        homework.pdf:
+                            recipe: touch homework.pdf
+        """,
+    )
+
+    # also create a filesystem publication under the same collection
+    temporary_course.create_publication(
+        "homeworks",
+        "02-python",
+        """
+            metadata: {}
+            artifacts:
+                homework.pdf:
+                    recipe: touch homework.pdf
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path)
+
+
+def test_inline_publications_validates_metadata_schema(temporary_course):
+    """Test that inline publications are validated against the metadata schema."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: string
+
+            publications:
+                01-intro:
+                    metadata:
+                        what: ok
+                    artifacts:
+                        homework:
+                            recipe: make
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path)
+
+
+def test_inline_publications_with_previous(temporary_course):
+    """Test that ${previous} works for inline publications in ordered collections."""
+    temporary_course.create_collection(
+        "lectures",
+        """
+            publication_schema:
+                required_artifacts: []
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: string
+                        date:
+                            type: datetime
+                is_ordered: true
+
+            publications:
+                01-intro:
+                    metadata:
+                        name: Lecture 01
+                        date: 2021-01-05 23:00:00
+                    artifacts: {}
+                02-foo:
+                    metadata:
+                        name: Lecture 02
+                        date:
+                            !datetime.parse >-
+                                first tuesday or thursday after
+                                ${previous.metadata.date}
+                    artifacts: {}
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+
+    pubs = universe.collections["lectures"].publications
+    assert pubs["01-intro"].metadata["date"] == datetime.datetime(2021, 1, 5, 23, 0)
+    assert pubs["02-foo"].metadata["date"] == datetime.datetime(2021, 1, 7, 23, 0)
+
+
+def test_inline_publications_with_vars(temporary_course):
+    """Test that ${vars} interpolation works for inline publications."""
+    vars = {"recipe": "make homework"}
+
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+
+            publications:
+                01-intro:
+                    metadata: {}
+                    artifacts:
+                        homework.pdf:
+                            recipe: ${vars.recipe}
+        """,
+    )
+
+    universe = discover(temporary_course.path, vars=vars)
+
+    artifact = (
+        universe.collections["homeworks"]
+        .publications["01-intro"]
+        .artifacts["homework.pdf"]
+    )
+    assert artifact.recipe == "make homework"
+
+
+def test_inline_publications_with_this_reference(temporary_course):
+    """Test that ${this} self-references work in inline publications."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+
+            publications:
+                01-intro:
+                    metadata:
+                        due: 2020-09-10 23:59:00
+                    artifacts:
+                        solution:
+                            path: ./solution.pdf
+                            release_time: ${this.metadata.due}
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["homeworks"].publications["01-intro"]
+
+    assert pub.artifacts["solution"].release_time == pub.metadata["due"]
+
+
+def test_inline_publications_hook_fires(temporary_course):
+    """Test that on_discover_publication hook fires for inline publications."""
+    publication_args = []
+    hooks = Hooks()
+
+    @hooks.on_discover_publication.register()
+    def track_publications(args: DiscoverHookArgs) -> None:
+        publication_args.append(args)
+
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts: []
+
+            publications:
+                01-intro:
+                    metadata: {}
+                    artifacts: {}
+                02-python:
+                    metadata: {}
+                    artifacts: {}
+        """,
+    )
+
+    discover(temporary_course.path, hooks=hooks)
+
+    assert len(publication_args) == 2
+    assert all(a.path.name == "collection.yaml" for a in publication_args)
+    keys = {a.key for a in publication_args}
+    assert keys == {"01-intro", "02-python"}
+
+
+def test_inline_publications_workdir(temporary_course):
+    """Test that inline publication artifacts use the collection dir as workdir."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+
+            publications:
+                01-intro:
+                    metadata: {}
+                    artifacts:
+                        homework.pdf:
+                            recipe: make homework
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+
+    artifact = (
+        universe.collections["homeworks"]
+        .publications["01-intro"]
+        .artifacts["homework.pdf"]
+    )
+    assert artifact.workdir == (temporary_course.path / "homeworks").resolve()
+
+
+# collection schema parsing
+# --------------------------------------------------------------------------------------
+
+PERMISSIVE_COLLECTION = """
+    publication_schema:
+        required_artifacts: []
+        allow_unspecified_artifacts: true
+"""
+
+
+def test_collection_schema_parsed_correctly(temporary_course):
+    """Test that a valid collection.yaml is parsed with all schema fields."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+                    - solution
+
+                optional_artifacts:
+                    - template
+
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: string
+                        due:
+                            type: date
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    schema = universe.collections["homeworks"].publication_schema
+
+    assert schema.required_artifacts == ["homework", "solution"]
+    assert schema.optional_artifacts == ["template"]
+    assert isinstance(schema.metadata_schema, dict)
+    assert schema.metadata_schema["required_keys"]["name"]["type"] == "string"
+
+
+def test_collection_requires_required_artifacts_key(temporary_course):
+    """Test that omitting required_artifacts from schema raises an error."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                optional_artifacts:
+                    - template
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path)
+
+
+def test_collection_optional_artifacts_defaults_to_empty(temporary_course):
+    """Test that omitting optional_artifacts defaults to an empty list."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - foo
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    schema = universe.collections["homeworks"].publication_schema
+
+    assert schema.optional_artifacts == []
+
+
+def test_collection_metadata_schema_defaults_to_none(temporary_course):
+    """Test that omitting metadata_schema defaults to None."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - foo
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    schema = universe.collections["homeworks"].publication_schema
+
+    assert schema.metadata_schema is None
+
+
+def test_collection_raises_on_invalid_metadata_schema(temporary_course):
+    """Test that an invalid metadata_schema structure raises an error."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - foo
+
+                metadata_schema:
+                    foo: 1
+                    bar: 2
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path)
+
+
+def test_collection_vars_in_multiple_fields(temporary_course):
+    """Test that ${vars} can be used across multiple collection fields."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.primary}
+
+                optional_artifacts:
+                    - ${vars.secondary}
+        """,
+    )
+
+    universe = discover(
+        temporary_course.path,
+        vars={"primary": "homework.pdf", "secondary": "solution.pdf"},
+    )
+    schema = universe.collections["homeworks"].publication_schema
+
+    assert schema.required_artifacts == ["homework.pdf"]
+    assert schema.optional_artifacts == ["solution.pdf"]
+
+
+def test_collection_missing_vars_raises_error(temporary_course):
+    """Test that referencing missing vars in a collection raises an error."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.nonexistent}
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path, vars={})
+
+
+def test_collection_this_is_not_defined(temporary_course):
+    """Test that ${this} is not available at the collection level."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - ${this.publication_schema.optional_artifacts.0}
+                optional_artifacts:
+                    - homework
+        """,
+    )
+
+    with raises(DiscoveryError, match="this"):
+        discover(temporary_course.path)
+
+
+# publication schema enforcement
+# --------------------------------------------------------------------------------------
+
+
+def test_raises_if_required_artifact_missing(temporary_course):
+    """Test that a publication missing a required artifact raises an error."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+                    - solution
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+            metadata: {}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path)
+
+
+def test_raises_if_extra_artifact_without_allow_unspecified(temporary_course):
+    """Test that an unspecified artifact raises when allow_unspecified is false."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+            metadata: {}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                extra:
+                    path: ./extra.pdf
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path)
+
+
+def test_allows_extra_artifact_with_allow_unspecified(temporary_course):
+    """Test that allow_unspecified_artifacts permits unlisted artifacts."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+                allow_unspecified_artifacts: true
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+            metadata: {}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                extra:
+                    path: ./extra.pdf
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["homeworks"].publications["01"]
+
+    assert "extra" in pub.artifacts
+
+
+# release time handling
+# --------------------------------------------------------------------------------------
+
+
+def test_release_time_via_this_reference(temporary_course):
+    """Test release_time: ${this.metadata.due} resolves correctly."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                due: 2020-09-04 23:59:00
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                solution:
+                    path: ./solution.pdf
+                    release_time: ${this.metadata.due}
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["01"]
+
+    assert pub.artifacts["solution"].release_time == pub.metadata["due"]
+
+
+def test_release_time_relative_after(temporary_course):
+    """Test __datetime.parse__ with 'N days after' for release_time."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                due: 2020-09-04 23:59:00
+
+            artifacts:
+                solution:
+                    path: ./solution.pdf
+                    release_time:
+                        __datetime.parse__: "1 day after ${this.metadata.due}"
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["01"]
+    expected = pub.metadata["due"] + datetime.timedelta(days=1)
+
+    assert pub.artifacts["solution"].release_time == expected
+
+
+def test_release_time_relative_before(temporary_course):
+    """Test __datetime.parse__ with 'N days before' for release_time."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                due: 2020-09-04 23:59:00
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+                    release_time:
+                        __datetime.parse__: "3 days before ${this.metadata.due}"
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["01"]
+    expected = pub.metadata["due"] - datetime.timedelta(days=3)
+
+    assert pub.artifacts["homework"].release_time == expected
+
+
+def test_release_time_absolute(temporary_course):
+    """Test a literal datetime for release_time."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata: {}
+
+            artifacts:
+                solution:
+                    path: ./solution.pdf
+                    release_time: 2020-01-02 23:59:00
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["01"]
+
+    assert pub.artifacts["solution"].release_time == datetime.datetime(
+        2020, 1, 2, 23, 59, 0
+    )
+
+
+# relative metadata dates
+# --------------------------------------------------------------------------------------
+
+
+def test_relative_dates_in_metadata(temporary_course):
+    """Test __datetime.parse__ used in publication metadata fields."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: string
+                        due:
+                            type: datetime
+                        released:
+                            type: datetime
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+            metadata:
+                name: Homework 01
+                due: 2020-09-10 23:59:00
+                released:
+                    __datetime.parse__: "7 days before ${this.metadata.due}"
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["homeworks"].publications["01"]
+
+    assert pub.metadata["released"] == datetime.datetime(2020, 9, 3, 23, 59, 0)
+
+
+def test_relative_dates_in_metadata_without_offset(temporary_course):
+    """Test ${this.metadata.field} reference in metadata (no offset)."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: string
+                        due:
+                            type: date
+                        released:
+                            type: date
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+            metadata:
+                name: Homework 01
+                due: 2020-09-10
+                released: ${ this.metadata.due }
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["homeworks"].publications["01"]
+
+    assert pub.metadata["released"] == datetime.date(2020, 9, 10)
+
+
+def test_invalid_relative_date_string_raises(temporary_course):
+    """Test that a bare invalid date string fails schema validation."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: string
+                        due:
+                            type: date
+                        released:
+                            type: date
+        """,
+    )
+
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+            metadata:
+                name: Homework 01
+                due: 2020-12-01
+                released: 7 days before duedate
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path)
+
+
+# publication vars edge cases
+# --------------------------------------------------------------------------------------
+
+
+def test_publication_vars_combined_with_this(temporary_course):
+    """Test that ${vars} and ${this} work together in a publication."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                name: ${vars.prefix} Assignment
+                full_name: ${this.metadata.name} - Advanced
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    universe = discover(temporary_course.path, vars={"prefix": "CS101"})
+    pub = universe.collections["hw"].publications["01"]
+
+    assert pub.metadata["name"] == "CS101 Assignment"
+    assert pub.metadata["full_name"] == "CS101 Assignment - Advanced"
+
+
+def test_publication_missing_vars_raises_error(temporary_course):
+    """Test that referencing missing vars in a publication raises an error."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                name: ${vars.nonexistent}
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    with raises(DiscoveryError):
+        discover(temporary_course.path, vars={})
+
+
+def test_previous_publication_combined_with_vars(temporary_course):
+    """Test that ${vars} and ${previous} can be used together."""
+    temporary_course.create_collection(
+        "hw",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+                is_ordered: true
+        """,
+    )
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                name: CS101 - Homework 01
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    temporary_course.create_publication(
+        "hw",
+        "02",
+        """
+            metadata:
+                name: ${vars.course_code} - Homework 02
+                follows: ${previous.metadata.name}
+
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    universe = discover(temporary_course.path, vars={"course_code": "CS101"})
+    pub = universe.collections["hw"].publications["02"]
+
+    assert pub.metadata["name"] == "CS101 - Homework 02"
+    assert pub.metadata["follows"] == "CS101 - Homework 01"
+
+
+# error message quality
+# --------------------------------------------------------------------------------------
+
+
+def test_collection_error_includes_file_path(temporary_course):
+    """Test that collection errors include the file path."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - ${vars.undefined}
+        """,
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        discover(temporary_course.path, vars={})
+
+    assert "collection.yaml" in str(exc_info.value)
+
+
+def test_collection_error_includes_keypath(temporary_course):
+    """Test that collection resolution errors indicate which key failed."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+                metadata_schema:
+                    required_keys:
+                        name:
+                            type: ${vars.missing_type}
+        """,
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        discover(temporary_course.path, vars={})
+
+    error_message = str(exc_info.value)
+    assert (
+        "metadata_schema" in error_message
+        or "required_keys" in error_message
+        or "type" in error_message
+    )
+
+
+def test_collection_error_for_schema_violation(temporary_course):
+    """Test that collection schema violations describe the problem."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts: "not a list"
+        """,
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        discover(temporary_course.path)
+
+    error_message = str(exc_info.value)
+    assert "collection.yaml" in error_message
+    assert "required_artifacts" in error_message or "list" in error_message
+
+
+def test_publication_error_includes_file_path(temporary_course):
+    """Test that publication errors include the file path."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                name: ${vars.undefined_variable}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        discover(temporary_course.path, vars={})
+
+    assert "publication.yaml" in str(exc_info.value)
+
+
+def test_publication_error_includes_keypath(temporary_course):
+    """Test that publication resolution errors indicate which key failed."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                name: Test
+                nested:
+                    deep:
+                        value: ${vars.missing}
+            artifacts:
+                homework:
+                    path: ./homework.pdf
+        """,
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        discover(temporary_course.path, vars={})
+
+    error_message = str(exc_info.value)
+    assert (
+        "metadata" in error_message
+        or "nested" in error_message
+        or "deep" in error_message
+    )
+
+
+def test_publication_error_for_missing_artifacts_key(temporary_course):
+    """Test that a missing artifacts key produces a clear error."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                name: Test
+        """,
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        discover(temporary_course.path)
+
+    error_message = str(exc_info.value)
+    assert "publication.yaml" in error_message
+    assert "artifacts" in error_message
+
+
+def test_inline_publication_error_points_to_collection_file(temporary_course):
+    """Test that errors from inline publications reference collection.yaml."""
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework
+
+            publications:
+                01-intro:
+                    metadata:
+                        name: ${vars.undefined}
+                    artifacts:
+                        homework:
+                            recipe: make
+        """,
+    )
+
+    with raises(DiscoveryError) as exc_info:
+        discover(temporary_course.path, vars={})
+
+    assert exc_info.value.path.name == "collection.yaml"

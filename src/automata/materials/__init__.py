@@ -2,11 +2,9 @@
 
 from . import exceptions
 from ._build import build
-from ._discover import discover
+from ._discover import discover, find_parent_collection
 from ._export import export
 from ._filter import filter
-from ._read_collection_file import read_collection_file
-from ._read_publication_file import read_publication_file
 from ._resolution import resolve_for_each_publication
 from ._types import (
     Artifact,
@@ -32,10 +30,9 @@ __all__ = [
     "Universe",
     "serialize",
     "deserialize",
-    "read_collection_file",
-    "read_publication_file",
     "resolve_for_each_publication",
     "discover",
+    "find_parent_collection",
     "build",
     "export",
     "filter",
