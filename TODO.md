@@ -1,0 +1,58 @@
+# Plan
+
+In this branch, we will implement the website feature "from scratch". We have already developed a proof of concept in the "proof_of_concept" branch, which demonstrated the core functionality.
+
+- [x] Website abstraction (structure of the input and output)
+- [x] The RenderContext abstraction
+- [x] Low-level single page renderers (for use with, e.g., the practice problem generator)
+- [x] Config type
+- [x] generate() signature
+- [x] Simple website generation (markdown to HTML)
+- [x] Convert HTML files as well?
+  - maybe they have frontmatter
+  - maybe they have a special extension, like `.html.unrendered`?
+- [x] Searching for materials in the content directory
+- [x] Allow overriding markdown renderer
+- [x] Page frontmatter
+- [x] Base path handling
+- [x] The "theme" abstraction
+- [x] Theme plugins as entry points
+- [x] Theme overrides (templates and static files)
+- [x] The "element" abstraction
+- [x] Make new design
+- [x] Start placing new design in the default theme
+- [x] Override tailwind typography defaults for links, headings, etc.
+- [x] Reworked schedule element
+    - [x] Make it easier to provide link to artifact
+    - [x] Make schedule tests pass
+    - [x] Implement different types of resources
+    - [x] Implement "extra" primary/secondary content
+    - [-] Implement "extra" resources?
+    - [x] Implement due dates for all content types (primary, secondary, extra)
+    - [x] Allow things to display in future weeks? E.g., if an assignment is due in week 5 and is released in week 3, should it show up in week 3 or week 5? (Or every week in between?)
+    - [x] Figure out a better name for "content" (e.g., what is a homework, lecture, etc. Component?
+    - [x] Determine whether `display_starting_on` should be `display_starting_at` and accept a datetime instead of a date. Same for other date fields.
+    - [x] Implement a `!metadata_key` function for use in schedule config
+    - [x] Better styling for "future weeks" divider
+- [x] Implement date_pill element
+- [-] Simplify the second integration test?
+- [-] "Install" lucide icons so that we don't need to use the CDN
+- [x] Implement `!` tags in config reader
+- [x] Figure out what controls whether something shows up in schedule yet
+- [x] Extract the logic tests for schedule to tests of the builtin_elements module.
+- [x] Change signature of generate() to accept the path to the materials directory
+    - Copy it if it is outside of the content directory; otherwise just use it directly
+- [x] Update build() to export the materials to a temporary directory and pass that to generate()
+- [x] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
+- [x] Build hooks (allowing scripts to run at certain points in the generation process)
+- [ ] Formalize extensions (themes become extensions)
+- [ ] Revise extension loading code
+- [ ] Refactor website.generate() to accept Python objects instead of file paths; theme loading is now done separately
+- [ ] Revise the API layer
+- [ ] Improve test coverage
+- [ ] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
+- [ ] Improve the listing element by moving more of the logic outside of the template
+- [ ] Thorough documentation of website abstraction
+- [ ] Thorough documentation of default theme, including elements
+- [ ] Better error messages
+- [ ] Flesh out the CLI with more commands
