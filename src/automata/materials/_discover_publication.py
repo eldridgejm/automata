@@ -93,6 +93,7 @@ def _resolve_publication(
     vars: Optional[Mapping[str, Any]],
     previous: Optional[Mapping[str, Any]],
     source: pathlib.Path,
+    templates: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Resolves (interpolates and parses) raw publication contents.
 
@@ -141,6 +142,10 @@ def _resolve_publication(
         combined_dict["previous"] = previous
         combined_schema["optional_keys"]["previous"] = {"type": "any"}
 
+    if templates is not None:
+        combined_dict["templates"] = templates
+        combined_schema["optional_keys"]["templates"] = {"type": "any"}
+
     combined = cast(smartconfig.types.ConfigurationDict, combined_dict)
 
     try:
@@ -159,6 +164,7 @@ def parse_publication(
     publication_schema: Optional[PublicationSchema] = None,
     vars: Optional[Mapping[str, Any]] = None,
     previous: Optional[Publication] = None,
+    templates: Optional[Mapping[str, Any]] = None,
 ) -> Publication[UnbuiltArtifact]:
     """Create a :class:`Publication` from raw (pre-YAML-parsed) contents.
 
@@ -196,6 +202,7 @@ def parse_publication(
         vars,
         previous_dict,
         source,
+        templates=templates,
     )
 
     artifacts: MutableMapping[str, UnbuiltArtifact] = {}

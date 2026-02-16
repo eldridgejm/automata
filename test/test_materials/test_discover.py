@@ -1743,3 +1743,230 @@ def test_inline_publication_error_points_to_collection_file(temporary_course):
         discover(temporary_course.path, vars={})
 
     assert exc_info.value.path.name == "collection.yaml"
+
+
+# templates
+# --------------------------------------------------------------------------------------
+
+
+def test_templates_simple_metadata_value(temporary_course):
+    """Test that a publication can use !use to reference a collection template."""
+    temporary_course.create_collection(
+        "hw",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+
+            templates:
+                title: !template "Homework ${this.metadata.number}"
+        """,
+    )
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                number: 1
+                title: !use templates.title
+
+            artifacts: {}
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["01"]
+    assert pub.metadata["title"] == "Homework 1"
+
+
+def test_templates_with_previous_reference(temporary_course):
+    """Test that collection templates can reference ${previous}."""
+    temporary_course.create_collection(
+        "hw",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+                is_ordered: true
+                metadata_schema:
+                    required_keys:
+                        number:
+                            type: integer
+
+            templates:
+                number: !template ${previous.metadata.number + 1}
+        """,
+    )
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                number: 1
+
+            artifacts: {}
+        """,
+    )
+
+    temporary_course.create_publication(
+        "hw",
+        "02",
+        """
+            metadata:
+                number: !use templates.number
+
+            artifacts: {}
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["02"]
+    assert pub.metadata["number"] == 2
+
+
+def test_templates_with_artifact_overrides(temporary_course):
+    """Test that !use with overrides deep-merges onto the collection template."""
+    temporary_course.create_collection(
+        "hw",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+
+            templates:
+                artifacts: !template
+                    homework.pdf:
+                        recipe: make homework
+                        ready: false
+        """,
+    )
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata: {}
+
+            artifacts: !use
+                template: templates.artifacts
+                overrides:
+                    homework.pdf:
+                        ready: true
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    artifact = universe.collections["hw"].publications["01"].artifacts["homework.pdf"]
+    assert artifact.recipe == "make homework"
+    assert artifact.ready is True
+
+
+def test_templates_not_specified_in_collection(temporary_course):
+    """Test that collections without templates work as before."""
+    temporary_course.create_collection("hw", PERMISSIVE_COLLECTION)
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                name: Test
+
+            artifacts:
+                homework:
+                    recipe: make homework
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["01"]
+    assert pub.metadata["name"] == "Test"
+
+
+def test_templates_publication_ignores_templates(temporary_course):
+    """Test that publications can ignore templates entirely."""
+    temporary_course.create_collection(
+        "hw",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+
+            templates:
+                title: !template "Default Title"
+        """,
+    )
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                title: Custom Title
+
+            artifacts: {}
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["01"]
+    assert pub.metadata["title"] == "Custom Title"
+
+
+def test_templates_with_inline_publications(temporary_course):
+    """Test that inline publications can use !use to reference templates."""
+    temporary_course.create_collection(
+        "hw",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+
+            templates:
+                title: !template "Homework ${this.metadata.number}"
+
+            publications:
+                01-intro:
+                    metadata:
+                        number: 1
+                        title: !use templates.title
+                    artifacts: {}
+        """,
+    )
+
+    universe = discover(temporary_course.path)
+    pub = universe.collections["hw"].publications["01-intro"]
+    assert pub.metadata["title"] == "Homework 1"
+
+
+def test_templates_combined_with_vars(temporary_course):
+    """Test that collection templates can reference ${vars}."""
+    temporary_course.create_collection(
+        "hw",
+        """
+            publication_schema:
+                required_artifacts: []
+                allow_unspecified_artifacts: true
+
+            templates:
+                title: !template "${vars.course} - Homework ${this.metadata.number}"
+        """,
+    )
+
+    temporary_course.create_publication(
+        "hw",
+        "01",
+        """
+            metadata:
+                number: 1
+                title: !use templates.title
+
+            artifacts: {}
+        """,
+    )
+
+    universe = discover(temporary_course.path, vars={"course": "CS101"})
+    pub = universe.collections["hw"].publications["01"]
+    assert pub.metadata["title"] == "CS101 - Homework 1"

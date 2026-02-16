@@ -335,6 +335,7 @@ def _make_collection(
             publication_schema=collection.publication_schema,
             vars=vars,
             previous=previous,
+            templates=collection.templates,
             source=entry.source,
         )
         collection.publications[pub_key] = publication

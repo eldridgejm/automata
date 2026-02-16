@@ -217,6 +217,7 @@ class Collection[
 
     publication_schema: "PublicationSchema"
     publications: typing.MutableMapping[str, Publication[ArtifactType]]
+    templates: typing.Optional[typing.Mapping[str, typing.Any]] = None
 
     def _deep_asdict(self) -> dict:
         """A dictionary representation of the collection and its children."""
@@ -225,6 +226,7 @@ class Collection[
             "publications": {
                 k: p._deep_asdict() for (k, p) in self.publications.items()
             },
+            "templates": self.templates,
         }
 
     @classmethod
@@ -236,6 +238,7 @@ class Collection[
                 k: Publication._deep_fromdict(d)
                 for (k, d) in dct["publications"].items()
             },
+            templates=dct.get("templates"),
         )
 
     @property

@@ -41,6 +41,13 @@ COLLECTION_SCHEMA = {
             },
         }
     },
+    "optional_keys": {
+        "templates": {
+            "type": "any",
+            "default": None,
+            "nullable": True,
+        },
+    },
 }
 
 
@@ -160,5 +167,8 @@ def parse_collection(
     resolved = _resolve_collection(raw_contents, vars, source)
 
     publication_schema = PublicationSchema(**resolved["publication_schema"])
-    collection = Collection(publication_schema=publication_schema, publications={})
+    templates = resolved.get("templates")
+    collection = Collection(
+        publication_schema=publication_schema, publications={}, templates=templates
+    )
     return collection, raw_publications
