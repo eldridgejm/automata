@@ -35,8 +35,6 @@ class Resources(WebsiteResources):
 
 Multiple `Resources` can be composed. Templates, pages, static files, and elements merge with last-wins semantics on key conflicts. Hooks are additive — all registered hooks run, ordered by priority.
 
-On the filesystem, pages and static files are provided together in a single `content/` directory (rather than separate `pages/` and `static/` directories). When content is loaded, the file extension determines which attribute a file is assigned to: `.md` and `.html` files become pages; all other files become static files.
-
 ## Extensions
 
 An extension is simply a `Resources` provided externally. Extensions can be defined in two ways: as a filesystem directory, or as an installed Python package.
