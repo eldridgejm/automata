@@ -99,3 +99,7 @@ A package extension can be provided in two ways:
 [project.entry-points."automata.extensions"]
 my-extension = "my_extension"
 ```
+
+## Implementation notes
+
+The logic for loading individual resource types from the filesystem (templates from a directory, content from a directory, elements from a package, hooks from a directory) should be implemented as public helper functions. These helpers serve double duty: they are the building blocks used internally to load filesystem extensions, and they are available for package extensions to call when they want to load some of their resources from files rather than constructing them entirely in code. For example, a package extension might construct its hooks and elements programmatically but load its templates from a bundled directory using the same helper that filesystem extensions use.
