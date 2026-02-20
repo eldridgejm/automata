@@ -35,7 +35,7 @@ class Resources(WebsiteResources):
 
 Multiple `Resources` can be composed. Templates, pages, static files, and elements merge with last-wins semantics on key conflicts. Hooks are additive — all registered hooks run, ordered by priority.
 
-On the filesystem, pages and static files are provided together in a single `content/` directory (rather than separate `pages/` and `static/` directories). When content is loaded, the file extension determines which attribute a file is assigned to: `.md` files become pages; all other files become static files.
+On the filesystem, pages and static files are provided together in a single `content/` directory (rather than separate `pages/` and `static/` directories). When content is loaded, the file extension determines which attribute a file is assigned to: `.md` and `.html` files become pages; all other files become static files.
 
 ## Extensions
 
@@ -57,7 +57,7 @@ my-extension/
 
 All subdirectories and files are optional — an extension only needs to provide the resources it cares about.
 
-The `content/` directory is walked recursively. Files with a `.md` extension are loaded as pages; everything else is loaded as static files. Directory structure within `content/` is preserved as the key (e.g., `content/css/style.css` becomes the static file `css/style.css`).
+The `content/` directory is walked recursively. Files with `.md` or `.html` extensions are loaded as pages; everything else is loaded as static files. Directory structure within `content/` is preserved as the key (e.g., `content/css/style.css` becomes the static file `css/style.css`).
 
 The `elements/` directory must be a Python package (containing `__init__.py`) that defines an `elements` variable — a dict mapping element names to `Element` classes.
 
