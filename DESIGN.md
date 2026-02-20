@@ -36,3 +36,44 @@ class Resources(WebsiteResources):
 Multiple `Resources` can be composed. Templates, pages, static files, and elements merge with last-wins semantics on key conflicts. Hooks are additive — all registered hooks run, ordered by priority.
 
 On the filesystem, pages and static files are provided together in a single `content/` directory (rather than separate `pages/` and `static/` directories). When content is loaded, the file extension determines which attribute a file is assigned to: `.md` files become pages; all other files become static files.
+
+## Extensions
+
+An extension is simply a `Resources` provided externally. Extensions can be defined in two ways: as a filesystem directory, or as an installed Python package.
+
+### Filesystem extensions
+
+A filesystem extension is a directory with the following layout:
+
+```
+my-extension/
+├── templates/          # optional: Jinja2 templates
+├── content/            # optional: pages (.md) and static files
+├── elements/           # optional: Python package exporting element classes
+│   ├── __init__.py
+│   └── ...
+└── hooks.py            # optional: pre_generate / post_generate functions
+```
+
+All subdirectories and files are optional — an extension only needs to provide the resources it cares about.
+
+The `content/` directory is walked recursively. Files with a `.md` extension are loaded as pages; everything else is loaded as static files. Directory structure within `content/` is preserved as the key (e.g., `content/css/style.css` becomes the static file `css/style.css`).
+
+The `elements/` directory must be a Python package (containing `__init__.py`) that defines an `elements` variable — a dict mapping element names to `Element` classes.
+
+The `hooks.py` file may define `pre_generate` and/or `post_generate` functions.
+
+### Python package extensions
+
+A Python package extension is an installed package that registers an entry point under the `automata.extensions` group:
+
+```toml
+# pyproject.toml
+[project.entry-points."automata.extensions"]
+my-extension = "my_extension"
+```
+
+The entry point should reference a module that either:
+
+1. Exports a `resources` attribute containing a `Resources` instance directly, or
+2. Is a package whose directory is loaded using the same layout as a filesystem extension (i.e., it contains `templates/`, `content/`, `elements/`, and/or `hooks.py`).
