@@ -12,7 +12,7 @@ There are (currently) five different "resources" that can be provided:
 - **Elements**: Python classes representing page elements, which can be used in templates.
 - **Hooks**: Python functions that can be registered to hook points.
 
-The first four are the "website resources", which are loaded and passed to the website generator. A **builtin** is a set of resources provided by automata itself (e.g., the default theme). An **extension** is a set of resources provided externally.
+The `Resources` structure is the universal unit of composition throughout automata. Everything that contributes to website generation — themes, extensions, and the user's own site content — is expressed as `Resources`.
 
 The first four resources are grouped into a `WebsiteResources`:
 
@@ -99,6 +99,14 @@ A package extension can be provided in two ways:
 [project.entry-points."automata.extensions"]
 my-extension = "my_extension"
 ```
+
+## Themes
+
+A theme is simply an extension registered under a different entry point group (`automata.themes` rather than `automata.extensions`). The only additional requirement is that a theme should provide a base template. Otherwise, the same `Resources` structure and loading conventions apply — a theme can provide templates, static files, elements, hooks, and content just like any extension.
+
+## User content
+
+The directory that the user points the website generator at is itself loaded as `Resources` using the same filesystem layout described above. Typically a user's site directory will contain just a `content/` directory with pages and static files, but the user can also provide `templates/` to override theme templates, `elements/` to define custom elements, or `hooks/` to run custom logic at any hook point. The same loading helpers and conventions apply uniformly.
 
 ## Implementation notes
 
