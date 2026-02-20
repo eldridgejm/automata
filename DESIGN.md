@@ -30,7 +30,7 @@ A `Resources` extends `WebsiteResources` with hooks:
 ```python
 @dataclass
 class Resources(WebsiteResources):
-    hooks: ThemeHooks = field(default_factory=ThemeHooks)
+    hooks: Hooks = field(default_factory=Hooks)
 ```
 
 Multiple `Resources` can be composed. Templates, pages, static files, and elements merge with last-wins semantics on key conflicts. Hooks are additive — all registered hooks run, ordered by priority.
@@ -52,7 +52,11 @@ my-extension/
 ├── elements/           # optional: Python package exporting element classes
 │   ├── __init__.py
 │   └── ...
-└── hooks.py            # optional: pre_generate / post_generate functions
+├── hooks.py            # optional: Python hooks with full API control
+└── hooks/              # optional: executable script hooks
+    ├── on_build_success
+    ├── on_generate_post
+    └── ...
 ```
 
 All subdirectories and files are optional — an extension only needs to provide the resources it cares about.
@@ -61,7 +65,31 @@ The `content/` directory is walked recursively. Files with `.md` or `.html` exte
 
 The `elements/` directory must be a Python package (containing `__init__.py`) that defines an `elements` variable — a dict mapping element names to `Element` classes.
 
-The `hooks.py` file may define `pre_generate` and/or `post_generate` functions.
+Hooks can be provided in two ways:
+
+**`hooks.py`** — for Python hooks. Exports a `register(hooks)` function that receives a `Hooks` instance and registers implementations using the `automata.hooks` API:
+
+```python
+# hooks.py
+from automata.hooks import Hooks, BuildSuccessHookArgs
+
+def register(hooks: Hooks):
+    @hooks.on_build_success.register(priority=10)
+    def log_build(args: BuildSuccessHookArgs):
+        print(f"Built {args.path}")
+```
+
+This gives full control over priorities, multiple registrations per hook point, and access to Python APIs.
+
+**`hooks/` directory** — for script hooks. Each file is an executable named after the hook point it handles (no file extension). The hook arguments are serialized as JSON and passed to the script on stdin:
+
+```
+hooks/
+├── on_build_success     # receives {"workdir": "...", "path": "...", "returncode": 0}
+└── on_generate_post     # receives {"config": {...}}
+```
+
+Both mechanisms are composable — an extension can provide `hooks.py`, a `hooks/` directory, or both. All registrations are additive.
 
 ### Python package extensions
 
