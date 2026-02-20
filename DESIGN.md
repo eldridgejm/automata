@@ -65,9 +65,7 @@ The `hooks.py` file may define `pre_generate` and/or `post_generate` functions.
 
 ### Python package extensions
 
-A Python package extension is a Python package (a directory containing `__init__.py`) that provides resources either programmatically or via the standard directory layout.
-
-When a package extension is loaded, the module is imported. If it exports a `resources` attribute containing a `Resources` instance, that is used directly. Otherwise, the package directory is loaded using the same layout as a filesystem extension (i.e., it may contain `templates/`, `content/`, `elements/`, and/or `hooks.py`).
+A Python package extension is a Python package (a directory containing `__init__.py`) that exports a `resources` attribute containing a `Resources` instance.
 
 A package extension can be provided in two ways:
 
@@ -75,13 +73,8 @@ A package extension can be provided in two ways:
 
 ```
 my-extension/
-├── __init__.py          # may export `resources`; or omit and use layout below
-├── templates/
-├── content/
-├── elements/
-│   ├── __init__.py
-│   └── ...
-└── hooks.py
+├── __init__.py          # must export `resources`
+└── ...
 ```
 
 **As an installed package** — discovered automatically via entry points. The package registers under the `automata.extensions` group:
