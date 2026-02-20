@@ -52,11 +52,10 @@ my-extension/
 ├── elements/           # optional: Python package exporting element classes
 │   ├── __init__.py
 │   └── ...
-├── hooks.py            # optional: Python hooks with full API control
-└── hooks/              # optional: executable script hooks
-    ├── on_build_success
-    ├── on_generate_post
-    └── ...
+└── hooks/              # optional: hooks (scripts and/or Python)
+    ├── __init__.py      # optional: if present, register() is called
+    ├── on_build_success # executable script hook
+    └── on_generate_post # executable script hook
 ```
 
 All subdirectories and files are optional — an extension only needs to provide the resources it cares about.
@@ -65,12 +64,14 @@ The `content/` directory is walked recursively. Files with `.md` or `.html` exte
 
 The `elements/` directory must be a Python package (containing `__init__.py`) that defines an `elements` variable — a dict mapping element names to `Element` classes.
 
-Hooks can be provided in two ways:
+The `hooks/` directory provides hooks. Two mechanisms are supported simultaneously:
 
-**`hooks.py`** — for Python hooks. Exports a `register(hooks)` function that receives a `Hooks` instance and registers implementations using the `automata.hooks` API:
+**Executable scripts** — any executable file named after a hook point is automatically registered as a script hook. The hook arguments are serialized as JSON and passed to the script on stdin. For example, `hooks/on_build_success` would receive `{"workdir": "...", "path": "...", "returncode": 0}`.
+
+**Python package** — if `hooks/__init__.py` is present, it is loaded as a Python package and must export a `register(hooks)` function. This function receives a `Hooks` instance and registers implementations using the `automata.hooks` API:
 
 ```python
-# hooks.py
+# hooks/__init__.py
 from automata.hooks import Hooks, BuildSuccessHookArgs
 
 def register(hooks: Hooks):
@@ -81,15 +82,7 @@ def register(hooks: Hooks):
 
 This gives full control over priorities, multiple registrations per hook point, and access to Python APIs.
 
-**`hooks/` directory** — for script hooks. Each file is an executable named after the hook point it handles (no file extension). The hook arguments are serialized as JSON and passed to the script on stdin:
-
-```
-hooks/
-├── on_build_success     # receives {"workdir": "...", "path": "...", "returncode": 0}
-└── on_generate_post     # receives {"config": {...}}
-```
-
-Both mechanisms are composable — an extension can provide `hooks.py`, a `hooks/` directory, or both. All registrations are additive.
+Both mechanisms are composable — an extension can provide scripts, an `__init__.py`, or both. All registrations are additive.
 
 ### Python package extensions
 
