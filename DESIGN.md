@@ -23,6 +23,7 @@ class WebsiteResources:
     pages: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     elements: dict[str, type[Element]] = field(default_factory=dict)
+    materials: Universe[ExportedArtifact] | None = None
     hooks: GenerateHooks = field(default_factory=GenerateHooks)
 ```
 

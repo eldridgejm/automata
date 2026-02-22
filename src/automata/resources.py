@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from automata.hooks import GenerateHooks, Hooks
+from automata.materials import ExportedArtifact, Universe, deserialize
 
 if TYPE_CHECKING:
     from automata.website import Element
@@ -299,6 +300,7 @@ class WebsiteResources:
     pages: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     elements: dict[str, type["Element"]] = field(default_factory=dict)
+    materials: Universe[ExportedArtifact] | None = None
     hooks: GenerateHooks = field(default_factory=GenerateHooks)
 
 
@@ -329,6 +331,7 @@ class Resources(WebsiteResources):
         pages: dict[str, str | bytes | Traversable] = {}
         static_files: dict[str, str | bytes | Traversable] = {}
         elements: dict[str, type["Element"]] = {}
+        materials: Universe[ExportedArtifact] | None = None
         hooks = Hooks()
 
         templates_dir = directory / "templates"
@@ -345,6 +348,12 @@ class Resources(WebsiteResources):
         if elements_dir.is_dir():
             elements = load_elements(elements_dir)
 
+        materials_file = directory / "materials.json"
+        if materials_file.is_file():
+            loaded = deserialize(materials_file.read_text())
+            assert isinstance(loaded, Universe)
+            materials = loaded
+
         hooks_dir = directory / "hooks"
         if hooks_dir.is_dir():
             hooks = load_hooks(hooks_dir)
@@ -354,6 +363,7 @@ class Resources(WebsiteResources):
             pages=pages,
             static_files=static_files,
             elements=elements,
+            materials=materials,
             hooks=hooks,
         )
 

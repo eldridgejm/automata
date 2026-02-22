@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from automata.hooks import BuildSuccessHookArgs, Hooks
+from automata.materials import ExportedArtifact, Universe, serialize
 from automata.resources import (
     Resources,
     load_content,
@@ -336,3 +337,53 @@ def test_from_directory_empty_directory(tmp_path: Path) -> None:
     assert result.pages == {}
     assert result.static_files == {}
     assert result.elements == {}
+    assert result.materials is None
+
+
+def test_from_directory_loads_materials(tmp_path: Path) -> None:
+    ext_dir = tmp_path / "my-extension"
+    ext_dir.mkdir()
+
+    universe = Universe(
+        collections={
+            "homeworks": _make_collection({"hw01": "hw01.pdf", "hw02": "hw02.pdf"}),
+        }
+    )
+    (ext_dir / "materials.json").write_text(serialize(universe))
+
+    result = Resources.from_directory(ext_dir)
+
+    assert result.materials is not None
+    assert isinstance(result.materials, Universe)
+    assert "homeworks" in result.materials.collections
+    collection = result.materials.collections["homeworks"]
+    hw01 = collection.publications["hw01"].artifacts["hw01"]
+    assert hw01.path == "hw01.pdf"
+
+
+def test_from_directory_materials_defaults_to_none(tmp_path: Path) -> None:
+    ext_dir = tmp_path / "my-extension"
+    ext_dir.mkdir()
+
+    result = Resources.from_directory(ext_dir)
+
+    assert result.materials is None
+
+
+# helpers ===========================================================================
+
+
+def _make_collection(publications: dict[str, str]):
+    """Create a Collection[ExportedArtifact] from a {pub_key: artifact_path} mapping."""
+    from automata.materials import Collection, Publication, PublicationSchema
+
+    return Collection(
+        publication_schema=PublicationSchema(required_artifacts=[]),
+        publications={
+            key: Publication(
+                metadata={},
+                artifacts={key: ExportedArtifact(path=path)},
+            )
+            for key, path in publications.items()
+        },
+    )
