@@ -288,6 +288,24 @@ class Universe[
         )
 
 
+@dataclasses.dataclass
+class ExportedMaterials:
+    """A universe of exported artifacts and the root directory containing them.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        The root directory containing the exported artifact files.
+        Each ExportedArtifact.path within the universe is relative to
+        this directory.
+    universe : Universe[ExportedArtifact]
+        The materials hierarchy.
+    """
+
+    root: pathlib.Path
+    universe: Universe[ExportedArtifact]
+
+
 def node_type_name(node: Collection | Publication | Artifact) -> str:
     """Get the type name of a node for hook args.
 

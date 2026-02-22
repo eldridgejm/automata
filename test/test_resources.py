@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from automata.hooks import BuildSuccessHookArgs, Hooks
-from automata.materials import ExportedArtifact, Universe, serialize
+from automata.materials import ExportedArtifact, ExportedMaterials, Universe, serialize
 from automata.resources import (
     Resources,
     load_content,
@@ -354,9 +354,10 @@ def test_from_directory_loads_materials(tmp_path: Path) -> None:
     result = Resources.from_directory(ext_dir)
 
     assert result.materials is not None
-    assert isinstance(result.materials, Universe)
-    assert "homeworks" in result.materials.collections
-    collection = result.materials.collections["homeworks"]
+    assert isinstance(result.materials, ExportedMaterials)
+    assert result.materials.root == ext_dir
+    assert "homeworks" in result.materials.universe.collections
+    collection = result.materials.universe.collections["homeworks"]
     hw01 = collection.publications["hw01"].artifacts["hw01"]
     assert hw01.path == "hw01.pdf"
 
