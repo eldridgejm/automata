@@ -1,7 +1,10 @@
 import json
 import pathlib
+from typing import cast
 
 import automata.materials
+from automata.materials import ExportedArtifact, ExportedMaterials, Universe
+from automata.resources import WebsiteResources
 
 
 class SiteBuilder:
@@ -96,3 +99,15 @@ class SiteBuilder:
         with (self.materials_directory / "materials.json").open("w") as fileobj:
             fileobj.write(serialized)
         return self.materials_directory
+
+    @property
+    def resources(self) -> WebsiteResources:
+        """Construct a WebsiteResources from the current materials directory."""
+        materials_json_path = self.materials_directory / "materials.json"
+        loaded = cast(
+            Universe[ExportedArtifact],
+            automata.materials.deserialize(materials_json_path.read_text()),
+        )
+        return WebsiteResources(
+            materials=ExportedMaterials(root=self.materials_directory, universe=loaded)
+        )

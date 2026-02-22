@@ -4,7 +4,7 @@ import dataclasses
 import datetime
 import pathlib
 import shutil
-from typing import Any, Callable, cast
+from typing import Any, Callable
 
 import jinja2
 import smartconfig
@@ -12,7 +12,8 @@ import smartconfig.exceptions
 import smartconfig.types
 
 from ..hooks import GenerateHooks, GeneratePostHookArgs, GeneratePreHookArgs
-from ..materials import ExportedArtifact, Universe, deserialize
+from ..materials import ExportedArtifact, Universe
+from ..resources import WebsiteResources
 from ..util import markdown as markdown_util
 from ..util.resolution import resolve
 from ._config import WebsiteConfig
@@ -110,30 +111,6 @@ def _resolve_theme_config(
         return resolve(theme_config, schema)
     except smartconfig.exceptions.ResolutionError as exc:
         raise WebsiteError(f"Invalid theme configuration: {exc}") from exc
-
-
-def _load_materials(
-    materials_directory_path: pathlib.Path,
-) -> Universe[ExportedArtifact]:
-    """Loads the materials from the given path.
-
-    This looks for a ``materials.json`` file in the given path and loads the
-    materials universe from it.
-
-    """
-    materials_json_path = materials_directory_path / "materials.json"
-
-    if not materials_directory_path.exists():
-        raise WebsiteError(
-            f'Materials directory not found at "{materials_directory_path}".'
-        )
-
-    if not materials_json_path.exists():
-        raise WebsiteError(f'materials.json not found at "{materials_json_path}".')
-
-    return cast(
-        Universe[ExportedArtifact], deserialize(materials_json_path.read_text())
-    )
 
 
 def _get_theme(
@@ -540,7 +517,7 @@ def _process_extra_content(
 
 def generate(
     config: WebsiteConfig,
-    materials_directory: pathlib.Path,
+    resources: WebsiteResources,
     vars: dict[str, Any] | None = None,
     extra_themes: dict[str, Theme] | None = None,
     current_time: datetime.datetime | None = None,
@@ -557,12 +534,11 @@ def generate(
         The configuration for the website generation. Contains information about
         the location of the content and build directories, among other settings.
         See :class:`WebsiteConfig` for more details.
-    materials_directory : pathlib.Path
-        The path to the directory containing the exported materials. This directory
-        should contain a materials.json file and associated artifact files, as
-        produced by :func:`automata.materials.export`. The directory will be copied
-        to the build directory at the location specified by
-        config.materials_directory_name.
+    resources : WebsiteResources
+        Pre-loaded website resources. ``resources.materials`` must not be None;
+        its ``.universe`` is used as the materials data and its ``.root`` is
+        used as the path to the materials directory (which will be copied to
+        the build output).
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
     extra_themes : dict[str, Theme], optional
@@ -751,8 +727,13 @@ def generate(
     jinja_environment = theme.create_jinja_environment()
     _copy_theme_static_files(theme, build_directory)
 
-    # load materials and create render context
-    materials = _load_materials(materials_directory)
+    # extract materials from resources
+    if resources.materials is None:
+        raise WebsiteError("resources.materials must not be None")
+    materials = resources.materials.universe
+    materials_root = resources.materials.root
+
+    # create render context
     _fix_artifact_paths(materials, url_for)
     context = _create_render_context(
         config, materials, url_for, current_time, vars, theme, jinja_environment
@@ -761,7 +742,7 @@ def generate(
     # process content
     _process_content_directory(
         content_directory,
-        materials_directory,
+        materials_root,
         build_directory,
         jinja_environment,
         context,
@@ -778,5 +759,5 @@ def generate(
         )
 
     # finalize build
-    _copy_materials_to_build(materials_directory, build_directory, config)
+    _copy_materials_to_build(materials_root, build_directory, config)
     hooks.on_generate_post(GeneratePostHookArgs(config=config))

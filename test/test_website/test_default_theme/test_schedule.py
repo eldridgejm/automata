@@ -81,7 +81,7 @@ def test_schedule_element_renders_basic_week(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -133,7 +133,7 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -197,7 +197,7 @@ def test_schedule_element_renders_html_resource(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -263,7 +263,7 @@ def test_schedule_element_renders_markdown_resource(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -341,7 +341,7 @@ def test_schedule_element_renders_metadata_links_resource(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -419,7 +419,7 @@ def test_schedule_element_renders_artifact_links_resource(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -499,7 +499,7 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(tmpsite, 
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -571,7 +571,7 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then - title should not appear since content is only whitespace
     output = tmpsite.get_output("index.html")
@@ -635,7 +635,7 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then - title should not appear since content is only whitespace
     output = tmpsite.get_output("index.html")
@@ -709,7 +709,7 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then - title should not appear since there are no items
     output = tmpsite.get_output("index.html")
@@ -785,7 +785,7 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then - title should not appear since metadata key is missing
     output = tmpsite.get_output("index.html")
@@ -854,7 +854,7 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then - title should not appear since there are no artifacts
     output = tmpsite.get_output("index.html")
@@ -917,7 +917,7 @@ def test_schedule_element_resource_with_icon(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -972,7 +972,7 @@ def test_schedule_element_renders_extra_primary_listings(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -1030,7 +1030,7 @@ def test_schedule_element_renders_extra_secondary_listings(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.resources)
 
     # then
     output = tmpsite.get_output("index.html")
