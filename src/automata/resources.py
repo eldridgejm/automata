@@ -292,7 +292,7 @@ def load_hooks(directory: Traversable) -> Hooks:
 
 
 @dataclass
-class GenerateResources:
+class WebsiteResources:
     """Resources specific to website generation."""
 
     templates: dict[str, str] = field(default_factory=dict)
@@ -303,7 +303,7 @@ class GenerateResources:
 
 
 @dataclass
-class Resources(GenerateResources):
+class Resources(WebsiteResources):
     """Full resource set including all hook types."""
 
     hooks: Hooks = field(default_factory=Hooks)  # type: ignore[reportIncompatibleVariableOverride]

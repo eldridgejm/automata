@@ -14,11 +14,11 @@ There are (currently) five different "resources" that can be provided:
 
 The `Resources` structure is the universal unit of composition throughout automata. Everything that contributes to website generation — themes, extensions, and the user's own site content — is expressed as `Resources`.
 
-The resources specific to website generation are grouped into a `GenerateResources`:
+The resources specific to website generation are grouped into a `WebsiteResources`:
 
 ```python
 @dataclass
-class GenerateResources:
+class WebsiteResources:
     templates: dict[str, str] = field(default_factory=dict)
     pages: dict[str, str | bytes | Traversable] = field(default_factory=dict)
     static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
@@ -26,11 +26,11 @@ class GenerateResources:
     hooks: GenerateHooks = field(default_factory=GenerateHooks)
 ```
 
-A `Resources` extends `GenerateResources`, widening hooks to the full `Hooks` type which includes all hook points (discover, build, export, filter, and generate):
+A `Resources` extends `WebsiteResources`, widening hooks to the full `Hooks` type which includes all hook points (discover, build, export, filter, and generate):
 
 ```python
 @dataclass
-class Resources(GenerateResources):
+class Resources(WebsiteResources):
     hooks: Hooks = field(default_factory=Hooks)
 ```
 
