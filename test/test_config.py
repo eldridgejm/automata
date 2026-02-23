@@ -22,11 +22,6 @@ def test_read_config_reads_valid_config(tmp_path: Path) -> None:
             website:
               content_directory: "./content"
               build_directory: "./build"
-              theme:
-                use: "default"
-                config:
-                  short_title: "DSC 101"
-                  long_title: "Introduction to Data Science"
             """
         )
     )
@@ -38,8 +33,6 @@ def test_read_config_reads_valid_config(tmp_path: Path) -> None:
     assert config.vars["semester"] == "Fall 2025"
     assert config.website.content_directory == "./content"
     assert config.website.build_directory == "./build"
-    assert config.website.theme.use == "default"
-    assert config.website.theme.config["short_title"] == "DSC 101"
 
 
 def test_read_config_applies_defaults(tmp_path: Path) -> None:
@@ -59,11 +52,6 @@ def test_read_config_applies_defaults(tmp_path: Path) -> None:
 
     # vars should default to {}
     assert config.vars == {}
-
-    # website theme should have defaults
-    assert config.website.theme.use == "default"
-    assert config.website.theme.overrides is None
-    assert config.website.theme.config == {}
 
     # Other website defaults
     assert config.website.materials_directory_name == "materials"
@@ -142,38 +130,6 @@ def test_read_config_with_empty_vars(tmp_path: Path) -> None:
     assert config.vars == {}
 
 
-def test_read_config_with_complex_theme_config(tmp_path: Path) -> None:
-    """Test that read_config handles complex theme configurations."""
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text(
-        dedent(
-            """
-            website:
-              content_directory: "./content"
-              build_directory: "./build"
-              theme:
-                use: "./custom-theme"
-                overrides: "./theme-overrides"
-                config:
-                  short_title: "Course"
-                  long_title: "Full Course Title"
-                  navigation:
-                    - text: "Home"
-                      url: "/index.html"
-                    - text: "Syllabus"
-                      url: "/syllabus.html"
-            """
-        )
-    )
-
-    config = read_config(config_file)
-
-    assert config.website.theme.use == "./custom-theme"
-    assert config.website.theme.overrides == "./theme-overrides"
-    assert len(config.website.theme.config["navigation"]) == 2
-    assert config.website.theme.config["navigation"][0]["text"] == "Home"
-
-
 def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
     """Test that read_config performs variable interpolation from vars."""
     config_file = tmp_path / "config.yaml"
@@ -185,13 +141,8 @@ def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
               semester: "Fall 2025"
 
             website:
-              content_directory: "./content"
-              build_directory: "./build"
-              theme:
-                use: "default"
-                config:
-                  short_title: ${ vars.course_name }
-                  long_title: "Introduction to Data Science - ${ vars.semester }"
+              content_directory: ${ vars.course_name }
+              build_directory: "build-${ vars.semester }"
             """
         )
     )
@@ -201,11 +152,8 @@ def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
     # Check that interpolation worked
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
-    assert config.website.theme.config["short_title"] == "DSC 101"
-    assert (
-        config.website.theme.config["long_title"]
-        == "Introduction to Data Science - Fall 2025"
-    )
+    assert config.website.content_directory == "DSC 101"
+    assert config.website.build_directory == "build-Fall 2025"
 
 
 def test_read_config_with_include(tmp_path: Path) -> None:
@@ -230,12 +178,8 @@ def test_read_config_with_include(tmp_path: Path) -> None:
               __include__: vars.yaml
 
             website:
-              content_directory: "./content"
+              content_directory: ${ vars.course_name }
               build_directory: "./build"
-              theme:
-                use: "default"
-                config:
-                  short_title: ${ vars.course_name }
             """
         )
     )
@@ -244,4 +188,4 @@ def test_read_config_with_include(tmp_path: Path) -> None:
 
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
-    assert config.website.theme.config["short_title"] == "DSC 101"
+    assert config.website.content_directory == "DSC 101"

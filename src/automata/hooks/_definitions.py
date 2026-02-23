@@ -2,11 +2,12 @@
 
 import pathlib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from ._internals import HooksBase, ObserverHook, PipelineHook
 
 if TYPE_CHECKING:
+    from automata.resources import WebsiteResources
     from automata.website import WebsiteConfig
 
 # materials hooks ======================================================================
@@ -150,11 +151,15 @@ class FilterHooks(HooksBase):
 class GeneratePreHookArgs:
     """Argument passed to the pre-generate hook.
 
-    This is a pipeline hook that can transform extra_content before generation.
+    This is a pipeline hook that can transform resources and vars
+    before generation.
     """
 
-    config: "WebsiteConfig"
-    extra_content: dict[str, str | bytes | pathlib.Path] | None
+    resources: "WebsiteResources"
+    """The website resources (templates, pages, static files, elements, etc.)."""
+
+    vars: dict[str, Any]
+    """Template variables available during rendering."""
 
 
 @dataclass
@@ -168,7 +173,7 @@ class GenerateHooks(HooksBase):
     """Hooks for the website generation phase."""
 
     on_generate_pre: PipelineHook[GeneratePreHookArgs]
-    """Called before generation. Can transform extra_content."""
+    """Called before generation. Can transform resources and vars."""
 
     on_generate_post: ObserverHook[GeneratePostHookArgs]
     """Called after generation completes."""

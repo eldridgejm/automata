@@ -4,21 +4,18 @@ import dataclasses
 import datetime
 import pathlib
 import shutil
+from importlib.resources.abc import Traversable
 from typing import Any, Callable
 
 import jinja2
-import smartconfig
-import smartconfig.exceptions
 import smartconfig.types
 
-from ..hooks import GenerateHooks, GeneratePostHookArgs, GeneratePreHookArgs
+from ..hooks import GeneratePostHookArgs, GeneratePreHookArgs
 from ..materials import ExportedArtifact, Universe
 from ..resources import WebsiteResources
 from ..util import markdown as markdown_util
-from ..util.resolution import resolve
 from ._config import WebsiteConfig
 from ._frontmatter import Frontmatter, read_frontmatter
-from ._theme import Theme
 from .exceptions import PageError, WebsiteError
 
 
@@ -80,103 +77,11 @@ def _interpolate(
     ).render(**context.to_dict())
 
 
-def _resolve_theme_config(
-    theme_config: dict[str, Any],
-    schema: smartconfig.types.Schema | None,
-) -> dict[str, Any]:
-    """Resolve and validate theme configuration against schema.
-
-    Parameters
-    ----------
-    theme_config : dict[str, Any]
-        The raw theme configuration dictionary.
-    schema : smartconfig.types.Schema | None
-        The smartconfig schema to validate against. If None, no validation is performed.
-
-    Returns
-    -------
-    Any
-        The resolved configuration with defaults applied.
-
-    Raises
-    ------
-    WebsiteError
-        If the configuration does not match the schema.
-
-    """
-    if schema is None:
-        return theme_config
-
-    try:
-        return resolve(theme_config, schema)
-    except smartconfig.exceptions.ResolutionError as exc:
-        raise WebsiteError(f"Invalid theme configuration: {exc}") from exc
-
-
-def _get_theme(
-    config: WebsiteConfig,
-    extra_themes: dict[str, Theme] | None = None,
-    cwd: pathlib.Path | None = None,
-) -> Theme:
-    """Creates a Jinja2 environment from the theme configuration.
-
-    Loads the theme based on config.theme.use (either from entry point or directory
-    path), applies any overrides from config.theme.overrides, and creates a Jinja2
-    environment with the theme's templates.
-
-    Parameters
-    ----------
-    config : WebsiteConfig
-        The configuration containing theme settings.
-    extra_themes : dict[str, Theme], optional
-        Extra themes to search before entry points.
-    cwd : pathlib.Path, optional
-        Working directory for resolving relative paths. If None, uses current directory.
-
-    Returns
-    -------
-    Theme
-        The theme to use for rendering.
-
-    """
-    if cwd is None:
-        cwd = pathlib.Path.cwd()
-
-    # Load theme based on config - either from entry point or directory path
-    if "/" in config.theme.use or "\\" in config.theme.use:
-        # Path to custom theme directory (resolve relative to cwd)
-        theme = Theme.from_directory(cwd / config.theme.use)
-    else:
-        # Entry point name (extra themes take priority)
-        if extra_themes is not None and config.theme.use in extra_themes:
-            theme = extra_themes[config.theme.use]
-        else:
-            theme = Theme.from_entry_point(config.theme.use)
-
-    # Apply overrides if specified
-    if config.theme.overrides is not None:
-        overrides_dir = cwd / config.theme.overrides
-        if overrides_dir.exists():
-            # Allow override directories to have only static files
-            override_theme = Theme.from_directory(
-                overrides_dir, require_templates=False
-            )
-            # Merge overrides into base theme (overrides take precedence)
-            theme.templates.update(override_theme.templates)
-            theme.static_files.update(override_theme.static_files)
-        else:
-            raise WebsiteError(
-                f'Theme overrides directory not found at "{overrides_dir}".'
-            )
-
-    if "page.html" not in theme.templates:
-        raise ValueError('Theme templates must include a "page.html" file.')
-
-    return theme
-
-
-def _copy_theme_static_files(theme: Theme, build_directory: pathlib.Path) -> None:
-    """Copies static files from the theme to the build directory.
+def _copy_static_files(
+    static_files: dict[str, str | bytes | Traversable],
+    build_directory: pathlib.Path,
+) -> None:
+    """Copies static files to the build directory.
 
     Handles three types of static file content:
     - str: written as text
@@ -185,13 +90,13 @@ def _copy_theme_static_files(theme: Theme, build_directory: pathlib.Path) -> Non
 
     Parameters
     ----------
-    theme : Theme
-        The theme containing static files to copy.
+    static_files : dict[str, str | bytes | Traversable]
+        Mapping of relative paths to file content.
     build_directory : pathlib.Path
         The directory to copy static files to.
 
     """
-    for static_path, static_content in theme.static_files.items():
+    for static_path, static_content in static_files.items():
         output_path = build_directory / static_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -216,58 +121,16 @@ def _create_url_for(base_path: str) -> Callable[[str], str]:
     return url_for
 
 
-# Type alias for extra content
-_ExtraContent = dict[str, str | bytes | pathlib.Path]
-
-
-def _register_theme_hooks(hooks: GenerateHooks, theme: Theme) -> None:
-    """Register theme-provided hooks onto the hooks instance.
-
-    Theme hooks are registered at a lower priority (100) so that user-registered
-    hooks can run before or after them by choosing appropriate priorities.
-    """
-    if theme.hooks.pre_generate is not None:
-        theme_pre_generate = theme.hooks.pre_generate
-
-        @hooks.on_generate_pre.register(priority=100)
-        def _theme_pre_generate(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
-            try:
-                hook_extra_content = theme_pre_generate(args.config)
-            except Exception as e:
-                raise WebsiteError(f"Error in theme pre_generate hook: {e}") from e
-
-            if hook_extra_content is None:
-                return args
-            if args.extra_content is None:
-                return GeneratePreHookArgs(
-                    config=args.config, extra_content=hook_extra_content
-                )
-            return GeneratePreHookArgs(
-                config=args.config,
-                extra_content={**hook_extra_content, **args.extra_content},
-            )
-
-    if theme.hooks.post_generate is not None:
-        theme_post_generate = theme.hooks.post_generate
-
-        @hooks.on_generate_post.register(priority=100)
-        def _theme_post_generate(args: GeneratePostHookArgs) -> None:
-            try:
-                theme_post_generate(args.config)
-            except Exception as e:
-                raise WebsiteError(f"Error in theme post_generate hook: {e}") from e
-
-
 def _create_render_context(
     config: WebsiteConfig,
     materials: Universe[ExportedArtifact],
     url_for: Callable[[str], str],
     current_time: datetime.datetime,
     vars: dict[str, Any],
-    theme: Theme,
+    elements: dict[str, type],
     jinja_environment: jinja2.Environment,
 ) -> RenderContext:
-    """Create the render context with theme elements bound."""
+    """Create the render context with elements bound."""
     context = RenderContext(
         website_config=config,
         materials=materials,
@@ -277,8 +140,7 @@ def _create_render_context(
     )
 
     context.elements = {
-        name: element(jinja_environment, context)
-        for name, element in theme.elements.items()
+        name: element(jinja_environment, context) for name, element in elements.items()
     }
 
     return context
@@ -480,34 +342,40 @@ def _process_content_directory(
             _copy_file_to_output(path, output_path, config)
 
 
-def _process_extra_content(
-    extra_content: dict[str, str | bytes | pathlib.Path],
+def _process_pages(
+    pages: dict[str, str | bytes | Traversable],
     build_directory: pathlib.Path,
     jinja_environment: jinja2.Environment,
     context: RenderContext,
     render_markdown: Callable[[str], str],
 ) -> None:
-    """Process extra content items and write them to the build directory.
+    """Process pages and write them to the build directory.
 
-    Each item in extra_content is processed based on its type:
+    Each item is processed based on its type:
     - str: rendered through the full pipeline (frontmatter, interpolation,
       markdown, template)
     - bytes: written directly as binary
-    - pathlib.Path: copied from source to destination
+    - Traversable (including Path): read as text and rendered through the
+      full pipeline
 
     """
-    for relative_path, content in extra_content.items():
+    for relative_path, content in pages.items():
         output_path = build_directory / relative_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         if isinstance(content, bytes):
             output_path.write_bytes(content)
-        elif isinstance(content, pathlib.Path):
-            shutil.copy2(content, output_path)
-        else:
-            # String content goes through the full rendering pipeline
+        elif isinstance(content, str):
             rendered = _render_page(
                 content,
+                jinja_environment,
+                context,
+                markdown_renderer=render_markdown,
+            )
+            output_path.write_text(rendered)
+        else:
+            rendered = _render_page(
+                content.read_text(),
                 jinja_environment,
                 context,
                 markdown_renderer=render_markdown,
@@ -519,12 +387,9 @@ def generate(
     config: WebsiteConfig,
     resources: WebsiteResources,
     vars: dict[str, Any] | None = None,
-    extra_themes: dict[str, Theme] | None = None,
     current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown_util.render,
     cwd: pathlib.Path | None = None,
-    extra_content: dict[str, str | bytes | pathlib.Path] | None = None,
-    hooks: GenerateHooks | None = None,
 ):
     """Generates a static website from course materials.
 
@@ -535,15 +400,17 @@ def generate(
         the location of the content and build directories, among other settings.
         See :class:`WebsiteConfig` for more details.
     resources : WebsiteResources
-        Pre-loaded website resources. ``resources.materials`` must not be None;
-        its ``.universe`` is used as the materials data and its ``.root`` is
-        used as the path to the materials directory (which will be copied to
-        the build output).
+        Pre-loaded website resources containing everything needed for generation:
+
+        - ``templates``: Jinja2 templates (must include ``page.html``).
+        - ``static_files``: Static files to copy to the build directory.
+        - ``elements``: Element classes available during rendering.
+        - ``hooks``: ``GenerateHooks`` instance for pre/post generation hooks.
+        - ``materials``: Must not be None. Its ``.universe`` is used as the
+          materials data and its ``.root`` is used as the path to the materials
+          directory (which will be copied to the build output).
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
-    extra_themes : dict[str, Theme], optional
-        A mapping of theme names to Theme instances that should be searched before
-        entry points when resolving config.theme.use.
     current_time : datetime.datetime, optional
         The current date and time to be used during rendering.
     render_markdown : Callable[[str], str], optional
@@ -551,31 +418,11 @@ def generate(
         text (str) and return HTML (str). Defaults to
         :func:`automata.util.markdown.render`, which wraps
         :func:`markdown.markdown` with the TOC extension enabled.
-        This allows for customization of the markdown rendering engine, such as
-        using a different markdown library or adding custom extensions.
     cwd : pathlib.Path, optional
         Working directory for resolving relative paths in config. All relative paths
-        in the configuration (content_directory, build_directory, theme paths) will
-        be resolved relative to this directory. If None, uses the current working
-        directory. Absolute paths in config are used as-is regardless of cwd.
-    extra_content : dict[str, str | bytes | pathlib.Path], optional
-        Additional content to include in the generated output. Each key is a relative
-        path from the build directory root, determining where the content should be
-        placed. The value can be:
-
-        - A string: assumed to be markdown or HTML. It is processed through the full
-          rendering pipeline (frontmatter parsing, variable interpolation, markdown
-          rendering, and template wrapping), then written as text.
-        - A bytes object: written directly as binary.
-        - A pathlib.Path: the file at that path is copied to the destination.
-
-    hooks : GenerateHooks, optional
-        Hooks instance for customizing the generation process. If not provided, a
-        default instance is created. Theme-provided hooks (from hooks.py) are
-        automatically registered onto this instance at priority 100, allowing
-        user-registered hooks to run before (lower priority) or after (higher
-        priority) them.
-
+        in the configuration (content_directory, build_directory) will be resolved
+        relative to this directory. If None, uses the current working directory.
+        Absolute paths in config are used as-is regardless of cwd.
     Notes
     -----
 
@@ -594,14 +441,6 @@ def generate(
     Files with a suffix matching ``config.no_render_suffix`` (e.g., ``.raw``) will be
     copied to the output directory with that suffix removed. This allows for raw
     markdown and HTML files to be included in the output without rendering them.
-
-    This function requires that course materials have already been exported to the
-    directory specified by the ``materials_directory`` parameter. This directory
-    should be of the same format as produced by the :func:`automata.materials.export`
-    function; namely, there should be a ``materials.json`` file in the root of the
-    materials directory, along with subdirectories containing the actual artifact files.
-    If this materials directory is not found or is missing required files, an error
-    will be raised.
 
     Content will be copied to the ``config.build_directory``, preserving the directory
     structure found in the content directory. The materials directory will be copied
@@ -649,94 +488,57 @@ def generate(
     ``frontmatter`` namespace (e.g., ``${ frontmatter.vars.title }``). Pages without
     frontmatter work as normal.
 
-    Themes
-    ~~~~~~
-
-    The website's appearance is controlled by themes specified via ``config.theme.use``.
-    Themes can be loaded in two ways:
-
-    1. **Entry Point Name** (default): If ``config.theme.use`` does not contain slashes,
-       it is treated as an entry point name in the ``"automata.themes"`` group.
-       The default theme is ``"default"``. Custom themes can be registered as entry
-       points in a package's ``pyproject.toml``::
-
-           [project.entry-points."automata.themes"]
-           my-theme = "my_package.themes.custom"
-
-       The referenced module can either export a ``theme`` variable containing a
-       ``Theme`` instance, or it can be a package with ``templates/`` and optionally
-       ``static/`` subdirectories. If a ``theme`` variable is present, it will be used;
-       otherwise, the module's resources will be loaded automatically.
-
-    2. **Directory Path**: If ``config.theme.use`` contains slashes, it is treated as a
-       filesystem path to a theme directory. The directory must contain a ``templates/``
-       subdirectory with at least a ``base.html`` template, and optionally a ``static/``
-       subdirectory for static assets.
-
-    When ``extra_themes`` is provided to :func:`generate`, it is checked before entry
-    points when resolving ``config.theme.use``.
-
-    Theme Overrides
-    ^^^^^^^^^^^^^^^
-
-    Individual templates or static files can be overridden without creating a complete
-    custom theme by specifying ``config.theme.overrides``. This should be a path to a
-    directory containing ``templates/`` and/or ``static/`` subdirectories with files
-    that should override those in the base theme.
-
-    For example, to customize only the ``base.html`` template while using the default
-    theme::
-
-        overrides/
-        └── templates/
-            └── base.html
-
-        config = WebsiteConfig(
-            ...,
-            theme=ThemeConfig(use="default", overrides="./overrides")
-        )
-
-    Files in the overrides directory take precedence over those in the base theme.
-    Non-overridden files continue to use the base theme's versions. The overrides
-    directory can contain only templates, only static files, or both.
-
     """
     # set default values for optional parameters
     vars = vars or {}
     current_time = current_time or datetime.datetime.now()
     cwd = cwd or pathlib.Path.cwd()
-    hooks = hooks or GenerateHooks()
+    hooks = resources.hooks
 
     # resolve paths relative to cwd (absolute paths are unchanged)
     content_directory = cwd / config.content_directory
     build_directory = cwd / config.build_directory
 
-    # set up theme and its configuration
-    url_for = _create_url_for(config.base_path)
-    theme = _get_theme(config, extra_themes=extra_themes, cwd=cwd)
-    config.theme.config = _resolve_theme_config(config.theme.config, theme.schema)
+    # validate resources
+    if "page.html" not in resources.templates:
+        raise ValueError('Resources templates must include a "page.html" file.')
 
-    # register theme hooks and run pre-generate
-    _register_theme_hooks(hooks, theme)
-    pre_args = hooks.on_generate_pre(
-        GeneratePreHookArgs(config=config, extra_content=extra_content)
-    )
-    extra_content = pre_args.extra_content
-
-    # set up jinja environment and copy theme static files
-    jinja_environment = theme.create_jinja_environment()
-    _copy_theme_static_files(theme, build_directory)
-
-    # extract materials from resources
     if resources.materials is None:
         raise WebsiteError("resources.materials must not be None")
+
+    # run pre-generate hooks
+    url_for = _create_url_for(config.base_path)
+    pre_args = hooks.on_generate_pre(
+        GeneratePreHookArgs(resources=resources, vars=vars)
+    )
+    resources = pre_args.resources
+    vars = pre_args.vars
+
+    # set up jinja environment and copy static files
+    jinja_environment = jinja2.Environment(
+        loader=jinja2.DictLoader(resources.templates),
+        undefined=jinja2.StrictUndefined,
+        variable_start_string="${",
+        variable_end_string="}",
+        block_start_string="{%",
+        block_end_string="%}",
+    )
+    _copy_static_files(resources.static_files, build_directory)
+
+    # extract materials from resources
     materials = resources.materials.universe
     materials_root = resources.materials.root
 
     # create render context
     _fix_artifact_paths(materials, url_for)
     context = _create_render_context(
-        config, materials, url_for, current_time, vars, theme, jinja_environment
+        config,
+        materials,
+        url_for,
+        current_time,
+        vars,
+        resources.elements,
+        jinja_environment,
     )
 
     # process content
@@ -749,9 +551,9 @@ def generate(
         config,
         render_markdown,
     )
-    if extra_content is not None:
-        _process_extra_content(
-            extra_content,
+    if resources.pages:
+        _process_pages(
+            resources.pages,
             build_directory,
             jinja_environment,
             context,
