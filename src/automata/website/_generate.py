@@ -526,6 +526,7 @@ def generate(
     _copy_static_files(resources.static_files, build_directory)
 
     # extract materials from resources
+    assert resources.materials is not None
     materials = resources.materials.universe
     materials_root = resources.materials.root
 
