@@ -87,7 +87,20 @@ Both mechanisms are composable — an extension can provide scripts, an `__init_
 
 ### Python package extensions
 
-A Python package extension is a Python package (a directory containing `__init__.py`) that exports a `resources` attribute containing a `Resources` instance. Unlike filesystem extensions, which are limited to the standard directory layout, package extensions construct their `Resources` programmatically in code. This allows them to generate templates dynamically, define elements as classes directly, register hooks as closures, etc.
+A Python package extension is a Python package (a directory containing `__init__.py`) that exports a `resources` function. The function receives a configuration dictionary (`dict[str, Any]`) and returns a `Resources` instance. Unlike filesystem extensions, which are limited to the standard directory layout, package extensions construct their `Resources` programmatically in code. This allows them to generate templates dynamically, define elements as classes directly, register hooks as closures, and adapt behavior based on configuration.
+
+```python
+# my_extension/__init__.py
+from automata.resources import Resources
+from automata.website import WebsiteContent
+
+def resources(config: dict[str, Any]) -> Resources:
+    return Resources(
+        content=WebsiteContent(
+            templates={"base.html": "..."},
+        ),
+    )
+```
 
 A package extension can be provided in two ways:
 

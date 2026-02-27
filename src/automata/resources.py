@@ -369,17 +369,25 @@ class Resources:
 
     @classmethod
     def from_entry_point(
-        cls, name: str, group: str = "automata.extensions"
+        cls,
+        name: str,
+        config: dict[str, Any] | None = None,
+        *,
+        group: str = "automata.extensions",
     ) -> "Resources":
         """Load a Resources instance from an installed package entry point.
 
         The entry point must refer to a module that exports a ``resources``
-        attribute containing a Resources instance.
+        function.  The function is called with a config dictionary and must
+        return a ``Resources`` instance.
 
         Parameters
         ----------
         name : str
             The name of the entry point.
+        config : dict[str, Any] | None, optional
+            Configuration dictionary passed to the extension's ``resources``
+            function.  Defaults to an empty dict.
         group : str, optional
             The entry point group to search in. Defaults to
             ``"automata.extensions"``.
@@ -387,10 +395,12 @@ class Resources:
         Returns
         -------
         Resources
-            The Resources instance exported by the package.
+            The Resources instance returned by the extension.
         """
+        if config is None:
+            config = {}
         entry_points = metadata.entry_points()
         ep = entry_points.select(group=group)[name]
         module = ep.load()
-        result: Resources = module.resources
+        result: Resources = module.resources(config)
         return result
