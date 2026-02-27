@@ -9,7 +9,7 @@ import sys
 from dataclasses import dataclass, field
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from automata.hooks import GenerateHooks, Hooks
 from automata.materials import ExportedMaterials, Universe, deserialize
@@ -302,6 +302,7 @@ class WebsiteResources:
     elements: dict[str, type["Element"]] = field(default_factory=dict)
     materials: ExportedMaterials | None = None
     hooks: GenerateHooks = field(default_factory=GenerateHooks)
+    config: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
