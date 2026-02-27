@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from ._internals import HooksBase, ObserverHook, PipelineHook
 
 if TYPE_CHECKING:
-    from automata.resources import WebsiteResources
-    from automata.website import WebsiteConfig
+    from automata.website import WebsiteConfig, WebsiteContent
 
 # materials hooks ======================================================================
 
@@ -151,12 +150,12 @@ class FilterHooks(HooksBase):
 class GeneratePreHookArgs:
     """Argument passed to the pre-generate hook.
 
-    This is a pipeline hook that can transform resources and vars
+    This is a pipeline hook that can transform content and vars
     before generation.
     """
 
-    resources: "WebsiteResources"
-    """The website resources (templates, pages, static files, elements, etc.)."""
+    content: "WebsiteContent"
+    """The website content (templates, pages, static files, elements, etc.)."""
 
     vars: dict[str, Any]
     """Template variables available during rendering."""

@@ -44,7 +44,7 @@ def test_people_element_renders_single_group(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -81,7 +81,7 @@ def test_people_element_renders_multiple_groups(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -110,7 +110,7 @@ def test_people_element_person_without_optional_fields(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -136,7 +136,7 @@ def test_people_element_person_with_website_creates_link(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -161,7 +161,7 @@ def test_people_element_displays_photo_when_provided(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")

@@ -6,8 +6,7 @@ from pathlib import Path
 from . import materials
 from .config import read_config
 from .materials import ExportedMaterials
-from .resources import WebsiteResources
-from .website import generate
+from .website import WebsiteContent, generate
 
 CONFIGURATION_FILENAME = "automata.yaml"
 
@@ -60,15 +59,15 @@ def build(
     materials_json.write_text(materials.serialize(exported_universe))
 
     # Generate website (materials are already in place, so no copy needed)
-    resources = WebsiteResources(
+    content = WebsiteContent(
         materials=ExportedMaterials(
             root=materials_output_dir, universe=exported_universe
         )
     )
     generate(
         config.website,
-        resources,
-        config.vars,
+        content,
+        vars=config.vars,
         cwd=path,
         current_time=current_time,
     )

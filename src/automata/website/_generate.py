@@ -10,9 +10,9 @@ from typing import Any, Callable
 import jinja2
 import smartconfig.types
 
-from ..hooks import GeneratePostHookArgs, GeneratePreHookArgs
+from ..hooks import GenerateHooks, GeneratePostHookArgs, GeneratePreHookArgs
 from ..materials import ExportedArtifact, Universe
-from ..resources import WebsiteResources
+from ._content import WebsiteContent
 from ..util import markdown as markdown_util
 from ._config import WebsiteConfig
 from ._frontmatter import Frontmatter, read_frontmatter
@@ -385,7 +385,9 @@ def _process_pages(
 
 def generate(
     config: WebsiteConfig,
-    resources: WebsiteResources,
+    content: WebsiteContent,
+    *,
+    hooks: GenerateHooks | None = None,
     vars: dict[str, Any] | None = None,
     current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown_util.render,
@@ -399,16 +401,18 @@ def generate(
         The configuration for the website generation. Contains information about
         the location of the content and build directories, among other settings.
         See :class:`WebsiteConfig` for more details.
-    resources : WebsiteResources
-        Pre-loaded website resources containing everything needed for generation:
+    content : WebsiteContent
+        Content resources for generation:
 
         - ``templates``: Jinja2 templates (must include ``page.html``).
+        - ``pages``: Additional pages to render.
         - ``static_files``: Static files to copy to the build directory.
         - ``elements``: Element classes available during rendering.
-        - ``hooks``: ``GenerateHooks`` instance for pre/post generation hooks.
         - ``materials``: Must not be None. Its ``.universe`` is used as the
           materials data and its ``.root`` is used as the path to the materials
           directory (which will be copied to the build output).
+    hooks : GenerateHooks, optional
+        ``GenerateHooks`` instance for pre/post generation hooks.
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
     current_time : datetime.datetime, optional
@@ -493,42 +497,42 @@ def generate(
     vars = vars or {}
     current_time = current_time or datetime.datetime.now()
     cwd = cwd or pathlib.Path.cwd()
-    hooks = resources.hooks
+    hooks = hooks or GenerateHooks()
 
     # resolve paths relative to cwd (absolute paths are unchanged)
     content_directory = cwd / config.content_directory
     build_directory = cwd / config.build_directory
 
-    # validate resources
-    if "page.html" not in resources.templates:
+    # validate content
+    if "page.html" not in content.templates:
         raise ValueError('Resources templates must include a "page.html" file.')
 
-    if resources.materials is None:
-        raise WebsiteError("resources.materials must not be None")
+    if content.materials is None:
+        raise WebsiteError("content.materials must not be None")
 
     # run pre-generate hooks
     url_for = _create_url_for(config.base_path)
     pre_args = hooks.on_generate_pre(
-        GeneratePreHookArgs(resources=resources, vars=vars)
+        GeneratePreHookArgs(content=content, vars=vars)
     )
-    resources = pre_args.resources
+    content = pre_args.content
     vars = pre_args.vars
 
     # set up jinja environment and copy static files
     jinja_environment = jinja2.Environment(
-        loader=jinja2.DictLoader(resources.templates),
+        loader=jinja2.DictLoader(content.templates),
         undefined=jinja2.StrictUndefined,
         variable_start_string="${",
         variable_end_string="}",
         block_start_string="{%",
         block_end_string="%}",
     )
-    _copy_static_files(resources.static_files, build_directory)
+    _copy_static_files(content.static_files, build_directory)
 
-    # extract materials from resources
-    assert resources.materials is not None
-    materials = resources.materials.universe
-    materials_root = resources.materials.root
+    # extract materials from content
+    assert content.materials is not None
+    materials = content.materials.universe
+    materials_root = content.materials.root
 
     # create render context
     _fix_artifact_paths(materials, url_for)
@@ -538,7 +542,7 @@ def generate(
         url_for,
         current_time,
         vars,
-        resources.elements,
+        content.elements,
         jinja_environment,
     )
 
@@ -552,9 +556,9 @@ def generate(
         config,
         render_markdown,
     )
-    if resources.pages:
+    if content.pages:
         _process_pages(
-            resources.pages,
+            content.pages,
             build_directory,
             jinja_environment,
             context,

@@ -4,7 +4,7 @@ from typing import cast
 
 import automata.materials
 from automata.materials import ExportedArtifact, ExportedMaterials, Universe
-from automata.resources import WebsiteResources
+from automata.website import WebsiteContent
 
 
 class SiteBuilder:
@@ -101,13 +101,13 @@ class SiteBuilder:
         return self.materials_directory
 
     @property
-    def resources(self) -> WebsiteResources:
-        """Construct a WebsiteResources from the current materials directory."""
+    def content(self) -> WebsiteContent:
+        """Construct a WebsiteContent from the current materials directory."""
         materials_json_path = self.materials_directory / "materials.json"
         loaded = cast(
             Universe[ExportedArtifact],
             automata.materials.deserialize(materials_json_path.read_text()),
         )
-        return WebsiteResources(
+        return WebsiteContent(
             materials=ExportedMaterials(root=self.materials_directory, universe=loaded)
         )

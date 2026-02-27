@@ -71,7 +71,7 @@ def test_listing_element_renders_simple_table(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -128,7 +128,7 @@ def test_listing_element_renders_multiple_columns(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -184,7 +184,7 @@ def test_listing_element_with_numbered_rows(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -231,7 +231,7 @@ def test_listing_element_with_artifact_links(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then: artifacts should be accessible in templates
     output = tmpsite.get_output("index.html")
@@ -289,7 +289,7 @@ def test_listing_element_conditional_content_when_artifact_missing(tmpsite, conf
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -346,7 +346,7 @@ def test_listing_element_conditional_content_when_metadata_missing(tmpsite, conf
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -403,7 +403,7 @@ def test_listing_element_conditional_content_non_null_metadata(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.resources)
+    automata.website.generate(config, tmpsite.content)
 
     # then
     output = tmpsite.get_output("index.html")

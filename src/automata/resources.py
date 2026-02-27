@@ -11,8 +11,9 @@ from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from automata.hooks import GenerateHooks, Hooks
+from automata.hooks import Hooks
 from automata.materials import ExportedMaterials, Universe, deserialize
+from automata.website._content import WebsiteContent
 
 if TYPE_CHECKING:
     from automata.website import Element
@@ -293,23 +294,16 @@ def load_hooks(directory: Traversable) -> Hooks:
 
 
 @dataclass
-class WebsiteResources:
-    """Resources specific to website generation."""
+class Resources:
+    """Full resource set for extensions.
 
-    templates: dict[str, str] = field(default_factory=dict)
-    pages: dict[str, str | bytes | Traversable] = field(default_factory=dict)
-    static_files: dict[str, str | bytes | Traversable] = field(default_factory=dict)
-    elements: dict[str, type["Element"]] = field(default_factory=dict)
-    materials: ExportedMaterials | None = None
-    hooks: GenerateHooks = field(default_factory=GenerateHooks)
-    config: dict[str, Any] = field(default_factory=dict)
+    Composes WebsiteContent (templates, pages, static files, elements,
+    materials) with hooks and vars.
+    """
 
-
-@dataclass
-class Resources(WebsiteResources):
-    """Full resource set including all hook types."""
-
-    hooks: Hooks = field(default_factory=Hooks)  # type: ignore[reportIncompatibleVariableOverride]
+    content: WebsiteContent = field(default_factory=WebsiteContent)
+    hooks: Hooks = field(default_factory=Hooks)
+    vars: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_directory(cls, directory: Traversable) -> "Resources":
@@ -360,12 +354,16 @@ class Resources(WebsiteResources):
         if hooks_dir.is_dir():
             hooks = load_hooks(hooks_dir)
 
-        return cls(
+        content = WebsiteContent(
             templates=templates,
             pages=pages,
             static_files=static_files,
             elements=elements,
             materials=materials,
+        )
+
+        return cls(
+            content=content,
             hooks=hooks,
         )
 

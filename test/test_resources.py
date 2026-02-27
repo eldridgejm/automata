@@ -306,10 +306,10 @@ def test_from_directory_loads_all_resources(tmp_path: Path) -> None:
     result = Resources.from_directory(ext_dir)
 
     assert isinstance(result, Resources)
-    assert "base.html" in result.templates
-    assert "index.md" in result.pages
-    assert "style.css" in result.static_files
-    assert "noop" in result.elements
+    assert "base.html" in result.content.templates
+    assert "index.md" in result.content.pages
+    assert "style.css" in result.content.static_files
+    assert "noop" in result.content.elements
 
 
 def test_from_directory_skips_missing_subdirectories(tmp_path: Path) -> None:
@@ -320,10 +320,10 @@ def test_from_directory_skips_missing_subdirectories(tmp_path: Path) -> None:
 
     result = Resources.from_directory(ext_dir)
 
-    assert "base.html" in result.templates
-    assert result.pages == {}
-    assert result.static_files == {}
-    assert result.elements == {}
+    assert "base.html" in result.content.templates
+    assert result.content.pages == {}
+    assert result.content.static_files == {}
+    assert result.content.elements == {}
 
 
 def test_from_directory_empty_directory(tmp_path: Path) -> None:
@@ -333,11 +333,11 @@ def test_from_directory_empty_directory(tmp_path: Path) -> None:
     result = Resources.from_directory(ext_dir)
 
     assert isinstance(result, Resources)
-    assert result.templates == {}
-    assert result.pages == {}
-    assert result.static_files == {}
-    assert result.elements == {}
-    assert result.materials is None
+    assert result.content.templates == {}
+    assert result.content.pages == {}
+    assert result.content.static_files == {}
+    assert result.content.elements == {}
+    assert result.content.materials is None
 
 
 def test_from_directory_loads_materials(tmp_path: Path) -> None:
@@ -353,11 +353,11 @@ def test_from_directory_loads_materials(tmp_path: Path) -> None:
 
     result = Resources.from_directory(ext_dir)
 
-    assert result.materials is not None
-    assert isinstance(result.materials, ExportedMaterials)
-    assert result.materials.root == ext_dir
-    assert "homeworks" in result.materials.universe.collections
-    collection = result.materials.universe.collections["homeworks"]
+    assert result.content.materials is not None
+    assert isinstance(result.content.materials, ExportedMaterials)
+    assert result.content.materials.root == ext_dir
+    assert "homeworks" in result.content.materials.universe.collections
+    collection = result.content.materials.universe.collections["homeworks"]
     hw01 = collection.publications["hw01"].artifacts["hw01"]
     assert hw01.path == "hw01.pdf"
 
@@ -368,7 +368,7 @@ def test_from_directory_materials_defaults_to_none(tmp_path: Path) -> None:
 
     result = Resources.from_directory(ext_dir)
 
-    assert result.materials is None
+    assert result.content.materials is None
 
 
 # helpers ===========================================================================
