@@ -273,6 +273,16 @@ class Universe[
         """Make a new Universe with the same attributes but the given collections."""
         return dataclasses.replace(self, collections=new_children)
 
+    def merge(self, other: "Universe[ArtifactType]") -> "Universe[ArtifactType]":
+        """Merge this universe onto another, returning a new Universe.
+
+        Raises ``KeyError`` if any collection key appears in both universes.
+        """
+        overlapping = self.collections.keys() & other.collections.keys()
+        if overlapping:
+            raise KeyError(f"Collection keys overlap between universes: {overlapping}")
+        return type(self)({**other.collections, **self.collections})
+
     def _deep_asdict(self):
         """A dictionary representation of the universe and its children."""
         return {
