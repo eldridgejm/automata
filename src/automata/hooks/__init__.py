@@ -16,6 +16,8 @@ from ._definitions import (
     GeneratePostHookArgs,
     GeneratePreHookArgs,
     Hooks,
+    PipelineHooks,
+    PipelineStepArgs,
     WebsiteInputs,
 )
 
@@ -35,5 +37,7 @@ __all__ = [
     "GeneratePostHookArgs",
     "GeneratePreHookArgs",
     "Hooks",
+    "PipelineHooks",
+    "PipelineStepArgs",
     "WebsiteInputs",
 ]

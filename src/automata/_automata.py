@@ -6,7 +6,7 @@ from pathlib import Path
 from . import materials
 from ._extension import apply_extension
 from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
-from .hooks import Hooks
+from .hooks import Hooks, PipelineStepArgs
 from .materials import (
     BuiltArtifact,
     ExportedArtifact,
@@ -135,10 +135,28 @@ class Automata:
 
         """
         current_time = current_time or datetime.datetime.now()
+
+        self.hooks.on_pipeline_step(PipelineStepArgs("discover", "start"))
         discovered = self.discover()
+        self.hooks.on_pipeline_step(
+            PipelineStepArgs("discover", "end", result=discovered)
+        )
+
+        self.hooks.on_pipeline_step(PipelineStepArgs("build", "start"))
         built = self.build_materials(discovered, current_time=current_time)
-        self.export(built)
+        self.hooks.on_pipeline_step(
+            PipelineStepArgs("build", "end", result=built)
+        )
+
+        self.hooks.on_pipeline_step(PipelineStepArgs("export", "start"))
+        exported = self.export(built)
+        self.hooks.on_pipeline_step(
+            PipelineStepArgs("export", "end", result=exported)
+        )
+
+        self.hooks.on_pipeline_step(PipelineStepArgs("generate_website", "start"))
         self.generate_website(current_time=current_time)
+        self.hooks.on_pipeline_step(PipelineStepArgs("generate_website", "end"))
 
     # --- individual steps ---
 
@@ -154,7 +172,9 @@ class Automata:
             The discovered, unbuilt materials universe.
 
         """
-        universe = materials.discover(self.path, vars=self.config.vars)
+        universe = materials.discover(
+            self.path, vars=self.config.vars, hooks=self.hooks
+        )
 
         if self.config.materials:
             inline = materials.discover_inline(
@@ -190,7 +210,9 @@ class Automata:
 
         """
         current_time = current_time or datetime.datetime.now()
-        return materials.build(universe, current_time=current_time, **kwargs)
+        return materials.build(
+            universe, current_time=current_time, hooks=self.hooks, **kwargs
+        )
 
     def export(
         self, universe: Universe[BuiltArtifact]
@@ -214,7 +236,9 @@ class Automata:
         prefix = self.config.website.materials_directory_name
         materials_output_dir = build_dir / prefix
 
-        exported = materials.export(universe, outdir=build_dir, prefix=prefix)
+        exported = materials.export(
+            universe, outdir=build_dir, prefix=prefix, hooks=self.hooks
+        )
 
         materials_json = materials_output_dir / "materials.json"
         materials_json.parent.mkdir(parents=True, exist_ok=True)
