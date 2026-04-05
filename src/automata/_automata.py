@@ -141,14 +141,21 @@ class Automata:
         self.export(built)
         self.generate_website(current_time=current_time)
 
-    def publish(self, current_time: datetime.datetime | None = None) -> None:
+    def publish(
+        self,
+        target: str | None = None,
+        current_time: datetime.datetime | None = None,
+    ) -> None:
         """Run the full pipeline and deploy the built site.
 
-        Calls :meth:`generate` first, then looks up the configured publish
-        strategy and invokes it.
+        Calls :meth:`generate` first, then invokes the configured publish
+        strategy (or strategies).
 
         Parameters
         ----------
+        target : str | None
+            Name of a specific publish target to run. If *None*, all
+            configured targets are run in order.
         current_time : datetime.datetime | None
             The current time for release-time checks and scheduling.
             If *None*, uses the system time.
@@ -156,40 +163,57 @@ class Automata:
         Raises
         ------
         automata.exceptions.Error
-            If no publish configuration is present or the strategy is unknown.
+            If no publish configurations are present, a target name is
+            unknown, or a strategy is unknown.
 
         """
         self.generate(current_time=current_time)
 
-        if self.config.publish is None:
-            raise Error("No 'publish' section found in automata.yaml.")
+        if not self.config.publish:
+            raise Error("No 'publish' entries found in automata.yaml.")
+
+        if target is not None:
+            if target not in self.config.publish:
+                available = ", ".join(sorted(self.config.publish))
+                raise Error(
+                    f"Unknown publish target: {target!r}. "
+                    f"Available: {available}"
+                )
+            targets = {target: self.config.publish[target]}
+        else:
+            targets = self.config.publish
 
         # Build publisher registry: start with builtins, let extensions add more
         from . import publish as publish_module
 
         initial = publish_module.registry.all()
-        args = self.hooks.on_register_publishers(PublisherRegistryArgs(publishers=initial))
-
-        strategy_name = self.config.publish.strategy
-        publisher = args.publishers.get(strategy_name)
-        if publisher is None:
-            available = ", ".join(sorted(args.publishers)) or "(none)"
-            raise Error(
-                f"Unknown publish strategy: {strategy_name!r}. "
-                f"Available: {available}"
-            )
+        registry = self.hooks.on_register_publishers(
+            PublisherRegistryArgs(publishers=initial)
+        )
 
         build_dir = self.path / self.config.website.build_directory
 
-        self.hooks.on_publish_pre(
-            PublishPreHookArgs(build_directory=build_dir, strategy=strategy_name)
-        )
+        for name, entry in targets.items():
+            strategy_name = entry["strategy"]
+            strategy_config = entry.get("config", {})
 
-        publisher(build_dir, self.config.publish.config)
+            publisher = registry.publishers.get(strategy_name)
+            if publisher is None:
+                available = ", ".join(sorted(registry.publishers)) or "(none)"
+                raise Error(
+                    f"Unknown publish strategy: {strategy_name!r}. "
+                    f"Available: {available}"
+                )
 
-        self.hooks.on_publish_post(
-            PublishPostHookArgs(build_directory=build_dir, strategy=strategy_name)
-        )
+            self.hooks.on_publish_pre(
+                PublishPreHookArgs(build_directory=build_dir, strategy=strategy_name)
+            )
+
+            publisher(build_dir, strategy_config)
+
+            self.hooks.on_publish_post(
+                PublishPostHookArgs(build_directory=build_dir, strategy=strategy_name)
+            )
 
     # --- individual steps ---
 

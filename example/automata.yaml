@@ -80,3 +80,10 @@ website:
   content_directory: "website/content"
   build_directory: "_build"
   base_path: "."
+
+publish:
+  github:
+    strategy: gh-pages
+    config:
+      branch: gh-pages
+      remote: origin

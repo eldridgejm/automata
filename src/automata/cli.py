@@ -63,19 +63,42 @@ def generate(current_time: Optional[str] = _current_time_option):
     Automata().generate(current_time=_get_current_time(current_time))
 
 
+def _complete_publish_targets(incomplete: str) -> list[str]:
+    """Return matching publish target names for shell tab-completion."""
+    try:
+        project = Automata()
+        return [
+            name for name in project.config.publish if name.startswith(incomplete)
+        ]
+    except Exception:
+        return []
+
+
 @app.command()
-def publish(current_time: Optional[str] = _current_time_option):
+def publish(
+    target: Optional[str] = typer.Argument(
+        None,
+        help="Publish target name. Defaults to the first configured target.",
+        autocompletion=_complete_publish_targets,
+    ),
+    current_time: Optional[str] = _current_time_option,
+):
     """Run the full pipeline and deploy the built site."""
     project = Automata()
-    if project.config.publish is None:
+    if not project.config.publish:
         typer.echo(
-            "Error: No 'publish' section found in automata.yaml. "
-            "Configure a publish strategy first.",
+            "Error: No 'publish' entries found in automata.yaml. "
+            "Configure a publish target first.",
             err=True,
         )
         raise typer.Exit(code=1)
-    project.publish(current_time=_get_current_time(current_time))
-    typer.echo("Site published.")
+
+    # Default to first configured target
+    if target is None:
+        target = next(iter(project.config.publish))
+
+    project.publish(target=target, current_time=_get_current_time(current_time))
+    typer.echo(f"Published to {target}.")
 
 
 @app.command()
