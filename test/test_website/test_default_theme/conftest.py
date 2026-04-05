@@ -5,7 +5,7 @@ from pytest import fixture
 import automata.website
 from automata._extension import apply_extension
 from automata.hooks import GenerateHooks
-from automata.website._theme import extension_from_entry_point
+from automata._extension import extension_from_entry_point
 
 
 @fixture

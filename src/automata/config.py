@@ -8,7 +8,7 @@ from .exceptions import Error
 from .util.resolution import resolve
 from .util.yaml import parse_yaml
 from .website import WebsiteConfig
-from .website._theme import extension_from_directory, extension_from_entry_point
+from ._extension import extension_from_directory, extension_from_entry_point
 
 CONFIGURATION_FILENAME = "automata.yaml"
 

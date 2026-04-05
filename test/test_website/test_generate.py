@@ -6,7 +6,7 @@ from pytest import fixture, raises
 import automata.website
 from automata._extension import Extension, apply_extension
 from automata.hooks import GenerateHooks, GeneratePostHookArgs, GeneratePreHookArgs, WebsiteInputs
-from automata.website._theme import extension_from_directory, extension_from_entry_point
+from automata._extension import extension_from_directory, extension_from_entry_point
 
 
 def _make_hooks(theme_dir=None, entry_point="default", config=None):
