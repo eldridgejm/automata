@@ -17,22 +17,12 @@ def project_dir(tmp_path):
     project = tmp_path / "project"
     project.mkdir()
 
-    # Theme path (use the built-in default theme via filesystem path)
-    theme_path = (
-        Path(__file__).parent.parent
-        / "src"
-        / "automata"
-        / "builtin"
-        / "themes"
-        / "default"
-    )
-
     # automata.yaml
     (project / "automata.yaml").write_text(
-        dedent(f"""\
+        dedent("""\
             website:
               theme:
-                use: "{theme_path}"
+                use: "default"
                 config:
                   short_title: "Test"
                   long_title: "Test Course"

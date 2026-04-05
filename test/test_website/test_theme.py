@@ -83,28 +83,6 @@ def test_from_directory_allows_missing_static_directory(tmp_path: Path) -> None:
     assert inputs.static_files == {}
 
 
-def test_from_directory_loads_elements_package(tmp_path: Path) -> None:
-    theme_dir = tmp_path / "theme"
-    templates_dir = theme_dir / "templates"
-    elements_dir = theme_dir / "elements"
-    templates_dir.mkdir(parents=True)
-    elements_dir.mkdir(parents=True)
-
-    (templates_dir / "base.html").write_text("<html>${ body }</html>")
-    (elements_dir / "__init__.py").write_text(
-        "def simple_element(config, context):\n"
-        "    return f\"Hello {config['label']}\"\n"
-        "\n"
-        'elements = {"simple": simple_element}\n'
-    )
-
-    ext = extension_from_directory("test", theme_dir)
-    inputs = _collect(ext)
-
-    assert "simple" in inputs.elements
-    assert inputs.elements["simple"]({"label": "World"}, None) == "Hello World"
-
-
 def test_from_directory_requires_templates_directory(tmp_path: Path) -> None:
     theme_dir = tmp_path / "theme"
     theme_dir.mkdir()

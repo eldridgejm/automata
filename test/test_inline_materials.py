@@ -15,17 +15,8 @@ def project_with_inline_materials(tmp_path):
     project = tmp_path / "project"
     project.mkdir()
 
-    theme_path = (
-        Path(__file__).parent.parent
-        / "src"
-        / "automata"
-        / "builtin"
-        / "themes"
-        / "default"
-    )
-
     (project / "automata.yaml").write_text(
-        dedent(f"""\
+        dedent("""\
             materials:
               homeworks:
                 schema:
@@ -57,7 +48,7 @@ def project_with_inline_materials(tmp_path):
 
             website:
               theme:
-                use: "{theme_path}"
+                use: "default"
                 config:
                   short_title: "Test"
                   long_title: "Test Course"
@@ -138,15 +129,6 @@ class TestInlineMaterialsWithVariables:
         project = tmp_path / "project"
         project.mkdir()
 
-        theme_path = (
-            Path(__file__).parent.parent
-            / "src"
-            / "automata"
-            / "builtin"
-            / "themes"
-            / "default"
-        )
-
         yaml = (
             "vars:\n"
             "  base_due: 2025-01-15\n"
@@ -167,7 +149,7 @@ class TestInlineMaterialsWithVariables:
             "\n"
             "website:\n"
             "  theme:\n"
-            '    use: "' + str(theme_path) + '"\n'
+            '    use: "default"\n'
             "    config:\n"
             '      short_title: "Test"\n'
             '      long_title: "Test Course"\n'

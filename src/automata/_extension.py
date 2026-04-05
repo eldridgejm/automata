@@ -106,6 +106,22 @@ def apply_extension(
 # ---------------------------------------------------------------------------
 
 
+def _resolve_config(
+    config: dict[str, Any] | None,
+    schema: "smartconfig.types.Schema | None",
+) -> dict[str, Any]:
+    """Validate and resolve extension config against a schema."""
+    import smartconfig
+
+    resolved = config if config is not None else {}
+    if schema is not None and config is not None:
+        try:
+            resolved = smartconfig.resolve(resolved, schema)
+        except smartconfig.exceptions.ResolutionError as e:
+            raise ValueError(f"Invalid extension configuration: {e}")
+    return resolved
+
+
 def extension_from_directory(
     name: str,
     directory: Traversable,
@@ -117,12 +133,8 @@ def extension_from_directory(
 
     The directory must contain a ``templates/`` subdirectory with template
     files (unless *require_templates* is False). It may optionally contain
-    a ``static/`` subdirectory with static files, an ``elements/``
-    subdirectory containing a Python package, and a ``hooks.py`` file.
-
-    If the ``elements/`` directory is present, it must contain an
-    ``__init__.py`` file that defines an ``elements`` variable — a
-    dictionary mapping element names to :class:`Element` classes.
+    a ``static/`` subdirectory with static files, a ``schema.json`` for
+    config validation, and a ``hooks.py`` file.
 
     If a ``hooks.py`` file is present, it may define a ``post_generate``
     function that will be registered as an ``on_generate_post`` hook.
@@ -139,9 +151,7 @@ def extension_from_directory(
         If True (default), the directory must contain a ``templates/``
         subdirectory.
     dependencies : list[Extension] | None
-        Extensions that must be applied before this one. If *None*, the
-        directory's ``__init__.py`` is checked for a ``dependencies``
-        attribute.
+        Extensions that must be applied before this one.
 
     Returns
     -------
@@ -160,27 +170,11 @@ def extension_from_directory(
 
     templates: dict[str, str] = {}
     static_files: dict[str, str | bytes | Traversable] = {}
-    elements: dict[str, type["Element"]] = {}
 
     if templates_dir.is_dir():
         _walk(templates_dir, lambda key, entry: templates.__setitem__(key, entry.read_text()))
     if static_dir.is_dir():
         _walk(static_dir, lambda key, entry: static_files.__setitem__(key, entry))
-
-    elements_dir = directory / "elements"
-    if elements_dir.is_dir():
-        elements = _load_elements_from_directory(elements_dir)
-
-    # Load dependencies from __init__.py if not explicitly provided
-    if dependencies is None:
-        init_file = directory / "__init__.py"
-        if init_file.is_file():
-            try:
-                mod = _load_python_module(directory, "__init__.py", "init")
-                if hasattr(mod, "dependencies"):
-                    dependencies = mod.dependencies
-            except ValueError:
-                pass
 
     # Load schema from schema.json if present
     schema_file = directory / "schema.json"
@@ -196,23 +190,16 @@ def extension_from_directory(
         except smartconfig.exceptions.InvalidSchemaError as e:
             raise ValueError(f"Theme configuration schema is invalid: {e}")
 
-    # Validate config against schema when config is provided
-    resolved_config = config if config is not None else {}
-    if schema is not None and config is not None:
-        try:
-            resolved_config = smartconfig.resolve(resolved_config, schema)
-        except smartconfig.exceptions.ResolutionError as e:
-            raise ValueError(f"Invalid extension configuration: {e}")
+    resolved_config = _resolve_config(config, schema)
 
     # Build the hooks dict
     ext_hooks: dict[str, Any] = {}
 
-    # The on_website_collect hook contributes templates, static files, elements,
+    # The on_website_collect hook contributes templates, static files,
     # and exposes the extension's resolved config as vars.theme_config
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
         inputs.templates.update(templates)
         inputs.static_files.update(static_files)
-        inputs.elements.update(elements)
         if resolved_config:
             inputs.vars["theme_config"] = resolved_config
         return inputs
@@ -267,7 +254,10 @@ def extension_from_entry_point(
 
     module = entry_point.load()
     if hasattr(module, "extension"):
-        return cast(Extension, module.extension)
+        ext = cast(Extension, module.extension)
+        resolved_config = _resolve_config(config, ext.schema)
+        ext.config = resolved_config
+        return ext
     elif hasattr(module, "theme"):
         # Backwards compatibility: fall through to directory loading.
         pass
@@ -341,36 +331,6 @@ def _load_python_module(
             ) from e
 
     return module
-
-
-def _load_elements_from_directory(
-    elements_dir: Traversable,
-) -> dict[str, type["Element"]]:
-    """Load elements from a directory containing a Python package."""
-    init_file = elements_dir / "__init__.py"
-    if not init_file.is_file():
-        return {}
-
-    module = _load_python_module(
-        directory=elements_dir,
-        filename="__init__.py",
-        module_type="elements",
-        submodule_search_locations=[str(elements_dir)],
-    )
-
-    if hasattr(module, "elements"):
-        elements = module.elements
-    else:
-        raise ValueError(
-            f"Elements package at {init_file} must define an `elements` variable."
-        )
-
-    if not isinstance(elements, dict):
-        raise ValueError(
-            f"Elements package at {init_file} must return a dict of elements."
-        )
-
-    return elements
 
 
 def _load_raw_post_generate(
