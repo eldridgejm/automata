@@ -7,7 +7,7 @@ from . import materials
 from ._extension import apply_extension
 from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
 from .exceptions import Error
-from .hooks import Hooks, PipelineStepArgs, PublishPreHookArgs, PublishPostHookArgs, PublisherRegistryArgs
+from .hooks import Hooks, PublishPreHookArgs, PublishPostHookArgs, PublisherRegistryArgs
 from .materials import (
     BuiltArtifact,
     ExportedArtifact,
@@ -136,28 +136,10 @@ class Automata:
 
         """
         current_time = current_time or datetime.datetime.now()
-
-        self.hooks.on_pipeline_step(PipelineStepArgs("discover", "start"))
         discovered = self.discover()
-        self.hooks.on_pipeline_step(
-            PipelineStepArgs("discover", "end", result=discovered)
-        )
-
-        self.hooks.on_pipeline_step(PipelineStepArgs("build", "start"))
         built = self.build_materials(discovered, current_time=current_time)
-        self.hooks.on_pipeline_step(
-            PipelineStepArgs("build", "end", result=built)
-        )
-
-        self.hooks.on_pipeline_step(PipelineStepArgs("export", "start"))
-        exported = self.export(built)
-        self.hooks.on_pipeline_step(
-            PipelineStepArgs("export", "end", result=exported)
-        )
-
-        self.hooks.on_pipeline_step(PipelineStepArgs("generate_website", "start"))
+        self.export(built)
         self.generate_website(current_time=current_time)
-        self.hooks.on_pipeline_step(PipelineStepArgs("generate_website", "end"))
 
     def publish(self, current_time: datetime.datetime | None = None) -> None:
         """Run the full pipeline and deploy the built site.
@@ -199,7 +181,6 @@ class Automata:
 
         build_dir = self.path / self.config.website.build_directory
 
-        self.hooks.on_pipeline_step(PipelineStepArgs("publish", "start"))
         self.hooks.on_publish_pre(
             PublishPreHookArgs(build_directory=build_dir, strategy=strategy_name)
         )
@@ -209,7 +190,6 @@ class Automata:
         self.hooks.on_publish_post(
             PublishPostHookArgs(build_directory=build_dir, strategy=strategy_name)
         )
-        self.hooks.on_pipeline_step(PipelineStepArgs("publish", "end"))
 
     # --- individual steps ---
 

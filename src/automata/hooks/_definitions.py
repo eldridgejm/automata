@@ -142,25 +142,6 @@ class FilterHooks(HooksBase):
     """Called when a node does not match the predicate."""
 
 
-# pipeline hooks =======================================================================
-
-
-@dataclass
-class PipelineStepArgs:
-    """Argument passed when a pipeline step starts or ends."""
-
-    step: str  # "discover", "build", "export", "generate_website"
-    event: str  # "start" or "end"
-    result: Any = None  # step output (e.g., the Universe after discover/build)
-
-
-class PipelineHooks(HooksBase):
-    """Hooks for high-level pipeline step boundaries."""
-
-    on_pipeline_step: ObserverHook[PipelineStepArgs]
-    """Called when a pipeline step starts or ends."""
-
-
 # website hooks ========================================================================
 
 # collect ------------------------------------------------------------------------------
@@ -263,7 +244,6 @@ class PublishHooks(HooksBase):
 
 
 class Hooks(
-    PipelineHooks,
     DiscoverHooks,
     BuildHooks,
     ExportHooks,
