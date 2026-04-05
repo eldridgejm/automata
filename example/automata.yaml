@@ -6,6 +6,9 @@ vars:
 
   date_of_first_lecture: 2025-09-23
 
+  midterm_date: 2025-10-27
+  final_date: 2025-12-10
+
   schedule_config:
     __include__: "website/schedule.yaml"
 
@@ -25,6 +28,54 @@ extensions:
               <i data-lucide="scale" class="mr-2 text-slate-400"></i>
               Syllabus
             url: syllabus.html
+
+materials:
+  exams:
+    schema:
+      required_artifacts:
+        - exam.pdf
+      optional_artifacts:
+        - solution.pdf
+      metadata_schema:
+        required_keys:
+          name: { type: string }
+          date: { type: date }
+      is_ordered: true
+    publications:
+      midterm:
+        metadata:
+          name: "Midterm Exam"
+          date: ${ vars.midterm_date }
+        artifacts:
+          exam.pdf:
+            path: exams/midterm/exam.pdf
+            release_time:
+              __datetime.offset__:
+                after: ${ vars.midterm_date }
+                by: "3 days"
+          solution.pdf:
+            path: exams/midterm/solution.pdf
+            release_time:
+              __datetime.offset__:
+                after: ${ vars.midterm_date }
+                by: "3 days"
+      final:
+        metadata:
+          name: "Final Exam"
+          date: ${ vars.final_date }
+        artifacts:
+          exam.pdf:
+            path: exams/final/exam.pdf
+            release_time:
+              __datetime.offset__:
+                after: ${ vars.final_date }
+                by: "3 days"
+          solution.pdf:
+            path: exams/final/solution.pdf
+            release_time:
+              __datetime.offset__:
+                after: ${ vars.final_date }
+                by: "3 days"
 
 website:
   content_directory: "website/content"
