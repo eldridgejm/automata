@@ -4,6 +4,8 @@ from typing import Any, cast
 
 import smartconfig
 
+from automata._extension import Extension
+from automata.hooks import WebsiteInputs
 from automata.util.resolution import string_or_template_string, unwrap_templates
 from automata.website import TemplateElement
 
@@ -93,3 +95,14 @@ class Listing(TemplateElement):
         )
 
         return tvars
+
+
+def _collect(inputs):
+    inputs.elements["listing"] = Listing
+    return inputs
+
+
+extension = Extension(
+    name="builtin-listing",
+    hooks={"on_website_collect": _collect},
+)

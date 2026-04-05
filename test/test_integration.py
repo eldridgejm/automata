@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from automata._build import build
+from automata import Automata
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ def example_project(tmp_path):
 def test_build_end_to_end(example_project):
     """Test that build() successfully builds the example project end-to-end."""
     # Run the build
-    build(example_project)
+    Automata(example_project).generate()
 
     materials_dir = example_project / "website" / "content" / "materials"
 
@@ -255,7 +255,7 @@ ${ elements.schedule(vars.schedule_config) }
     )
 
     # Run the full build (discovers, builds, exports materials, and generates website)
-    build(temporary_course.path, current_time=current_time)
+    Automata(temporary_course.path).generate(current_time=current_time)
 
     # Read the generated materials.json from the build directory
     materials_json_path = (

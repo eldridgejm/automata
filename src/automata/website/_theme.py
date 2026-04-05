@@ -24,6 +24,7 @@ def extension_from_directory(
     directory: Traversable,
     config: dict[str, Any] | None = None,
     require_templates: bool = True,
+    dependencies: list[Extension] | None = None,
 ) -> Extension:
     """Create an Extension from a theme directory.
 
@@ -79,6 +80,19 @@ def extension_from_directory(
     if elements_dir.is_dir():
         elements = _load_elements_from_directory(elements_dir)
 
+    # Load dependencies from __init__.py if not explicitly provided
+    if dependencies is None:
+        init_file = directory / "__init__.py"
+        if init_file.is_file():
+            try:
+                mod = _load_python_module_from_theme_directory(
+                    directory, "__init__.py", "init"
+                )
+                if hasattr(mod, "dependencies"):
+                    dependencies = mod.dependencies
+            except ValueError:
+                pass
+
     # Load schema from schema.json if present
     schema_file = directory / "schema.json"
     schema: smartconfig.types.Schema | None = None
@@ -130,6 +144,7 @@ def extension_from_directory(
         hooks=hooks,
         config=resolved_config,
         schema=schema,
+        dependencies=dependencies or [],
     )
 
 
@@ -169,8 +184,15 @@ def extension_from_entry_point(
         # convert it directly. Fall through to directory loading.
         pass
 
+    # Check if the module declares dependencies
+    deps: list[Extension] = []
+    if hasattr(module, "dependencies"):
+        deps = module.dependencies
+
     root = importlib.resources.files(module)
-    return extension_from_directory(entry_point_name, root, config=config)
+    return extension_from_directory(
+        entry_point_name, root, config=config, dependencies=deps
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
 from . import exceptions
-from ._build import build
+from ._automata import Automata
 
-__all__ = ["exceptions", "build"]
+__all__ = ["Automata", "exceptions"]
