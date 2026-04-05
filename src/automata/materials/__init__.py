@@ -5,6 +5,7 @@ from ._build import build
 from ._discover import discover, find_parent_collection
 from ._export import export
 from ._filter import filter
+from ._inline import discover_inline
 from ._resolution import resolve_for_each_publication
 from ._types import (
     Artifact,
@@ -32,6 +33,7 @@ __all__ = [
     "deserialize",
     "resolve_for_each_publication",
     "discover",
+    "discover_inline",
     "find_parent_collection",
     "build",
     "export",

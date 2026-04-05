@@ -25,6 +25,10 @@ class Config(smartconfig.Prototype):
     # - a dict with "use" (name/path) and optional "config" keys
     extensions: list[Any] = []
 
+    # inline materials definitions. Each key is a collection name, mapping to
+    # a dict with "schema" and "publications" keys.
+    materials: dict[str, Any] = {}
+
     # configuration for the website
     website: WebsiteConfig
 

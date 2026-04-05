@@ -81,13 +81,24 @@ class Automata:
     def discover(self) -> Universe[UnbuiltArtifact]:
         """Discover materials from the project directory.
 
+        Discovers materials from the filesystem and merges any inline
+        materials defined in ``automata.yaml``.
+
         Returns
         -------
         Universe[UnbuiltArtifact]
             The discovered, unbuilt materials universe.
 
         """
-        return materials.discover(self.path, vars=self.config.vars)
+        universe = materials.discover(self.path, vars=self.config.vars)
+
+        if self.config.materials:
+            inline = materials.discover_inline(
+                self.config.materials, self.path, vars=self.config.vars
+            )
+            universe = inline.merge(universe)
+
+        return universe
 
     def build_materials(
         self,
