@@ -4,9 +4,6 @@ import smartconfig
 class WebsiteConfig(smartconfig.Prototype):
     """Configuration for the website."""
 
-    # path to the directory containing the pages and materials
-    content_directory: str
-
     # name of the subdirectory within the build directory where materials will be copied
     materials_directory_name: str = "materials"
 

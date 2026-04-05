@@ -29,6 +29,9 @@ class Config(smartconfig.Prototype):
     # a dict with "schema" and "publications" keys.
     materials: dict[str, Any] = {}
 
+    # path to the directory containing content (pages and materials)
+    content_directory: str = "content"
+
     # configuration for the website
     website: WebsiteConfig
 

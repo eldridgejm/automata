@@ -168,7 +168,6 @@ The script receives the hook args as a JSON object on stdin. For example,
 
     {
         "config": {
-            "content_directory": "content",
             "build_directory": "_build",
             "materials_directory_name": "materials",
             "no_render_suffix": ".no_render",

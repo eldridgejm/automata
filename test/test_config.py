@@ -25,8 +25,9 @@ def test_read_config_reads_valid_config(tmp_path: Path) -> None:
                   short_title: "DSC 101"
                   long_title: "Introduction to Data Science"
 
+            content_directory: "./content"
+
             website:
-              content_directory: "./content"
               build_directory: "./build"
             """
         )
@@ -37,7 +38,7 @@ def test_read_config_reads_valid_config(tmp_path: Path) -> None:
     assert isinstance(config, Config)
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
-    assert config.website.content_directory == "./content"
+    assert config.content_directory == "./content"
     assert config.website.build_directory == "./build"
     assert len(config.extensions) == 1
     assert config.extensions[0]["use"] == "default"
@@ -50,8 +51,9 @@ def test_read_config_applies_defaults(tmp_path: Path) -> None:
     config_file.write_text(
         dedent(
             """
+            content_directory: "./content"
+
             website:
-              content_directory: "./content"
               build_directory: "./build"
             """
         )
@@ -112,8 +114,8 @@ def test_read_config_validates_nested_structure(tmp_path: Path) -> None:
         dedent(
             """
             website:
-              content_directory: "./content"
               # Missing required build_directory
+              materials_directory_name: "materials"
             """
         )
     )
@@ -130,8 +132,9 @@ def test_read_config_with_empty_vars(tmp_path: Path) -> None:
             """
             vars: {}
 
+            content_directory: "./content"
+
             website:
-              content_directory: "./content"
               build_directory: "./build"
             """
         )
@@ -155,8 +158,9 @@ def test_read_config_with_extensions_list(tmp_path: Path) -> None:
                 config:
                   key: "value"
 
+            content_directory: "./content"
+
             website:
-              content_directory: "./content"
               build_directory: "./build"
             """
         )
@@ -187,8 +191,9 @@ def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
                   short_title: ${ vars.course_name }
                   long_title: "Introduction to Data Science - ${ vars.semester }"
 
+            content_directory: "./content"
+
             website:
-              content_directory: "./content"
               build_directory: "./build"
             """
         )
@@ -229,8 +234,9 @@ def test_read_config_with_include(tmp_path: Path) -> None:
                 config:
                   short_title: ${ vars.course_name }
 
+            content_directory: "./content"
+
             website:
-              content_directory: "./content"
               build_directory: "./build"
             """
         )

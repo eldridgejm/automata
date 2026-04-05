@@ -27,7 +27,6 @@ def render_context():
 
     # Create minimal website config
     website_config = WebsiteConfig(
-        content_directory="/fake/content",
         build_directory="/fake/build",
     )
 

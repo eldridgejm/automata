@@ -77,7 +77,8 @@ materials:
                 after: ${ vars.final_date }
                 by: "3 days"
 
+content_directory: "website/content"
+
 website:
-  content_directory: "website/content"
   build_directory: "_build"
   base_path: "."

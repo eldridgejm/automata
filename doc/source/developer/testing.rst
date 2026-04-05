@@ -141,7 +141,6 @@ To test website generation with a custom theme:
 
     def test_with_custom_theme(tmpsite):
         config = automata.website.WebsiteConfig(
-            content_directory=tmpsite.content_directory,
             build_directory=tmpsite.build_directory,
         )
 

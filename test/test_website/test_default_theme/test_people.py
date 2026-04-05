@@ -1,4 +1,4 @@
-import automata.website
+from conftest import generate
 
 
 def test_people_element_renders_single_group(tmpsite, config, hooks):
@@ -25,7 +25,7 @@ def test_people_element_renders_single_group(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -62,7 +62,7 @@ def test_people_element_renders_multiple_groups(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -91,7 +91,7 @@ def test_people_element_person_without_optional_fields(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -117,7 +117,7 @@ def test_people_element_person_with_website_creates_link(tmpsite, config, hooks)
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -142,7 +142,7 @@ def test_people_element_displays_photo_when_provided(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")

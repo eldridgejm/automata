@@ -11,7 +11,6 @@ import jinja2
 def render_context():
     """A minimal render context for testing."""
     config = WebsiteConfig(
-        content_directory=".",
         build_directory=".",
     )
     materials = Universe[ExportedArtifact](collections={})

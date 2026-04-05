@@ -11,7 +11,6 @@ from automata._extension import extension_from_entry_point
 @fixture
 def config(tmpsite):
     return automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
 
@@ -27,3 +26,15 @@ def hooks():
     })
     apply_extension(ext, h)
     return h
+
+
+def generate(config, tmpsite, **kwargs):
+    """Helper that loads content and calls generate with pages/static_content."""
+    pages, static_content = tmpsite.load_content()
+    automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        pages=pages,
+        static_content=static_content,
+        **kwargs,
+    )

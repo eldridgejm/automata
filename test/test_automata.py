@@ -36,8 +36,9 @@ def project_dir(tmp_path):
                   short_title: "Test"
                   long_title: "Test Course"
 
+            content_directory: "content"
+
             website:
-              content_directory: "content"
               build_directory: "_build"
         """)
     )

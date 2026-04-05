@@ -113,11 +113,11 @@ def _load_materials(
     )
 
 
-def _copy_static_files(
+def _write_static_files(
     static_files: dict[str, str | bytes | Traversable],
     build_directory: pathlib.Path,
 ) -> None:
-    """Copies static files to the build directory.
+    """Write static files to the build directory.
 
     Handles three types of static file content:
     - str: written as text
@@ -227,38 +227,6 @@ def _render_page(
     )
 
 
-def _generate_single_page(
-    input_path: pathlib.Path,
-    output_path: pathlib.Path,
-    jinja_environment: jinja2.Environment,
-    context: RenderContext,
-    markdown_renderer: Callable[[str], str] | None = None,
-) -> None:
-    """Reads a file, renders it, and writes the output."""
-    try:
-        rendered = _render_page(
-            input_path.read_text(),
-            jinja_environment,
-            context,
-            markdown_renderer=markdown_renderer,
-            base_path=input_path.parent,
-        )
-    except Exception as e:
-        raise PageError(str(e), input_path) from e
-
-    output_path.write_text(rendered)
-
-
-def _copy_file_to_output(
-    path: pathlib.Path, output_path: pathlib.Path, config: WebsiteConfig
-) -> None:
-    if path.suffix.lower() == config.no_render_suffix and len(path.suffixes) > 1:
-        output_path = output_path.with_suffix("")
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(path.read_bytes())
-
-
 def _fix_artifact_paths(
     materials: Universe[ExportedArtifact],
     url_for: Callable[[str], str],
@@ -270,100 +238,68 @@ def _fix_artifact_paths(
                 artifact.path = url_for(str(artifact.path))
 
 
-def _paths_outside_materials_directory(
-    content_directory: pathlib.Path,
-    materials_path: pathlib.Path,
-):
-    """Yields all paths in content_directory that are not in the materials directory."""
-    for dirpath, dirnames, filenames in content_directory.walk(top_down=True):
-        dirpath = pathlib.Path(dirpath)
-
-        if dirpath == materials_path:
-            dirnames.clear()
-            continue
-
-        for dirname in dirnames:
-            yield dirpath / dirname
-
-        for filename in filenames:
-            yield dirpath / filename
-
-
-def _process_content_directory(
-    content_directory: pathlib.Path,
-    materials_directory: pathlib.Path,
-    build_directory: pathlib.Path,
-    jinja_environment: jinja2.Environment,
-    context: RenderContext,
-    config: WebsiteConfig,
-    render_markdown: Callable[[str], str],
-) -> None:
-    """Process all files in the content directory."""
-    for path in _paths_outside_materials_directory(
-        content_directory, materials_directory
-    ):
-        relative_path = path.relative_to(content_directory)
-        output_path = build_directory / relative_path
-
-        if path.is_dir():
-            output_path.mkdir(parents=True, exist_ok=True)
-        elif path.suffix.lower() == ".md":
-            output_path = output_path.with_suffix(".html")
-            _generate_single_page(
-                path,
-                output_path,
-                jinja_environment,
-                context,
-                markdown_renderer=render_markdown,
-            )
-        elif path.suffix.lower() == ".html":
-            _generate_single_page(path, output_path, jinja_environment, context)
-        else:
-            _copy_file_to_output(path, output_path, config)
-
-
-def _process_extra_content(
-    extra_content: dict[str, str | bytes | pathlib.Path],
+def _process_pages(
+    pages: dict[str, str],
     build_directory: pathlib.Path,
     jinja_environment: jinja2.Environment,
     context: RenderContext,
     render_markdown: Callable[[str], str],
 ) -> None:
-    """Process extra content items and write them to the build directory."""
-    for relative_path, content in extra_content.items():
+    """Process page content and write rendered HTML to the build directory.
+
+    All pages are rendered as Markdown, interpolated, and wrapped in a
+    template.  Keys are output paths (should end in ``.html``).
+
+    """
+    for relative_path, content in pages.items():
         output_path = build_directory / relative_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if isinstance(content, bytes):
-            output_path.write_bytes(content)
-        elif isinstance(content, pathlib.Path):
-            shutil.copy2(content, output_path)
-        else:
+        try:
             rendered = _render_page(
                 content,
                 jinja_environment,
                 context,
                 markdown_renderer=render_markdown,
             )
-            output_path.write_text(rendered)
+        except Exception as e:
+            raise PageError(str(e), pathlib.Path(relative_path)) from e
+
+        output_path.write_text(rendered)
+
+
+def _write_static_content(
+    static_content: dict[str, str | bytes],
+    build_directory: pathlib.Path,
+) -> None:
+    """Write user-provided static content to the build directory."""
+    for relative_path, content in static_content.items():
+        output_path = build_directory / relative_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(content, bytes):
+            output_path.write_bytes(content)
+        else:
+            output_path.write_text(content)
 
 
 def generate(
     config: WebsiteConfig,
     materials_directory: pathlib.Path,
+    pages: dict[str, str] | None = None,
+    static_content: dict[str, str | bytes] | None = None,
     vars: dict[str, Any] | None = None,
     current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown_util.render,
     cwd: pathlib.Path | None = None,
-    extra_content: dict[str, str | bytes | pathlib.Path] | None = None,
     hooks: GenerateHooks | None = None,
 ):
     """Generates a static website from course materials.
 
     Extensions contribute website inputs (templates, static files, elements,
     pages, variables) by registering hooks on ``on_website_collect``. The
-    generation pipeline collects these inputs, then processes the content
-    directory and produces the final website.
+    generation pipeline collects these inputs, renders pages, and produces the
+    final website.
 
     Parameters
     ----------
@@ -371,6 +307,15 @@ def generate(
         The configuration for the website generation.
     materials_directory : pathlib.Path
         The path to the directory containing the exported materials.
+    pages : dict[str, str], optional
+        Pre-loaded page content. Keys are relative paths (e.g.,
+        ``"index.md"``, ``"about.html"``). Values are the page content.
+        Keys ending in ``.md`` are rendered as Markdown; keys ending in
+        ``.html`` are rendered as HTML. All pages are interpolated and
+        wrapped in a template.
+    static_content : dict[str, str | bytes], optional
+        Pre-loaded static content. Keys are relative paths; values are
+        string or bytes content written directly to the build directory.
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
     current_time : datetime.datetime, optional
@@ -379,21 +324,20 @@ def generate(
         A function that converts markdown content to HTML.
     cwd : pathlib.Path, optional
         Working directory for resolving relative paths in config.
-    extra_content : dict[str, str | bytes | pathlib.Path], optional
-        Additional content to include in the generated output.
     hooks : GenerateHooks, optional
         Hooks instance. Extensions should already be registered on this
         before calling generate.
 
     """
     # set default values for optional parameters
+    pages = pages or {}
+    static_content = static_content or {}
     vars = vars or {}
     current_time = current_time or datetime.datetime.now()
     cwd = cwd or pathlib.Path.cwd()
     hooks = hooks or GenerateHooks()
 
     # resolve paths relative to cwd (absolute paths are unchanged)
-    content_directory = cwd / config.content_directory
     build_directory = cwd / config.build_directory
 
     # gather website inputs from extensions
@@ -408,19 +352,22 @@ def generate(
     # run pre-generate hooks
     url_for = _create_url_for(config.base_path)
     pre_args = hooks.on_generate_pre(
-        GeneratePreHookArgs(config=config, extra_content=extra_content)
+        GeneratePreHookArgs(config=config, extra_content=None)
     )
 
-    # combine extension pages + pre-hook extra content + explicit extra content
-    all_extra_content: dict[str, str | bytes | pathlib.Path] = {}
+    # collect extra pages from extensions and pre-generate hooks
+    all_pages = dict(pages)
     if inputs.pages:
-        all_extra_content.update(inputs.pages)
+        # extension pages go first; explicit pages override
+        all_pages = {**inputs.pages, **all_pages}
     if pre_args.extra_content:
-        all_extra_content.update(pre_args.extra_content)
+        for key, value in pre_args.extra_content.items():
+            if isinstance(value, str):
+                all_pages[key] = value
 
-    # set up jinja environment and copy static files
+    # set up jinja environment and write extension static files
     jinja_environment = _create_jinja_environment(inputs.templates)
-    _copy_static_files(inputs.static_files, build_directory)
+    _write_static_files(inputs.static_files, build_directory)
 
     # load materials and create render context
     materials = _load_materials(materials_directory)
@@ -430,24 +377,26 @@ def generate(
         inputs.elements, jinja_environment,
     )
 
-    # process content
-    _process_content_directory(
-        content_directory,
-        materials_directory,
+    # process pages and static content
+    _process_pages(
+        all_pages,
         build_directory,
         jinja_environment,
         context,
-        config,
         render_markdown,
     )
-    if all_extra_content:
-        _process_extra_content(
-            all_extra_content,
-            build_directory,
-            jinja_environment,
-            context,
-            render_markdown,
-        )
+    _write_static_content(static_content, build_directory)
+
+    # write binary extra content from pre-generate hooks
+    if pre_args.extra_content:
+        binary_extra: dict[str, str | bytes] = {}
+        for key, value in pre_args.extra_content.items():
+            if isinstance(value, bytes):
+                binary_extra[key] = value
+            elif isinstance(value, pathlib.Path):
+                binary_extra[key] = value.read_bytes()
+        if binary_extra:
+            _write_static_content(binary_extra, build_directory)
 
     # finalize build
     _copy_materials_to_build(materials_directory, build_directory, config)

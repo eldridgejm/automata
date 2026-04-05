@@ -1,3 +1,4 @@
+import pathlib
 import shutil
 
 import smartconfig
@@ -20,10 +21,23 @@ def _make_hooks(theme_dir=None, entry_point="default", config=None):
     return hooks
 
 
+def _generate(config, tmpsite, **kwargs):
+    """Helper: load content from tmpsite and call generate()."""
+    pages, static_content = tmpsite.load_content(
+        no_render_suffix=config.no_render_suffix
+    )
+    return automata.website.generate(
+        config,
+        tmpsite.materials_directory,
+        pages=pages,
+        static_content=static_content,
+        **kwargs,
+    )
+
+
 @fixture
 def config(tmpsite):
     return automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
 
@@ -46,7 +60,7 @@ def test_converts_pages_from_markdown_to_html(tmpsite, config, hooks):
     tmpsite.make_page("one.md", "# This is a header\n**this is bold!**")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     assert "This is a header</h1>" in tmpsite.get_output("one.html")
@@ -58,7 +72,7 @@ def test_converts_pages_from_markdown_to_html_recursively(tmpsite, config, hooks
     tmpsite.make_page("subdir/one.md", "# This is a header\n**this is bold!**")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     assert "This is a header</h1>" in tmpsite.get_output("subdir/one.html")
@@ -73,7 +87,7 @@ def tests_renders_html_pages(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     assert "<h1>About this site</h1>" in tmpsite.get_output("about.html")
@@ -84,7 +98,7 @@ def test_copies_files_from_content_to_output(tmpsite, config, hooks):
     tmpsite.make_page("data/tabular/one.txt", "This is a text file in a subdir.")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     assert "This is a text file in a subdir." in tmpsite.get_output(
@@ -97,7 +111,7 @@ def test_vars_can_be_used_in_markdown_pages(tmpsite, config, hooks):
     tmpsite.make_page("index.md", "The value of 'foo' is ${ vars.foo }.")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, vars={"foo": "bar"}, hooks=hooks)
+    _generate(config, tmpsite, vars={"foo": "bar"}, hooks=hooks)
 
     # then
     assert "The value of 'foo' is bar." in tmpsite.get_output("index.html")
@@ -108,7 +122,7 @@ def test_vars_can_be_used_in_html_pages(tmpsite, config, hooks):
     tmpsite.make_page("about.html", "<p>The value of 'foo' is ${ vars.foo }.</p>")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, vars={"foo": "bar"}, hooks=hooks)
+    _generate(config, tmpsite, vars={"foo": "bar"}, hooks=hooks)
 
     # then
     assert "<p>The value of 'foo' is bar.</p>" in tmpsite.get_output("about.html")
@@ -121,7 +135,7 @@ def test_files_with_no_render_suffix_are_copied_with_no_render_suffix_removed(
     tmpsite.make_page("data/sample.txt.NO_RENDER", "This is a raw text file.")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     assert "This is a raw text file." in tmpsite.get_output("data/sample.txt")
@@ -134,7 +148,7 @@ def test_html_files_with_no_render_suffix_are_not_rendered(tmpsite, config, hook
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, vars={"foo": "bar"}, hooks=hooks)
+    _generate(config, tmpsite, vars={"foo": "bar"}, hooks=hooks)
 
     # then
     assert "<h1>Info Page</h1><p>This is ${ vars.foo }.</p>" in tmpsite.get_output(
@@ -147,7 +161,7 @@ def test_markdown_files_with_no_render_suffix_are_not_rendered(tmpsite, config, 
     tmpsite.make_page("readme.md.NO_RENDER", "# Readme\nThis is ${ vars.foo }.")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, vars={"foo": "bar"}, hooks=hooks)
+    _generate(config, tmpsite, vars={"foo": "bar"}, hooks=hooks)
 
     # then
     assert "# Readme\nThis is ${ vars.foo }." in tmpsite.get_output("readme.md")
@@ -160,7 +174,7 @@ def test_no_render_suffix_of_none_means_nothing_is_renamed(tmpsite, config, hook
     config.no_render_suffix = None
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     assert "This is a raw text file." in tmpsite.get_output("data/sample.txt.NO_RENDER")
@@ -196,7 +210,7 @@ def test_materials_are_loaded_and_available_in_rendering_contex(
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("materials.html")
@@ -222,7 +236,7 @@ def test_exception_is_raised_if_materials_directory_missing(tmpsite, config, hoo
 
     # when / then
     with raises(automata.website.exceptions.WebsiteError) as exc:
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
     assert "Materials directory not found at" in str(exc.value)
 
@@ -246,7 +260,7 @@ def test_exception_is_raised_if_materials_json_missing(tmpsite, config, hooks):
 
     # when / then
     with raises(automata.website.exceptions.WebsiteError) as exc:
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
     assert "materials.json not found at" in str(exc.value)
 
@@ -261,7 +275,7 @@ def test_missing_variable_in_markdown_page_raises_error(tmpsite, config, hooks):
 
     # when / then
     with raises(Exception) as exc_info:
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
     assert "missing_var" in str(exc_info.value)
 
@@ -273,7 +287,7 @@ def test_missing_variable_in_html_page_raises_error(tmpsite, config, hooks):
 
     # when / then
     with raises(Exception) as exc_info:
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
     assert "missing_var" in str(exc_info.value)
 
@@ -291,9 +305,7 @@ def test_custom_markdown_engine_can_be_injected(tmpsite, config, hooks):
         return f"[CUSTOM]{markdown_text}[/CUSTOM]"
 
     # when
-    automata.website.generate(
-        config, tmpsite.materials_directory, render_markdown=custom_markdown_engine, hooks=hooks
-    )
+    _generate(config, tmpsite, render_markdown=custom_markdown_engine, hooks=hooks)
 
     # then
     output = tmpsite.get_output("test.html")
@@ -313,7 +325,7 @@ def test_frontmatter_in_markdown_page(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("info.html")
@@ -330,7 +342,7 @@ def test_frontmatter_in_html_page(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("info.html")
@@ -344,7 +356,7 @@ def test_pages_without_frontmatter_still_work(tmpsite, config, hooks):
     tmpsite.make_page("legacy.md", "# Legacy Page\n\nNo frontmatter here.")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("legacy.html")
@@ -362,9 +374,9 @@ def test_invalid_yaml_raises_page_error(tmpsite, config, hooks):
 
     # when / then
     with raises(automata.website.PageError) as exc:
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
-    assert "bad.md" in str(exc.value)
+    assert "bad.html" in str(exc.value)
 
 
 def test_invalid_frontmatter_key_raises_page_error(tmpsite, config, hooks):
@@ -377,9 +389,9 @@ def test_invalid_frontmatter_key_raises_page_error(tmpsite, config, hooks):
 
     # when / then
     with raises(automata.website.PageError) as exc:
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
-    assert "bad_key.md" in str(exc.value)
+    assert "bad_key.html" in str(exc.value)
 
 
 def test_empty_frontmatter(tmpsite, config, hooks):
@@ -391,7 +403,7 @@ def test_empty_frontmatter(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("empty.html")
@@ -409,7 +421,7 @@ def test_frontmatter_with_nested_vars_structures(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("nested.html")
@@ -429,7 +441,7 @@ def test_url_for_with_default_base_path(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -449,7 +461,7 @@ def test_url_for_with_custom_base_path(tmpsite, config, hooks):
     config.base_path = "/course"
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -463,7 +475,7 @@ def test_url_for_with_custom_base_path(tmpsite, config, hooks):
 def test_generate_uses_default_theme_by_default(tmpsite, config, hooks):
     tmpsite.make_page("index.md", "Home page")
 
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # Expect default theme to add a recognizable marker to the rendered page.
     assert 'data-automata-theme="default"' in tmpsite.get_output("index.html")
@@ -484,13 +496,12 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
     )
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -519,13 +530,12 @@ def test_generate_supports_template_inheritance(tmpsite, tmp_path):
     )
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -554,13 +564,12 @@ def test_generate_uses_frontmatter_template(tmpsite, tmp_path):
     )
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -582,16 +591,15 @@ def test_generate_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
     (templates_dir / "page.html").write_text("<html><body>${ content }</body></html>")
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
     # when / then
     with raises(automata.website.PageError, match="missing.html") as exc_info:
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
-    assert exc_info.value.path == tmpsite.content_directory / "index.md"
+    assert exc_info.value.path == pathlib.Path("index.html")
 
 
 def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
@@ -604,14 +612,13 @@ def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
     (templates_dir / "index.html").write_text("<html>${ content }</html>")
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
     # when / then
     with raises(ValueError, match="page.html"):
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
 
 def test_generate_can_override_theme_template(tmpsite, tmp_path, config, hooks):
@@ -631,7 +638,7 @@ def test_generate_can_override_theme_template(tmpsite, tmp_path, config, hooks):
     apply_extension(override_ext, hooks, priority=1)
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -654,7 +661,6 @@ def test_generate_overrides_template_can_extend_builtin_template(tmpsite, tmp_pa
     )
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(config={
@@ -666,7 +672,7 @@ def test_generate_overrides_template_can_extend_builtin_template(tmpsite, tmp_pa
     apply_extension(override_ext, hooks, priority=1)
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -687,7 +693,6 @@ def test_generate_can_override_only_static_files(tmpsite, tmp_path):
     (static_dir / "custom.css").write_text("body { color: red; }")
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(config={
@@ -699,7 +704,7 @@ def test_generate_can_override_only_static_files(tmpsite, tmp_path):
     apply_extension(override_ext, hooks, priority=1)
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then - verify the custom static file was copied to output
     custom_css = tmpsite.get_output("custom.css")
@@ -712,7 +717,7 @@ def test_generate_copies_static_files_from_theme(tmpsite, config, hooks):
     tmpsite.make_page("index.md", "# Test Page")
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then - verify default theme's static CSS file was copied
     style_css = tmpsite.get_output("static/style.css")
@@ -741,7 +746,7 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path, config):
     apply_extension(Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks)
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then - verify all three types were copied correctly
     assert tmpsite.get_output("string.txt") == "string content"
@@ -769,14 +774,13 @@ def test_generate_supports_theme_elements(tmpsite):
         return inputs
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
 
     hooks = GenerateHooks()
     apply_extension(Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks)
 
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     output = tmpsite.get_output("index.html")
     assert '<span data-element="simple">Hello</span>' in output
@@ -813,14 +817,13 @@ def test_generate_with_template_element(tmpsite):
         return inputs
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
 
     hooks = GenerateHooks()
     apply_extension(Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks)
 
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     output = tmpsite.get_output("index.html")
     assert '<span class="badge warning">Welcome:' in output
@@ -947,13 +950,12 @@ def test_generate_executes_post_generate_hook_from_theme(tmpsite, tmp_path):
     tmpsite.make_page("index.md", "# Home")
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(theme_dir=theme_dir)
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then
     assert marker_file.exists()
@@ -971,13 +973,12 @@ def test_generate_continues_without_hooks(tmpsite, tmp_path):
     tmpsite.make_page("index.md", "# Home")
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(theme_dir=theme_dir)
 
     # when / then: should not raise
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
     assert "Home" in tmpsite.get_output("index.html")
 
 
@@ -998,7 +999,8 @@ def test_generate_handles_materials_already_in_build_directory(tmpsite, config, 
 
     # when - pass the materials directory that's already in the build directory
     # This should not raise an error and should not try to copy to itself
-    automata.website.generate(config, materials_in_build, hooks=hooks)
+    pages, static_content = tmpsite.load_content()
+    automata.website.generate(config, materials_in_build, pages=pages, static_content=static_content, hooks=hooks)
 
     # then - verify the page was generated and materials are still there
     assert "Test Page" in tmpsite.get_output("index.html")
@@ -1032,7 +1034,6 @@ def test_default_theme_tailwind_rebuild_with_npx_available(tmpsite, monkeypatch)
     )
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(config={
@@ -1042,7 +1043,7 @@ def test_default_theme_tailwind_rebuild_with_npx_available(tmpsite, monkeypatch)
     })
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # then - Tailwind CLI should have been called
     tailwind_calls = [c for c in mock_run_calls if "@tailwindcss/cli" in str(c)]
@@ -1062,7 +1063,6 @@ def test_default_theme_fallback_when_npx_not_available(tmpsite, monkeypatch, cap
     tmpsite.make_page("index.md", "# Test Page")
 
     config = automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
         build_directory=tmpsite.build_directory,
     )
     hooks = _make_hooks(config={
@@ -1075,7 +1075,7 @@ def test_default_theme_fallback_when_npx_not_available(tmpsite, monkeypatch, cap
     import logging
 
     with caplog.at_level(logging.WARNING):
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+        _generate(config, tmpsite, hooks=hooks)
 
     # then - should have warned about npx not being available
     assert any("npx not found" in record.message for record in caplog.records)
@@ -1090,12 +1090,15 @@ def test_extra_content_with_string_renders_through_full_pipeline(tmpsite, config
     """String content goes through full pipeline: frontmatter, interpolation, etc."""
     # given
     markdown_content = "# Extra Page\n\nThis is **bold** text."
+    pages, static_content = tmpsite.load_content()
+    pages["extra.html"] = markdown_content
 
     # when
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        extra_content={"extra.html": markdown_content},
+        pages=pages,
+        static_content=static_content,
         hooks=hooks,
     )
 
@@ -1116,12 +1119,15 @@ vars:
 ---
 # ${ frontmatter.vars.greeting }
 """
+    pages, static_content = tmpsite.load_content()
+    pages["greeting.html"] = content_with_frontmatter
 
     # when
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        extra_content={"greeting.html": content_with_frontmatter},
+        pages=pages,
+        static_content=static_content,
         hooks=hooks,
     )
 
@@ -1134,12 +1140,15 @@ def test_extra_content_with_bytes_writes_binary(tmpsite, config, hooks):
     """Bytes content should be written directly as binary."""
     # given
     binary_content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"  # PNG header bytes
+    pages, static_content = tmpsite.load_content()
+    static_content["image.png"] = binary_content
 
     # when
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        extra_content={"image.png": binary_content},
+        pages=pages,
+        static_content=static_content,
         hooks=hooks,
     )
 
@@ -1154,12 +1163,15 @@ def test_extra_content_with_path_copies_file(tmpsite, config, hooks, tmp_path):
     # given
     source_file = tmp_path / "source.txt"
     source_file.write_text("Content from source file")
+    pages, static_content = tmpsite.load_content()
+    static_content["copied.txt"] = source_file.read_text()
 
     # when
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        extra_content={"copied.txt": source_file},
+        pages=pages,
+        static_content=static_content,
         hooks=hooks,
     )
 
@@ -1171,12 +1183,15 @@ def test_extra_content_creates_subdirectories(tmpsite, config, hooks):
     """Extra content with nested paths should create parent directories."""
     # given
     content = "# Nested Page"
+    pages, static_content = tmpsite.load_content()
+    pages["deep/nested/page.html"] = content
 
     # when
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        extra_content={"deep/nested/page.html": content},
+        pages=pages,
+        static_content=static_content,
         hooks=hooks,
     )
 
@@ -1190,16 +1205,17 @@ def test_extra_content_with_multiple_items(tmpsite, config, hooks, tmp_path):
     # given
     source_file = tmp_path / "data.json"
     source_file.write_text('{"key": "value"}')
+    pages, static_content = tmpsite.load_content()
+    pages["page.html"] = "# A Page"
+    static_content["binary.bin"] = b"\x00\x01\x02"
+    static_content["data.json"] = source_file.read_text()
 
     # when
     automata.website.generate(
         config,
         tmpsite.materials_directory,
-        extra_content={
-            "page.html": "# A Page",
-            "binary.bin": b"\x00\x01\x02",
-            "data.json": source_file,
-        },
+        pages=pages,
+        static_content=static_content,
         hooks=hooks,
     )
 
@@ -1217,7 +1233,7 @@ def test_generate_accepts_hooks_parameter(tmpsite, config, hooks):
     tmpsite.make_page("index.md", "# Test")
 
     # should not raise
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     assert "Test" in tmpsite.get_output("index.html")
 
@@ -1232,7 +1248,7 @@ def test_user_pre_generate_hook_is_called(tmpsite, config, hooks):
         return args
 
     tmpsite.make_page("index.md", "# Test")
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     assert "pre_generate called" in call_log
 
@@ -1246,7 +1262,7 @@ def test_user_post_generate_hook_is_called(tmpsite, config, hooks):
         call_log.append("post_generate called")
 
     tmpsite.make_page("index.md", "# Test")
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     assert "post_generate called" in call_log
 
@@ -1261,7 +1277,7 @@ def test_user_pre_generate_hook_can_add_extra_content(tmpsite, config, hooks):
         return GeneratePreHookArgs(config=args.config, extra_content=extra)
 
     tmpsite.make_page("index.md", "# Test")
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     assert "<h1>Added by hook</h1>" in tmpsite.get_output("from-hook.html")
 
@@ -1282,7 +1298,7 @@ def test_pre_generate_pipeline_chains_transformations(tmpsite, config, hooks):
         return GeneratePreHookArgs(config=args.config, extra_content=extra)
 
     tmpsite.make_page("index.md", "# Test")
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     # Both pages should be generated (pipeline chains results)
     assert "<h1>Page A</h1>" in tmpsite.get_output("a.html")
@@ -1298,7 +1314,7 @@ def test_hooks_receive_correct_config(tmpsite, config, hooks):
         received_config.append(args.config)
 
     tmpsite.make_page("index.md", "# Test")
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    _generate(config, tmpsite, hooks=hooks)
 
     assert len(received_config) == 1
     assert received_config[0] is config

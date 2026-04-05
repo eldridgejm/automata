@@ -1,6 +1,6 @@
 from datetime import datetime
 
-import automata.website
+from conftest import generate
 
 
 def test_date_pill_uses_now_for_current_date(tmpsite, config, hooks):
@@ -14,18 +14,14 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(
-        config, tmpsite.materials_directory, current_time=datetime(2024, 6, 15), hooks=hooks
-    )
+    generate(config, tmpsite, current_time=datetime(2024, 6, 15), hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
     assert "Before!" in output
 
     # when
-    automata.website.generate(
-        config, tmpsite.materials_directory, current_time=datetime(2024, 6, 17), hooks=hooks
-    )
+    generate(config, tmpsite, current_time=datetime(2024, 6, 17), hooks=hooks)
     output = tmpsite.get_output("index.html")
     assert "After!" in output
 
@@ -41,9 +37,9 @@ def test_date_pill_with_template_variables(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(
+    generate(
         config,
-        tmpsite.materials_directory,
+        tmpsite,
         current_time=datetime(2024, 6, 15),
         vars={"foo": "BAR"},
         hooks=hooks,

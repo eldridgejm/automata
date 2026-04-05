@@ -1,6 +1,6 @@
 """Tests for the listing element."""
 
-import automata.website
+from conftest import generate
 
 
 def test_listing_element_renders_simple_table(tmpsite, config, hooks):
@@ -52,7 +52,7 @@ def test_listing_element_renders_simple_table(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -109,7 +109,7 @@ def test_listing_element_renders_multiple_columns(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -165,7 +165,7 @@ def test_listing_element_with_numbered_rows(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -212,7 +212,7 @@ def test_listing_element_with_artifact_links(tmpsite, config, hooks):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then: artifacts should be accessible in templates
     output = tmpsite.get_output("index.html")
@@ -270,7 +270,7 @@ def test_listing_element_conditional_content_when_artifact_missing(tmpsite, conf
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -327,7 +327,7 @@ def test_listing_element_conditional_content_when_metadata_missing(tmpsite, conf
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -384,7 +384,7 @@ def test_listing_element_conditional_content_non_null_metadata(tmpsite, config, 
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
+    generate(config, tmpsite, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")

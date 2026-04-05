@@ -61,8 +61,9 @@ def project_with_inline_materials(tmp_path):
                         path: homeworks/hw02/homework.pdf
                         release_time: 2025-01-20 12:00:00
 
+            content_directory: "content"
+
             website:
-              content_directory: "content"
               build_directory: "_build"
         """)
     )
@@ -172,8 +173,9 @@ class TestInlineMaterialsWithVariables:
             "          due: ${ vars.base_due }\n"
             "        artifacts: {}\n"
             "\n"
+            'content_directory: "content"\n'
+            "\n"
             "website:\n"
-            '  content_directory: "content"\n'
             '  build_directory: "_build"\n'
         )
         (project / "automata.yaml").write_text(yaml)

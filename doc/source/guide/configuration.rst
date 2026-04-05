@@ -23,9 +23,11 @@ Top-level structure
       exams:
         ...
 
+    # Path to content directory
+    content_directory: content
+
     # Website generation settings
     website:
-      content_directory: content
       build_directory: _build
 
 
@@ -89,6 +91,13 @@ Extensions are applied in order. Later extensions override earlier ones for
 templates, static files, and elements with the same name.
 
 
+``content_directory``
+---------------------
+
+Path to the directory containing pages (Markdown, HTML, static files).
+Defaults to ``"content"``.
+
+
 ``materials``
 -------------
 
@@ -108,9 +117,6 @@ Website generation settings:
    * - Field
      - Default
      - Description
-   * - ``content_directory``
-     - *(required)*
-     - Path to the directory containing pages (Markdown, HTML, static files).
    * - ``build_directory``
      - *(required)*
      - Path to the output directory.
