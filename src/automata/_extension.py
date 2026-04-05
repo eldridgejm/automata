@@ -224,7 +224,7 @@ def extension_from_directory(
     if raw_post_generate is not None:
 
         def _post_generate_hook(args: GeneratePostHookArgs) -> None:
-            raw_post_generate(args.config, resolved_config)
+            raw_post_generate(args.build_directory, resolved_config)
 
         ext_hooks["on_generate_post"] = _post_generate_hook
 

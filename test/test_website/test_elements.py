@@ -3,20 +3,15 @@ from smartconfig.types import ConfigurationDict
 
 from automata.materials import ExportedArtifact, Universe
 from automata.website import BasicElement, RenderContext
-from automata.website._config import WebsiteConfig
 import jinja2
 
 
 @fixture
 def render_context():
     """A minimal render context for testing."""
-    config = WebsiteConfig(
-        build_directory=".",
-    )
     materials = Universe[ExportedArtifact](collections={})
 
     return RenderContext(
-        website_config=config,
         materials=materials,
         url_for=lambda x: x,
     )

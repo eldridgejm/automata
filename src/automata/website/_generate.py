@@ -19,7 +19,6 @@ from ..hooks import (
 )
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util import markdown as markdown_util
-from ._config import WebsiteConfig
 from ._frontmatter import Frontmatter, read_frontmatter
 from .exceptions import PageError, WebsiteError
 
@@ -27,9 +26,6 @@ from .exceptions import PageError, WebsiteError
 @dataclasses.dataclass
 class RenderContext:
     """Context available at the time of rendering."""
-
-    # website configuration
-    website_config: WebsiteConfig
 
     # the course materials universe
     materials: Universe[ExportedArtifact]
@@ -50,6 +46,9 @@ class RenderContext:
 
     # variables available for interpolation in the content
     vars: dict[str, Any] = dataclasses.field(default_factory=dict)
+
+    # base URL path for the site
+    base_path: str = "/"
 
     # frontmatter for the current page
     frontmatter: Frontmatter = dataclasses.field(
@@ -150,21 +149,21 @@ def _create_url_for(base_path: str) -> Callable[[str], str]:
 
 
 def _create_render_context(
-    config: WebsiteConfig,
     materials: Universe[ExportedArtifact],
     url_for: Callable[[str], str],
     current_time: datetime.datetime,
     vars: dict[str, Any],
+    base_path: str,
     elements: dict[str, type],
     jinja_environment: jinja2.Environment,
 ) -> RenderContext:
     """Create the render context with elements bound."""
     context = RenderContext(
-        website_config=config,
         materials=materials,
         url_for=url_for,
         current_time=current_time,
         vars=vars,
+        base_path=base_path,
     )
 
     context.elements = {
@@ -178,10 +177,10 @@ def _create_render_context(
 def _copy_materials_to_build(
     materials_directory: pathlib.Path,
     build_directory: pathlib.Path,
-    config: WebsiteConfig,
+    materials_directory_name: str,
 ) -> None:
     """Copy the materials directory to the build directory."""
-    materials_output_path = build_directory / config.materials_directory_name
+    materials_output_path = build_directory / materials_directory_name
 
     if materials_directory.resolve() != materials_output_path.resolve():
         materials_output_path.mkdir(parents=True, exist_ok=True)
@@ -212,7 +211,7 @@ def _render_page(
     if markdown_renderer is not None:
         rendered_content = markdown_renderer(rendered_content)
 
-    base_url_path = context.website_config.base_path
+    base_url_path = context.base_path
     if not base_url_path.endswith("/"):
         base_url_path = f"{base_url_path}/"
 
@@ -284,15 +283,16 @@ def _write_static_content(
 
 
 def generate(
-    config: WebsiteConfig,
+    build_directory: pathlib.Path,
     materials_directory: pathlib.Path,
     pages: dict[str, str] | None = None,
     static_content: dict[str, str | bytes] | None = None,
     vars: dict[str, Any] | None = None,
     current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown_util.render,
-    cwd: pathlib.Path | None = None,
     hooks: GenerateHooks | None = None,
+    base_path: str = "/",
+    materials_directory_name: str = "materials",
 ):
     """Generates a static website from course materials.
 
@@ -303,18 +303,17 @@ def generate(
 
     Parameters
     ----------
-    config : WebsiteConfig
-        The configuration for the website generation.
+    build_directory : pathlib.Path
+        Path to the output directory.
     materials_directory : pathlib.Path
         The path to the directory containing the exported materials.
     pages : dict[str, str], optional
-        Pre-loaded page content. Keys are relative paths (e.g.,
-        ``"index.md"``, ``"about.html"``). Values are the page content.
-        Keys ending in ``.md`` are rendered as Markdown; keys ending in
-        ``.html`` are rendered as HTML. All pages are interpolated and
-        wrapped in a template.
+        Pre-loaded page content. Keys are output paths (e.g.,
+        ``"index.html"``). Values are page content (Markdown or HTML).
+        All pages are rendered as Markdown, interpolated, and wrapped
+        in a template.
     static_content : dict[str, str | bytes], optional
-        Pre-loaded static content. Keys are relative paths; values are
+        Pre-loaded static content. Keys are output paths; values are
         string or bytes content written directly to the build directory.
     vars : dict[str, Any], optional
         A dictionary of variables to be used during rendering.
@@ -322,11 +321,14 @@ def generate(
         The current date and time to be used during rendering.
     render_markdown : Callable[[str], str], optional
         A function that converts markdown content to HTML.
-    cwd : pathlib.Path, optional
-        Working directory for resolving relative paths in config.
     hooks : GenerateHooks, optional
         Hooks instance. Extensions should already be registered on this
         before calling generate.
+    base_path : str, optional
+        URL base path for the site (default ``"/"``).
+    materials_directory_name : str, optional
+        Name of the materials subdirectory in the build directory
+        (default ``"materials"``).
 
     """
     # set default values for optional parameters
@@ -334,11 +336,7 @@ def generate(
     static_content = static_content or {}
     vars = vars or {}
     current_time = current_time or datetime.datetime.now()
-    cwd = cwd or pathlib.Path.cwd()
     hooks = hooks or GenerateHooks()
-
-    # resolve paths relative to cwd (absolute paths are unchanged)
-    build_directory = cwd / config.build_directory
 
     # gather website inputs from extensions
     inputs = hooks.on_website_collect(WebsiteInputs())
@@ -350,9 +348,9 @@ def generate(
     merged_vars = {**inputs.vars, **vars}
 
     # run pre-generate hooks
-    url_for = _create_url_for(config.base_path)
+    url_for = _create_url_for(base_path)
     pre_args = hooks.on_generate_pre(
-        GeneratePreHookArgs(config=config, extra_content=None)
+        GeneratePreHookArgs(build_directory=build_directory, extra_content=None)
     )
 
     # collect extra pages from extensions and pre-generate hooks
@@ -373,7 +371,7 @@ def generate(
     materials = _load_materials(materials_directory)
     _fix_artifact_paths(materials, url_for)
     context = _create_render_context(
-        config, materials, url_for, current_time, merged_vars,
+        materials, url_for, current_time, merged_vars, base_path,
         inputs.elements, jinja_environment,
     )
 
@@ -399,5 +397,5 @@ def generate(
             _write_static_content(binary_extra, build_directory)
 
     # finalize build
-    _copy_materials_to_build(materials_directory, build_directory, config)
-    hooks.on_generate_post(GeneratePostHookArgs(config=config))
+    _copy_materials_to_build(materials_directory, build_directory, materials_directory_name)
+    hooks.on_generate_post(GeneratePostHookArgs(build_directory=build_directory))

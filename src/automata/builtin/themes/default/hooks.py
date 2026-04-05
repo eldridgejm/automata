@@ -7,7 +7,7 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 
-def post_generate(config, extension_config):
+def post_generate(build_directory, extension_config):
     """Rebuild Tailwind CSS after site generation to include custom classes.
 
     This hook runs the Tailwind CLI to regenerate CSS by scanning the built
@@ -21,8 +21,8 @@ def post_generate(config, extension_config):
 
     Parameters
     ----------
-    config : WebsiteConfig
-        The website configuration containing build directory and other settings.
+    build_directory : pathlib.Path
+        Path to the build output directory.
     extension_config : dict
         The extension's resolved configuration.
 
@@ -31,8 +31,7 @@ def post_generate(config, extension_config):
     if not extension_config.get("rebuild_tailwind", True):
         return
 
-    # Get build directory from config
-    build_dir = pathlib.Path(config.build_directory)
+    build_dir = pathlib.Path(build_directory)
     css_output = build_dir / "static" / "style.css"
 
     # Check if npx is available

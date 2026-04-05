@@ -9,13 +9,6 @@ from automata._extension import extension_from_entry_point
 
 
 @fixture
-def config(tmpsite):
-    return automata.website.WebsiteConfig(
-        build_directory=tmpsite.build_directory,
-    )
-
-
-@fixture
 def hooks():
     h = GenerateHooks()
     ext = extension_from_entry_point("default", config={
@@ -28,11 +21,11 @@ def hooks():
     return h
 
 
-def generate(config, tmpsite, **kwargs):
+def generate(tmpsite, **kwargs):
     """Helper that loads content and calls generate with pages/static_content."""
     pages, static_content = tmpsite.load_content()
     automata.website.generate(
-        config,
+        tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
         static_content=static_content,

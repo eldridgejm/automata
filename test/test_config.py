@@ -36,10 +36,10 @@ def test_read_config_reads_valid_config(tmp_path: Path) -> None:
     assert isinstance(config, Config)
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
-    assert config.content_directory == "./content"
+    assert config.website.content_directory == "./content"
     assert config.website.build_directory == "./build"
-    assert config.theme["use"] == "default"
-    assert config.theme["config"]["short_title"] == "DSC 101"
+    assert config.website.theme["use"] == "default"
+    assert config.website.theme["config"]["short_title"] == "DSC 101"
 
 
 def test_read_config_applies_defaults(tmp_path: Path) -> None:
@@ -49,6 +49,7 @@ def test_read_config_applies_defaults(tmp_path: Path) -> None:
         dedent(
             """
             website:
+              theme: "default"
               content_directory: "./content"
               build_directory: "./build"
             """
@@ -110,6 +111,7 @@ def test_read_config_validates_nested_structure(tmp_path: Path) -> None:
         dedent(
             """
             website:
+              theme: "default"
               content_directory: "./content"
               # Missing required build_directory
             """
@@ -129,6 +131,7 @@ def test_read_config_with_empty_vars(tmp_path: Path) -> None:
             vars: {}
 
             website:
+              theme: "default"
               content_directory: "./content"
               build_directory: "./build"
             """
@@ -154,6 +157,7 @@ def test_read_config_with_extensions_list(tmp_path: Path) -> None:
                   key: "value"
 
             website:
+              theme: "default"
               content_directory: "./content"
               build_directory: "./build"
             """
@@ -195,9 +199,9 @@ def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
 
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
-    assert config.theme["config"]["short_title"] == "DSC 101"
+    assert config.website.theme["config"]["short_title"] == "DSC 101"
     assert (
-        config.theme["config"]["long_title"]
+        config.website.theme["config"]["long_title"]
         == "Introduction to Data Science - Fall 2025"
     )
 
@@ -236,4 +240,4 @@ def test_read_config_with_include(tmp_path: Path) -> None:
 
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
-    assert config.theme["config"]["short_title"] == "DSC 101"
+    assert config.website.theme["config"]["short_title"] == "DSC 101"

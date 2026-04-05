@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from ._internals import HooksBase, ObserverHook, PipelineHook
 
 if TYPE_CHECKING:
-    from automata.website import WebsiteConfig
     from automata.website._elements import Element
 
 # materials hooks ======================================================================
@@ -174,7 +173,7 @@ class GeneratePreHookArgs:
     This is a pipeline hook that can transform extra_content before generation.
     """
 
-    config: "WebsiteConfig"
+    build_directory: pathlib.Path
     extra_content: dict[str, str | bytes | pathlib.Path] | None
 
 
@@ -182,7 +181,7 @@ class GeneratePreHookArgs:
 class GeneratePostHookArgs:
     """Argument passed to the post-generate hook."""
 
-    config: "WebsiteConfig"
+    build_directory: pathlib.Path
 
 
 class GenerateHooks(HooksBase):

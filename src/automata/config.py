@@ -7,10 +7,32 @@ from ._extension import Extension
 from .exceptions import Error
 from .util.resolution import resolve
 from .util.yaml import parse_yaml
-from .website import WebsiteConfig
 from ._extension import extension_from_directory, extension_from_entry_point
 
 CONFIGURATION_FILENAME = "automata.yaml"
+
+
+class WebsiteConfig(smartconfig.Prototype):
+    """Configuration for the website."""
+
+    # theme extension spec: a string name or dict with "use"/"config" keys
+    theme: Any
+
+    # path to the directory containing the pages and materials
+    content_directory: str
+
+    # name of the subdirectory within the build directory where materials will be copied
+    materials_directory_name: str = "materials"
+
+    # path to the output directory where the website will be built
+    build_directory: str
+
+    # suffix indicating that a file should not be rendered. If None, all files
+    # will be rendered.
+    no_render_suffix: str | None = ".no_render"
+
+    # base path for the website (e.g., "/" or "/course/")
+    base_path: str = "/"
 
 
 class Config(smartconfig.Prototype):
@@ -28,14 +50,6 @@ class Config(smartconfig.Prototype):
     # inline materials definitions. Each key is a collection name, mapping to
     # a dict with "schema" and "publications" keys.
     materials: dict[str, Any] = {}
-
-    # path to the directory containing content (pages and materials).
-    # Populated from website.content_directory in the YAML.
-    content_directory: str = "content"
-
-    # theme extension spec. Populated from website.theme in the YAML.
-    # Same format as an extensions entry: a string or dict with "use"/"config".
-    theme: Any = None
 
     # configuration for the website
     website: WebsiteConfig
@@ -95,14 +109,6 @@ def read_config(path: Path) -> Config:
     yaml_content = path.read_text()
     config_dict = parse_yaml(yaml_content)
 
-    # Extract fields from website section that live on Config, not WebsiteConfig.
-    website = config_dict.get("website", {})
-    if isinstance(website, dict):
-        if "content_directory" in website:
-            config_dict.setdefault("content_directory", website.pop("content_directory"))
-        if "theme" in website:
-            config_dict.setdefault("theme", website.pop("theme"))
-
     try:
         return resolve(config_dict, Config, base_path=path.parent)
     except smartconfig.exceptions.Error as e:
@@ -157,8 +163,7 @@ def load_extensions(config: Config, cwd: Path) -> list[Extension]:
     """
     extensions: list[Extension] = []
 
-    if config.theme is not None:
-        extensions.append(_load_extension_spec(config.theme, cwd))
+    extensions.append(_load_extension_spec(config.website.theme, cwd))
 
     for spec in config.extensions:
         extensions.append(_load_extension_spec(spec, cwd))

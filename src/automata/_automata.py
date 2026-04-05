@@ -241,7 +241,7 @@ class Automata:
         current_time = current_time or datetime.datetime.now()
         build_dir = self.path / self.config.website.build_directory
         materials_output_dir = build_dir / self.config.website.materials_directory_name
-        content_dir = self.path / self.config.content_directory
+        content_dir = self.path / self.config.website.content_directory
 
         pages, static_content = _load_content_directory(
             content_dir,
@@ -250,14 +250,15 @@ class Automata:
         )
 
         _generate_website(
-            self.config.website,
+            build_dir,
             materials_output_dir,
             pages=pages,
             static_content=static_content,
             vars=self.config.vars,
-            cwd=self.path,
             current_time=current_time,
             hooks=self.hooks,
+            base_path=self.config.website.base_path,
+            materials_directory_name=self.config.website.materials_directory_name,
         )
 
     def resolve(self, path: Path) -> Publication[UnbuiltArtifact]:
