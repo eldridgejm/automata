@@ -16,6 +16,7 @@ from ._definitions import (
     GeneratePostHookArgs,
     GeneratePreHookArgs,
     Hooks,
+    WebsiteInputs,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "GeneratePostHookArgs",
     "GeneratePreHookArgs",
     "Hooks",
+    "WebsiteInputs",
 ]

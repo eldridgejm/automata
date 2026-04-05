@@ -9,13 +9,8 @@ vars:
   schedule_config:
     __include__: "website/schedule.yaml"
 
-website:
-  content_directory: "website/content"
-  build_directory: "_build"
-  base_path: "."
-
-  theme:
-    use: "default"
+extensions:
+  - use: "default"
     config:
       short_title: ${ vars.course_name }
       long_title: ${ vars.course_title }
@@ -30,3 +25,8 @@ website:
               <i data-lucide="scale" class="mr-2 text-slate-400"></i>
               Syllabus
             url: syllabus.html
+
+website:
+  content_directory: "website/content"
+  build_directory: "_build"
+  base_path: "."

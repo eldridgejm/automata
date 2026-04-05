@@ -3,9 +3,19 @@ from pathlib import Path
 
 import pytest
 
-from automata.website._theme import Theme
+from automata._extension import Extension, apply_extension
+from automata.hooks import GenerateHooks, WebsiteInputs
+from automata.website._theme import extension_from_directory, extension_from_entry_point
 
-# from_directory ==============================================================
+
+def _collect(ext: Extension) -> WebsiteInputs:
+    """Helper: apply extension to hooks, fire on_website_collect, return inputs."""
+    hooks = GenerateHooks()
+    apply_extension(ext, hooks)
+    return hooks.on_website_collect(WebsiteInputs())
+
+
+# extension_from_directory =============================================================
 
 
 def test_from_directory_reads_templates_and_static_files(tmp_path: Path) -> None:
@@ -22,15 +32,16 @@ def test_from_directory_reads_templates_and_static_files(tmp_path: Path) -> None
     (static_dir / "images").mkdir()
     (static_dir / "images" / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n")
 
-    theme = Theme.from_directory(theme_dir)
+    ext = extension_from_directory("test", theme_dir)
+    inputs = _collect(ext)
 
-    assert theme.templates == {
+    assert inputs.templates == {
         "index.html": "Index template",
         "partials/nav.html": "Nav template",
     }
-    assert set(theme.static_files.keys()) == {"style.css", "images/logo.png"}
-    assert theme.static_files["style.css"].read_text() == "body { color: black; }"
-    assert theme.static_files["images/logo.png"].read_bytes() == b"\x89PNG\r\n\x1a\n"
+    assert set(inputs.static_files.keys()) == {"style.css", "images/logo.png"}
+    assert inputs.static_files["style.css"].read_text() == "body { color: black; }"
+    assert inputs.static_files["images/logo.png"].read_bytes() == b"\x89PNG\r\n\x1a\n"
 
 
 def test_from_directory_skips_hidden_files_and_directories(
@@ -52,10 +63,11 @@ def test_from_directory_skips_hidden_files_and_directories(
     (static_dir / ".hidden" / "secret.txt").write_text("Secret static")
     (static_dir / "visible.txt").write_text("Visible static")
 
-    theme = Theme.from_directory(theme_dir)
+    ext = extension_from_directory("test", theme_dir)
+    inputs = _collect(ext)
 
-    assert theme.templates == {"visible.html": "Visible template"}
-    assert set(theme.static_files.keys()) == {"visible.txt"}
+    assert inputs.templates == {"visible.html": "Visible template"}
+    assert set(inputs.static_files.keys()) == {"visible.txt"}
 
 
 def test_from_directory_allows_missing_static_directory(tmp_path: Path) -> None:
@@ -64,10 +76,11 @@ def test_from_directory_allows_missing_static_directory(tmp_path: Path) -> None:
     templates_dir.mkdir(parents=True)
     (templates_dir / "index.html").write_text("Index template")
 
-    theme = Theme.from_directory(theme_dir)
+    ext = extension_from_directory("test", theme_dir)
+    inputs = _collect(ext)
 
-    assert theme.templates == {"index.html": "Index template"}
-    assert theme.static_files == {}
+    assert inputs.templates == {"index.html": "Index template"}
+    assert inputs.static_files == {}
 
 
 def test_from_directory_loads_elements_package(tmp_path: Path) -> None:
@@ -85,10 +98,11 @@ def test_from_directory_loads_elements_package(tmp_path: Path) -> None:
         'elements = {"simple": simple_element}\n'
     )
 
-    theme = Theme.from_directory(theme_dir)
+    ext = extension_from_directory("test", theme_dir)
+    inputs = _collect(ext)
 
-    assert "simple" in theme.elements
-    assert theme.elements["simple"]({"label": "World"}, None) == "Hello World"
+    assert "simple" in inputs.elements
+    assert inputs.elements["simple"]({"label": "World"}, None) == "Hello World"
 
 
 def test_from_directory_requires_templates_directory(tmp_path: Path) -> None:
@@ -96,67 +110,56 @@ def test_from_directory_requires_templates_directory(tmp_path: Path) -> None:
     theme_dir.mkdir()
 
     with pytest.raises(ValueError):
-        Theme.from_directory(theme_dir)
+        extension_from_directory("test", theme_dir)
 
 
-# from_entry_point =====================================================================
+# extension_from_entry_point ===========================================================
 
 
 def test_default_entry_point_is_registered() -> None:
     """Test that the 'default' theme entry point is registered."""
-    # Verify the entry point exists
     entry_points = metadata.entry_points()
     theme_eps = entry_points.select(group="automata.themes")
 
-    # Check that "default" is in the registered entry points
     default_ep = theme_eps["default"]
     assert default_ep is not None
 
-    # Verify we can load the theme via the entry point
-    theme = Theme.from_entry_point("default")
+    ext = extension_from_entry_point("default")
+    inputs = _collect(ext)
 
-    # Verify the theme has expected content
-    assert "base.html" in theme.templates
-    assert theme.templates["base.html"]  # Should have content
+    assert "base.html" in inputs.templates
+    assert inputs.templates["base.html"]
 
 
 # require_templates parameter ==========================================================
 
 
 def test_from_directory_requires_templates_directory_by_default(tmp_path) -> None:
-    """Test that from_directory requires templates/ when require_templates=True."""
-    # given
     theme_dir = tmp_path / "theme"
     theme_dir.mkdir()
-    # No templates directory at all
 
-    # when / then
     with pytest.raises(ValueError, match="templates"):
-        Theme.from_directory(theme_dir)
+        extension_from_directory("test", theme_dir)
 
 
 def test_from_directory_allows_missing_templates_when_not_required(tmp_path) -> None:
-    """Test that templates/ is optional when require_templates=False."""
-    # given
     theme_dir = tmp_path / "theme"
     theme_dir.mkdir()
     static_dir = theme_dir / "static"
     static_dir.mkdir()
     (static_dir / "style.css").write_text("body {}")
 
-    # when
-    theme = Theme.from_directory(theme_dir, require_templates=False)
+    ext = extension_from_directory("test", theme_dir, require_templates=False)
+    inputs = _collect(ext)
 
-    # then
-    assert theme.templates == {}
-    assert "style.css" in theme.static_files
+    assert inputs.templates == {}
+    assert "style.css" in inputs.static_files
 
 
 # schema.json loading ==========================================================
 
 
 def test_from_directory_loads_schema_from_schema_json(tmp_path: Path) -> None:
-    """Test that Theme.from_directory() loads schema from schema.json if present."""
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
@@ -172,146 +175,88 @@ def test_from_directory_loads_schema_from_schema_json(tmp_path: Path) -> None:
         '"optional_keys": {"subtitle": {"type": "string", "default": "Default"}}}'
     )
 
-    theme = Theme.from_directory(theme_dir)
+    ext = extension_from_directory("test", theme_dir)
 
-    assert theme.schema == schema
+    assert ext.schema == schema
 
 
 def test_from_directory_allows_missing_schema_json(tmp_path: Path) -> None:
-    """Test that Theme.from_directory() sets schema=None when schema.json is missing."""
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "base.html").write_text("<html></html>")
 
-    theme = Theme.from_directory(theme_dir)
+    ext = extension_from_directory("test", theme_dir)
 
-    assert theme.schema is None
+    assert ext.schema is None
 
 
 def test_from_directory_raises_on_invalid_json_in_schema_json(tmp_path: Path) -> None:
-    """Test that Theme.from_directory() raises ValueError for malformed JSON."""
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "base.html").write_text("<html></html>")
 
-    # Invalid JSON - missing closing brace
     (theme_dir / "schema.json").write_text('{"type": "dict"')
 
     with pytest.raises(ValueError, match="Invalid JSON in schema.json"):
-        Theme.from_directory(theme_dir)
+        extension_from_directory("test", theme_dir)
 
 
 def test_from_directory_raises_on_invalid_schema_in_schema_json(tmp_path: Path) -> None:
-    """Test that Theme.from_directory() raises ValueError for invalid schema."""
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "base.html").write_text("<html></html>")
 
-    # Valid JSON but invalid smartconfig schema - missing required 'type' field
     (theme_dir / "schema.json").write_text('{"invalid_key": "value"}')
 
     with pytest.raises(ValueError, match="Theme configuration schema is invalid"):
-        Theme.from_directory(theme_dir)
+        extension_from_directory("test", theme_dir)
 
 
 # hooks.py loading =============================================================
 
 
-def test_from_directory_loads_hooks_from_hooks_py(tmp_path: Path) -> None:
-    """Test that Theme.from_directory() loads hooks from hooks.py if present."""
+def test_from_directory_loads_post_generate_hook(tmp_path: Path) -> None:
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "base.html").write_text("<html></html>")
 
-    # Create hooks.py with both hooks
     (theme_dir / "hooks.py").write_text(
-        "def pre_generate(config):\n    pass\n\ndef post_generate(config):\n    pass\n"
+        "def post_generate(config, extension_config):\n    pass\n"
     )
 
-    theme = Theme.from_directory(theme_dir)
+    ext = extension_from_directory("test", theme_dir)
 
-    assert theme.hooks.pre_generate is not None
-    assert theme.hooks.post_generate is not None
-    assert callable(theme.hooks.pre_generate)
-    assert callable(theme.hooks.post_generate)
+    assert "on_generate_post" in ext.hooks
 
 
 def test_from_directory_allows_missing_hooks_py(tmp_path: Path) -> None:
-    """Test that Theme.from_directory() works when hooks.py is missing."""
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "base.html").write_text("<html></html>")
 
-    theme = Theme.from_directory(theme_dir)
+    ext = extension_from_directory("test", theme_dir)
 
-    assert theme.hooks.pre_generate is None
-    assert theme.hooks.post_generate is None
-
-
-def test_from_directory_allows_partial_hooks_pre_generate_only(tmp_path: Path) -> None:
-    """Test that hooks.py can define only pre_generate."""
-    theme_dir = tmp_path / "theme"
-    templates_dir = theme_dir / "templates"
-    templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html></html>")
-
-    (theme_dir / "hooks.py").write_text("def pre_generate(config):\n    pass\n")
-
-    theme = Theme.from_directory(theme_dir)
-
-    assert theme.hooks.pre_generate is not None
-    assert theme.hooks.post_generate is None
-
-
-def test_from_directory_allows_partial_hooks_post_generate_only(tmp_path: Path) -> None:
-    """Test that hooks.py can define only post_generate."""
-    theme_dir = tmp_path / "theme"
-    templates_dir = theme_dir / "templates"
-    templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html></html>")
-
-    (theme_dir / "hooks.py").write_text("def post_generate(config):\n    pass\n")
-
-    theme = Theme.from_directory(theme_dir)
-
-    assert theme.hooks.pre_generate is None
-    assert theme.hooks.post_generate is not None
+    assert "on_generate_post" not in ext.hooks
 
 
 def test_from_directory_raises_on_malformed_hooks_py(tmp_path: Path) -> None:
-    """Test that Theme.from_directory() raises ValueError for malformed hooks.py."""
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "base.html").write_text("<html></html>")
 
-    # Invalid Python syntax
     (theme_dir / "hooks.py").write_text("def pre_generate(config)\n    pass\n")
 
     with pytest.raises(ValueError, match="Error loading hooks"):
-        Theme.from_directory(theme_dir)
-
-
-def test_from_directory_raises_on_non_callable_pre_generate(tmp_path: Path) -> None:
-    """Test ValueError is raised if pre_generate is not callable."""
-    theme_dir = tmp_path / "theme"
-    templates_dir = theme_dir / "templates"
-    templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html></html>")
-
-    (theme_dir / "hooks.py").write_text("pre_generate = 'not a function'\n")
-
-    with pytest.raises(ValueError, match="pre_generate.*must be callable"):
-        Theme.from_directory(theme_dir)
+        extension_from_directory("test", theme_dir)
 
 
 def test_from_directory_raises_on_non_callable_post_generate(tmp_path: Path) -> None:
-    """Test ValueError is raised if post_generate is not callable."""
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
@@ -320,4 +265,4 @@ def test_from_directory_raises_on_non_callable_post_generate(tmp_path: Path) -> 
     (theme_dir / "hooks.py").write_text("post_generate = 42\n")
 
     with pytest.raises(ValueError, match="post_generate.*must be callable"):
-        Theme.from_directory(theme_dir)
+        extension_from_directory("test", theme_dir)

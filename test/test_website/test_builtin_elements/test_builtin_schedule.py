@@ -29,7 +29,6 @@ def render_context():
     website_config = WebsiteConfig(
         content_directory="/fake/content",
         build_directory="/fake/build",
-        theme=automata.website.ThemeConfig(use="default", config={}),
     )
 
     # Simple url_for function

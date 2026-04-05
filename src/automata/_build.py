@@ -4,7 +4,9 @@ import datetime
 from pathlib import Path
 
 from . import materials
-from .config import read_config
+from ._extension import apply_extension
+from .config import load_extensions, read_config
+from .hooks import Hooks
 from .website import generate
 
 CONFIGURATION_FILENAME = "automata.yaml"
@@ -16,8 +18,8 @@ def build(
     """Build the automata project located at the given path.
 
     This function orchestrates the build process for the automata project,
-    including reading the configuration, building materials, and generating the
-    website.
+    including reading the configuration, loading extensions, building
+    materials, and generating the website.
 
     Parameters
     ----------
@@ -26,8 +28,7 @@ def build(
         working directory.
     current_time : datetime.datetime | None
         The current time to use for release time checks and scheduling.
-        If None, uses the system time. This can be used to simulate building
-        at a different time for testing purposes.
+        If None, uses the system time.
 
     """
     if path is None:
@@ -37,6 +38,11 @@ def build(
         current_time = datetime.datetime.now()
 
     config = read_config(path / CONFIGURATION_FILENAME)
+
+    # Load extensions and register their hooks
+    hooks = Hooks()
+    for ext in load_extensions(config, cwd=path):
+        apply_extension(ext, hooks)
 
     # Discover and build materials
     unbuilt_universe = materials.discover(path, vars=config.vars)
@@ -57,11 +63,12 @@ def build(
     materials_json.parent.mkdir(parents=True, exist_ok=True)
     materials_json.write_text(materials.serialize(exported_universe))
 
-    # Generate website (materials are already in place, so no copy needed)
+    # Generate website (extensions already registered on hooks)
     generate(
         config.website,
         materials_output_dir,
         config.vars,
         cwd=path,
         current_time=current_time,
+        hooks=hooks,
     )

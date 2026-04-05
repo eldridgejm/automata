@@ -1,28 +1,9 @@
 from datetime import datetime
 
-from pytest import fixture
-
 import automata.website
 
 
-@fixture
-def config(tmpsite):
-    return automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        theme=automata.website.ThemeConfig(
-            use="default",
-            config={
-                "short_title": "DSC 40B",
-                "long_title": "Theoretical Foundations of Data Science II",
-                "navigation": [],
-                "rebuild_tailwind": False,  # Disable for faster tests
-            },
-        ),
-    )
-
-
-def test_date_pill_uses_now_for_current_date(tmpsite, config):
+def test_date_pill_uses_now_for_current_date(tmpsite, config, hooks):
     # given
     tmpsite.make_page(
         "index.html",
@@ -34,7 +15,7 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config):
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, current_time=datetime(2024, 6, 15)
+        config, tmpsite.materials_directory, current_time=datetime(2024, 6, 15), hooks=hooks
     )
 
     # then
@@ -43,13 +24,13 @@ def test_date_pill_uses_now_for_current_date(tmpsite, config):
 
     # when
     automata.website.generate(
-        config, tmpsite.materials_directory, current_time=datetime(2024, 6, 17)
+        config, tmpsite.materials_directory, current_time=datetime(2024, 6, 17), hooks=hooks
     )
     output = tmpsite.get_output("index.html")
     assert "After!" in output
 
 
-def test_date_pill_with_template_variables(tmpsite, config):
+def test_date_pill_with_template_variables(tmpsite, config, hooks):
     # given
     tmpsite.make_page(
         "index.html",
@@ -65,6 +46,7 @@ def test_date_pill_with_template_variables(tmpsite, config):
         tmpsite.materials_directory,
         current_time=datetime(2024, 6, 15),
         vars={"foo": "BAR"},
+        hooks=hooks,
     )
 
     # then

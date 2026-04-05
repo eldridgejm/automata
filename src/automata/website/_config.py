@@ -1,23 +1,4 @@
-from typing import Any
-
 import smartconfig
-
-
-class ThemeConfig(smartconfig.Prototype):
-    """Configuration for the website theme."""
-
-    # which theme to use. If this contains slashes, it is treated as a path to a
-    # custom theme directory. Otherwise, it is treated as the name of an entry
-    # point under the "automata.themes" group.
-    use: str = "default"
-
-    # path to a directory containing overrides. If specified, this directory should
-    # contain "templates" and/or "static" subdirectories with files that override
-    # those in the theme.
-    overrides: str | None = None
-
-    # additional configuration options to pass to the theme
-    config: Any = {}
 
 
 class WebsiteConfig(smartconfig.Prototype):
@@ -38,5 +19,3 @@ class WebsiteConfig(smartconfig.Prototype):
 
     # base path for the website (e.g., "/" or "/course/")
     base_path: str = "/"
-
-    theme: ThemeConfig = ThemeConfig()

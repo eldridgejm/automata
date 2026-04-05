@@ -1,28 +1,9 @@
 """Tests for the listing element."""
 
-from pytest import fixture
-
 import automata.website
 
 
-@fixture
-def config(tmpsite):
-    return automata.website.WebsiteConfig(
-        content_directory=tmpsite.content_directory,
-        build_directory=tmpsite.build_directory,
-        theme=automata.website.ThemeConfig(
-            use="default",
-            config={
-                "short_title": "DSC 40B",
-                "long_title": "Theoretical Foundations of Data Science II",
-                "navigation": [],
-                "rebuild_tailwind": False,  # Disable for faster tests
-            },
-        ),
-    )
-
-
-def test_listing_element_renders_simple_table(tmpsite, config):
+def test_listing_element_renders_simple_table(tmpsite, config, hooks):
     """Test rendering a simple listing with one column."""
     # given: a course with homeworks
     tmpsite.write_materials_json(
@@ -71,7 +52,7 @@ def test_listing_element_renders_simple_table(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -81,7 +62,7 @@ def test_listing_element_renders_simple_table(tmpsite, config):
     assert "Homework 2" in output
 
 
-def test_listing_element_renders_multiple_columns(tmpsite, config):
+def test_listing_element_renders_multiple_columns(tmpsite, config, hooks):
     """Test rendering a listing with multiple columns."""
     # given
     tmpsite.write_materials_json(
@@ -128,7 +109,7 @@ def test_listing_element_renders_multiple_columns(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -138,7 +119,7 @@ def test_listing_element_renders_multiple_columns(tmpsite, config):
     assert "2024-01-15" in output
 
 
-def test_listing_element_with_numbered_rows(tmpsite, config):
+def test_listing_element_with_numbered_rows(tmpsite, config, hooks):
     """Test that numbered=true adds row numbers."""
     # given
     tmpsite.write_materials_json(
@@ -184,7 +165,7 @@ def test_listing_element_with_numbered_rows(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -192,7 +173,7 @@ def test_listing_element_with_numbered_rows(tmpsite, config):
     assert "<th" in output and "#" in output
 
 
-def test_listing_element_with_artifact_links(tmpsite, config):
+def test_listing_element_with_artifact_links(tmpsite, config, hooks):
     """Test listing with links to artifacts."""
     # given
     tmpsite.write_materials_json(
@@ -231,14 +212,14 @@ def test_listing_element_with_artifact_links(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
 
     # then: artifacts should be accessible in templates
     output = tmpsite.get_output("index.html")
     assert "Homework 1" in output
 
 
-def test_listing_element_conditional_content_when_artifact_missing(tmpsite, config):
+def test_listing_element_conditional_content_when_artifact_missing(tmpsite, config, hooks):
     """Test that missing artifacts show fallback content."""
     # given: hw01 has artifact, hw02 does not
     tmpsite.write_materials_json(
@@ -289,7 +270,7 @@ def test_listing_element_conditional_content_when_artifact_missing(tmpsite, conf
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -297,7 +278,7 @@ def test_listing_element_conditional_content_when_artifact_missing(tmpsite, conf
     assert "Not yet released" in output  # hw02 doesn't
 
 
-def test_listing_element_conditional_content_when_metadata_missing(tmpsite, config):
+def test_listing_element_conditional_content_when_metadata_missing(tmpsite, config, hooks):
     """Test that missing metadata shows fallback content."""
     # given: hw01 has due date, hw02 does not
     tmpsite.write_materials_json(
@@ -346,7 +327,7 @@ def test_listing_element_conditional_content_when_metadata_missing(tmpsite, conf
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -354,7 +335,7 @@ def test_listing_element_conditional_content_when_metadata_missing(tmpsite, conf
     assert "TBD" in output  # hw02 doesn't
 
 
-def test_listing_element_conditional_content_non_null_metadata(tmpsite, config):
+def test_listing_element_conditional_content_non_null_metadata(tmpsite, config, hooks):
     """Test that null metadata values show fallback content."""
     # given: hw01 has non-null due date, hw02 has null due date
     tmpsite.write_materials_json(
@@ -403,7 +384,7 @@ def test_listing_element_conditional_content_non_null_metadata(tmpsite, config):
     )
 
     # when
-    automata.website.generate(config, tmpsite.materials_directory)
+    automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
 
     # then
     output = tmpsite.get_output("index.html")

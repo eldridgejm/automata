@@ -19,14 +19,15 @@ def test_read_config_reads_valid_config(tmp_path: Path) -> None:
               course_name: "DSC 101"
               semester: "Fall 2025"
 
-            website:
-              content_directory: "./content"
-              build_directory: "./build"
-              theme:
-                use: "default"
+            extensions:
+              - use: "default"
                 config:
                   short_title: "DSC 101"
                   long_title: "Introduction to Data Science"
+
+            website:
+              content_directory: "./content"
+              build_directory: "./build"
             """
         )
     )
@@ -38,8 +39,9 @@ def test_read_config_reads_valid_config(tmp_path: Path) -> None:
     assert config.vars["semester"] == "Fall 2025"
     assert config.website.content_directory == "./content"
     assert config.website.build_directory == "./build"
-    assert config.website.theme.use == "default"
-    assert config.website.theme.config["short_title"] == "DSC 101"
+    assert len(config.extensions) == 1
+    assert config.extensions[0]["use"] == "default"
+    assert config.extensions[0]["config"]["short_title"] == "DSC 101"
 
 
 def test_read_config_applies_defaults(tmp_path: Path) -> None:
@@ -60,10 +62,8 @@ def test_read_config_applies_defaults(tmp_path: Path) -> None:
     # vars should default to {}
     assert config.vars == {}
 
-    # website theme should have defaults
-    assert config.website.theme.use == "default"
-    assert config.website.theme.overrides is None
-    assert config.website.theme.config == {}
+    # extensions should default to []
+    assert config.extensions == []
 
     # Other website defaults
     assert config.website.materials_directory_name == "materials"
@@ -142,36 +142,33 @@ def test_read_config_with_empty_vars(tmp_path: Path) -> None:
     assert config.vars == {}
 
 
-def test_read_config_with_complex_theme_config(tmp_path: Path) -> None:
-    """Test that read_config handles complex theme configurations."""
+def test_read_config_with_extensions_list(tmp_path: Path) -> None:
+    """Test that read_config handles extensions as a list."""
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
         dedent(
             """
+            extensions:
+              - "default"
+              - "./custom-theme"
+              - use: "my-ext"
+                config:
+                  key: "value"
+
             website:
               content_directory: "./content"
               build_directory: "./build"
-              theme:
-                use: "./custom-theme"
-                overrides: "./theme-overrides"
-                config:
-                  short_title: "Course"
-                  long_title: "Full Course Title"
-                  navigation:
-                    - text: "Home"
-                      url: "/index.html"
-                    - text: "Syllabus"
-                      url: "/syllabus.html"
             """
         )
     )
 
     config = read_config(config_file)
 
-    assert config.website.theme.use == "./custom-theme"
-    assert config.website.theme.overrides == "./theme-overrides"
-    assert len(config.website.theme.config["navigation"]) == 2
-    assert config.website.theme.config["navigation"][0]["text"] == "Home"
+    assert len(config.extensions) == 3
+    assert config.extensions[0] == "default"
+    assert config.extensions[1] == "./custom-theme"
+    assert config.extensions[2]["use"] == "my-ext"
+    assert config.extensions[2]["config"]["key"] == "value"
 
 
 def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
@@ -184,33 +181,32 @@ def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
               course_name: "DSC 101"
               semester: "Fall 2025"
 
-            website:
-              content_directory: "./content"
-              build_directory: "./build"
-              theme:
-                use: "default"
+            extensions:
+              - use: "default"
                 config:
                   short_title: ${ vars.course_name }
                   long_title: "Introduction to Data Science - ${ vars.semester }"
+
+            website:
+              content_directory: "./content"
+              build_directory: "./build"
             """
         )
     )
 
     config = read_config(config_file)
 
-    # Check that interpolation worked
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
-    assert config.website.theme.config["short_title"] == "DSC 101"
+    assert config.extensions[0]["config"]["short_title"] == "DSC 101"
     assert (
-        config.website.theme.config["long_title"]
+        config.extensions[0]["config"]["long_title"]
         == "Introduction to Data Science - Fall 2025"
     )
 
 
 def test_read_config_with_include(tmp_path: Path) -> None:
     """Test that read_config can include external files."""
-    # Create the included file
     vars_file = tmp_path / "vars.yaml"
     vars_file.write_text(
         dedent(
@@ -221,7 +217,6 @@ def test_read_config_with_include(tmp_path: Path) -> None:
         )
     )
 
-    # Create the main config file
     config_file = tmp_path / "config.yaml"
     config_file.write_text(
         dedent(
@@ -229,13 +224,14 @@ def test_read_config_with_include(tmp_path: Path) -> None:
             vars:
               __include__: vars.yaml
 
+            extensions:
+              - use: "default"
+                config:
+                  short_title: ${ vars.course_name }
+
             website:
               content_directory: "./content"
               build_directory: "./build"
-              theme:
-                use: "default"
-                config:
-                  short_title: ${ vars.course_name }
             """
         )
     )
@@ -244,4 +240,4 @@ def test_read_config_with_include(tmp_path: Path) -> None:
 
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
-    assert config.website.theme.config["short_title"] == "DSC 101"
+    assert config.extensions[0]["config"]["short_title"] == "DSC 101"

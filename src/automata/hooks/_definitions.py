@@ -1,13 +1,15 @@
 """Definitions of all hooks used throughout automata."""
 
 import pathlib
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Union
+from dataclasses import dataclass, field
+from importlib.resources.abc import Traversable
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from ._internals import HooksBase, ObserverHook, PipelineHook
 
 if TYPE_CHECKING:
     from automata.website import WebsiteConfig
+    from automata.website._elements import Element
 
 # materials hooks ======================================================================
 
@@ -143,6 +145,25 @@ class FilterHooks(HooksBase):
 
 # website hooks ========================================================================
 
+# collect ------------------------------------------------------------------------------
+
+
+@dataclass
+class WebsiteInputs:
+    """Accumulated website inputs gathered from extensions.
+
+    Extensions register hooks on ``on_website_collect`` to contribute
+    templates, static files, elements, pages, and variables to the website
+    generation pipeline.
+    """
+
+    templates: dict[str, str] = field(default_factory=dict)
+    static_files: dict[str, "str | bytes | Traversable"] = field(default_factory=dict)
+    elements: dict[str, "type[Element]"] = field(default_factory=dict)
+    pages: dict[str, "str | bytes | pathlib.Path"] = field(default_factory=dict)
+    vars: dict[str, Any] = field(default_factory=dict)
+
+
 # generate -----------------------------------------------------------------------------
 
 
@@ -166,6 +187,9 @@ class GeneratePostHookArgs:
 
 class GenerateHooks(HooksBase):
     """Hooks for the website generation phase."""
+
+    on_website_collect: PipelineHook[WebsiteInputs]
+    """Called to gather website inputs (templates, static files, elements, etc.)."""
 
     on_generate_pre: PipelineHook[GeneratePreHookArgs]
     """Called before generation. Can transform extra_content."""

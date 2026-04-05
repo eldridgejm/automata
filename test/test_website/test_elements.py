@@ -4,7 +4,7 @@ from smartconfig.types import ConfigurationDict
 from automata.materials import ExportedArtifact, Universe
 from automata.website import BasicElement, RenderContext
 from automata.website._config import WebsiteConfig
-from automata.website._theme import Theme
+import jinja2
 
 
 @fixture
@@ -26,8 +26,14 @@ def render_context():
 @fixture
 def jinja_env():
     """A minimal Jinja environment for testing."""
-    theme = Theme(templates={})
-    return theme.create_jinja_environment()
+    return jinja2.Environment(
+        loader=jinja2.DictLoader({}),
+        undefined=jinja2.StrictUndefined,
+        variable_start_string="${",
+        variable_end_string="}",
+        block_start_string="{%",
+        block_end_string="%}",
+    )
 
 
 def test_basic_element_raises_if_config_does_not_fit_schema(render_context, jinja_env):
