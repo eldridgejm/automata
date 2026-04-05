@@ -30,15 +30,13 @@ def project_dir(tmp_path):
     # automata.yaml
     (project / "automata.yaml").write_text(
         dedent(f"""\
-            extensions:
-              - use: "{theme_path}"
+            website:
+              theme:
+                use: "{theme_path}"
                 config:
                   short_title: "Test"
                   long_title: "Test Course"
-
-            content_directory: "content"
-
-            website:
+              content_directory: "content"
               build_directory: "_build"
         """)
     )

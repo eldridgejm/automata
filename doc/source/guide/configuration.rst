@@ -14,20 +14,19 @@ Top-level structure
       course_name: "DSC 80"
       term: "Spring 2026"
 
-    # Extensions to load (themes, plugins)
+    # Extensions to load (optional)
     extensions:
-      - default
+      - my-extension
 
     # Inline materials definitions (optional)
     materials:
       exams:
         ...
 
-    # Path to content directory
-    content_directory: content
-
     # Website generation settings
     website:
+      theme: default
+      content_directory: content
       build_directory: _build
 
 
@@ -91,13 +90,6 @@ Extensions are applied in order. Later extensions override earlier ones for
 templates, static files, and elements with the same name.
 
 
-``content_directory``
----------------------
-
-Path to the directory containing pages (Markdown, HTML, static files).
-Defaults to ``"content"``.
-
-
 ``materials``
 -------------
 
@@ -117,6 +109,13 @@ Website generation settings:
    * - Field
      - Default
      - Description
+   * - ``theme``
+     - *(required)*
+     - Theme extension to use. A string name (e.g., ``"default"``) or a dict
+       with ``use`` and ``config`` keys.
+   * - ``content_directory``
+     - *(required)*
+     - Path to the directory containing pages (Markdown, HTML, static files).
    * - ``build_directory``
      - *(required)*
      - Path to the output directory.

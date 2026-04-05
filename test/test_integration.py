@@ -99,15 +99,13 @@ vars:
   schedule_config:
     __include__: "schedule.yaml"
 
-extensions:
-  - use: "{theme_path}"
+website:
+  theme:
+    use: "{theme_path}"
     config:
       short_title: "Test Course"
       long_title: "Test Course - Release Time Behavior"
-
-content_directory: "content"
-
-website:
+  content_directory: "content"
   build_directory: "_build"
   materials_directory_name: "materials"
   base_path: "."

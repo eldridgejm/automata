@@ -26,12 +26,6 @@ def project_with_inline_materials(tmp_path):
 
     (project / "automata.yaml").write_text(
         dedent(f"""\
-            extensions:
-              - use: "{theme_path}"
-                config:
-                  short_title: "Test"
-                  long_title: "Test Course"
-
             materials:
               homeworks:
                 schema:
@@ -61,9 +55,13 @@ def project_with_inline_materials(tmp_path):
                         path: homeworks/hw02/homework.pdf
                         release_time: 2025-01-20 12:00:00
 
-            content_directory: "content"
-
             website:
+              theme:
+                use: "{theme_path}"
+                config:
+                  short_title: "Test"
+                  long_title: "Test Course"
+              content_directory: "content"
               build_directory: "_build"
         """)
     )
@@ -153,12 +151,6 @@ class TestInlineMaterialsWithVariables:
             "vars:\n"
             "  base_due: 2025-01-15\n"
             "\n"
-            "extensions:\n"
-            '  - use: "' + str(theme_path) + '"\n'
-            "    config:\n"
-            '      short_title: "Test"\n'
-            '      long_title: "Test Course"\n'
-            "\n"
             "materials:\n"
             "  homeworks:\n"
             "    schema:\n"
@@ -173,9 +165,13 @@ class TestInlineMaterialsWithVariables:
             "          due: ${ vars.base_due }\n"
             "        artifacts: {}\n"
             "\n"
-            'content_directory: "content"\n'
-            "\n"
             "website:\n"
+            "  theme:\n"
+            '    use: "' + str(theme_path) + '"\n'
+            "    config:\n"
+            '      short_title: "Test"\n'
+            '      long_title: "Test Course"\n'
+            '  content_directory: "content"\n'
             '  build_directory: "_build"\n'
         )
         (project / "automata.yaml").write_text(yaml)

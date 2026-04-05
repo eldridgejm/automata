@@ -30,12 +30,9 @@ The configuration file:
 
 .. code-block:: yaml
 
-    extensions:
-      - default
-
-    content_directory: content
-
     website:
+      theme: default
+      content_directory: content
       build_directory: _build
 
 And ``content/index.md``:
@@ -71,15 +68,13 @@ Variables let you define values once and reference them throughout the site:
       course_title: "The Practice and Application of Data Science"
       term: "Spring 2026"
 
-    extensions:
-      - use: default
+    website:
+      theme:
+        use: default
         config:
           short_title: ${ vars.course_name }
           long_title: ${ vars.course_title }
-
-    content_directory: content
-
-    website:
+      content_directory: content
       build_directory: _build
 
 Then in your pages:

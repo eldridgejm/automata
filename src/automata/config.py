@@ -29,8 +29,13 @@ class Config(smartconfig.Prototype):
     # a dict with "schema" and "publications" keys.
     materials: dict[str, Any] = {}
 
-    # path to the directory containing content (pages and materials)
+    # path to the directory containing content (pages and materials).
+    # Populated from website.content_directory in the YAML.
     content_directory: str = "content"
+
+    # theme extension spec. Populated from website.theme in the YAML.
+    # Same format as an extensions entry: a string or dict with "use"/"config".
+    theme: Any = None
 
     # configuration for the website
     website: WebsiteConfig
@@ -90,20 +95,52 @@ def read_config(path: Path) -> Config:
     yaml_content = path.read_text()
     config_dict = parse_yaml(yaml_content)
 
+    # Extract fields from website section that live on Config, not WebsiteConfig.
+    website = config_dict.get("website", {})
+    if isinstance(website, dict):
+        if "content_directory" in website:
+            config_dict.setdefault("content_directory", website.pop("content_directory"))
+        if "theme" in website:
+            config_dict.setdefault("theme", website.pop("theme"))
+
     try:
         return resolve(config_dict, Config, base_path=path.parent)
     except smartconfig.exceptions.Error as e:
         raise Error(f"Invalid configuration: {e}") from e
 
 
+def _load_extension_spec(spec: Any, cwd: Path) -> Extension:
+    """Load a single extension from a spec (string or dict).
+
+    Parameters
+    ----------
+    spec : str or dict
+        A string (entry point name or directory path) or a dict with
+        ``"use"`` and optional ``"config"`` keys.
+    cwd : Path
+        Working directory for resolving relative paths.
+
+    """
+    if isinstance(spec, str):
+        name = spec
+        ext_config = None
+    elif isinstance(spec, dict):
+        name = spec["use"]
+        ext_config = spec.get("config")
+    else:
+        raise Error(f"Invalid extension spec: {spec!r}")
+
+    if "/" in name or "\\" in name:
+        return extension_from_directory(name, cwd / name, config=ext_config)
+    else:
+        return extension_from_entry_point(name, config=ext_config)
+
+
 def load_extensions(config: Config, cwd: Path) -> list[Extension]:
-    """Load extensions from the configuration.
+    """Load all extensions from the configuration.
 
-    Each entry in ``config.extensions`` can be:
-
-    - A string without slashes: treated as an entry point name.
-    - A string with slashes: treated as a directory path (relative to *cwd*).
-    - A dict with ``"use"`` (name/path) and optional ``"config"`` keys.
+    The theme (if specified) is loaded first, followed by extensions in
+    order.  This ensures theme hooks run before extension hooks.
 
     Parameters
     ----------
@@ -115,28 +152,15 @@ def load_extensions(config: Config, cwd: Path) -> list[Extension]:
     Returns
     -------
     list[Extension]
-        The loaded extensions, in order.
+        The loaded extensions, in order (theme first).
 
     """
     extensions: list[Extension] = []
 
+    if config.theme is not None:
+        extensions.append(_load_extension_spec(config.theme, cwd))
+
     for spec in config.extensions:
-        if isinstance(spec, str):
-            name = spec
-            ext_config = None
-        elif isinstance(spec, dict):
-            name = spec["use"]
-            ext_config = spec.get("config")
-        else:
-            raise Error(f"Invalid extension spec: {spec!r}")
-
-        if "/" in name or "\\" in name:
-            ext = extension_from_directory(
-                name, cwd / name, config=ext_config
-            )
-        else:
-            ext = extension_from_entry_point(name, config=ext_config)
-
-        extensions.append(ext)
+        extensions.append(_load_extension_spec(spec, cwd))
 
     return extensions
