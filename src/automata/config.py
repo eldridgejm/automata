@@ -35,6 +35,16 @@ class WebsiteConfig(smartconfig.Prototype):
     base_path: str = "/"
 
 
+class PublishConfig(smartconfig.Prototype):
+    """Configuration for publishing/deployment."""
+
+    # name of the publish strategy (e.g., "gh-pages", "scp")
+    strategy: str
+
+    # strategy-specific configuration
+    config: dict[str, Any] = {}
+
+
 class Config(smartconfig.Prototype):
     """Top-level configuration for automata."""
 
@@ -53,6 +63,9 @@ class Config(smartconfig.Prototype):
 
     # configuration for the website
     website: WebsiteConfig
+
+    # optional publish/deployment configuration
+    publish: PublishConfig | None = None
 
 
 def find_config(start_path: Path) -> Path | None:

@@ -64,6 +64,21 @@ def generate(current_time: Optional[str] = _current_time_option):
 
 
 @app.command()
+def publish(current_time: Optional[str] = _current_time_option):
+    """Run the full pipeline and deploy the built site."""
+    project = Automata()
+    if project.config.publish is None:
+        typer.echo(
+            "Error: No 'publish' section found in automata.yaml. "
+            "Configure a publish strategy first.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    project.publish(current_time=_get_current_time(current_time))
+    typer.echo("Site published.")
+
+
+@app.command()
 def discover():
     """Discover materials and print a summary."""
     project = Automata()

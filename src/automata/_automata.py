@@ -6,7 +6,8 @@ from pathlib import Path
 from . import materials
 from ._extension import apply_extension
 from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
-from .hooks import Hooks, PipelineStepArgs
+from .exceptions import Error
+from .hooks import Hooks, PipelineStepArgs, PublishPreHookArgs, PublishPostHookArgs, PublisherRegistryArgs
 from .materials import (
     BuiltArtifact,
     ExportedArtifact,
@@ -157,6 +158,58 @@ class Automata:
         self.hooks.on_pipeline_step(PipelineStepArgs("generate_website", "start"))
         self.generate_website(current_time=current_time)
         self.hooks.on_pipeline_step(PipelineStepArgs("generate_website", "end"))
+
+    def publish(self, current_time: datetime.datetime | None = None) -> None:
+        """Run the full pipeline and deploy the built site.
+
+        Calls :meth:`generate` first, then looks up the configured publish
+        strategy and invokes it.
+
+        Parameters
+        ----------
+        current_time : datetime.datetime | None
+            The current time for release-time checks and scheduling.
+            If *None*, uses the system time.
+
+        Raises
+        ------
+        automata.exceptions.Error
+            If no publish configuration is present or the strategy is unknown.
+
+        """
+        self.generate(current_time=current_time)
+
+        if self.config.publish is None:
+            raise Error("No 'publish' section found in automata.yaml.")
+
+        # Build publisher registry: start with builtins, let extensions add more
+        from . import publish as publish_module
+
+        initial = publish_module.registry.all()
+        args = self.hooks.on_register_publishers(PublisherRegistryArgs(publishers=initial))
+
+        strategy_name = self.config.publish.strategy
+        publisher = args.publishers.get(strategy_name)
+        if publisher is None:
+            available = ", ".join(sorted(args.publishers)) or "(none)"
+            raise Error(
+                f"Unknown publish strategy: {strategy_name!r}. "
+                f"Available: {available}"
+            )
+
+        build_dir = self.path / self.config.website.build_directory
+
+        self.hooks.on_pipeline_step(PipelineStepArgs("publish", "start"))
+        self.hooks.on_publish_pre(
+            PublishPreHookArgs(build_directory=build_dir, strategy=strategy_name)
+        )
+
+        publisher(build_dir, self.config.publish.config)
+
+        self.hooks.on_publish_post(
+            PublishPostHookArgs(build_directory=build_dir, strategy=strategy_name)
+        )
+        self.hooks.on_pipeline_step(PipelineStepArgs("publish", "end"))
 
     # --- individual steps ---
 

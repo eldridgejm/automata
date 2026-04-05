@@ -18,6 +18,10 @@ from ._definitions import (
     Hooks,
     PipelineHooks,
     PipelineStepArgs,
+    PublishHooks,
+    PublishPostHookArgs,
+    PublishPreHookArgs,
+    PublisherRegistryArgs,
     WebsiteInputs,
 )
 
@@ -39,5 +43,9 @@ __all__ = [
     "Hooks",
     "PipelineHooks",
     "PipelineStepArgs",
+    "PublishHooks",
+    "PublishPostHookArgs",
+    "PublishPreHookArgs",
+    "PublisherRegistryArgs",
     "WebsiteInputs",
 ]

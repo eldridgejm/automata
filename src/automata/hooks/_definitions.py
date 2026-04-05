@@ -216,6 +216,49 @@ class GenerateHooks(HooksBase):
     """Called after generation completes."""
 
 
+# publish hooks ========================================================================
+
+
+@dataclass
+class PublisherRegistryArgs:
+    """Mutable registry of publisher strategies.
+
+    Passed through the ``on_register_publishers`` pipeline hook so that
+    extensions can add custom publish strategies.
+    """
+
+    publishers: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class PublishPreHookArgs:
+    """Argument passed before publishing."""
+
+    build_directory: pathlib.Path
+    strategy: str
+
+
+@dataclass
+class PublishPostHookArgs:
+    """Argument passed after publishing."""
+
+    build_directory: pathlib.Path
+    strategy: str
+
+
+class PublishHooks(HooksBase):
+    """Hooks for the publish/deploy phase."""
+
+    on_register_publishers: PipelineHook[PublisherRegistryArgs]
+    """Called to let extensions register custom publish strategies."""
+
+    on_publish_pre: ObserverHook[PublishPreHookArgs]
+    """Called before publishing begins."""
+
+    on_publish_post: ObserverHook[PublishPostHookArgs]
+    """Called after publishing completes."""
+
+
 # all hooks ============================================================================
 
 
@@ -226,5 +269,6 @@ class Hooks(
     ExportHooks,
     FilterHooks,
     GenerateHooks,
+    PublishHooks,
 ):
     """Central registry of all hooks in automata."""
