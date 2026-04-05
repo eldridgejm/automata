@@ -7,7 +7,13 @@ from . import materials
 from ._extension import apply_extension
 from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
 from .exceptions import Error
-from .hooks import Hooks, PublishPreHookArgs, PublishPostHookArgs, PublisherRegistryArgs
+from .hooks import (
+    Hooks,
+    PublishPreHookArgs,
+    PublishPostHookArgs,
+    PublisherRegistryArgs,
+    WebsiteGeneratePreHookArgs,
+)
 from .materials import (
     BuiltArtifact,
     ExportedArtifact,
@@ -323,6 +329,13 @@ class Automata:
         build_dir = self.path / self.config.website.build_directory
         materials_output_dir = build_dir / self.config.website.materials_directory_name
         content_dir = self.path / self.config.website.content_directory
+
+        self.hooks.on_website_generate_pre(
+            WebsiteGeneratePreHookArgs(
+                content_directory=content_dir,
+                build_directory=build_dir,
+            )
+        )
 
         pages, static_content = _load_content_directory(
             content_dir,

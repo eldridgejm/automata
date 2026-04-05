@@ -907,32 +907,33 @@ def test_extension_from_directory_applies_defaults(tmp_path):
 # hooks ===========================================================================
 
 
-def test_generate_executes_post_generate_hook_from_theme(tmpsite, tmp_path):
-    """Test that generate() executes post_generate hook if defined in theme."""
-    # given: a theme with a post_generate hook that creates a marker file
+def test_generate_executes_script_hook_from_theme(tmpsite, tmp_path):
+    """Test that script hooks run and receive hook args as JSON on stdin."""
+    # given: a theme with a script hook that saves stdin (the JSON args) to a file
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
+    hooks_dir = theme_dir / "hooks"
     templates_dir.mkdir(parents=True)
+    hooks_dir.mkdir()
     (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
-    marker_file = tmp_path / "post_generate_marker.txt"
-    (theme_dir / "hooks.py").write_text(
-        f"def post_generate(config, extension_config):\n"
-        f"    with open('{marker_file}', 'w') as f:\n"
-        f"        f.write('post_generate executed')\n"
+    captured_file = tmp_path / "captured_args.json"
+    (hooks_dir / "on_generate_post").write_text(
+        f"cat > '{captured_file}'"
     )
 
     tmpsite.make_page("index.md", "# Home")
-
 
     hooks = _make_hooks(theme_dir=theme_dir)
 
     # when
     _generate(tmpsite, hooks=hooks)
 
-    # then
-    assert marker_file.exists()
-    assert marker_file.read_text() == "post_generate executed"
+    # then: the script ran and received the hook args as JSON
+    import json
+    assert captured_file.exists()
+    args = json.loads(captured_file.read_text())
+    assert "build_directory" in args
 
 
 def test_generate_continues_without_hooks(tmpsite, tmp_path):

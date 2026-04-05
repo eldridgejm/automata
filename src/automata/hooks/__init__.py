@@ -20,6 +20,7 @@ from ._definitions import (
     PublishPostHookArgs,
     PublishPreHookArgs,
     PublisherRegistryArgs,
+    WebsiteGeneratePreHookArgs,
     WebsiteInputs,
 )
 
@@ -43,5 +44,6 @@ __all__ = [
     "PublishPostHookArgs",
     "PublishPreHookArgs",
     "PublisherRegistryArgs",
+    "WebsiteGeneratePreHookArgs",
     "WebsiteInputs",
 ]

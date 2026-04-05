@@ -140,7 +140,9 @@ def _load_extension_spec(spec: Any, cwd: Path) -> Extension:
         raise Error(f"Invalid extension spec: {spec!r}")
 
     if "/" in name or "\\" in name:
-        return extension_from_directory(name, cwd / name, config=ext_config)
+        return extension_from_directory(
+            name, cwd / name, config=ext_config, require_templates=False
+        )
     else:
         return extension_from_entry_point(name, config=ext_config)
 

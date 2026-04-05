@@ -167,6 +167,19 @@ class WebsiteInputs:
 
 
 @dataclass
+class WebsiteGeneratePreHookArgs:
+    """Argument passed before website content is loaded.
+
+    Fired before ``_load_content_directory`` reads pages from disk, giving
+    script hooks (or other observers) a chance to generate files into the
+    content directory.
+    """
+
+    content_directory: pathlib.Path
+    build_directory: pathlib.Path
+
+
+@dataclass
 class GeneratePreHookArgs:
     """Argument passed to the pre-generate hook.
 
@@ -186,6 +199,10 @@ class GeneratePostHookArgs:
 
 class GenerateHooks(HooksBase):
     """Hooks for the website generation phase."""
+
+    on_website_generate_pre: ObserverHook[WebsiteGeneratePreHookArgs]
+    """Called before content is loaded from disk. Script hooks can use this
+    to generate files into the content directory."""
 
     on_website_collect: PipelineHook[WebsiteInputs]
     """Called to gather website inputs (templates, static files, elements, etc.)."""

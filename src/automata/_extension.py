@@ -3,23 +3,18 @@
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 import importlib.metadata as metadata
 import importlib.resources
-import importlib.util
 import json
-import sys
+import subprocess
 from collections.abc import Callable
 from importlib.resources.abc import Traversable
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import smartconfig.exceptions
 import smartconfig.types
 
-from .hooks import GeneratePostHookArgs, WebsiteInputs
-
-if TYPE_CHECKING:
-    from .website._elements import Element
+from .hooks import WebsiteInputs
 
 
 @dataclasses.dataclass
@@ -129,15 +124,16 @@ def extension_from_directory(
     require_templates: bool = True,
     dependencies: list[Extension] | None = None,
 ) -> Extension:
-    """Create an Extension from a theme directory.
+    """Create an Extension from a directory.
 
     The directory must contain a ``templates/`` subdirectory with template
-    files (unless *require_templates* is False). It may optionally contain
-    a ``static/`` subdirectory with static files, a ``schema.json`` for
-    config validation, and a ``hooks.py`` file.
+    files (unless *require_templates* is False). It may optionally contain:
 
-    If a ``hooks.py`` file is present, it may define a ``post_generate``
-    function that will be registered as an ``on_generate_post`` hook.
+    - ``static/`` --- static files served alongside the website.
+    - ``schema.json`` --- JSON schema for validating extension config.
+    - ``hooks/`` --- shell script hooks. Each file is named after an
+      observer hook point (e.g., ``on_generate_post``). The file content
+      is the shell command; hook args are piped as JSON on stdin.
 
     Parameters
     ----------
@@ -206,14 +202,10 @@ def extension_from_directory(
 
     ext_hooks["on_website_collect"] = collect
 
-    # Load post_generate hook from hooks.py if present
-    raw_post_generate = _load_raw_post_generate(directory)
-    if raw_post_generate is not None:
-
-        def _post_generate_hook(args: GeneratePostHookArgs) -> None:
-            raw_post_generate(args.build_directory, resolved_config)
-
-        ext_hooks["on_generate_post"] = _post_generate_hook
+    # Load script hooks from hooks/ directory
+    hooks_dir = directory / "hooks"
+    if hooks_dir.is_dir():
+        ext_hooks.update(_load_script_hooks(hooks_dir))
 
     return Extension(
         name=name,
@@ -298,67 +290,36 @@ def _walk(
             on_file(key, entry)
 
 
-def _load_python_module(
-    directory: Traversable,
-    filename: str,
-    module_type: str,
-    submodule_search_locations: list[str] | None = None,
-):
-    """Load a Python module from a file in a directory."""
-    with importlib.resources.as_file(directory) as dir_path:
-        digest = hashlib.sha256(str(dir_path).encode("utf-8")).hexdigest()[:12]
-        module_name = f"automata.ext_{module_type}_{digest}"
-        file_path = dir_path / filename
+def _load_script_hooks(hooks_dir: Traversable) -> dict[str, Callable]:
+    """Load shell script hooks from a hooks/ directory.
 
-        spec = importlib.util.spec_from_file_location(
-            module_name,
-            file_path,
-            submodule_search_locations=submodule_search_locations,
-        )
-        if spec is None or spec.loader is None:
-            raise ValueError(f"Unable to load {module_type} module at {file_path}.")
+    Each file in the directory is named after an observer hook point
+    (e.g., ``on_generate_post``, ``on_build_success``). The file content
+    is the shell command to run. Hook args are serialized as JSON and
+    piped to the command on stdin.
 
-        module = importlib.util.module_from_spec(spec)
-
-        sys.modules[module_name] = module
-
-        try:
-            spec.loader.exec_module(module)
-        except Exception as e:
-            sys.modules.pop(module_name, None)
-            raise ValueError(
-                f"Error loading {module_type} from {file_path}: {e}"
-            ) from e
-
-    return module
-
-
-def _load_raw_post_generate(
-    hooks_dir: Traversable,
-):
-    """Load a raw post_generate callable from hooks.py in a directory.
-
-    Returns the callable as defined in hooks.py, or None if not found.
-    The caller is responsible for wrapping it to match the hook signature.
+    Returns a dict mapping hook point names to callables.
     """
-    hooks_file = hooks_dir / "hooks.py"
-    if not hooks_file.is_file():
-        return None
+    from .hooks._internals import _default_serializer
 
-    module = _load_python_module(
-        directory=hooks_dir,
-        filename="hooks.py",
-        module_type="hooks",
-    )
+    script_hooks: dict[str, Callable] = {}
 
-    if not hasattr(module, "post_generate"):
-        return None
+    for entry in hooks_dir.iterdir():
+        if entry.is_dir() or entry.name.startswith("."):
+            continue
 
-    post_generate = module.post_generate
-    if not callable(post_generate):
-        raise ValueError(
-            f"post_generate in {hooks_file} must be callable, "
-            f"got {type(post_generate)}."
-        )
+        hook_name = entry.name
+        command = entry.read_text().strip()
+        if not command:
+            continue
 
-    return post_generate
+        def _make_hook(cmd: str) -> Callable:
+            def _hook(args: Any) -> None:
+                payload = _default_serializer(args)
+                subprocess.run(cmd, input=payload, shell=True, text=True)
+
+            return _hook
+
+        script_hooks[hook_name] = _make_hook(command)
+
+    return script_hooks

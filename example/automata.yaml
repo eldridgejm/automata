@@ -12,6 +12,9 @@ vars:
   schedule_config:
     __include__: "website/schedule.yaml"
 
+extensions:
+  - extensions/practice-problems
+
 materials:
   exams:
     schema:
@@ -77,6 +80,11 @@ website:
               <i data-lucide="scale" class="mr-2 text-slate-400"></i>
               Syllabus
             url: syllabus.html
+
+          - text: |
+              <i data-lucide="pencil" class="mr-2 text-slate-400"></i>
+              Practice
+            url: practice/week-01.html
   content_directory: "website/content"
   build_directory: "_build"
   base_path: "."

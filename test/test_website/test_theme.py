@@ -196,22 +196,23 @@ def test_from_directory_raises_on_invalid_schema_in_schema_json(tmp_path: Path) 
 # hooks.py loading =============================================================
 
 
-def test_from_directory_loads_post_generate_hook(tmp_path: Path) -> None:
+def test_from_directory_loads_script_hooks(tmp_path: Path) -> None:
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
+    hooks_dir = theme_dir / "hooks"
     templates_dir.mkdir(parents=True)
+    hooks_dir.mkdir()
     (templates_dir / "base.html").write_text("<html></html>")
-
-    (theme_dir / "hooks.py").write_text(
-        "def post_generate(config, extension_config):\n    pass\n"
-    )
+    (hooks_dir / "on_generate_post").write_text("cat > /dev/null")
+    (hooks_dir / "on_build_success").write_text("cat > /dev/null")
 
     ext = extension_from_directory("test", theme_dir)
 
     assert "on_generate_post" in ext.hooks
+    assert "on_build_success" in ext.hooks
 
 
-def test_from_directory_allows_missing_hooks_py(tmp_path: Path) -> None:
+def test_from_directory_works_without_hooks_dir(tmp_path: Path) -> None:
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
@@ -219,28 +220,19 @@ def test_from_directory_allows_missing_hooks_py(tmp_path: Path) -> None:
 
     ext = extension_from_directory("test", theme_dir)
 
+    # only on_website_collect should be present (no script hooks)
+    assert list(ext.hooks.keys()) == ["on_website_collect"]
+
+
+def test_from_directory_ignores_empty_hook_scripts(tmp_path: Path) -> None:
+    theme_dir = tmp_path / "theme"
+    templates_dir = theme_dir / "templates"
+    hooks_dir = theme_dir / "hooks"
+    templates_dir.mkdir(parents=True)
+    hooks_dir.mkdir()
+    (templates_dir / "base.html").write_text("<html></html>")
+    (hooks_dir / "on_generate_post").write_text("")  # empty script
+
+    ext = extension_from_directory("test", theme_dir)
+
     assert "on_generate_post" not in ext.hooks
-
-
-def test_from_directory_raises_on_malformed_hooks_py(tmp_path: Path) -> None:
-    theme_dir = tmp_path / "theme"
-    templates_dir = theme_dir / "templates"
-    templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html></html>")
-
-    (theme_dir / "hooks.py").write_text("def pre_generate(config)\n    pass\n")
-
-    with pytest.raises(ValueError, match="Error loading hooks"):
-        extension_from_directory("test", theme_dir)
-
-
-def test_from_directory_raises_on_non_callable_post_generate(tmp_path: Path) -> None:
-    theme_dir = tmp_path / "theme"
-    templates_dir = theme_dir / "templates"
-    templates_dir.mkdir(parents=True)
-    (templates_dir / "base.html").write_text("<html></html>")
-
-    (theme_dir / "hooks.py").write_text("post_generate = 42\n")
-
-    with pytest.raises(ValueError, match="post_generate.*must be callable"):
-        extension_from_directory("test", theme_dir)
