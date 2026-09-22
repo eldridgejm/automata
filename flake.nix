@@ -18,13 +18,15 @@
             python3Packages.buildPythonPackage {
               name = "automata";
               src = ./.;
+              pyproject = true;
+              build-system = [ python3Packages.setuptools ];
               propagatedBuildInputs = with python3Packages; [ 
                 pyyaml
                 markdown
                 jinja2
                 dictconfig.outputs.defaultPackage.${system}
               ];
-              nativeBuildInputs = with python3Packages; [ pytest black ipython sphinx sphinx_rtd_theme lxml ];
+              nativeBuildInputs = (with python3Packages; [ pytest black ipython sphinx lxml ]) ++ [ (python3Packages.sphinx-rtd-theme or python3Packages.sphinx_rtd_theme) ];
               doCheck = false;
             }
 
