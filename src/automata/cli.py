@@ -5,6 +5,7 @@ from typing import Optional
 import typer
 
 from ._automata import Automata
+from .exceptions import Error
 from .materials import serialize
 
 app = typer.Typer()
@@ -58,18 +59,16 @@ _current_time_option = typer.Option(
 
 
 @app.command()
-def generate(current_time: Optional[str] = _current_time_option):
-    """Run the full pipeline: discover, build, export, and generate website."""
-    Automata().generate(current_time=_get_current_time(current_time))
+def build(current_time: Optional[str] = _current_time_option):
+    """Run the full pipeline and produce the site in the build directory."""
+    Automata().build(current_time=_get_current_time(current_time))
 
 
 def _complete_publish_targets(incomplete: str) -> list[str]:
     """Return matching publish target names for shell tab-completion."""
     try:
         project = Automata()
-        return [
-            name for name in project.config.publish if name.startswith(incomplete)
-        ]
+        return [name for name in project.config.publish if name.startswith(incomplete)]
     except Exception:
         return []
 
@@ -111,9 +110,20 @@ def discover():
         typer.echo(f"{name}: {n} publication(s)")
 
 
+@app.command(name="clean-build-directory")
+def clean_build_directory():
+    """Empty the build directory, keeping top-level dot-entries."""
+    try:
+        Automata().clean_build_directory()
+    except Error as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("Build directory cleaned.")
+
+
 @app.command(name="build-materials")
 def build_materials(current_time: Optional[str] = _current_time_option):
-    """Discover and build materials (run recipes)."""
+    """Discover and build materials (run recipes, check release times)."""
     project = Automata()
     discovered = project.discover()
     project.build_materials(discovered, current_time=_get_current_time(current_time))
@@ -130,6 +140,19 @@ def export(current_time: Optional[str] = _current_time_option):
     )
     project.export(built)
     typer.echo("Materials exported.")
+
+
+@app.command(name="render-website")
+def render_website(current_time: Optional[str] = _current_time_option):
+    """Render the website from previously exported materials."""
+    project = Automata()
+    try:
+        materials = project.load_exported_materials()
+    except Error as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
+    project.render_website(materials, current_time=_get_current_time(current_time))
+    typer.echo("Website rendered.")
 
 
 @app.command()

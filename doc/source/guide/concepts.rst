@@ -37,29 +37,35 @@ The **Universe** is the top-level container holding all collections.
 The build pipeline
 ------------------
 
-When you run ``automata generate``, four things happen in sequence:
+When you run ``automata build``, these steps happen in sequence:
+
+0. **Clean.** The build directory is emptied (keeping entries such as
+   ``.git``), so it holds only what this build produces. This can be turned
+   off with ``website.clean_build_directory: false``.
 
 1. **Discover.** automata finds all materials --- both from the filesystem
    (``collection.yaml`` / ``publication.yaml`` files) and from inline
    definitions in ``automata.yaml``.
 
-2. **Build.** For filesystem materials with recipes, automata runs the shell
-   commands to produce artifact files. Artifacts with future release times or
+2. **Build materials.** For filesystem materials with recipes, automata runs
+   the shell commands to produce artifact files. Artifacts with future release times or
    ``ready: false`` are filtered out.
 
-3. **Export.** Built artifacts are copied to the build directory and a
+3. **Export.** The resulting artifacts are copied to the build directory and a
    ``materials.json`` manifest is written.
 
-4. **Generate website.** The website is rendered using the content directory,
+4. **Render website.** The website is rendered using the content directory,
    the exported materials, the theme templates, and any extensions.
 
 You can run each step individually via the CLI or the Python API::
 
     # CLI
+    automata clean-build-directory
     automata discover
     automata build-materials
     automata export
-    automata generate        # runs all four
+    automata render-website
+    automata build        # runs them all
 
     # Python
     project = Automata()
@@ -67,7 +73,7 @@ You can run each step individually via the CLI or the Python API::
     materials = project.discover()
     materials = project.build_materials(materials)
     materials = project.export(materials)
-    project.generate_website(materials)
+    project.render_website(materials)
 
 
 Extensions

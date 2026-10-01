@@ -97,8 +97,8 @@ class Automata:
 
     The constructor reads the project configuration and loads extensions.
     Individual pipeline steps are exposed as stateless methods that take
-    input and return output. The :meth:`generate` convenience method runs
-    the full pipeline.
+    input and return output. The :meth:`build` convenience method runs
+    the full pipeline, and :meth:`publish` runs it and then deploys.
 
     Parameters
     ----------
@@ -111,7 +111,7 @@ class Automata:
     Full pipeline::
 
         project = Automata()
-        project.generate()
+        project.build()
 
     Step by step::
 
@@ -120,7 +120,7 @@ class Automata:
         materials = project.discover()
         materials = project.build_materials(materials)
         materials = project.export(materials)
-        project.generate_website(materials)
+        project.render_website(materials)
 
     """
 
@@ -137,8 +137,12 @@ class Automata:
 
     # --- full pipeline ---
 
-    def generate(self, current_time: datetime.datetime | None = None) -> None:
-        """Run the full pipeline: discover, build, export, and generate website.
+    def build(self, current_time: datetime.datetime | None = None) -> None:
+        """Run the full pipeline and produce the site in the build directory.
+
+        Cleans the build directory (if ``website.clean_build_directory`` is
+        true), then runs :meth:`discover`, :meth:`build_materials`,
+        :meth:`export`, and :meth:`render_website`.
 
         Parameters
         ----------
@@ -153,12 +157,12 @@ class Automata:
         discovered = self.discover()
         built = self.build_materials(discovered, current_time=current_time)
         exported = self.export(built)
-        self.generate_website(exported, current_time=current_time)
+        self.render_website(exported, current_time=current_time)
 
     def clean_build_directory(self) -> None:
         """Empty the build directory, keeping top-level dot-entries.
 
-        Called by :meth:`generate` when ``website.clean_build_directory`` is
+        Called by :meth:`build` when ``website.clean_build_directory`` is
         true (the default), so that the build directory holds only what the
         current build produces. Entries whose names start with a dot (such as
         ``.git``) are kept.
@@ -210,7 +214,7 @@ class Automata:
     ) -> None:
         """Run the full pipeline and deploy the built site.
 
-        Calls :meth:`generate` first, then invokes the configured publish
+        Calls :meth:`build` first, then invokes the configured publish
         strategy (or strategies).
 
         Parameters
@@ -229,7 +233,7 @@ class Automata:
             unknown, or a strategy is unknown.
 
         """
-        self.generate(current_time=current_time)
+        self.build(current_time=current_time)
 
         if not self.config.publish:
             raise Error("No 'publish' entries found in automata.yaml.")
@@ -312,6 +316,9 @@ class Automata:
         **kwargs,
     ) -> Universe[BuiltArtifact]:
         """Build materials by running recipes and checking release times.
+
+        Artifacts whose release time is in the future, or that are not ready,
+        are left out; the rest have their recipes run.
 
         Parameters
         ----------
@@ -399,9 +406,9 @@ class Automata:
         """Load the materials written by a previous :meth:`export`.
 
         Reads ``materials.json`` from the build directory. Useful for calling
-        :meth:`generate_website` without re-running the earlier steps::
+        :meth:`render_website` without re-running the earlier steps::
 
-            project.generate_website(project.load_exported_materials())
+            project.render_website(project.load_exported_materials())
 
         Returns
         -------
@@ -440,12 +447,12 @@ class Automata:
             / "materials.json"
         )
 
-    def generate_website(
+    def render_website(
         self,
         materials: Universe[ExportedArtifact],
         current_time: datetime.datetime | None = None,
     ) -> None:
-        """Generate the website from exported materials.
+        """Render the website from exported materials.
 
         Loads pages and static content from the content directory and passes
         them to the generation pipeline, along with *materials*. The materials'

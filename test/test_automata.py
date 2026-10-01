@@ -125,7 +125,7 @@ def test_export_returns_exported_universe(project_dir):
     assert isinstance(exported, Universe)
 
 
-# load_exported_materials() ===========================================================
+# load_exported_materials() ============================================================
 
 
 def test_load_exported_materials_returns_what_export_wrote(project_dir):
@@ -141,14 +141,14 @@ def test_load_exported_materials_returns_what_export_wrote(project_dir):
     assert loaded == exported
 
 
-def test_load_exported_materials_can_feed_generate_website(project_dir):
+def test_load_exported_materials_can_feed_render_website(project_dir):
     # given
     a = Automata(project_dir)
     built = a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True)
     a.export(built)
 
     # when
-    a.generate_website(a.load_exported_materials())
+    a.render_website(a.load_exported_materials())
 
     # then
     assert (project_dir / "_build" / "index.html").exists()
@@ -178,22 +178,22 @@ def test_load_exported_materials_raises_if_file_is_not_a_universe(project_dir):
     assert "materials.json" in str(excinfo.value)
 
 
-# generate_website() ===================================================================
+# render_website() =====================================================================
 
 
-def test_generate_website_generates_html(project_dir):
+def test_render_website_generates_html(project_dir):
     a = Automata(project_dir)
     discovered = a.discover()
     built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
     exported = a.export(built)
-    a.generate_website(exported)
+    a.render_website(exported)
 
     index = project_dir / "_build" / "index.html"
     assert index.exists()
     assert "Home" in index.read_text()
 
 
-def test_generate_website_uses_the_materials_it_is_given(project_dir):
+def test_render_website_uses_the_materials_it_is_given(project_dir):
     # given: exported materials, filtered in Python before generating
     (project_dir / "content" / "index.md").write_text(
         "{% for name in materials.collections %}[${ name }]{% endfor %}"
@@ -204,7 +204,7 @@ def test_generate_website_uses_the_materials_it_is_given(project_dir):
     without_homeworks = a.filter(exported, lambda key, node: key != "homeworks")
 
     # when
-    a.generate_website(without_homeworks)
+    a.render_website(without_homeworks)
 
     # then
     index = (project_dir / "_build" / "index.html").read_text()
@@ -236,12 +236,12 @@ def test_filter_fires_filter_hooks(project_dir):
     assert "hw01" not in filtered.collections["homeworks"].publications
 
 
-# generate() ===========================================================================
+# build() ==============================================================================
 
 
-def test_generate_runs_full_pipeline(project_dir):
+def test_build_runs_full_pipeline(project_dir):
     a = Automata(project_dir)
-    a.generate()
+    a.build()
 
     index = project_dir / "_build" / "index.html"
     assert index.exists()
@@ -301,35 +301,35 @@ def _released_files(build_dir):
     return [p for p in build_dir.rglob("homework.pdf")]
 
 
-def test_generate_removes_artifact_that_is_no_longer_released(tmp_path):
+def test_build_removes_artifact_that_is_no_longer_released(tmp_path):
     # given: the homework was released and built
     project = _write_release_project(tmp_path / "project")
-    Automata(project).generate(current_time=_AFTER_RELEASE)
+    Automata(project).build(current_time=_AFTER_RELEASE)
     assert _released_files(project / "_build")
 
     # when: the release is effectively withdrawn and the site is rebuilt
-    Automata(project).generate(current_time=_BEFORE_RELEASE)
+    Automata(project).build(current_time=_BEFORE_RELEASE)
 
     # then
     assert _released_files(project / "_build") == []
 
 
-def test_generate_removes_page_that_was_deleted(tmp_path):
+def test_build_removes_page_that_was_deleted(tmp_path):
     # given
     project = _write_release_project(tmp_path / "project")
     (project / "content" / "syllabus.md").write_text("# Syllabus")
-    Automata(project).generate(current_time=_AFTER_RELEASE)
+    Automata(project).build(current_time=_AFTER_RELEASE)
     assert (project / "_build" / "syllabus.html").exists()
 
     # when
     (project / "content" / "syllabus.md").unlink()
-    Automata(project).generate(current_time=_AFTER_RELEASE)
+    Automata(project).build(current_time=_AFTER_RELEASE)
 
     # then
     assert not (project / "_build" / "syllabus.html").exists()
 
 
-def test_generate_keeps_top_level_dot_entries_in_build_directory(tmp_path):
+def test_build_keeps_top_level_dot_entries_in_build_directory(tmp_path):
     # given
     project = _write_release_project(tmp_path / "project")
     build = project / "_build"
@@ -339,7 +339,7 @@ def test_generate_keeps_top_level_dot_entries_in_build_directory(tmp_path):
     (build / "stale.html").write_text("stale")
 
     # when
-    Automata(project).generate(current_time=_AFTER_RELEASE)
+    Automata(project).build(current_time=_AFTER_RELEASE)
 
     # then
     assert (build / ".git" / "HEAD").read_text() == "ref: refs/heads/gh-pages"
@@ -347,7 +347,7 @@ def test_generate_keeps_top_level_dot_entries_in_build_directory(tmp_path):
     assert not (build / "stale.html").exists()
 
 
-def test_generate_does_not_clean_when_disabled(tmp_path):
+def test_build_does_not_clean_when_disabled(tmp_path):
     # given
     project = _write_release_project(
         tmp_path / "project", extra="  clean_build_directory: false"
@@ -356,7 +356,7 @@ def test_generate_does_not_clean_when_disabled(tmp_path):
     (project / "_build" / "stale.html").write_text("stale")
 
     # when
-    Automata(project).generate(current_time=_AFTER_RELEASE)
+    Automata(project).build(current_time=_AFTER_RELEASE)
 
     # then
     assert (project / "_build" / "stale.html").exists()

@@ -40,7 +40,7 @@ def example_project(tmp_path):
 def test_build_end_to_end(example_project):
     """Test that build() successfully builds the example project end-to-end."""
     # Run the build
-    Automata(example_project).generate()
+    Automata(example_project).build()
 
     materials_dir = example_project / "_build" / "materials"
 
@@ -255,7 +255,7 @@ ${ elements.schedule(vars.schedule_config) }
     )
 
     # Run the full build (discovers, builds, exports materials, and generates website)
-    Automata(temporary_course.path).generate(current_time=current_time)
+    Automata(temporary_course.path).build(current_time=current_time)
 
     # Read the generated materials.json from the build directory
     materials_json_path = (

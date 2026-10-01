@@ -47,13 +47,13 @@ And ``content/index.md``:
 Building the site
 -----------------
 
-Run ``automata generate`` from the project directory::
+Run ``automata build`` from the project directory::
 
     cd my-course
-    automata generate
+    automata build
 
-This discovers materials, builds them, exports them, and generates the website
-in ``_build/``. Open ``_build/index.html`` in a browser to see the result.
+This discovers materials, builds them (running any recipes), exports them, and
+renders the website in ``_build/``. Open ``_build/index.html`` in a browser to see the result.
 
 
 Adding variables

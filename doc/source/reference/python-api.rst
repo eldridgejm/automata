@@ -40,11 +40,11 @@ The primary interface is the ``Automata`` class.
         The :class:`Hooks` instance with the theme and all extensions
         registered.
 
-    .. method:: generate(current_time=None)
+    .. method:: build(current_time=None)
 
         Run the full pipeline: clean the build directory (if
-        ``website.clean_build_directory`` is true), discover, build, export,
-        and generate website.
+        ``website.clean_build_directory`` is true), discover, build materials,
+        export, and render the website.
 
         :param current_time: Override the current time. If ``None``, uses
             ``datetime.now()``.
@@ -113,7 +113,7 @@ The primary interface is the ``Automata`` class.
         ``materials.json`` in the build directory. Useful for regenerating the
         website without re-running the earlier steps::
 
-            project.generate_website(project.load_exported_materials())
+            project.render_website(project.load_exported_materials())
 
         :returns: The exported materials universe.
         :rtype: Universe[ExportedArtifact]
@@ -121,9 +121,9 @@ The primary interface is the ``Automata`` class.
             (for example, after :meth:`clean_build_directory`) or does not
             contain a universe.
 
-    .. method:: generate_website(materials, current_time=None)
+    .. method:: render_website(materials, current_time=None)
 
-        Generate the website from exported materials. The materials' files
+        Render the website from exported materials. The materials' files
         must already be in the build directory (see :meth:`export`).
 
         :param materials: The exported materials to render with, as returned
@@ -168,8 +168,8 @@ Example: step-by-step pipeline
     # Optionally, select materials in Python before generating
     materials = project.filter(materials, lambda key, node: key != "drafts")
 
-    # Generate the website
-    project.generate_website(materials)
+    # Render the website
+    project.render_website(materials)
 
 
 Example: custom hooks
@@ -186,7 +186,7 @@ Example: custom hooks
     def notify(args: GeneratePostHookArgs):
         print(f"Site built at {args.build_directory}")
 
-    project.generate()
+    project.build()
 
 
 ``Extension``
@@ -264,7 +264,7 @@ Example: custom hooks
 .. function:: generate(build_directory, materials_directory, pages=None, static_content=None, vars=None, current_time=None, render_markdown=..., hooks=None, base_path="/", materials_directory_name="materials", element_configs=None, theme=None, extensions=(), materials=None)
 
     Generate a static website from exported materials. Most users should call
-    :meth:`Automata.generate_website` instead.
+    :meth:`Automata.render_website` instead.
 
     :param theme: The theme, available in templates as ``theme``.
     :param extensions: The other extensions. These, the theme, and their

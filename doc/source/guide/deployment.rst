@@ -1,7 +1,7 @@
 Deployment
 ==========
 
-After running ``automata generate``, the ``_build/`` directory contains a
+After running ``automata build``, the ``_build/`` directory contains a
 complete static website that can be deployed to any static hosting provider.
 
 
@@ -56,7 +56,7 @@ The recommended deployment method is GitHub Pages with GitHub Actions.
 
              - run: pip install automata
 
-             - run: automata generate
+             - run: automata build
 
              - uses: actions/upload-pages-artifact@v3
                with:
@@ -86,7 +86,7 @@ The recommended deployment method is GitHub Pages with GitHub Actions.
 Scheduled releases
 ------------------
 
-The key to scheduled releases is running ``automata generate`` on a schedule.
+The key to scheduled releases is running ``automata build`` on a schedule.
 The ``cron`` trigger in the GitHub Actions workflow above rebuilds the site
 daily at 6am UTC. Materials with ``release_time`` in the future are
 automatically excluded.
@@ -100,10 +100,10 @@ Time override
 To preview what the site looks like at a different time::
 
     # Absolute time
-    automata generate --current-time "2026-02-15T12:00:00"
+    automata build --current-time "2026-02-15T12:00:00"
 
     # Relative (5 days in the future)
-    automata generate --current-time "+5"
+    automata build --current-time "+5"
 
     # Relative (3 days in the past)
-    automata generate --current-time "-3"
+    automata build --current-time "-3"

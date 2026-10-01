@@ -156,7 +156,7 @@ are serialized as JSON and piped to the command on stdin:
         "cat | jq .build_directory",
         priority=200,
     )
-    project.generate()
+    project.build()
 
 Or from a script that processes the JSON payload:
 
@@ -199,4 +199,4 @@ Beyond extensions, hooks can be registered directly on a ``Hooks`` instance:
     def my_hook(args: GeneratePostHookArgs) -> None:
         print("Build complete!")
 
-    project.generate()
+    project.build()
