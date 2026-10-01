@@ -5,6 +5,7 @@ from typing import Optional
 import typer
 
 from ._automata import Automata
+from .config import CONFIGURATION_FILENAME, find_config
 from .exceptions import Error
 from .materials import serialize
 
@@ -58,16 +59,50 @@ _current_time_option = typer.Option(
 )
 
 
+def _find_project_root() -> pathlib.Path | None:
+    """The nearest directory, at or above the cwd, containing automata.yaml."""
+    config_path = find_config(pathlib.Path.cwd())
+    return None if config_path is None else config_path.parent
+
+
+def _project() -> Automata:
+    """Load the project enclosing the current directory, exiting on error.
+
+    Searches upward from the current directory for automata.yaml, and says
+    which project is used when it is not the current directory.
+    """
+    root = _find_project_root()
+    if root is None:
+        typer.echo(
+            f"Error: No {CONFIGURATION_FILENAME} found in {pathlib.Path.cwd()} or "
+            f"any parent directory.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    if root != pathlib.Path.cwd():
+        typer.echo(f"Using project at {root}", err=True)
+
+    try:
+        return Automata(root)
+    except Error as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def build(current_time: Optional[str] = _current_time_option):
     """Run the full pipeline and produce the site in the build directory."""
-    Automata().build(current_time=_get_current_time(current_time))
+    _project().build(current_time=_get_current_time(current_time))
 
 
 def _complete_publish_targets(incomplete: str) -> list[str]:
     """Return matching publish target names for shell tab-completion."""
     try:
-        project = Automata()
+        root = _find_project_root()
+        if root is None:
+            return []
+        project = Automata(root)
         return [name for name in project.config.publish if name.startswith(incomplete)]
     except Exception:
         return []
@@ -83,7 +118,7 @@ def publish(
     current_time: Optional[str] = _current_time_option,
 ):
     """Run the full pipeline and deploy the built site."""
-    project = Automata()
+    project = _project()
     if not project.config.publish:
         typer.echo(
             "Error: No 'publish' entries found in automata.yaml. "
@@ -103,7 +138,7 @@ def publish(
 @app.command()
 def discover():
     """Discover materials and print a summary."""
-    project = Automata()
+    project = _project()
     universe = project.discover()
     for name, collection in universe.collections.items():
         n = len(collection.publications)
@@ -114,7 +149,7 @@ def discover():
 def clean_build_directory():
     """Empty the build directory, keeping top-level dot-entries."""
     try:
-        Automata().clean_build_directory()
+        _project().clean_build_directory()
     except Error as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)
@@ -124,7 +159,7 @@ def clean_build_directory():
 @app.command(name="build-materials")
 def build_materials(current_time: Optional[str] = _current_time_option):
     """Discover and build materials (run recipes, check release times)."""
-    project = Automata()
+    project = _project()
     discovered = project.discover()
     project.build_materials(discovered, current_time=_get_current_time(current_time))
     typer.echo("Materials built.")
@@ -133,7 +168,7 @@ def build_materials(current_time: Optional[str] = _current_time_option):
 @app.command()
 def export(current_time: Optional[str] = _current_time_option):
     """Discover, build, and export materials to the build directory."""
-    project = Automata()
+    project = _project()
     discovered = project.discover()
     built = project.build_materials(
         discovered, current_time=_get_current_time(current_time)
@@ -145,7 +180,7 @@ def export(current_time: Optional[str] = _current_time_option):
 @app.command(name="render-website")
 def render_website(current_time: Optional[str] = _current_time_option):
     """Render the website from previously exported materials."""
-    project = Automata()
+    project = _project()
     try:
         materials = project.load_exported_materials()
     except Error as e:
@@ -163,8 +198,8 @@ def resolve(
     ),
 ):
     """Resolve a publication.yaml file and output as JSON."""
+    project = _project()
     try:
-        project = Automata()
         publication = project.resolve(path)
     except FileNotFoundError as e:
         typer.echo(f"Error: {e}", err=True)

@@ -1,8 +1,17 @@
 CLI Reference
 =============
 
-All commands are run from the project root (the directory containing
-``automata.yaml``).
+Commands can be run from the project root (the directory containing
+``automata.yaml``) or from any directory inside it: automata searches upward
+from the current directory for ``automata.yaml`` and uses the first one it
+finds. When that is not the current directory, it says so::
+
+    $ cd website/content
+    $ automata build
+    Using project at /path/to/course
+
+If no ``automata.yaml`` is found in the current directory or any parent, the
+command prints an error and exits with status 1.
 
 
 ``automata build``

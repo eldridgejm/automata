@@ -48,7 +48,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Formalize extensions (themes become extensions)
 - [x] Revise extension loading code
 - [x] Refactor website.generate() to accept Python objects instead of file paths; theme loading is now done separately
-- [ ] Revise the API layer
+- [x] Revise the API layer
 - [ ] Improve test coverage
 - [x] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
 - [ ] Improve the listing element by moving more of the logic outside of the template
@@ -57,10 +57,11 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [ ] Better error messages
 - [ ] Flesh out the CLI with more commands
 - [ ] Rewrite DESIGN.md around hooks and extensions (it still describes the old "Resources" design)
-- [ ] Raise automata.exceptions.Error (not ValueError) when generate() finds no page.html
+- [ ] Raise automata.exceptions.Error (not ValueError) when website.render() finds no page.html
 - [x] Allow directory extensions to declare dependencies (via extension.py)
 - [x] Document the on_website_generate_pre hook in hooks.rst (now on_render_pre)
 - [ ] Warn about website.elements entries that no page uses
 - [ ] Decide on the unused announcement_box.html template, and whether announcements get release times
 - [x] Fix the example's practice-problems script hook failing when run from another directory
 - [ ] Decide whether a failing script hook (nonzero exit) should fail the build; today its exit code is ignored, which hid the practice-problems path bug in a passing test
+- [ ] Fix smartconfig key order: resolve() iterates free-form dict keys through a set difference (_internals.py: extra_keys = dct.keys() - expected_keys), so their order depends on PYTHONHASHSEED; then tag, bump the dependency, and remove the xfail on test_inline_publications_keep_their_order

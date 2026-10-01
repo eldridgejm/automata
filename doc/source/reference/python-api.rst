@@ -16,8 +16,11 @@ The primary interface is the ``Automata`` class.
     A handle to an automata project.
 
     :param path: Path to the project directory (must contain ``automata.yaml``).
-        If ``None``, uses the current working directory.
+        If ``None``, uses the current working directory. Unlike the CLI, this
+        does not search parent directories.
     :type path: Path or None
+    :raises automata.exceptions.Error: If the directory does not contain
+        ``automata.yaml``.
 
     .. attribute:: path
 

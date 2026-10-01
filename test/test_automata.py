@@ -437,3 +437,22 @@ def test_build_runs_script_hooks_from_project_root(project_dir, tmp_path, monkey
 
     # then
     assert "Generated" in (project_dir / "_build" / "generated.html").read_text()
+
+
+# finding the project ==================================================================
+
+
+def test_init_raises_helpful_error_without_automata_yaml(tmp_path):
+    with pytest.raises(Error) as excinfo:
+        Automata(tmp_path)
+
+    message = str(excinfo.value)
+    assert "automata.yaml" in message
+    assert str(tmp_path) in message
+
+
+def test_init_does_not_search_parent_directories(project_dir, monkeypatch):
+    monkeypatch.chdir(project_dir / "content")
+
+    with pytest.raises(Error):
+        Automata()

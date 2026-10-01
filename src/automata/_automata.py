@@ -127,8 +127,14 @@ class Automata:
     def __init__(self, path: Path | None = None):
         if path is None:
             path = Path.cwd()
+        config_path = path / CONFIGURATION_FILENAME
+        if not config_path.is_file():
+            raise Error(
+                f"No {CONFIGURATION_FILENAME} found in {path.absolute()}. The project "
+                f"directory must contain {CONFIGURATION_FILENAME}."
+            )
         self.path: Path = path
-        self.config: Config = read_config(path / CONFIGURATION_FILENAME)
+        self.config: Config = read_config(config_path)
         self.theme: Extension
         self.extensions: list[Extension]
         self.theme, self.extensions = load_extensions(self.config, cwd=path)
