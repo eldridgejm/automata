@@ -42,11 +42,22 @@ The primary interface is the ``Automata`` class.
 
     .. method:: generate(current_time=None)
 
-        Run the full pipeline: discover, build, export, and generate website.
+        Run the full pipeline: clean the build directory (if
+        ``website.clean_build_directory`` is true), discover, build, export,
+        and generate website.
 
         :param current_time: Override the current time. If ``None``, uses
             ``datetime.now()``.
         :type current_time: datetime or None
+
+    .. method:: clean_build_directory()
+
+        Empty the build directory, keeping top-level entries whose names start
+        with a dot. Does nothing if the build directory does not exist.
+
+        :raises automata.exceptions.Error: If the build directory is or
+            contains the project or content directory, lies inside the content
+            directory, or contains an ``automata.yaml`` file.
 
     .. method:: discover()
 
@@ -108,6 +119,9 @@ Example: step-by-step pipeline
     from automata.materials import filter
 
     project = Automata("path/to/course")
+
+    # Start from an empty build directory
+    project.clean_build_directory()
 
     # Discover all materials
     materials = project.discover()

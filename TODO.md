@@ -50,7 +50,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Refactor website.generate() to accept Python objects instead of file paths; theme loading is now done separately
 - [ ] Revise the API layer
 - [ ] Improve test coverage
-- [ ] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
+- [x] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
 - [ ] Improve the listing element by moving more of the logic outside of the template
 - [ ] Thorough documentation of website abstraction
 - [ ] Thorough documentation of default theme, including elements

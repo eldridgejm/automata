@@ -124,6 +124,15 @@ Website generation settings:
    * - ``build_directory``
      - *(required)*
      - Path to the output directory.
+   * - ``clean_build_directory``
+     - ``true``
+     - Empty the build directory before each build, so it holds only what the
+       current build produces. Without this, an artifact that is un-released
+       (or a page that is deleted) would stay in the build directory and be
+       published again. Top-level entries starting with a dot (e.g., ``.git``)
+       are kept. As a safeguard, automata refuses to clean a build directory
+       that is or contains the project or content directory, lies inside the
+       content directory, or contains an ``automata.yaml`` file.
    * - ``materials_directory_name``
      - ``"materials"``
      - Name of the subdirectory within the build directory where materials are

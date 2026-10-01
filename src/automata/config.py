@@ -34,6 +34,11 @@ class WebsiteConfig(smartconfig.Prototype):
     # path to the output directory where the website will be built
     build_directory: str
 
+    # whether to empty the build directory before each build, so that it holds
+    # only what the current build produces (top-level dot-entries such as .git
+    # are kept)
+    clean_build_directory: bool = True
+
     # suffix indicating that a file should not be rendered. If None, all files
     # will be rendered.
     no_render_suffix: str | None = ".no_render"

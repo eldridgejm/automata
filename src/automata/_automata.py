@@ -1,6 +1,7 @@
 """Public API for working with an automata project."""
 
 import datetime
+import shutil
 from pathlib import Path
 
 from . import materials
@@ -144,10 +145,60 @@ class Automata:
 
         """
         current_time = current_time or datetime.datetime.now()
+        if self.config.website.clean_build_directory:
+            self.clean_build_directory()
         discovered = self.discover()
         built = self.build_materials(discovered, current_time=current_time)
         self.export(built)
         self.generate_website(current_time=current_time)
+
+    def clean_build_directory(self) -> None:
+        """Empty the build directory, keeping top-level dot-entries.
+
+        Called by :meth:`generate` when ``website.clean_build_directory`` is
+        true (the default), so that the build directory holds only what the
+        current build produces. Entries whose names start with a dot (such as
+        ``.git``) are kept.
+
+        Raises
+        ------
+        automata.exceptions.Error
+            If the build directory is, or contains, the project root or the
+            content directory, lies inside the content directory, or contains
+            an ``automata.yaml`` file. Nothing is deleted in that case.
+
+        """
+        build_dir = (self.path / self.config.website.build_directory).resolve()
+        project_dir = self.path.resolve()
+        content_dir = (self.path / self.config.website.content_directory).resolve()
+
+        problem = None
+        if project_dir.is_relative_to(build_dir):
+            problem = "is or contains the project directory"
+        elif content_dir.is_relative_to(build_dir):
+            problem = "is or contains the content directory"
+        elif build_dir.is_relative_to(content_dir):
+            problem = "is inside the content directory"
+        elif (build_dir / CONFIGURATION_FILENAME).exists():
+            problem = f"contains an {CONFIGURATION_FILENAME} file"
+
+        if problem is not None:
+            raise Error(
+                f'Refusing to clean build_directory "{build_dir}": it {problem}. '
+                f"Change website.build_directory, or set "
+                f"website.clean_build_directory to false."
+            )
+
+        if not build_dir.is_dir():
+            return
+
+        for entry in build_dir.iterdir():
+            if entry.name.startswith("."):
+                continue
+            if entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
 
     def publish(
         self,

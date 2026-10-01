@@ -24,10 +24,14 @@ def example_project(tmp_path):
     if build_dir.exists():
         shutil.rmtree(build_dir)
 
-    # Clean the materials directory if it exists
-    materials_dir = project_dir / "website" / "materials"
-    if materials_dir.exists():
-        shutil.rmtree(materials_dir)
+    # Remove generated materials left in the example by earlier builds, so the
+    # test only sees what this build produces
+    for leftover in [
+        project_dir / "website" / "materials",
+        project_dir / "website" / "content" / "materials",
+    ]:
+        if leftover.exists():
+            shutil.rmtree(leftover)
 
     return project_dir
 
@@ -38,7 +42,7 @@ def test_build_end_to_end(example_project):
     # Run the build
     Automata(example_project).generate()
 
-    materials_dir = example_project / "website" / "content" / "materials"
+    materials_dir = example_project / "_build" / "materials"
 
     # Verify materials were discovered, built, and exported
     assert materials_dir.exists(), "Materials directory should be created"

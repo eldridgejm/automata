@@ -1,11 +1,13 @@
 """Tests for the Automata public API."""
 
 import json
+from datetime import datetime
 from textwrap import dedent
 
 import pytest
 
 from automata import Automata
+from automata.exceptions import Error
 from automata.materials import Universe
 
 
@@ -151,3 +153,167 @@ def test_generate_runs_full_pipeline(project_dir):
 
     materials_json = project_dir / "_build" / "materials" / "materials.json"
     assert materials_json.exists()
+
+
+# cleaning the build directory =========================================================
+
+
+def _write_release_project(
+    project, build_directory="_build", content_directory="content", extra=""
+):
+    """Write a project with one homework released on 2025-01-10."""
+    project.mkdir(exist_ok=True)
+    (project / "automata.yaml").write_text(
+        dedent(f"""\
+            materials:
+              homeworks:
+                schema:
+                  required_artifacts:
+                    - homework.pdf
+                publications:
+                  hw01:
+                    artifacts:
+                      homework.pdf:
+                        path: homeworks/hw01/homework.pdf
+                        release_time: 2025-01-10 12:00:00
+
+            website:
+              theme:
+                use: "default"
+                config:
+                  short_title: "Test"
+                  long_title: "Test Course"
+                  rebuild_tailwind: false
+              content_directory: "{content_directory}"
+              build_directory: "{build_directory}"
+            {extra}
+        """)
+    )
+    (project / "homeworks" / "hw01").mkdir(parents=True, exist_ok=True)
+    (project / "homeworks" / "hw01" / "homework.pdf").write_text("hw1")
+    content = project / content_directory
+    content.mkdir(parents=True, exist_ok=True)
+    (content / "index.md").write_text("# Home")
+    return project
+
+
+_BEFORE_RELEASE = datetime(2025, 1, 1)
+_AFTER_RELEASE = datetime(2025, 2, 1)
+
+
+def _released_files(build_dir):
+    return [p for p in build_dir.rglob("homework.pdf")]
+
+
+def test_generate_removes_artifact_that_is_no_longer_released(tmp_path):
+    # given: the homework was released and built
+    project = _write_release_project(tmp_path / "project")
+    Automata(project).generate(current_time=_AFTER_RELEASE)
+    assert _released_files(project / "_build")
+
+    # when: the release is effectively withdrawn and the site is rebuilt
+    Automata(project).generate(current_time=_BEFORE_RELEASE)
+
+    # then
+    assert _released_files(project / "_build") == []
+
+
+def test_generate_removes_page_that_was_deleted(tmp_path):
+    # given
+    project = _write_release_project(tmp_path / "project")
+    (project / "content" / "syllabus.md").write_text("# Syllabus")
+    Automata(project).generate(current_time=_AFTER_RELEASE)
+    assert (project / "_build" / "syllabus.html").exists()
+
+    # when
+    (project / "content" / "syllabus.md").unlink()
+    Automata(project).generate(current_time=_AFTER_RELEASE)
+
+    # then
+    assert not (project / "_build" / "syllabus.html").exists()
+
+
+def test_generate_keeps_top_level_dot_entries_in_build_directory(tmp_path):
+    # given
+    project = _write_release_project(tmp_path / "project")
+    build = project / "_build"
+    (build / ".git").mkdir(parents=True)
+    (build / ".git" / "HEAD").write_text("ref: refs/heads/gh-pages")
+    (build / ".nojekyll").write_text("")
+    (build / "stale.html").write_text("stale")
+
+    # when
+    Automata(project).generate(current_time=_AFTER_RELEASE)
+
+    # then
+    assert (build / ".git" / "HEAD").read_text() == "ref: refs/heads/gh-pages"
+    assert (build / ".nojekyll").exists()
+    assert not (build / "stale.html").exists()
+
+
+def test_generate_does_not_clean_when_disabled(tmp_path):
+    # given
+    project = _write_release_project(
+        tmp_path / "project", extra="  clean_build_directory: false"
+    )
+    (project / "_build").mkdir()
+    (project / "_build" / "stale.html").write_text("stale")
+
+    # when
+    Automata(project).generate(current_time=_AFTER_RELEASE)
+
+    # then
+    assert (project / "_build" / "stale.html").exists()
+
+
+def test_clean_build_directory_defaults_to_true(project_dir):
+    assert Automata(project_dir).config.website.clean_build_directory is True
+
+
+def test_clean_build_directory_does_nothing_if_build_directory_missing(project_dir):
+    Automata(project_dir).clean_build_directory()
+
+    assert not (project_dir / "_build").exists()
+
+
+@pytest.mark.parametrize(
+    "build_directory, content_directory",
+    [
+        (".", "content"),  # the project root
+        ("..", "content"),  # contains the project root
+        ("content", "content"),  # the content directory
+        ("website", "website/content"),  # contains the content directory
+        ("content/_build", "content"),  # inside the content directory
+    ],
+)
+def test_clean_build_directory_refuses_unsafe_build_directory(
+    tmp_path, build_directory, content_directory
+):
+    # given
+    project = _write_release_project(
+        tmp_path / "project",
+        build_directory=build_directory,
+        content_directory=content_directory,
+    )
+    (project / build_directory).mkdir(parents=True, exist_ok=True)
+    sentinel = project / build_directory / "keep-me.txt"
+    sentinel.write_text("important")
+
+    # when / then
+    with pytest.raises(Error) as excinfo:
+        Automata(project).clean_build_directory()
+
+    assert "build_directory" in str(excinfo.value)
+    assert sentinel.exists()
+
+
+def test_clean_build_directory_refuses_directory_with_automata_yaml(tmp_path):
+    # given: the build directory is another automata project
+    other = _write_release_project(tmp_path / "other")
+    project = _write_release_project(tmp_path / "project", build_directory=str(other))
+
+    # when / then
+    with pytest.raises(Error):
+        Automata(project).clean_build_directory()
+
+    assert (other / "automata.yaml").exists()
