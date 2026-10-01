@@ -125,8 +125,10 @@ hook of the extension built by ``extension_from_directory``:
         ext.hooks["on_render_collect"] = collect
         return ext
 
-Directory extensions loaded by path (e.g., ``./my-theme``) cannot provide
-elements; an ``elements/`` subdirectory is not loaded.
+A directory extension loaded by path (e.g., ``./my-theme``) can provide
+elements only from an ``extension.py`` file (see
+:ref:`overview <extensions-with-python>`); an ``elements/`` subdirectory on its
+own is not loaded.
 
 
 Element context

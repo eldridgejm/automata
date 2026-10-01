@@ -166,6 +166,7 @@ def _load_extension_spec(spec: Any, cwd: Path, group: str) -> Extension:
             config=ext_config,
             require_templates=False,
             project_directory=cwd,
+            allow_python=True,
         )
     else:
         return extension_from_entry_point(name, config=ext_config, group=group)

@@ -77,7 +77,8 @@ The referenced module must export one of:
 **Directory paths** (contain slashes) are loaded from the filesystem using the
 directory layout described in :doc:`themes`. A directory extension is named
 after the directory's last path component, so ``./extensions/practice-problems``
-is named ``practice-problems``.
+is named ``practice-problems``. See `Directory extensions with Python`_ below
+for directories that include code.
 
 Every loaded extension, including the theme and its dependencies, must have a
 unique name; loading two different extensions with the same name is an
@@ -157,5 +158,63 @@ Dependencies are deduplicated by name: if two extensions depend on the same
 extension, it is applied only once.
 
 Dependencies are declared in Python, on the ``Extension`` returned by
-``make_extension`` (or exported as ``extension``). A directory extension
-loaded by path has no dependencies.
+``make_extension`` (or exported as ``extension``). A directory extension can
+declare them only from an ``extension.py`` file (see below).
+
+
+.. _extensions-with-python:
+
+Directory extensions with Python
+--------------------------------
+
+A directory extension is just files --- ``templates/``, ``static/``,
+``schema.json``, and shell commands in ``hooks/`` --- **unless** it contains an
+``extension.py`` file. That one file is the marker for code: if it is absent,
+nothing in the directory is imported, so you can tell at a glance what a
+directory extension can do.
+
+``extension.py`` exports ``make_extension(config)`` (or a config-less
+``extension``), exactly like a package extension:
+
+.. code-block:: text
+
+    extensions/greeter/
+        extension.py      # makes this directory extension dynamic
+        elements.py       # sibling module, imported relatively
+        templates/
+            greeting.html
+
+.. code-block:: python
+
+    # extensions/greeter/extension.py
+    from automata._extension import Extension
+
+    from .elements import Greeting   # sibling imports must be relative
+
+    def make_extension(config):
+        def collect(inputs):
+            inputs.elements["greeting"] = Greeting
+            return inputs
+
+        return Extension(name="greeter", hooks={"on_render_collect": collect})
+
+How the files and the code combine:
+
+- The files are still collected automatically. For each hook point, the files'
+  hook (collecting ``templates/`` and ``static/``, or a ``hooks/`` script) runs
+  first, then the Python hook. So Python can see and change what was
+  collected.
+- The config schema comes from a module-level ``schema`` in ``extension.py`` or
+  from ``schema.json``, not both. The validated config is passed to
+  ``make_extension``.
+- The extension is named after its directory. Its config and dependencies are
+  those of the ``Extension`` that ``extension.py`` provides.
+- Each load imports ``extension.py`` into a new, uniquely named package, so
+  two extensions' modules never collide and edits are picked up when the
+  project is loaded again.
+
+**When to use which.** A directory extension with Python suits course-specific
+code with no third-party dependencies: it lives in the course repository and
+needs no installation. Anything reusable across courses, or anything that
+imports third-party libraries, should be a package extension, so that its
+dependencies are declared in ``pyproject.toml``.

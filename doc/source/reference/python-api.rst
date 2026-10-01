@@ -223,11 +223,19 @@ Example: custom hooks
     extension, including shared dependencies, is applied at most once across
     all of *extensions*.
 
-.. function:: extension_from_directory(name, directory, config=None, require_templates=True, dependencies=None)
+.. function:: extension_from_directory(name, directory, config=None, require_templates=True, dependencies=None, project_directory=None, allow_python=False)
 
     Create an Extension from a directory containing ``templates/`` and,
     optionally, ``static/``, ``schema.json``, and ``hooks/``. If
-    ``schema.json`` is present, *config* is validated against it.
+    ``schema.json`` is present, *config* is validated against it. Script hooks
+    in ``hooks/`` run in *project_directory* (if given).
+
+    If *allow_python* is true and the directory contains ``extension.py``, that
+    file is imported and its ``make_extension(config)`` or ``extension`` is
+    combined with the directory's files (see :ref:`extensions-with-python`).
+    It defaults to false, so a package calling this on its own files never
+    imports itself; directory paths in ``automata.yaml`` are loaded with it set
+    to true.
 
 .. function:: extension_from_entry_point(entry_point_name, config=None, *, group=EXTENSIONS_GROUP)
 

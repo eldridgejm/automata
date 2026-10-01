@@ -58,7 +58,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [ ] Flesh out the CLI with more commands
 - [ ] Rewrite DESIGN.md around hooks and extensions (it still describes the old "Resources" design)
 - [ ] Raise automata.exceptions.Error (not ValueError) when generate() finds no page.html
-- [ ] Allow directory extensions to declare dependencies
+- [x] Allow directory extensions to declare dependencies (via extension.py)
 - [x] Document the on_website_generate_pre hook in hooks.rst (now on_render_pre)
 - [ ] Warn about website.elements entries that no page uses
 - [ ] Decide on the unused announcement_box.html template, and whether announcements get release times

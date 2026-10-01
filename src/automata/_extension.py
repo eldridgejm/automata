@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import dataclasses
+import importlib
 import importlib.metadata as metadata
+import itertools
 import json
 import os
 import pathlib
 import subprocess
+import sys
+import types
 from collections.abc import Callable, Iterable
 from importlib.resources.abc import Traversable
 from typing import Any, get_origin, get_type_hints
@@ -202,8 +206,203 @@ def extension_from_directory(
     require_templates: bool = True,
     dependencies: list[Extension] | None = None,
     project_directory: pathlib.Path | None = None,
+    allow_python: bool = False,
 ) -> Extension:
     """Create an Extension from a directory.
+
+    The directory must contain a ``templates/`` subdirectory with template
+    files (unless *require_templates* is False). It may optionally contain:
+
+    - ``static/`` --- static files served alongside the website.
+    - ``schema.json`` --- JSON schema for validating extension config.
+    - ``hooks/`` --- shell script hooks. Each file is named after an
+      observer hook point (e.g., ``on_render_post``). The file content
+      is the shell command; hook args are piped as JSON on stdin. The
+      command runs in *project_directory* (if given), with the environment
+      variables ``AUTOMATA_PROJECT_DIR`` and ``AUTOMATA_EXTENSION_DIR`` set.
+    - ``extension.py`` --- Python code, imported only if *allow_python* is
+      true. It must export ``make_extension(config)`` or ``extension``, as an
+      entry point module would. Its hooks are combined with those of the
+      files: for each hook point, the files' hook runs first, then the Python
+      hook. The config schema comes from the module's ``schema`` or from
+      ``schema.json``, but not both, and the validated config is passed to
+      ``make_extension``. The extension keeps *name*; its config and
+      dependencies are those of the Extension the module provides (plus
+      *dependencies*). ``extension.py`` is imported as part of a new, uniquely
+      named package each time, so it can import sibling modules relatively
+      (``from .helpers import x``), extensions never collide, and changes are
+      picked up when reloaded.
+
+    Parameters
+    ----------
+    name : str
+        A human-readable name for the extension.
+    directory : Traversable
+        The directory containing the extension's files. Must be a
+        :class:`pathlib.Path` if *allow_python* is true and it contains
+        ``extension.py``.
+    config : dict[str, Any] | None
+        Optional configuration for the extension.
+    require_templates : bool
+        If True (default), the directory must contain a ``templates/``
+        subdirectory.
+    dependencies : list[Extension] | None
+        Extensions that must be applied before this one.
+    project_directory : pathlib.Path | None
+        The project root (the directory containing ``automata.yaml``). Script
+        hooks run there, so relative paths in their commands are relative to
+        the project. If None, they run in the current working directory.
+    allow_python : bool
+        Whether to import ``extension.py`` if present. Default False, so that a
+        package calling this on its own files never imports itself. Directory
+        paths in ``automata.yaml`` are loaded with this set to True.
+
+    Returns
+    -------
+    Extension
+        The created Extension.
+
+    Raises
+    ------
+    automata.exceptions.Error
+        If the directory is invalid, ``extension.py`` cannot be imported or
+        exports neither ``make_extension`` nor ``extension``, a schema is
+        defined in both ``extension.py`` and ``schema.json``, or the
+        configuration is invalid.
+
+    """
+    files = _extension_from_files(
+        name,
+        directory,
+        config=config,
+        require_templates=require_templates,
+        dependencies=dependencies,
+        project_directory=project_directory,
+    )
+
+    if not allow_python or not (directory / "extension.py").is_file():
+        return files
+
+    if not isinstance(directory, pathlib.Path):
+        raise Error(
+            f'Cannot import extension.py of extension "{name}": "{directory}" is '
+            f"not a filesystem path."
+        )
+
+    module = _import_local_extension(name, directory)
+    module_schema = getattr(module, "schema", None)
+    if module_schema is not None and files.schema is not None:
+        raise Error(
+            f'Extension "{name}" defines a config schema in both extension.py and '
+            f"schema.json. Define it in one place."
+        )
+    schema = module_schema if module_schema is not None else files.schema
+
+    python = _extension_from_module(module, name, "extension", config, schema)
+
+    hooks = dict(files.hooks)
+    for hook_name, fn in python.hooks.items():
+        hooks[hook_name] = (
+            _chain_hooks(hook_name, hooks[hook_name], fn) if hook_name in hooks else fn
+        )
+
+    return Extension(
+        name=name,
+        hooks=hooks,
+        config=python.config,
+        schema=schema,
+        dependencies=[*files.dependencies, *python.dependencies],
+    )
+
+
+def extension_from_entry_point(
+    entry_point_name: str,
+    config: dict[str, Any] | None = None,
+    *,
+    group: str = EXTENSIONS_GROUP,
+) -> Extension:
+    """Create an Extension from an entry point.
+
+    The entry point should refer to a module that exports either:
+
+    1. ``make_extension(config) -> Extension``, a factory called with the
+       extension's validated configuration. If the module also exports
+       ``schema``, the configuration is validated against it (and defaults
+       applied) before the factory is called. Each call builds a new
+       Extension, so its hooks can safely close over *config*.
+    2. ``extension``, an :class:`Extension` that takes no configuration.
+
+    Parameters
+    ----------
+    entry_point_name : str
+        The name of the entry point within *group*.
+    config : dict[str, Any] | None
+        Optional configuration for the extension.
+    group : str
+        The entry point group: :data:`EXTENSIONS_GROUP` (the default) or
+        :data:`THEMES_GROUP`.
+
+    Returns
+    -------
+    Extension
+        The created Extension.
+
+    Raises
+    ------
+    automata.exceptions.Error
+        If the entry point is not found, the module exports neither
+        ``make_extension`` nor ``extension``, or the configuration is invalid.
+
+    """
+    all_entry_points = metadata.entry_points()
+    entry_points = all_entry_points.select(group=group)
+    kind = "theme" if group == THEMES_GROUP else "extension"
+
+    if entry_point_name not in entry_points.names:
+        message = f'Unknown {kind} "{entry_point_name}".'
+        if group == EXTENSIONS_GROUP and entry_point_name in (
+            all_entry_points.select(group=THEMES_GROUP).names
+        ):
+            message += (
+                f' "{entry_point_name}" is a theme; set it with website.theme, '
+                f"not under extensions."
+            )
+        elif group == THEMES_GROUP and entry_point_name in (
+            all_entry_points.select(group=EXTENSIONS_GROUP).names
+        ):
+            message += (
+                f' "{entry_point_name}" is an extension, not a theme; list it '
+                f"under extensions."
+            )
+        else:
+            available = ", ".join(sorted(entry_points.names)) or "none"
+            message += (
+                f" Available {kind}s: {available}. To load an extension from a "
+                f"directory, give a path containing a slash "
+                f'(e.g., "./{entry_point_name}").'
+            )
+        raise Error(message)
+
+    module = entry_points[entry_point_name].load()
+    return _extension_from_module(
+        module, entry_point_name, kind, config, getattr(module, "schema", None)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _extension_from_files(
+    name: str,
+    directory: Traversable,
+    config: dict[str, Any] | None = None,
+    require_templates: bool = True,
+    dependencies: list[Extension] | None = None,
+    project_directory: pathlib.Path | None = None,
+) -> Extension:
+    """Create an Extension from a directory's files (no Python is imported).
 
     The directory must contain a ``templates/`` subdirectory with template
     files (unless *require_templates* is False). It may optionally contain:
@@ -305,111 +504,79 @@ def extension_from_directory(
     )
 
 
-def extension_from_entry_point(
-    entry_point_name: str,
-    config: dict[str, Any] | None = None,
-    *,
-    group: str = EXTENSIONS_GROUP,
+def _extension_from_module(
+    module: Any,
+    name: str,
+    kind: str,
+    config: dict[str, Any] | None,
+    schema: smartconfig.types.Schema | None,
 ) -> Extension:
-    """Create an Extension from an entry point.
-
-    The entry point should refer to a module that exports either:
-
-    1. ``make_extension(config) -> Extension``, a factory called with the
-       extension's validated configuration. If the module also exports
-       ``schema``, the configuration is validated against it (and defaults
-       applied) before the factory is called. Each call builds a new
-       Extension, so its hooks can safely close over *config*.
-    2. ``extension``, an :class:`Extension` that takes no configuration.
-
-    Parameters
-    ----------
-    entry_point_name : str
-        The name of the entry point within *group*.
-    config : dict[str, Any] | None
-        Optional configuration for the extension.
-    group : str
-        The entry point group: :data:`EXTENSIONS_GROUP` (the default) or
-        :data:`THEMES_GROUP`.
-
-    Returns
-    -------
-    Extension
-        The created Extension.
-
-    Raises
-    ------
-    automata.exceptions.Error
-        If the entry point is not found, the module exports neither
-        ``make_extension`` nor ``extension``, or the configuration is invalid.
-
-    """
-    all_entry_points = metadata.entry_points()
-    entry_points = all_entry_points.select(group=group)
-    kind = "theme" if group == THEMES_GROUP else "extension"
-
-    if entry_point_name not in entry_points.names:
-        message = f'Unknown {kind} "{entry_point_name}".'
-        if group == EXTENSIONS_GROUP and entry_point_name in (
-            all_entry_points.select(group=THEMES_GROUP).names
-        ):
-            message += (
-                f' "{entry_point_name}" is a theme; set it with website.theme, '
-                f"not under extensions."
-            )
-        elif group == THEMES_GROUP and entry_point_name in (
-            all_entry_points.select(group=EXTENSIONS_GROUP).names
-        ):
-            message += (
-                f' "{entry_point_name}" is an extension, not a theme; list it '
-                f"under extensions."
-            )
-        else:
-            available = ", ".join(sorted(entry_points.names)) or "none"
-            message += (
-                f" Available {kind}s: {available}. To load an extension from a "
-                f"directory, give a path containing a slash "
-                f'(e.g., "./{entry_point_name}").'
-            )
-        raise Error(message)
-
-    module = entry_points[entry_point_name].load()
-
+    """Build an Extension from a module exporting make_extension or extension."""
     if hasattr(module, "make_extension"):
-        schema = getattr(module, "schema", None)
-        resolved_config = _resolve_config(entry_point_name, config, schema)
+        resolved_config = _resolve_config(name, config, schema)
         extension = module.make_extension(resolved_config)
         if not isinstance(extension, Extension):
             raise Error(
-                f'make_extension() for {kind} "{entry_point_name}" did not return '
-                f"an Extension."
+                f'make_extension() for {kind} "{name}" did not return an Extension.'
             )
         return extension
 
     if hasattr(module, "extension"):
         if config is not None:
             raise Error(
-                f'{kind.capitalize()} "{entry_point_name}" does not accept '
-                f"configuration. To accept configuration, its module should "
-                f"export make_extension(config)."
+                f'{kind.capitalize()} "{name}" does not accept configuration. To '
+                f"accept configuration, its module should export "
+                f"make_extension(config)."
             )
         extension = module.extension
         if not isinstance(extension, Extension):
             raise Error(
-                f'The "extension" attribute of {kind} "{entry_point_name}" is not '
-                f"an Extension."
+                f'The "extension" attribute of {kind} "{name}" is not an Extension.'
             )
         return extension
 
     raise Error(
-        f'The module for {kind} "{entry_point_name}" must export either '
+        f'The module for {kind} "{name}" must export either '
         f"make_extension(config) or extension."
     )
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
+_local_extension_counter = itertools.count()
+
+
+def _import_local_extension(name: str, directory: pathlib.Path) -> Any:
+    """Import a local extension's extension.py as part of a fresh package."""
+    package_name = f"_automata_local_extension_{next(_local_extension_counter)}"
+    package = types.ModuleType(package_name)
+    package.__path__ = [str(directory)]
+    sys.modules[package_name] = package
+
+    try:
+        return importlib.import_module(f"{package_name}.extension")
+    except Exception as e:
+        raise Error(
+            f'Could not import extension.py of extension "{name}" '
+            f'("{directory}"): {type(e).__name__}: {e}'
+        ) from e
+
+
+def _chain_hooks(hook_name: str, first: Callable, second: Callable) -> Callable:
+    """Combine two callables for the same hook point, running *first* first."""
+    from .hooks import Hooks
+    from .hooks._internals import PipelineHook
+
+    if get_origin(get_type_hints(Hooks)[hook_name]) is PipelineHook:
+
+        def pipeline(value: Any) -> Any:
+            return second(first(value))
+
+        return pipeline
+
+    def observer(args: Any) -> None:
+        first(args)
+        second(args)
+
+    return observer
 
 
 def _walk(

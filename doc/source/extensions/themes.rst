@@ -38,9 +38,10 @@ When loaded, this directory is converted into an ``Extension`` named after the
 directory (here, ``my-theme``), whose ``on_render_collect`` hook provides the
 templates and static files.
 
-A directory theme cannot provide elements or Python hooks. For those, package
-the theme with a ``make_extension`` function (see
-`Distributing a theme as a package`_).
+A directory theme of plain files cannot provide elements or Python hooks. For
+those, add an ``extension.py`` to the directory (see
+:ref:`extensions-with-python`), or package the theme with a
+``make_extension`` function (see `Distributing a theme as a package`_).
 
 
 Templates
