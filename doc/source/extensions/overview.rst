@@ -9,7 +9,7 @@ optional ``config``, ``schema``, and ``dependencies``:
 
 .. code-block:: python
 
-    from automata._extension import Extension
+    from automata.extensions import Extension
     from automata.hooks import WebsiteInputs
 
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
@@ -96,7 +96,7 @@ user's config is validated against it, and defaults are applied, before
 .. code-block:: python
 
     # my_package/extension.py
-    from automata._extension import Extension
+    from automata.extensions import Extension
     from automata.hooks import WebsiteInputs
 
     schema = {
@@ -187,7 +187,7 @@ directory extension can do.
 .. code-block:: python
 
     # extensions/greeter/extension.py
-    from automata._extension import Extension
+    from automata.extensions import Extension
 
     from .elements import Greeting   # sibling imports must be relative
 

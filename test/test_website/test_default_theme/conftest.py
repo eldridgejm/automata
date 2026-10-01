@@ -3,7 +3,7 @@
 from pytest import fixture
 
 import automata.website
-from automata._extension import THEMES_GROUP, extension_from_entry_point
+from automata.extensions import THEMES_GROUP, extension_from_entry_point
 
 
 @fixture

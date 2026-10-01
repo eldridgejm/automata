@@ -3,16 +3,15 @@ from typing import Any
 
 import smartconfig
 
-from ._extension import (
+from .exceptions import Error
+from .extensions import (
     EXTENSIONS_GROUP,
     THEMES_GROUP,
     Extension,
-    all_extensions,
-    check_theme,
     extension_from_directory,
     extension_from_entry_point,
 )
-from .exceptions import Error
+from .extensions._apply import all_extensions, check_theme
 from .util.resolution import resolve
 from .util.yaml import parse_yaml
 

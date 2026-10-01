@@ -13,7 +13,8 @@ import smartconfig
 import smartconfig.exceptions
 import smartconfig.types
 
-from .._extension import Extension, all_extensions, apply_extensions
+from ..extensions import Extension, apply_extensions
+from ..extensions._apply import all_extensions
 from ..hooks import (
     RenderExtraPagesHookArgs,
     RenderHooks,

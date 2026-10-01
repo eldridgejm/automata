@@ -68,7 +68,7 @@ Elements are contributed via the ``on_render_collect`` hook:
 
 .. code-block:: python
 
-    from automata._extension import Extension
+    from automata.extensions import Extension
     from automata.hooks import WebsiteInputs
 
     def _collect(inputs: WebsiteInputs) -> WebsiteInputs:
@@ -89,7 +89,7 @@ If the module exports it as ``extension`` and registers it in the
 
     # my_theme/__init__.py
     from importlib.resources import files
-    from automata._extension import extension_from_directory
+    from automata.extensions import extension_from_directory
     from my_elements import my_elements
 
     def make_extension(config):
@@ -109,7 +109,7 @@ hook of the extension built by ``extension_from_directory``:
 
     # my_theme/__init__.py
     from importlib.resources import files
-    from automata._extension import extension_from_directory
+    from automata.extensions import extension_from_directory
 
     from ._greeting import Greeting
 

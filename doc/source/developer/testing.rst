@@ -121,7 +121,7 @@ To test an extension's ``on_render_collect`` hook:
 
 .. code-block:: python
 
-    from automata._extension import Extension, apply_extension
+    from automata.extensions import Extension, apply_extension
     from automata.hooks import RenderHooks, WebsiteInputs
 
     def test_my_extension():

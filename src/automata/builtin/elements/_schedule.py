@@ -9,7 +9,7 @@ import smartconfig
 import automata.materials
 import automata.util.resolution
 import automata.util.weeks
-from automata._extension import Extension
+from automata.extensions import Extension
 from automata.util.resolution import string_or_template_string
 from automata.website import RenderContext, TemplateElement
 from automata.website.exceptions import WebsiteError

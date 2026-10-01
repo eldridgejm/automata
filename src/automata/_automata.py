@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import cast
 
 from . import materials
-from ._extension import Extension, apply_extensions
 from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
 from .exceptions import Error
+from .extensions import Extension, apply_extensions
 from .hooks import (
     Hooks,
     PublisherRegistryArgs,

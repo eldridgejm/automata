@@ -3,8 +3,8 @@
 import importlib.resources
 import json
 
-from automata._extension import Extension
 from automata.builtin.elements import listing_extension, schedule_extension
+from automata.extensions import Extension
 from automata.hooks import RenderPostHookArgs, WebsiteInputs
 
 from . import hooks as _hooks_module

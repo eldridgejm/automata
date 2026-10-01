@@ -194,13 +194,17 @@ Example: custom hooks
 
 .. code-block:: python
 
-    from automata._extension import (
+    from automata.extensions import (
+        EXTENSIONS_GROUP,
+        THEMES_GROUP,
         Extension,
         apply_extension,
         apply_extensions,
         extension_from_directory,
         extension_from_entry_point,
     )
+
+``automata.extensions`` is the public API for writing and loading extensions.
 
 .. class:: Extension(name, hooks, config=None, schema=None, dependencies=None)
 

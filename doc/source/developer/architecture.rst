@@ -12,11 +12,18 @@ Module overview
     src/automata/
     ├── __init__.py              # Public API: Automata class
     ├── _automata.py             # Automata class implementation
-    ├── _extension.py            # Extension, apply_extension, loaders
     ├── config.py                # Config class, read_config, load_extensions
     ├── cli.py                   # CLI entry point (typer)
     ├── constants.py             # File names (collection.yaml, publication.yaml)
     ├── exceptions.py            # Base exception classes
+    │
+    ├── extensions/
+    │   ├── __init__.py          # Public API: Extension, loaders, apply_extension(s)
+    │   ├── _types.py            # Extension, entry point group names
+    │   ├── _apply.py            # apply_extension(s), all_extensions, check_theme
+    │   ├── _directory.py        # extension_from_directory (files + extension.py)
+    │   ├── _entry_point.py      # extension_from_entry_point
+    │   └── _common.py           # Config resolution, make_extension/extension
     │
     ├── hooks/
     │   ├── __init__.py          # Exports all hook types

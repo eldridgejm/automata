@@ -5,14 +5,14 @@ import smartconfig
 from pytest import fixture, raises
 
 import automata.website
-from automata._extension import (
+from automata.exceptions import Error
+from automata.extensions import (
     THEMES_GROUP,
     Extension,
     apply_extension,
     extension_from_directory,
     extension_from_entry_point,
 )
-from automata.exceptions import Error
 from automata.hooks import (
     RenderExtraPagesHookArgs,
     RenderHooks,

@@ -210,7 +210,7 @@ Distributing a theme as a package
 
        # my_package/themes/custom/__init__.py
        from importlib.resources import files
-       from automata._extension import extension_from_directory
+       from automata.extensions import extension_from_directory
 
        def make_extension(config):
            return extension_from_directory("my-theme", files(__name__), config=config)

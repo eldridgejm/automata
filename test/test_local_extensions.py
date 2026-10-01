@@ -6,9 +6,9 @@ from textwrap import dedent
 import pytest
 
 from automata import Automata
-from automata._extension import apply_extension, extension_from_directory
 from automata.config import load_extensions, read_config
 from automata.exceptions import Error
+from automata.extensions import apply_extension, extension_from_directory
 from automata.hooks import Hooks, RenderPostHookArgs, WebsiteInputs
 
 
@@ -58,7 +58,7 @@ def _collect(ext) -> WebsiteInputs:
 
 
 _GREETING_ELEMENT = """\
-    from automata._extension import Extension
+    from automata.extensions import Extension
     from automata.website import Element
 
 
@@ -134,7 +134,7 @@ def test_make_extension_receives_config_validated_against_module_schema(tmp_path
         project / "extensions" / "configured",
         {
             "extension.py": """\
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 schema = {
                     "type": "dict",
@@ -161,7 +161,7 @@ def test_make_extension_config_can_be_validated_by_schema_json(tmp_path):
             "schema.json": '{"type": "dict", "optional_keys": '
             '{"size": {"type": "integer", "default": 3}}}',
             "extension.py": """\
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 def make_extension(config):
                     return Extension(name="configured", hooks={}, config=config)
@@ -181,7 +181,7 @@ def test_schema_in_both_extension_py_and_schema_json_is_an_error(tmp_path):
         {
             "schema.json": '{"type": "dict"}',
             "extension.py": """\
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 schema = {"type": "dict"}
 
@@ -208,7 +208,7 @@ def test_python_collect_runs_after_files_are_collected(tmp_path):
         {
             "templates/extra.html": "from file",
             "extension.py": """\
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 def make_extension(config):
                     def collect(inputs):
@@ -240,7 +240,7 @@ def test_script_hook_and_python_hook_for_same_point_both_run(tmp_path, monkeypat
             "extension.py": """\
                 from pathlib import Path
 
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 def make_extension(config):
                     def post(args):
@@ -269,7 +269,7 @@ def test_python_extension_can_declare_dependencies(tmp_path):
         project / "extensions" / "dependent",
         {
             "extension.py": """\
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 helper = Extension(name="helper-ext", hooks={}, config={"x": 1})
 
@@ -295,7 +295,7 @@ def test_extension_py_can_export_a_plain_extension(tmp_path):
         project / "extensions" / "plainpy",
         {
             "extension.py": """\
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 def _collect(inputs):
                     inputs.templates["plain.html"] = "plain"
@@ -323,7 +323,7 @@ def test_extension_py_can_import_sibling_modules_relatively(tmp_path):
         {
             "elements.py": _GREETING_ELEMENT.split("def make_extension")[0],
             "extension.py": """\
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 from .elements import Greeting
 
@@ -349,7 +349,7 @@ def test_two_extensions_with_same_module_names_do_not_collide(tmp_path):
         return {
             "helpers.py": f"VALUE = {value!r}\n",
             "extension.py": """\
-                from automata._extension import Extension
+                from automata.extensions import Extension
 
                 from .helpers import VALUE
 
@@ -384,7 +384,7 @@ def test_reloading_picks_up_changes_to_extension_py(tmp_path):
             {
                 "helpers.py": f"VALUE = {value!r}\n",
                 "extension.py": """\
-                    from automata._extension import Extension
+                    from automata.extensions import Extension
 
                     from .helpers import VALUE
 

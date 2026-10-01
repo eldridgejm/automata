@@ -1,6 +1,5 @@
 """Generate a static website from course materials."""
 
-from .._extension import extension_from_directory, extension_from_entry_point
 from . import exceptions
 from ._elements import BasicElement, Element, TemplateElement
 from ._frontmatter import Frontmatter
@@ -15,7 +14,5 @@ __all__ = [
     "BasicElement",
     "TemplateElement",
     "render",
-    "extension_from_directory",
-    "extension_from_entry_point",
     "exceptions",
 ]

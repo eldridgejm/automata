@@ -4,7 +4,8 @@ import types
 
 import pytest
 
-from automata._extension import (
+from automata.exceptions import Error
+from automata.extensions import (
     EXTENSIONS_GROUP,
     THEMES_GROUP,
     Extension,
@@ -12,7 +13,6 @@ from automata._extension import (
     apply_extensions,
     extension_from_entry_point,
 )
-from automata.exceptions import Error
 from automata.hooks import RenderHooks, WebsiteInputs
 
 
@@ -362,3 +362,43 @@ def test_extension_from_entry_point_raises_if_module_exports_no_extension(
     message = str(excinfo.value)
     assert "make_extension" in message
     assert "extension" in message
+
+
+# public API ===========================================================================
+
+
+def test_extensions_package_exports_the_public_api():
+    import automata.extensions
+
+    assert set(automata.extensions.__all__) == {
+        "EXTENSIONS_GROUP",
+        "THEMES_GROUP",
+        "Extension",
+        "apply_extension",
+        "apply_extensions",
+        "extension_from_directory",
+        "extension_from_entry_point",
+    }
+    for name in automata.extensions.__all__:
+        assert getattr(automata.extensions, name) is not None
+
+
+def test_website_does_not_reexport_extension_loaders():
+    import automata.website
+
+    assert not hasattr(automata.website, "extension_from_directory")
+    assert not hasattr(automata.website, "extension_from_entry_point")
+
+
+def test_docs_do_not_import_the_private_extension_module():
+    from pathlib import Path
+
+    docs = Path(__file__).parent.parent / "doc" / "source"
+    offenders = [
+        f"{path.relative_to(docs)}:{lineno}"
+        for path in docs.rglob("*.rst")
+        for lineno, line in enumerate(path.read_text().splitlines(), start=1)
+        if "automata._extension" in line
+    ]
+
+    assert offenders == []
