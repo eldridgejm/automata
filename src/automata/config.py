@@ -3,11 +3,10 @@ from typing import Any
 
 import smartconfig
 
-from ._extension import Extension
+from ._extension import Extension, extension_from_directory, extension_from_entry_point
 from .exceptions import Error
 from .util.resolution import resolve
 from .util.yaml import parse_yaml
-from ._extension import extension_from_directory, extension_from_entry_point
 
 CONFIGURATION_FILENAME = "automata.yaml"
 
@@ -33,6 +32,11 @@ class WebsiteConfig(smartconfig.Prototype):
 
     # base path for the website (e.g., "/" or "/course/")
     base_path: str = "/"
+
+    # element configurations, keyed by element name. An element called in a page
+    # without a configuration (e.g., ``${ elements.schedule() }``) uses the
+    # configuration given here.
+    elements: dict[str, Any] = {}
 
 
 class Config(smartconfig.Prototype):

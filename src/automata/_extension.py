@@ -14,6 +14,7 @@ from typing import Any, cast
 import smartconfig.exceptions
 import smartconfig.types
 
+from .exceptions import Error
 from .hooks import WebsiteInputs
 
 
@@ -168,7 +169,10 @@ def extension_from_directory(
     static_files: dict[str, str | bytes | Traversable] = {}
 
     if templates_dir.is_dir():
-        _walk(templates_dir, lambda key, entry: templates.__setitem__(key, entry.read_text()))
+        _walk(
+            templates_dir,
+            lambda key, entry: templates.__setitem__(key, entry.read_text()),
+        )
     if static_dir.is_dir():
         _walk(static_dir, lambda key, entry: static_files.__setitem__(key, entry))
 
@@ -241,8 +245,15 @@ def extension_from_entry_point(
         The created Extension.
 
     """
-    entry_points = metadata.entry_points()
-    entry_point = entry_points.select(group="automata.themes")[entry_point_name]
+    entry_points = metadata.entry_points().select(group="automata.themes")
+    if entry_point_name not in entry_points.names:
+        available = ", ".join(sorted(entry_points.names)) or "none"
+        raise Error(
+            f'Unknown extension "{entry_point_name}". Available: {available}. '
+            f"To load an extension from a directory, give a path containing a "
+            f'slash (e.g., "./{entry_point_name}").'
+        )
+    entry_point = entry_points[entry_point_name]
 
     module = entry_point.load()
     if hasattr(module, "extension"):

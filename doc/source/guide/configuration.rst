@@ -131,6 +131,11 @@ Website generation settings:
      - ``"/"``
      - URL base path for the site. Set to ``"."`` for relative URLs, or
        ``"/course/"`` when deploying to a subdirectory.
+   * - ``elements``
+     - ``{}``
+     - Element configurations, keyed by element name. An element called in a
+       page without a configuration (e.g., ``${ elements.schedule() }``) uses
+       its entry here. See :ref:`configuring-elements`.
 
 
 Including external files
@@ -140,8 +145,9 @@ Use ``__include__`` to split configuration across files:
 
 .. code-block:: yaml
 
-    vars:
-      schedule_config:
-        __include__: "schedule.yaml"
+    website:
+      elements:
+        schedule:
+          __include__: "schedule.yaml"
 
 The path is resolved relative to the file containing the ``__include__``.

@@ -53,6 +53,9 @@ def test_build_end_to_end(example_project):
     assert build_dir.exists(), "Build directory should be created"
     assert (build_dir / "index.html").exists(), "index.html should be generated"
 
+    # Verify the schedule configured in website.elements is rendered on the home page
+    assert 'id="week-1"' in (build_dir / "index.html").read_text()
+
     # Verify theme static files were copied
     assert (build_dir / "static").exists(), "Style directory should exist"
     assert (build_dir / "static" / "style.css").exists(), "CSS file should be copied"

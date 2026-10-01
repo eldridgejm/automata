@@ -5,9 +5,18 @@ import smartconfig
 from pytest import fixture, raises
 
 import automata.website
-from automata._extension import Extension, apply_extension
-from automata.hooks import GenerateHooks, GeneratePostHookArgs, GeneratePreHookArgs, WebsiteInputs
-from automata._extension import extension_from_directory, extension_from_entry_point
+from automata._extension import (
+    Extension,
+    apply_extension,
+    extension_from_directory,
+    extension_from_entry_point,
+)
+from automata.hooks import (
+    GenerateHooks,
+    GeneratePostHookArgs,
+    GeneratePreHookArgs,
+    WebsiteInputs,
+)
 
 
 def _make_hooks(theme_dir=None, entry_point="default", config=None):
@@ -35,12 +44,14 @@ def _generate(tmpsite, **kwargs):
 
 @fixture
 def hooks():
-    return _make_hooks(config={
-        "short_title": "DSC 40B",
-        "long_title": "Theoretical Foundations of Data Science II",
-        "navigation": [],
-        "rebuild_tailwind": False,
-    })
+    return _make_hooks(
+        config={
+            "short_title": "DSC 40B",
+            "long_title": "Theoretical Foundations of Data Science II",
+            "navigation": [],
+            "rebuild_tailwind": False,
+        }
+    )
 
 
 # basic page rendering =================================================================
@@ -489,7 +500,6 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
         '<html><body data-custom-theme="yes">${ content }</body></html>'
     )
 
-
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
     # when
@@ -520,7 +530,6 @@ def test_generate_supports_template_inheritance(tmpsite, tmp_path):
     (templates_dir / "layout.html").write_text(
         '{% extends "page.html" %}{% block body %}Layout:${ content }{% endblock %}'
     )
-
 
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
@@ -553,7 +562,6 @@ def test_generate_uses_frontmatter_template(tmpsite, tmp_path):
         "<html><body>ALT:${ content }</body></html>"
     )
 
-
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
     # when
@@ -578,7 +586,6 @@ def test_generate_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
     templates_dir.mkdir(parents=True)
     (templates_dir / "page.html").write_text("<html><body>${ content }</body></html>")
 
-
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
     # when / then
@@ -596,7 +603,6 @@ def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
     templates_dir = custom_theme_dir / "templates"
     templates_dir.mkdir(parents=True)
     (templates_dir / "index.html").write_text("<html>${ content }</html>")
-
 
     hooks = _make_hooks(theme_dir=custom_theme_dir)
 
@@ -618,7 +624,9 @@ def test_generate_can_override_theme_template(tmpsite, tmp_path, hooks):
         '<html><body data-override="yes">${ content }</body></html>'
     )
 
-    override_ext = extension_from_directory("overrides", overrides_dir, require_templates=False)
+    override_ext = extension_from_directory(
+        "overrides", overrides_dir, require_templates=False
+    )
     apply_extension(override_ext, hooks, priority=1)
 
     # when
@@ -644,13 +652,16 @@ def test_generate_overrides_template_can_extend_builtin_template(tmpsite, tmp_pa
         '{% extends "base.html" %}{% block main %}Override:${ content }{% endblock %}'
     )
 
-
-    hooks = _make_hooks(config={
-        "short_title": "DSC 40B",
-        "long_title": "Theoretical Foundations of Data Science II",
-        "navigation": [],
-    })
-    override_ext = extension_from_directory("overrides", overrides_dir, require_templates=False)
+    hooks = _make_hooks(
+        config={
+            "short_title": "DSC 40B",
+            "long_title": "Theoretical Foundations of Data Science II",
+            "navigation": [],
+        }
+    )
+    override_ext = extension_from_directory(
+        "overrides", overrides_dir, require_templates=False
+    )
     apply_extension(override_ext, hooks, priority=1)
 
     # when
@@ -674,13 +685,16 @@ def test_generate_can_override_only_static_files(tmpsite, tmp_path):
     static_dir.mkdir(parents=True)
     (static_dir / "custom.css").write_text("body { color: red; }")
 
-
-    hooks = _make_hooks(config={
-        "short_title": "DSC 40B",
-        "long_title": "Theoretical Foundations of Data Science II",
-        "navigation": [],
-    })
-    override_ext = extension_from_directory("overrides", overrides_dir, require_templates=False)
+    hooks = _make_hooks(
+        config={
+            "short_title": "DSC 40B",
+            "long_title": "Theoretical Foundations of Data Science II",
+            "navigation": [],
+        }
+    )
+    override_ext = extension_from_directory(
+        "overrides", overrides_dir, require_templates=False
+    )
     apply_extension(override_ext, hooks, priority=1)
 
     # when
@@ -715,15 +729,19 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
 
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
         inputs.templates.update({"page.html": "<html><body>${ content }</body></html>"})
-        inputs.static_files.update({
-            "string.txt": "string content",
-            "bytes.bin": b"bytes content",
-            "traversable.txt": traversable_file,
-        })
+        inputs.static_files.update(
+            {
+                "string.txt": "string content",
+                "bytes.bin": b"bytes content",
+                "traversable.txt": traversable_file,
+            }
+        )
         return inputs
 
     hooks = GenerateHooks()
-    apply_extension(Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks)
+    apply_extension(
+        Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks
+    )
 
     # when
     _generate(tmpsite, hooks=hooks)
@@ -753,10 +771,10 @@ def test_generate_supports_theme_elements(tmpsite):
         inputs.elements.update({"simple": SimpleElement})
         return inputs
 
-
-
     hooks = GenerateHooks()
-    apply_extension(Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks)
+    apply_extension(
+        Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks
+    )
 
     _generate(tmpsite, hooks=hooks)
 
@@ -784,25 +802,160 @@ def test_generate_with_template_element(tmpsite):
             return {"suffix": f"{self.context.base_path}"}
 
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
-        inputs.templates.update({
-            "page.html": "<html><body>${ content }</body></html>",
-            "badge.html": (
-                '<span class="badge ${ element_config.tone }">'
-                "${ element_config.label }:${ suffix }</span>"
-            ),
-        })
+        inputs.templates.update(
+            {
+                "page.html": "<html><body>${ content }</body></html>",
+                "badge.html": (
+                    '<span class="badge ${ element_config.tone }">'
+                    "${ element_config.label }:${ suffix }</span>"
+                ),
+            }
+        )
         inputs.elements.update({"badge": BadgeElement})
         return inputs
 
-
-
     hooks = GenerateHooks()
-    apply_extension(Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks)
+    apply_extension(
+        Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks
+    )
 
     _generate(tmpsite, hooks=hooks)
 
     output = tmpsite.get_output("index.html")
     assert '<span class="badge warning">Welcome:/' in output
+
+
+# configured elements ==================================================================
+
+
+class _BadgeConfig(smartconfig.Prototype):
+    label: str = "default label"
+    tone: str = "info"
+
+
+class _RequiredBadgeConfig(smartconfig.Prototype):
+    label: str
+
+
+def _badge_hooks(schema=_BadgeConfig._schema()):
+    """Hooks providing a page.html template and a "badge" TemplateElement."""
+
+    class BadgeElement(automata.website.TemplateElement):
+        template = "badge.html"
+
+    BadgeElement.schema = schema
+
+    def collect(inputs: WebsiteInputs) -> WebsiteInputs:
+        inputs.templates.update(
+            {
+                "page.html": "<html><body>${ content }</body></html>",
+                "badge.html": (
+                    "<span class=\"badge ${ element_config.tone | default('') }\">"
+                    "${ element_config.label }</span>"
+                ),
+            }
+        )
+        inputs.elements.update({"badge": BadgeElement})
+        return inputs
+
+    hooks = GenerateHooks()
+    apply_extension(
+        Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks
+    )
+    return hooks
+
+
+def test_element_called_without_config_uses_configured_config(tmpsite):
+    tmpsite.make_page("index.html", "${ elements.badge() }")
+
+    _generate(
+        tmpsite,
+        hooks=_badge_hooks(),
+        element_configs={"badge": {"label": "From YAML", "tone": "warning"}},
+    )
+
+    output = tmpsite.get_output("index.html")
+    assert '<span class="badge warning">From YAML</span>' in output
+
+
+def test_element_called_without_config_and_none_configured_uses_empty_config(tmpsite):
+    tmpsite.make_page("index.html", "${ elements.badge() }")
+
+    _generate(tmpsite, hooks=_badge_hooks())
+
+    output = tmpsite.get_output("index.html")
+    assert '<span class="badge info">default label</span>' in output
+
+
+def test_element_called_with_config_ignores_configured_config(tmpsite):
+    # the explicit config replaces the configured one entirely; no merging
+    tmpsite.make_page("index.html", '${ elements.badge({"label": "From page"}) }')
+
+    _generate(
+        tmpsite,
+        hooks=_badge_hooks(),
+        element_configs={"badge": {"label": "From YAML", "tone": "warning"}},
+    )
+
+    output = tmpsite.get_output("index.html")
+    assert '<span class="badge info">From page</span>' in output
+
+
+def test_element_called_with_empty_config_ignores_configured_config(tmpsite):
+    tmpsite.make_page("index.html", "${ elements.badge({}) }")
+
+    _generate(
+        tmpsite,
+        hooks=_badge_hooks(),
+        element_configs={"badge": {"label": "From YAML", "tone": "warning"}},
+    )
+
+    output = tmpsite.get_output("index.html")
+    assert '<span class="badge info">default label</span>' in output
+
+
+def test_unconfigured_element_error_mentions_website_elements(
+    tmpsite,
+):
+    tmpsite.make_page("index.html", "${ elements.badge() }")
+
+    with raises(automata.website.exceptions.PageError) as excinfo:
+        _generate(tmpsite, hooks=_badge_hooks(_RequiredBadgeConfig._schema()))
+
+    message = str(excinfo.value)
+    assert "index.html" in message
+    assert "website.elements.badge" in message
+    assert "label" in message
+
+
+def test_element_with_invalid_configured_config_error_mentions_website_elements(
+    tmpsite,
+):
+    tmpsite.make_page("index.html", "${ elements.badge() }")
+
+    with raises(automata.website.exceptions.PageError) as excinfo:
+        _generate(
+            tmpsite,
+            hooks=_badge_hooks(_RequiredBadgeConfig._schema()),
+            element_configs={"badge": {"tone": "warning"}},
+        )
+
+    message = str(excinfo.value)
+    assert "website.elements.badge" in message
+    assert "label" in message
+
+
+def test_configuring_unknown_element_raises(tmpsite):
+    tmpsite.make_page("index.html", "Hello")
+
+    with raises(automata.website.exceptions.WebsiteError) as excinfo:
+        _generate(
+            tmpsite,
+            hooks=_badge_hooks(),
+            element_configs={"bagde": {"label": "Typo"}},
+        )
+
+    assert "bagde" in str(excinfo.value)
 
 
 # theme config validation ==========================================================
@@ -849,13 +1002,11 @@ def test_extension_from_directory_raises_on_invalid_config(tmp_path):
 
     # Should raise ValueError with descriptive message
     with raises(ValueError, match="Invalid extension configuration"):
-        extension_from_directory(
-            "test-theme", theme_dir, config={}
-        )
+        extension_from_directory("test-theme", theme_dir, config={})
 
 
 def test_extension_from_directory_skips_validation_when_no_schema(tmp_path):
-    """Test that extension_from_directory() allows any config when theme has no schema."""
+    """Test that extension_from_directory() allows any config without a schema."""
     # Create a custom theme without a schema
     theme_dir = tmp_path / "custom_theme"
     templates_dir = theme_dir / "templates"
@@ -894,9 +1045,7 @@ def test_extension_from_directory_applies_defaults(tmp_path):
         '"enabled": {"type": "boolean", "default": false}}}'
     )
 
-    ext = extension_from_directory(
-        "test-theme", theme_dir, config={}
-    )
+    ext = extension_from_directory("test-theme", theme_dir, config={})
 
     # All defaults should be applied to extension.config
     assert ext.config["title"] == "Default Title"
@@ -918,9 +1067,7 @@ def test_generate_executes_script_hook_from_theme(tmpsite, tmp_path):
     (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
     captured_file = tmp_path / "captured_args.json"
-    (hooks_dir / "on_generate_post").write_text(
-        f"cat > '{captured_file}'"
-    )
+    (hooks_dir / "on_generate_post").write_text(f"cat > '{captured_file}'")
 
     tmpsite.make_page("index.md", "# Home")
 
@@ -931,6 +1078,7 @@ def test_generate_executes_script_hook_from_theme(tmpsite, tmp_path):
 
     # then: the script ran and received the hook args as JSON
     import json
+
     assert captured_file.exists()
     args = json.loads(captured_file.read_text())
     assert "build_directory" in args
@@ -945,7 +1093,6 @@ def test_generate_continues_without_hooks(tmpsite, tmp_path):
     (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
     tmpsite.make_page("index.md", "# Home")
-
 
     hooks = _make_hooks(theme_dir=theme_dir)
 
@@ -972,7 +1119,13 @@ def test_generate_handles_materials_already_in_build_directory(tmpsite, hooks):
     # when - pass the materials directory that's already in the build directory
     # This should not raise an error and should not try to copy to itself
     pages, static_content = tmpsite.load_content()
-    automata.website.generate(tmpsite.build_directory, materials_in_build, pages=pages, static_content=static_content, hooks=hooks)
+    automata.website.generate(
+        tmpsite.build_directory,
+        materials_in_build,
+        pages=pages,
+        static_content=static_content,
+        hooks=hooks,
+    )
 
     # then - verify the page was generated and materials are still there
     assert "Test Page" in tmpsite.get_output("index.html")
@@ -1005,12 +1158,13 @@ def test_default_theme_tailwind_rebuild_with_npx_available(tmpsite, monkeypatch)
         "index.md", "# Test\n\nThis uses <div class='bg-fuchsia-500'>custom</div>"
     )
 
-
-    hooks = _make_hooks(config={
-        "short_title": "Test",
-        "long_title": "Test Site",
-        "rebuild_tailwind": True,
-    })
+    hooks = _make_hooks(
+        config={
+            "short_title": "Test",
+            "long_title": "Test Site",
+            "rebuild_tailwind": True,
+        }
+    )
 
     # when
     _generate(tmpsite, hooks=hooks)
@@ -1032,12 +1186,13 @@ def test_default_theme_fallback_when_npx_not_available(tmpsite, monkeypatch, cap
 
     tmpsite.make_page("index.md", "# Test Page")
 
-
-    hooks = _make_hooks(config={
-        "short_title": "Test",
-        "long_title": "Test Site",
-        "rebuild_tailwind": True,
-    })
+    hooks = _make_hooks(
+        config={
+            "short_title": "Test",
+            "long_title": "Test Site",
+            "rebuild_tailwind": True,
+        }
+    )
 
     # when
     import logging
@@ -1242,7 +1397,9 @@ def test_user_pre_generate_hook_can_add_extra_content(tmpsite, hooks):
     def add_extra_page(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
         extra = args.extra_content or {}
         extra["from-hook.html"] = "# Added by hook"
-        return GeneratePreHookArgs(build_directory=args.build_directory, extra_content=extra)
+        return GeneratePreHookArgs(
+            build_directory=args.build_directory, extra_content=extra
+        )
 
     tmpsite.make_page("index.md", "# Test")
     _generate(tmpsite, hooks=hooks)
@@ -1257,13 +1414,17 @@ def test_pre_generate_pipeline_chains_transformations(tmpsite, hooks):
     def add_page_a(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
         extra = dict(args.extra_content or {})
         extra["a.html"] = "# Page A"
-        return GeneratePreHookArgs(build_directory=args.build_directory, extra_content=extra)
+        return GeneratePreHookArgs(
+            build_directory=args.build_directory, extra_content=extra
+        )
 
     @hooks.on_generate_pre.register()
     def add_page_b(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
         extra = dict(args.extra_content or {})
         extra["b.html"] = "# Page B"
-        return GeneratePreHookArgs(build_directory=args.build_directory, extra_content=extra)
+        return GeneratePreHookArgs(
+            build_directory=args.build_directory, extra_content=extra
+        )
 
     tmpsite.make_page("index.md", "# Test")
     _generate(tmpsite, hooks=hooks)

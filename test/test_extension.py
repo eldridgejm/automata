@@ -1,6 +1,7 @@
 import pytest
 
-from automata._extension import Extension, apply_extension
+from automata._extension import Extension, apply_extension, extension_from_entry_point
+from automata.exceptions import Error
 from automata.hooks import GenerateHooks, WebsiteInputs
 
 
@@ -11,7 +12,6 @@ def _make_extension(**kwargs):
 
 
 class TestExtensionDataclass:
-
     def test_extension_has_name_and_hooks(self):
         ext = Extension(name="my-ext", hooks={"on_generate_post": lambda args: None})
         assert ext.name == "my-ext"
@@ -24,7 +24,6 @@ class TestExtensionDataclass:
 
 
 class TestApplyExtension:
-
     def test_registers_hooks_on_hooks_instance(self):
         call_log = []
 
@@ -71,7 +70,6 @@ class TestApplyExtension:
 
 
 class TestMultipleExtensionsCompose:
-
     def test_later_extension_overrides_templates(self):
         def base_collect(inputs: WebsiteInputs) -> WebsiteInputs:
             inputs.templates["page.html"] = "<base>"
@@ -126,3 +124,13 @@ class TestMultipleExtensionsCompose:
         assert "style.css" in result.static_files
         assert "extra.html" in result.pages
         assert result.vars["plugin_name"] == "my-plugin"
+
+
+class TestExtensionFromEntryPoint:
+    def test_raises_helpful_error_on_unknown_name(self):
+        with pytest.raises(Error) as excinfo:
+            extension_from_entry_point("schedule")
+
+        message = str(excinfo.value)
+        assert 'Unknown extension "schedule"' in message
+        assert "default" in message

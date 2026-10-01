@@ -9,9 +9,9 @@ from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
 from .exceptions import Error
 from .hooks import (
     Hooks,
-    PublishPreHookArgs,
-    PublishPostHookArgs,
     PublisherRegistryArgs,
+    PublishPostHookArgs,
+    PublishPreHookArgs,
     WebsiteGeneratePreHookArgs,
 )
 from .materials import (
@@ -182,8 +182,7 @@ class Automata:
             if target not in self.config.publish:
                 available = ", ".join(sorted(self.config.publish))
                 raise Error(
-                    f"Unknown publish target: {target!r}. "
-                    f"Available: {available}"
+                    f"Unknown publish target: {target!r}. Available: {available}"
                 )
             targets = {target: self.config.publish[target]}
         else:
@@ -277,9 +276,7 @@ class Automata:
             universe, current_time=current_time, hooks=self.hooks, **kwargs
         )
 
-    def export(
-        self, universe: Universe[BuiltArtifact]
-    ) -> Universe[ExportedArtifact]:
+    def export(self, universe: Universe[BuiltArtifact]) -> Universe[ExportedArtifact]:
         """Export built materials to the build directory.
 
         Writes artifact files and ``materials.json`` to the build directory.
@@ -309,9 +306,7 @@ class Automata:
 
         return exported
 
-    def generate_website(
-        self, current_time: datetime.datetime | None = None
-    ) -> None:
+    def generate_website(self, current_time: datetime.datetime | None = None) -> None:
         """Generate the website from exported materials.
 
         Loads pages and static content from the content directory and passes
@@ -353,6 +348,7 @@ class Automata:
             hooks=self.hooks,
             base_path=self.config.website.base_path,
             materials_directory_name=self.config.website.materials_directory_name,
+            element_configs=self.config.website.elements,
         )
 
     def resolve(self, path: Path) -> Publication[UnbuiltArtifact]:

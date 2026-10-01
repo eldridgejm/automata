@@ -9,6 +9,7 @@ from typing import Any, Callable, cast
 
 import jinja2
 import smartconfig
+import smartconfig.exceptions
 import smartconfig.types
 
 from ..hooks import (
@@ -34,10 +35,9 @@ class RenderContext:
     url_for: Callable[[str], str]
 
     # elements avaiable during rendering. These should be already bound to the render
-    # context, so that they only require one argument: the element configuration.
-    elements: dict[str, Callable[[smartconfig.types.Configuration], str]] = (
-        dataclasses.field(default_factory=dict)
-    )
+    # context, so that they take at most one argument: the element configuration.
+    # If the configuration is omitted, the element's configured default is used.
+    elements: dict[str, Callable[..., str]] = dataclasses.field(default_factory=dict)
 
     # the current date and time
     current_time: datetime.datetime = dataclasses.field(
@@ -148,6 +148,47 @@ def _create_url_for(base_path: str) -> Callable[[str], str]:
     return url_for
 
 
+class _BoundElement:
+    """An element instance whose configuration defaults to its configured value.
+
+    Calling it without a configuration uses ``website.elements.<name>``, or an
+    empty configuration if none is set. Calling it with a configuration uses that
+    configuration alone; the configured value is ignored.
+
+    """
+
+    def __init__(
+        self,
+        name: str,
+        element: Callable[[smartconfig.types.Configuration], str],
+        configured: smartconfig.types.Configuration | None,
+    ):
+        self.name = name
+        self.element = element
+        self.configured = configured
+
+    def __call__(self, config: smartconfig.types.Configuration | None = None) -> str:
+        key = f"website.elements.{self.name}"
+
+        if config is not None:
+            source = "passed in the page"
+            if self.configured is not None:
+                source += f" ({key} is ignored when a configuration is passed)"
+        elif self.configured is not None:
+            config = self.configured
+            source = f"from {key}"
+        else:
+            config = {}
+            source = f"none passed in the page, and {key} is not set"
+
+        try:
+            return self.element(config)
+        except smartconfig.exceptions.Error as e:
+            raise WebsiteError(
+                f'Invalid configuration for element "{self.name}" ({source}): {e}'
+            ) from e
+
+
 def _create_render_context(
     materials: Universe[ExportedArtifact],
     url_for: Callable[[str], str],
@@ -156,6 +197,7 @@ def _create_render_context(
     base_path: str,
     elements: dict[str, type],
     jinja_environment: jinja2.Environment,
+    element_configs: dict[str, smartconfig.types.Configuration],
 ) -> RenderContext:
     """Create the render context with elements bound."""
     context = RenderContext(
@@ -167,7 +209,9 @@ def _create_render_context(
     )
 
     context.elements = {
-        name: element(jinja_environment, context)
+        name: _BoundElement(
+            name, element(jinja_environment, context), element_configs.get(name)
+        )
         for name, element in elements.items()
     }
 
@@ -230,7 +274,7 @@ def _fix_artifact_paths(
     materials: Universe[ExportedArtifact],
     url_for: Callable[[str], str],
 ) -> None:
-    """Fixes the path attribute so that it takes into account the website's base path."""
+    """Fixes artifact paths so that they take into account the website's base path."""
     for collection in materials.collections.values():
         for publication in collection.publications.values():
             for artifact in publication.artifacts.values():
@@ -293,6 +337,7 @@ def generate(
     hooks: GenerateHooks | None = None,
     base_path: str = "/",
     materials_directory_name: str = "materials",
+    element_configs: dict[str, smartconfig.types.Configuration] | None = None,
 ):
     """Generates a static website from course materials.
 
@@ -329,12 +374,17 @@ def generate(
     materials_directory_name : str, optional
         Name of the materials subdirectory in the build directory
         (default ``"materials"``).
+    element_configs : dict[str, Configuration], optional
+        Configurations for elements, keyed by element name. An element called
+        without a configuration uses its entry here (or an empty configuration
+        if it has none).
 
     """
     # set default values for optional parameters
     pages = pages or {}
     static_content = static_content or {}
     vars = vars or {}
+    element_configs = element_configs or {}
     current_time = current_time or datetime.datetime.now()
     hooks = hooks or GenerateHooks()
 
@@ -343,6 +393,14 @@ def generate(
 
     if "page.html" not in inputs.templates:
         raise ValueError('No extension provided a "page.html" template.')
+
+    unknown_elements = sorted(set(element_configs) - set(inputs.elements))
+    if unknown_elements:
+        raise WebsiteError(
+            f"website.elements configures unknown element(s): "
+            f"{', '.join(unknown_elements)}. "
+            f"Available elements: {', '.join(sorted(inputs.elements)) or 'none'}."
+        )
 
     # merge vars: extension defaults < explicit vars
     merged_vars = {**inputs.vars, **vars}
@@ -371,8 +429,14 @@ def generate(
     materials = _load_materials(materials_directory)
     _fix_artifact_paths(materials, url_for)
     context = _create_render_context(
-        materials, url_for, current_time, merged_vars, base_path,
-        inputs.elements, jinja_environment,
+        materials,
+        url_for,
+        current_time,
+        merged_vars,
+        base_path,
+        inputs.elements,
+        jinja_environment,
+        element_configs,
     )
 
     # process pages and static content
@@ -397,5 +461,7 @@ def generate(
             _write_static_content(binary_extra, build_directory)
 
     # finalize build
-    _copy_materials_to_build(materials_directory, build_directory, materials_directory_name)
+    _copy_materials_to_build(
+        materials_directory, build_directory, materials_directory_name
+    )
     hooks.on_generate_post(GeneratePostHookArgs(build_directory=build_directory))

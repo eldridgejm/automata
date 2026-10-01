@@ -119,7 +119,35 @@ Example:
     template: page.html
     ---
 
-    ${ elements.schedule(vars.schedule_config) }
+    ${ elements.schedule() }
+
+
+.. _configuring-elements:
+
+Configuring elements
+^^^^^^^^^^^^^^^^^^^^
+
+An element's configuration comes from one of two places:
+
+- **The call.** ``${ elements.button({"label": "Zoom", "url": "..."}) }`` uses
+  exactly the configuration passed. Anything set for the element in
+  ``automata.yaml`` is ignored; the two are not merged.
+- **automata.yaml.** ``${ elements.schedule() }``, called without a
+  configuration, uses ``website.elements.schedule``:
+
+  .. code-block:: yaml
+
+      website:
+        elements:
+          schedule:
+            __include__: "schedule.yaml"
+
+  If the element has no entry there, it receives an empty configuration, so
+  it renders with its defaults or raises an error naming its missing required
+  keys.
+
+Configuring an element that no extension provides (for example, a misspelled
+name) is an error.
 
 
 The ``url_for`` function

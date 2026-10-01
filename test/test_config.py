@@ -241,3 +241,51 @@ def test_read_config_with_include(tmp_path: Path) -> None:
     assert config.vars["course_name"] == "DSC 101"
     assert config.vars["semester"] == "Fall 2025"
     assert config.website.theme["config"]["short_title"] == "DSC 101"
+
+
+def test_read_config_website_elements_defaults_to_empty(tmp_path: Path) -> None:
+    """Test that website.elements defaults to an empty dict."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        dedent(
+            """
+            website:
+              theme: "default"
+              content_directory: "./content"
+              build_directory: "./build"
+            """
+        )
+    )
+
+    config = read_config(config_file)
+
+    assert config.website.elements == {}
+
+
+def test_read_config_reads_website_elements(tmp_path: Path) -> None:
+    """Test that website.elements is read, interpolating vars but preserving
+    !template strings for resolution at render time."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        dedent(
+            """
+            vars:
+              course_name: "DSC 101"
+
+            website:
+              theme: "default"
+              content_directory: "./content"
+              build_directory: "./build"
+              elements:
+                listing:
+                  title: ${ vars.course_name }
+                  cell: !template "${ publication.metadata.name }"
+            """
+        )
+    )
+
+    config = read_config(config_file)
+
+    listing = config.website.elements["listing"]
+    assert listing["title"] == "DSC 101"
+    assert listing["cell"] == {"__template__": "${ publication.metadata.name }"}

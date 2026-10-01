@@ -9,19 +9,20 @@ homeworks, and other activities into a weekly view.
 Basic usage
 -----------
 
-In ``automata.yaml``, define the schedule configuration as a variable:
+In ``automata.yaml``, configure the schedule under ``website.elements``:
 
 .. code-block:: yaml
 
-    vars:
-      schedule_config:
-        __include__: "schedule.yaml"
+    website:
+      elements:
+        schedule:
+          __include__: "schedule.yaml"
 
-Then use it in a page:
+Then place it in a page:
 
 .. code-block:: markdown
 
-    ${ elements.schedule(vars.schedule_config) }
+    ${ elements.schedule() }
 
 
 Schedule configuration
