@@ -1,5 +1,6 @@
 """Generates a course website."""
 
+import copy
 import dataclasses
 import datetime
 import pathlib
@@ -351,6 +352,7 @@ def generate(
     element_configs: dict[str, smartconfig.types.Configuration] | None = None,
     theme: Extension | None = None,
     extensions: Sequence[Extension] = (),
+    materials: Universe[ExportedArtifact] | None = None,
 ):
     """Generates a static website from course materials.
 
@@ -364,7 +366,8 @@ def generate(
     build_directory : pathlib.Path
         Path to the output directory.
     materials_directory : pathlib.Path
-        The path to the directory containing the exported materials.
+        The path to the directory containing the exported materials. Its
+        ``materials.json`` is read unless *materials* is given.
     pages : dict[str, str], optional
         Pre-loaded page content. Keys are output paths (e.g.,
         ``"index.html"``). Values are page content (Markdown or HTML).
@@ -397,6 +400,9 @@ def generate(
     extensions : Sequence[Extension], optional
         The site's other extensions. These, the theme, and their dependencies
         are available in templates as ``extensions``, keyed by name.
+    materials : Universe[ExportedArtifact], optional
+        The exported materials to render with, in place of reading
+        ``materials.json`` from *materials_directory*. It is not modified.
 
     """
     # set default values for optional parameters
@@ -444,8 +450,12 @@ def generate(
     jinja_environment = _create_jinja_environment(inputs.templates)
     _write_static_files(inputs.static_files, build_directory)
 
-    # load materials and create render context
-    materials = _load_materials(materials_directory)
+    # load materials (or copy the given ones, since their paths are rewritten
+    # below) and create render context
+    if materials is None:
+        materials = _load_materials(materials_directory)
+    else:
+        materials = copy.deepcopy(materials)
     _fix_artifact_paths(materials, url_for)
     context = _create_render_context(
         materials,

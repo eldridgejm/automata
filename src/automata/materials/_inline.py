@@ -3,6 +3,8 @@
 import pathlib
 from typing import Any, Mapping, Optional
 
+from automata.hooks import DiscoverHookArgs, DiscoverHooks
+
 from ._discover_collection import parse_collection
 from ._discover_publication import parse_publication
 from ._types import Collection, UnbuiltArtifact, Universe
@@ -23,6 +25,7 @@ def discover_inline(
     materials_config: dict[str, Any],
     project_path: pathlib.Path,
     vars: Optional[Mapping[str, Any]] = None,
+    hooks: Optional[DiscoverHooks] = None,
 ) -> Universe[UnbuiltArtifact]:
     """Create a Universe from inline materials defined in config.
 
@@ -36,6 +39,10 @@ def discover_inline(
         The project root directory, used to resolve relative artifact paths.
     vars : Mapping[str, Any] | None
         Variables available during interpolation.
+    hooks : DiscoverHooks | None
+        Hooks to invoke during discovery. ``on_discover_collection`` and
+        ``on_discover_publication`` fire with ``path`` set to ``automata.yaml``
+        and ``key`` set to the collection or publication name.
 
     Returns
     -------
@@ -45,6 +52,9 @@ def discover_inline(
     """
     if vars is None:
         vars = {}
+
+    if hooks is None:
+        hooks = DiscoverHooks()
 
     collections: dict[str, Collection[UnbuiltArtifact]] = {}
 
@@ -64,6 +74,7 @@ def discover_inline(
         source = project_path / "automata.yaml"
 
         collection, _ = parse_collection(collection_yaml, source=source, vars=vars)
+        hooks.on_discover_collection(DiscoverHookArgs(path=source, key=collection_name))
 
         # Resolve each publication
         for pub_key, raw_pub in raw_publications.items():
@@ -92,6 +103,7 @@ def discover_inline(
                 source=source,
             )
             collection.publications[pub_key] = publication
+            hooks.on_discover_publication(DiscoverHookArgs(path=source, key=pub_key))
 
         collections[collection_name] = collection
 

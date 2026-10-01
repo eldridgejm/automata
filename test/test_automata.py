@@ -8,7 +8,7 @@ import pytest
 
 from automata import Automata
 from automata.exceptions import Error
-from automata.materials import Universe
+from automata.materials import Universe, serialize
 
 
 @pytest.fixture
@@ -125,6 +125,59 @@ def test_export_returns_exported_universe(project_dir):
     assert isinstance(exported, Universe)
 
 
+# load_exported_materials() ===========================================================
+
+
+def test_load_exported_materials_returns_what_export_wrote(project_dir):
+    # given
+    a = Automata(project_dir)
+    built = a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True)
+    exported = a.export(built)
+
+    # when
+    loaded = Automata(project_dir).load_exported_materials()
+
+    # then
+    assert loaded == exported
+
+
+def test_load_exported_materials_can_feed_generate_website(project_dir):
+    # given
+    a = Automata(project_dir)
+    built = a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True)
+    a.export(built)
+
+    # when
+    a.generate_website(a.load_exported_materials())
+
+    # then
+    assert (project_dir / "_build" / "index.html").exists()
+
+
+def test_load_exported_materials_raises_if_nothing_was_exported(project_dir):
+    with pytest.raises(Error) as excinfo:
+        Automata(project_dir).load_exported_materials()
+
+    message = str(excinfo.value)
+    assert "materials.json" in message
+    assert "export" in message
+
+
+def test_load_exported_materials_raises_if_file_is_not_a_universe(project_dir):
+    # given: a materials.json holding a single publication, not a universe
+    a = Automata(project_dir)
+    publication = a.discover().collections["homeworks"].publications["hw01"]
+    materials_json = project_dir / "_build" / "materials" / "materials.json"
+    materials_json.parent.mkdir(parents=True)
+    materials_json.write_text(serialize(publication))
+
+    # when / then
+    with pytest.raises(Error) as excinfo:
+        a.load_exported_materials()
+
+    assert "materials.json" in str(excinfo.value)
+
+
 # generate_website() ===================================================================
 
 
@@ -132,12 +185,55 @@ def test_generate_website_generates_html(project_dir):
     a = Automata(project_dir)
     discovered = a.discover()
     built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
-    a.export(built)
-    a.generate_website()
+    exported = a.export(built)
+    a.generate_website(exported)
 
     index = project_dir / "_build" / "index.html"
     assert index.exists()
     assert "Home" in index.read_text()
+
+
+def test_generate_website_uses_the_materials_it_is_given(project_dir):
+    # given: exported materials, filtered in Python before generating
+    (project_dir / "content" / "index.md").write_text(
+        "{% for name in materials.collections %}[${ name }]{% endfor %}"
+    )
+    a = Automata(project_dir)
+    built = a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True)
+    exported = a.export(built)
+    without_homeworks = a.filter(exported, lambda key, node: key != "homeworks")
+
+    # when
+    a.generate_website(without_homeworks)
+
+    # then
+    index = (project_dir / "_build" / "index.html").read_text()
+    assert "[homeworks]" not in index
+
+
+# filter() =============================================================================
+
+
+def test_filter_fires_filter_hooks(project_dir):
+    # given
+    a = Automata(project_dir)
+    hits, misses = [], []
+
+    @a.hooks.on_filter_hit.register()
+    def on_hit(args):
+        hits.append(args.key)
+
+    @a.hooks.on_filter_miss.register()
+    def on_miss(args):
+        misses.append(args.key)
+
+    # when
+    filtered = a.filter(a.discover(), lambda key, node: key != "hw01")
+
+    # then
+    assert "hw01" in misses
+    assert "homeworks" in hits
+    assert "hw01" not in filtered.collections["homeworks"].publications
 
 
 # generate() ===========================================================================

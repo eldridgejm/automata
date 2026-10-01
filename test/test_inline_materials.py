@@ -124,6 +124,44 @@ def test_inline_materials_release_time_filtering(project_with_inline_materials):
     assert "homework.pdf" not in hw02.artifacts
 
 
+def test_inline_materials_fire_discover_hooks(project_with_inline_materials):
+    # given
+    project = Automata(project_with_inline_materials)
+    collections, publications = [], []
+
+    @project.hooks.on_discover_collection.register()
+    def on_collection(args):
+        collections.append((args.path.name, args.key))
+
+    @project.hooks.on_discover_publication.register()
+    def on_publication(args):
+        publications.append((args.path.name, args.key))
+
+    # when
+    project.discover()
+
+    # then
+    assert collections == [("automata.yaml", "homeworks")]
+    assert sorted(publications) == [
+        ("automata.yaml", "hw01"),
+        ("automata.yaml", "hw02"),
+    ]
+
+
+@pytest.mark.xfail(
+    reason=(
+        "smartconfig 0.5.3 resolves free-form dict keys through a set difference "
+        "(_internals.py: extra_keys = dct.keys() - expected_keys), so their order "
+        "depends on PYTHONHASHSEED"
+    ),
+    strict=False,
+)
+def test_inline_publications_keep_their_order(project_with_inline_materials):
+    universe = Automata(project_with_inline_materials).discover()
+
+    assert list(universe.collections["homeworks"].publications) == ["hw01", "hw02"]
+
+
 # variables ============================================================================
 
 

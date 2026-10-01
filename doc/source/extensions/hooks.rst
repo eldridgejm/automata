@@ -101,7 +101,9 @@ filtering. They are primarily used for logging and monitoring.
 
 Discovery hooks (``DiscoverHooks``):
 
-- ``on_discover_collection`` --- called when a collection is found.
+- ``on_discover_collection`` --- called when a collection is found. For
+  materials defined inline in ``automata.yaml``, ``path`` is ``automata.yaml``
+  and ``key`` is the collection name.
 - ``on_discover_publication`` --- called when a publication is found.
 - ``on_discover_skip`` --- called when a directory is skipped.
 

@@ -261,7 +261,7 @@ def _init_collection_from_file(
         raw_contents, vars=vars, source=file_path
     )
     key = str(collection_path.relative_to(root_directory))
-    hooks.on_discover_collection(DiscoverHookArgs(path=file_path))
+    hooks.on_discover_collection(DiscoverHookArgs(path=file_path, key=key))
 
     if inline_publications is not None and publication_paths:
         raise DiscoveryError(

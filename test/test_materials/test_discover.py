@@ -634,6 +634,24 @@ def test_discover_invokes_on_discover_collection_hook(default_example_course):
     assert collection_paths[0].name == "collection.yaml"
 
 
+def test_discover_passes_collection_key_to_on_discover_collection_hook(
+    default_example_course,
+):
+    # given
+    keys = []
+    hooks = Hooks()
+
+    @hooks.on_discover_collection.register()
+    def track_collections(args: DiscoverHookArgs) -> None:
+        keys.append(args.key)
+
+    # when
+    discover(default_example_course.path, hooks=hooks)
+
+    # then
+    assert keys == ["homeworks"]
+
+
 def test_discover_invokes_on_discover_publication_hook(default_example_course):
     """Test that on_discover_publication hook is invoked for each publication."""
     # given

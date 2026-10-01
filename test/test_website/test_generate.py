@@ -279,6 +279,52 @@ def test_exception_is_raised_if_materials_json_missing(tmpsite, theme):
     assert "materials.json not found at" in str(exc.value)
 
 
+def _exported_example(default_example_course, tmpsite):
+    """Discover, build, and export the example course into tmpsite (no json)."""
+    import automata.materials
+
+    universe = automata.materials.discover(default_example_course.path)
+    universe = automata.materials.build(
+        universe, ignore_ready=True, ignore_release_time=True
+    )
+    return automata.materials.export(universe, tmpsite.materials_directory)
+
+
+def test_generate_uses_given_materials_instead_of_materials_json(
+    tmpsite, default_example_course, theme
+):
+    # given: materials exported, and no materials.json to fall back on
+    universe = _exported_example(default_example_course, tmpsite)
+    (tmpsite.materials_directory / "materials.json").unlink(missing_ok=True)
+    tmpsite.make_page(
+        "index.md", "{% for name in materials.collections %}[${ name }]{% endfor %}"
+    )
+
+    # when
+    _generate(tmpsite, theme=theme, materials=universe)
+
+    # then
+    for name in universe.collections:
+        assert f"[{name}]" in tmpsite.get_output("index.html")
+
+
+def test_generate_does_not_modify_given_materials(
+    tmpsite, default_example_course, theme
+):
+    # given
+    import automata.materials
+
+    universe = _exported_example(default_example_course, tmpsite)
+    before = automata.materials.serialize(universe)
+    tmpsite.make_page("index.md", "Home")
+
+    # when: base_path causes artifact paths to be rewritten for rendering
+    _generate(tmpsite, theme=theme, materials=universe, base_path="/course/")
+
+    # then
+    assert automata.materials.serialize(universe) == before
+
+
 # error handling =======================================================================
 
 

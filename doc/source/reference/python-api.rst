@@ -81,21 +81,54 @@ The primary interface is the ``Automata`` class.
         :returns: The built materials universe.
         :rtype: Universe[BuiltArtifact]
 
+    .. method:: filter(universe, predicate, remove_empty_nodes=False)
+
+        Select materials according to a predicate, firing this project's
+        ``on_filter_hit`` and ``on_filter_miss`` hooks. A wrapper around
+        :func:`automata.materials.filter`; it can be applied to discovered,
+        built, or exported materials.
+
+        :param universe: The materials to filter.
+        :param predicate: Called with each node's key and the node; returns
+            ``True`` to keep it.
+        :param remove_empty_nodes: Whether to remove nodes left with no
+            children.
+        :returns: A new universe with the rejected nodes removed.
+
     .. method:: export(universe)
 
         Export built materials to the build directory and write
-        ``materials.json``.
+        ``materials.json``, which is published with the site. (The library
+        function :func:`automata.materials.export` only copies files; it does
+        not write ``materials.json``.)
 
         :param universe: The built materials to export.
         :type universe: Universe[BuiltArtifact]
         :returns: The exported materials universe.
         :rtype: Universe[ExportedArtifact]
 
-    .. method:: generate_website(current_time=None)
+    .. method:: load_exported_materials()
 
-        Generate the website from exported materials. Assumes
-        :meth:`export` has already been called.
+        Load the materials written by a previous :meth:`export` from
+        ``materials.json`` in the build directory. Useful for regenerating the
+        website without re-running the earlier steps::
 
+            project.generate_website(project.load_exported_materials())
+
+        :returns: The exported materials universe.
+        :rtype: Universe[ExportedArtifact]
+        :raises automata.exceptions.Error: If ``materials.json`` does not exist
+            (for example, after :meth:`clean_build_directory`) or does not
+            contain a universe.
+
+    .. method:: generate_website(materials, current_time=None)
+
+        Generate the website from exported materials. The materials' files
+        must already be in the build directory (see :meth:`export`).
+
+        :param materials: The exported materials to render with, as returned
+            by :meth:`export` (possibly filtered with :meth:`filter`).
+        :type materials: Universe[ExportedArtifact]
         :param current_time: Override the current time.
         :type current_time: datetime or None
 
@@ -130,10 +163,13 @@ Example: step-by-step pipeline
     materials = project.build_materials(materials)
 
     # Export to build directory
-    project.export(materials)
+    materials = project.export(materials)
+
+    # Optionally, select materials in Python before generating
+    materials = project.filter(materials, lambda key, node: key != "drafts")
 
     # Generate the website
-    project.generate_website()
+    project.generate_website(materials)
 
 
 Example: custom hooks
@@ -225,7 +261,7 @@ Example: custom hooks
 
     from automata.website import generate
 
-.. function:: generate(build_directory, materials_directory, pages=None, static_content=None, vars=None, current_time=None, render_markdown=..., hooks=None, base_path="/", materials_directory_name="materials", element_configs=None, theme=None, extensions=())
+.. function:: generate(build_directory, materials_directory, pages=None, static_content=None, vars=None, current_time=None, render_markdown=..., hooks=None, base_path="/", materials_directory_name="materials", element_configs=None, theme=None, extensions=(), materials=None)
 
     Generate a static website from exported materials. Most users should call
     :meth:`Automata.generate_website` instead.
@@ -237,6 +273,9 @@ Example: custom hooks
     :param hooks: A :class:`GenerateHooks` instance. If given, *theme* and
         *extensions* are assumed to be registered on it already. If omitted,
         hooks are created and *theme* and *extensions* are registered on them.
+    :param materials: The exported materials to render with. If omitted,
+        ``materials.json`` is read from *materials_directory*. The given
+        universe is not modified.
 
 
 Materials types

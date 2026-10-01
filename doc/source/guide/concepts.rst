@@ -63,10 +63,11 @@ You can run each step individually via the CLI or the Python API::
 
     # Python
     project = Automata()
+    project.clean_build_directory()
     materials = project.discover()
     materials = project.build_materials(materials)
-    project.export(materials)
-    project.generate_website()
+    materials = project.export(materials)
+    project.generate_website(materials)
 
 
 Extensions

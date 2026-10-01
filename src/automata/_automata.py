@@ -3,6 +3,7 @@
 import datetime
 import shutil
 from pathlib import Path
+from typing import cast
 
 from . import materials
 from ._extension import Extension, apply_extensions
@@ -23,6 +24,7 @@ from .materials import (
     Universe,
     find_parent_collection,
 )
+from .materials._filter import ArtifactType, Predicate
 from .website import generate as _generate_website
 
 
@@ -114,10 +116,11 @@ class Automata:
     Step by step::
 
         project = Automata()
+        project.clean_build_directory()
         materials = project.discover()
         materials = project.build_materials(materials)
-        project.export(materials)
-        project.generate_website()
+        materials = project.export(materials)
+        project.generate_website(materials)
 
     """
 
@@ -149,8 +152,8 @@ class Automata:
             self.clean_build_directory()
         discovered = self.discover()
         built = self.build_materials(discovered, current_time=current_time)
-        self.export(built)
-        self.generate_website(current_time=current_time)
+        exported = self.export(built)
+        self.generate_website(exported, current_time=current_time)
 
     def clean_build_directory(self) -> None:
         """Empty the build directory, keeping top-level dot-entries.
@@ -293,7 +296,10 @@ class Automata:
 
         if self.config.materials:
             inline = materials.discover_inline(
-                self.config.materials, self.path, vars=self.config.vars
+                self.config.materials,
+                self.path,
+                vars=self.config.vars,
+                hooks=self.hooks,
             )
             universe = inline.merge(universe)
 
@@ -329,6 +335,37 @@ class Automata:
             universe, current_time=current_time, hooks=self.hooks, **kwargs
         )
 
+    def filter(
+        self,
+        universe: Universe[ArtifactType],
+        predicate: Predicate,
+        remove_empty_nodes: bool = False,
+    ) -> Universe[ArtifactType]:
+        """Select materials according to a predicate.
+
+        A thin wrapper around :func:`automata.materials.filter` that fires
+        this project's ``on_filter_hit`` and ``on_filter_miss`` hooks. Can be
+        applied at any stage (discovered, built, or exported materials).
+
+        Parameters
+        ----------
+        universe : Universe
+            The materials to filter.
+        predicate : Callable[[str, node], bool]
+            Called with each node's key and the node; returns True to keep it.
+        remove_empty_nodes : bool
+            Whether to remove nodes left with no children. Default: False.
+
+        Returns
+        -------
+        Universe
+            A new universe with the rejected nodes removed.
+
+        """
+        return materials.filter(
+            universe, predicate, remove_empty_nodes=remove_empty_nodes, hooks=self.hooks
+        )
+
     def export(self, universe: Universe[BuiltArtifact]) -> Universe[ExportedArtifact]:
         """Export built materials to the build directory.
 
@@ -347,27 +384,78 @@ class Automata:
         """
         build_dir = self.path / self.config.website.build_directory
         prefix = self.config.website.materials_directory_name
-        materials_output_dir = build_dir / prefix
 
         exported = materials.export(
             universe, outdir=build_dir, prefix=prefix, hooks=self.hooks
         )
 
-        materials_json = materials_output_dir / "materials.json"
+        materials_json = self._materials_json_path()
         materials_json.parent.mkdir(parents=True, exist_ok=True)
         materials_json.write_text(materials.serialize(exported))
 
         return exported
 
-    def generate_website(self, current_time: datetime.datetime | None = None) -> None:
+    def load_exported_materials(self) -> Universe[ExportedArtifact]:
+        """Load the materials written by a previous :meth:`export`.
+
+        Reads ``materials.json`` from the build directory. Useful for calling
+        :meth:`generate_website` without re-running the earlier steps::
+
+            project.generate_website(project.load_exported_materials())
+
+        Returns
+        -------
+        Universe[ExportedArtifact]
+            The exported materials universe.
+
+        Raises
+        ------
+        automata.exceptions.Error
+            If ``materials.json`` does not exist (materials have not been
+            exported, or the build directory was cleaned since), or does not
+            contain a universe.
+
+        """
+        materials_json = self._materials_json_path()
+        if not materials_json.is_file():
+            raise Error(
+                f'No exported materials found: "{materials_json}" does not exist. '
+                f"Run export() first (note that clean_build_directory() removes it)."
+            )
+
+        loaded = materials.deserialize(materials_json.read_text())
+        if not isinstance(loaded, Universe):
+            raise Error(
+                f'"{materials_json}" does not contain a universe of materials '
+                f"(found a {type(loaded).__name__})."
+            )
+        return cast(Universe[ExportedArtifact], loaded)
+
+    def _materials_json_path(self) -> Path:
+        """Path to the materials.json written by export()."""
+        return (
+            self.path
+            / self.config.website.build_directory
+            / self.config.website.materials_directory_name
+            / "materials.json"
+        )
+
+    def generate_website(
+        self,
+        materials: Universe[ExportedArtifact],
+        current_time: datetime.datetime | None = None,
+    ) -> None:
         """Generate the website from exported materials.
 
         Loads pages and static content from the content directory and passes
-        them to the generation pipeline. Assumes materials have already been
-        exported via :meth:`export`.
+        them to the generation pipeline, along with *materials*. The materials'
+        files must already be in the build directory (see :meth:`export`).
 
         Parameters
         ----------
+        materials : Universe[ExportedArtifact]
+            The exported materials to render with, as returned by
+            :meth:`export` (possibly filtered with :meth:`filter`).
         current_time : datetime.datetime | None
             The current time for date-based rendering logic. If *None*,
             uses the system time.
@@ -404,6 +492,7 @@ class Automata:
             element_configs=self.config.website.elements,
             theme=self.theme,
             extensions=self.extensions,
+            materials=materials,
         )
 
     def resolve(self, path: Path) -> Publication[UnbuiltArtifact]:

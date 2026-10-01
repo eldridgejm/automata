@@ -153,7 +153,7 @@ Data flow
         │        ├── copy artifacts to _build/materials/
         │        └── write materials.json
         │
-        └─── generate_website()
+        └─── generate_website(materials)
                  │
                  ├── on_website_collect (gather templates, elements, etc.)
                  ├── render content directory
