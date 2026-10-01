@@ -152,15 +152,14 @@ class WebsiteInputs:
     """Accumulated website inputs gathered from extensions.
 
     Extensions register hooks on ``on_website_collect`` to contribute
-    templates, static files, elements, pages, and variables to the website
-    generation pipeline.
+    templates, static files, elements, and pages to the website generation
+    pipeline.
     """
 
     templates: dict[str, str] = field(default_factory=dict)
     static_files: dict[str, "str | bytes | Traversable"] = field(default_factory=dict)
     elements: dict[str, "type[Element]"] = field(default_factory=dict)
     pages: dict[str, str] = field(default_factory=dict)
-    vars: dict[str, Any] = field(default_factory=dict)
 
 
 # generate -----------------------------------------------------------------------------

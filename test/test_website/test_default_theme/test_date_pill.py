@@ -3,7 +3,7 @@ from datetime import datetime
 from conftest import generate
 
 
-def test_date_pill_uses_now_for_current_date(tmpsite, hooks):
+def test_date_pill_uses_now_for_current_date(tmpsite, theme):
     # given
     tmpsite.make_page(
         "index.html",
@@ -14,19 +14,19 @@ def test_date_pill_uses_now_for_current_date(tmpsite, hooks):
     )
 
     # when
-    generate(tmpsite, current_time=datetime(2024, 6, 15), hooks=hooks)
+    generate(tmpsite, current_time=datetime(2024, 6, 15), theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
     assert "Before!" in output
 
     # when
-    generate(tmpsite, current_time=datetime(2024, 6, 17), hooks=hooks)
+    generate(tmpsite, current_time=datetime(2024, 6, 17), theme=theme)
     output = tmpsite.get_output("index.html")
     assert "After!" in output
 
 
-def test_date_pill_with_template_variables(tmpsite, hooks):
+def test_date_pill_with_template_variables(tmpsite, theme):
     # given
     tmpsite.make_page(
         "index.html",
@@ -41,7 +41,7 @@ def test_date_pill_with_template_variables(tmpsite, hooks):
         tmpsite,
         current_time=datetime(2024, 6, 15),
         vars={"foo": "BAR"},
-        hooks=hooks,
+        theme=theme,
     )
 
     # then

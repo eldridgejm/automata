@@ -1,5 +1,5 @@
 Creating Custom Elements
-=======================
+========================
 
 Elements are callable Python classes that generate HTML. They are registered via
 the ``on_website_collect`` hook and become available in pages as
@@ -81,39 +81,52 @@ Elements are contributed via the ``on_website_collect`` hook:
         hooks={"on_website_collect": _collect},
     )
 
-A theme can depend on this extension:
+If the module exports it as ``extension`` and registers it in the
+``automata.extensions`` entry point group, users can list it under
+``extensions`` in ``automata.yaml``. Alternatively, a theme can depend on it:
 
 .. code-block:: python
 
     # my_theme/__init__.py
+    from importlib.resources import files
+    from automata._extension import extension_from_directory
     from my_elements import my_elements
 
-    dependencies = [my_elements]
+    def make_extension(config):
+        return extension_from_directory(
+            "my-theme", files(__name__), config=config, dependencies=[my_elements]
+        )
 
 
-Registering elements from a theme directory
--------------------------------------------
+Registering elements from a theme
+---------------------------------
 
-If using the theme directory layout, create an ``elements/`` package:
-
-.. code-block:: text
-
-    my-theme/
-        elements/
-            __init__.py
-            _greeting.py
-
-``elements/__init__.py`` must export an ``elements`` dictionary:
+A theme built with ``make_extension`` can also contribute elements from its own
+``on_website_collect`` hook. To combine this with the directory layout, wrap the
+hook of the extension built by ``extension_from_directory``:
 
 .. code-block:: python
 
+    # my_theme/__init__.py
+    from importlib.resources import files
+    from automata._extension import extension_from_directory
+
     from ._greeting import Greeting
 
-    elements = {
-        "greeting": Greeting,
-    }
+    def make_extension(config):
+        ext = extension_from_directory("my-theme", files(__name__), config=config)
+        collect_files = ext.hooks["on_website_collect"]
 
-These elements are automatically included when the theme is loaded.
+        def collect(inputs):
+            inputs = collect_files(inputs)
+            inputs.elements["greeting"] = Greeting
+            return inputs
+
+        ext.hooks["on_website_collect"] = collect
+        return ext
+
+Directory extensions loaded by path (e.g., ``./my-theme``) cannot provide
+elements; an ``elements/`` subdirectory is not loaded.
 
 
 Element context
@@ -123,10 +136,13 @@ All elements receive a Jinja2 environment and a ``RenderContext`` on
 construction. This gives access to:
 
 - ``self.context.materials`` --- the materials universe
-- ``self.context.vars`` --- template variables
+- ``self.context.vars`` --- the ``vars`` section of ``automata.yaml``
 - ``self.context.url_for`` --- URL generation
 - ``self.context.current_time`` --- the current datetime
-- ``self.context.website_config`` --- the website config
+- ``self.context.base_path`` --- the site's base URL path
+- ``self.context.theme`` --- the theme ``Extension`` (e.g.,
+  ``self.context.theme.config``)
+- ``self.context.extensions`` --- all loaded extensions, keyed by name
 - ``self.jinja_env`` --- the Jinja2 environment (for rendering templates)
 
 

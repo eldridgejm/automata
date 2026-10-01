@@ -3,7 +3,15 @@ from typing import Any
 
 import smartconfig
 
-from ._extension import Extension, extension_from_directory, extension_from_entry_point
+from ._extension import (
+    EXTENSIONS_GROUP,
+    THEMES_GROUP,
+    Extension,
+    all_extensions,
+    check_theme,
+    extension_from_directory,
+    extension_from_entry_point,
+)
 from .exceptions import Error
 from .util.resolution import resolve
 from .util.yaml import parse_yaml
@@ -122,7 +130,7 @@ def read_config(path: Path) -> Config:
         raise Error(f"Invalid configuration: {e}") from e
 
 
-def _load_extension_spec(spec: Any, cwd: Path) -> Extension:
+def _load_extension_spec(spec: Any, cwd: Path, group: str) -> Extension:
     """Load a single extension from a spec (string or dict).
 
     Parameters
@@ -132,6 +140,8 @@ def _load_extension_spec(spec: Any, cwd: Path) -> Extension:
         ``"use"`` and optional ``"config"`` keys.
     cwd : Path
         Working directory for resolving relative paths.
+    group : str
+        The entry point group in which to look up names without slashes.
 
     """
     if isinstance(spec, str):
@@ -144,18 +154,20 @@ def _load_extension_spec(spec: Any, cwd: Path) -> Extension:
         raise Error(f"Invalid extension spec: {spec!r}")
 
     if "/" in name or "\\" in name:
+        # directory extensions are named after the directory itself
         return extension_from_directory(
-            name, cwd / name, config=ext_config, require_templates=False
+            Path(name).name, cwd / name, config=ext_config, require_templates=False
         )
     else:
-        return extension_from_entry_point(name, config=ext_config)
+        return extension_from_entry_point(name, config=ext_config, group=group)
 
 
-def load_extensions(config: Config, cwd: Path) -> list[Extension]:
-    """Load all extensions from the configuration.
+def load_extensions(config: Config, cwd: Path) -> tuple[Extension, list[Extension]]:
+    """Load the theme and extensions from the configuration.
 
-    The theme (if specified) is loaded first, followed by extensions in
-    order.  This ensures theme hooks run before extension hooks.
+    The theme is looked up in the ``automata.themes`` entry point group, and
+    extensions in ``automata.extensions``. Paths containing a slash are loaded
+    from directories, and named after the directory.
 
     Parameters
     ----------
@@ -166,15 +178,24 @@ def load_extensions(config: Config, cwd: Path) -> list[Extension]:
 
     Returns
     -------
-    list[Extension]
-        The loaded extensions, in order (theme first).
+    tuple[Extension, list[Extension]]
+        The theme, and the other extensions in the order they are listed.
+
+    Raises
+    ------
+    automata.exceptions.Error
+        If an extension cannot be loaded, the theme does not provide a
+        ``page.html`` template, or two different extensions share a name.
 
     """
-    extensions: list[Extension] = []
+    theme = _load_extension_spec(config.website.theme, cwd, THEMES_GROUP)
+    check_theme(theme)
 
-    extensions.append(_load_extension_spec(config.website.theme, cwd))
+    extensions = [
+        _load_extension_spec(spec, cwd, EXTENSIONS_GROUP) for spec in config.extensions
+    ]
 
-    for spec in config.extensions:
-        extensions.append(_load_extension_spec(spec, cwd))
+    # raises if two different extensions share a name
+    all_extensions([theme, *extensions])
 
-    return extensions
+    return theme, extensions

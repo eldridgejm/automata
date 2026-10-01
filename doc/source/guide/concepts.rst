@@ -76,15 +76,18 @@ An **extension** is a collection of hooks that customize automata's behavior.
 The most common extension is a *theme*, which provides HTML templates, CSS,
 JavaScript, and custom elements for the website.
 
-Extensions are listed in ``automata.yaml``:
+The theme is set with ``website.theme``, and any other extensions are listed
+under ``extensions`` in ``automata.yaml``:
 
 .. code-block:: yaml
 
     extensions:
-      - default                  # the built-in theme
       - ./my-custom-extension    # a local directory
 
-The ``default`` extension is a theme that provides a responsive sidebar
+    website:
+      theme: default             # the built-in theme
+
+The ``default`` theme provides a responsive sidebar
 layout with Tailwind CSS, dark mode, and built-in elements like
 ``schedule``, ``listing``, ``people``, ``date_pill``, and ``button``.
 

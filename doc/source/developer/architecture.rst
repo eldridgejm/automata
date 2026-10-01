@@ -68,7 +68,16 @@ Extensions can declare ``dependencies`` --- other extensions applied first,
 deduplicated by name.
 
 The ``extension_from_directory`` and ``extension_from_entry_point`` functions
-handle loading extensions from the filesystem or installed packages.
+handle loading extensions from the filesystem or installed packages. Entry
+points live in two groups, ``automata.themes`` (for ``website.theme``) and
+``automata.extensions`` (for ``extensions``); an entry point module exports
+either a ``make_extension(config)`` factory or an ``extension`` object.
+
+``load_extensions`` in ``config.py`` returns ``(theme, extensions)``. It checks
+that the theme provides ``page.html`` and that no two different extensions
+share a name. ``Automata`` keeps these as ``.theme`` and ``.extensions``,
+registers them with ``apply_extensions``, and passes them to ``generate`` so
+that templates can read them as ``theme`` and ``extensions``.
 
 Hooks system
 ^^^^^^^^^^^^

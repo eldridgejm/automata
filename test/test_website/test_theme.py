@@ -4,11 +4,13 @@ from pathlib import Path
 import pytest
 
 from automata._extension import (
+    THEMES_GROUP,
     Extension,
     apply_extension,
     extension_from_directory,
     extension_from_entry_point,
 )
+from automata.exceptions import Error
 from automata.hooks import GenerateHooks, WebsiteInputs
 
 
@@ -91,26 +93,52 @@ def test_from_directory_requires_templates_directory(tmp_path: Path) -> None:
     theme_dir = tmp_path / "theme"
     theme_dir.mkdir()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(Error):
         extension_from_directory("test", theme_dir)
 
 
 # extension_from_entry_point ===========================================================
 
 
-def test_default_entry_point_is_registered() -> None:
-    """Test that the 'default' theme entry point is registered."""
-    entry_points = metadata.entry_points()
-    theme_eps = entry_points.select(group="automata.themes")
+_DEFAULT_THEME_CONFIG = {
+    "short_title": "DSC 40B",
+    "long_title": "Theoretical Foundations of Data Science II",
+    "rebuild_tailwind": False,
+}
 
-    default_ep = theme_eps["default"]
-    assert default_ep is not None
 
-    ext = extension_from_entry_point("default")
+def test_default_theme_is_registered_as_a_theme() -> None:
+    theme_eps = metadata.entry_points().select(group=THEMES_GROUP)
+    assert "default" in theme_eps.names
+
+    ext = extension_from_entry_point(
+        "default", config=_DEFAULT_THEME_CONFIG, group=THEMES_GROUP
+    )
     inputs = _collect(ext)
 
-    assert "base.html" in inputs.templates
-    assert inputs.templates["base.html"]
+    assert ext.name == "default"
+    assert "page.html" in inputs.templates
+
+
+def test_default_theme_requires_titles() -> None:
+    with pytest.raises(Error) as excinfo:
+        extension_from_entry_point("default", group=THEMES_GROUP)
+
+    assert "short_title" in str(excinfo.value)
+
+
+def test_default_theme_builds_independent_extensions_per_config() -> None:
+    first = extension_from_entry_point(
+        "default", config=_DEFAULT_THEME_CONFIG, group=THEMES_GROUP
+    )
+    second = extension_from_entry_point(
+        "default",
+        config={**_DEFAULT_THEME_CONFIG, "short_title": "DSC 80"},
+        group=THEMES_GROUP,
+    )
+
+    assert first.config["short_title"] == "DSC 40B"
+    assert second.config["short_title"] == "DSC 80"
 
 
 # require_templates parameter ==========================================================
@@ -120,7 +148,7 @@ def test_from_directory_requires_templates_directory_by_default(tmp_path) -> Non
     theme_dir = tmp_path / "theme"
     theme_dir.mkdir()
 
-    with pytest.raises(ValueError, match="templates"):
+    with pytest.raises(Error, match="templates"):
         extension_from_directory("test", theme_dir)
 
 
@@ -157,7 +185,7 @@ def test_from_directory_loads_schema_from_schema_json(tmp_path: Path) -> None:
         '"optional_keys": {"subtitle": {"type": "string", "default": "Default"}}}'
     )
 
-    ext = extension_from_directory("test", theme_dir)
+    ext = extension_from_directory("test", theme_dir, config={"title": "Hi"})
 
     assert ext.schema == schema
 
@@ -181,7 +209,7 @@ def test_from_directory_raises_on_invalid_json_in_schema_json(tmp_path: Path) ->
 
     (theme_dir / "schema.json").write_text('{"type": "dict"')
 
-    with pytest.raises(ValueError, match="Invalid JSON in schema.json"):
+    with pytest.raises(Error, match="Invalid JSON in schema.json"):
         extension_from_directory("test", theme_dir)
 
 
@@ -193,7 +221,7 @@ def test_from_directory_raises_on_invalid_schema_in_schema_json(tmp_path: Path) 
 
     (theme_dir / "schema.json").write_text('{"invalid_key": "value"}')
 
-    with pytest.raises(ValueError, match="Theme configuration schema is invalid"):
+    with pytest.raises(Error, match="Theme configuration schema is invalid"):
         extension_from_directory("test", theme_dir)
 
 

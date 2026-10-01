@@ -60,7 +60,8 @@ Referenced as ``${ vars.course.name }``.
 ``extensions``
 --------------
 
-A list of extensions to load. Each entry can be:
+A list of extensions to load, in addition to the theme (which is set with
+``website.theme``). Each entry can be:
 
 - **A string** --- an entry point name (no slashes) or a directory path (with
   slashes):
@@ -68,26 +69,28 @@ A list of extensions to load. Each entry can be:
   .. code-block:: yaml
 
       extensions:
-        - default              # entry point
-        - ./my-theme           # local directory
+        - my-extension             # entry point
+        - ./practice-problems      # local directory
 
 - **A dictionary** with ``use`` and optional ``config``:
 
   .. code-block:: yaml
 
       extensions:
-        - use: default
+        - use: ./practice-problems
           config:
-            short_title: ${ vars.course_name }
-            long_title: ${ vars.course_title }
-            navigation:
-              - text: Home
-                url: index.html
-              - text: Syllabus
-                url: syllabus.html
+            show_answers: false
 
-Extensions are applied in order. Later extensions override earlier ones for
-templates, static files, and elements with the same name.
+Names are looked up in the ``automata.extensions`` entry point group. A
+directory extension is named after its directory (``practice-problems``
+above). Listing a theme here is an error; use ``website.theme`` instead.
+
+The theme is applied first, then the extensions in order. Later extensions
+override earlier ones (and the theme) for templates, static files, and elements
+with the same name.
+
+Templates can read an extension's config through ``extensions``, keyed by name
+(e.g., ``${ extensions["practice-problems"].config.show_answers }``).
 
 
 ``materials``
@@ -111,8 +114,10 @@ Website generation settings:
      - Description
    * - ``theme``
      - *(required)*
-     - Theme extension to use. A string name (e.g., ``"default"``) or a dict
-       with ``use`` and ``config`` keys.
+     - Theme to use. A string --- an ``automata.themes`` entry point name
+       (e.g., ``"default"``) or a directory path --- or a dict with ``use``
+       and ``config`` keys. The theme's config is available in templates as
+       ``theme.config``.
    * - ``content_directory``
      - *(required)*
      - Path to the directory containing pages (Markdown, HTML, static files).

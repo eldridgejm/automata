@@ -28,55 +28,100 @@ is applied, each callable is registered on the corresponding hook point.
 Loading extensions
 ------------------
 
-Extensions are specified in ``automata.yaml``:
+A site has exactly one theme, set with ``website.theme``, and any number of
+other extensions, listed under ``extensions``:
 
 .. code-block:: yaml
 
     extensions:
-      - default                   # entry point name
-      - ./my-theme                # local directory
+      - my-extension              # entry point name
+      - ./practice-problems       # local directory
       - use: my-package           # entry point with config
         config:
           key: value
 
-**Entry point names** (no slashes) are looked up in the ``automata.themes``
-entry point group. Register yours in ``pyproject.toml``:
+    website:
+      theme:
+        use: default              # entry point name (or a path)
+        config:
+          short_title: "DSC 80"
+          long_title: "The Practice and Application of Data Science"
+
+The theme is applied first, then the extensions in the order they are listed.
+
+**Entry point names** (no slashes) are looked up in one of two entry point
+groups: ``website.theme`` names in ``automata.themes``, and names under
+``extensions`` in ``automata.extensions``. Register yours in
+``pyproject.toml``:
 
 .. code-block:: toml
 
+    [project.entry-points."automata.extensions"]
+    my-extension = "my_package.extension"
+
     [project.entry-points."automata.themes"]
-    my-theme = "my_package.themes.custom"
+    my-theme = "my_package.theme"
 
-The referenced module can export:
+Listing a theme under ``extensions`` is an error that tells you to use
+``website.theme`` instead, and vice versa.
 
-1. An ``extension`` attribute (an ``Extension`` object) --- used directly.
-2. A standard theme directory layout (``templates/``, ``static/``, etc.) ---
-   converted to an Extension automatically.
+The referenced module must export one of:
+
+1. ``make_extension(config)`` --- a factory that returns an ``Extension``. It
+   is called with the extension's validated configuration (see below), and
+   each call builds a fresh ``Extension``, so its hooks can safely close over
+   ``config``.
+2. ``extension`` --- an ``Extension`` object that takes no configuration.
+   Passing ``config`` to it is an error.
 
 **Directory paths** (contain slashes) are loaded from the filesystem using the
-theme directory layout.
+directory layout described in :doc:`themes`. A directory extension is named
+after the directory's last path component, so ``./extensions/practice-problems``
+is named ``practice-problems``.
+
+Every loaded extension, including the theme and its dependencies, must have a
+unique name; loading two different extensions with the same name is an
+error.
 
 
 Extension with config and schema
 --------------------------------
 
-Extensions can accept configuration, validated against a JSON schema:
+Extensions can accept configuration, validated against a schema. An entry
+point module that exports ``make_extension`` may also export ``schema``; the
+user's config is validated against it, and defaults are applied, before
+``make_extension`` is called:
 
 .. code-block:: python
 
-    my_extension = Extension(
-        name="my-extension",
-        hooks={"on_website_collect": collect},
-        config={"title": "My Site"},
-        schema={
-            "type": "dict",
-            "required_keys": {
-                "title": {"type": "string"}
-            }
+    # my_package/extension.py
+    from automata._extension import Extension
+    from automata.hooks import WebsiteInputs
+
+    schema = {
+        "type": "dict",
+        "required_keys": {
+            "title": {"type": "string"}
         },
-    )
+    }
+
+    def make_extension(config):
+        def collect(inputs: WebsiteInputs) -> WebsiteInputs:
+            inputs.pages["about.html"] = f"# About {config['title']}"
+            return inputs
+
+        return Extension(
+            name="my-extension",
+            hooks={"on_website_collect": collect},
+            config=config,
+            schema=schema,
+        )
 
 When loaded from a directory, the schema is read from ``schema.json``.
+
+If an extension has a schema, its config is always validated, even when none is
+given (it is treated as empty). Defaults are applied, and missing required keys
+are reported as errors.
 
 In ``automata.yaml``, config is passed via the ``config`` key:
 
@@ -86,6 +131,10 @@ In ``automata.yaml``, config is passed via the ``config`` key:
       - use: my-extension
         config:
           title: "My Site"
+
+An extension's resolved config is available in templates through
+``extensions``, keyed by name (e.g., ``extensions["my-extension"].config.title``),
+and the theme's as ``theme.config``. See :doc:`themes`.
 
 
 Dependencies
@@ -107,12 +156,6 @@ automatically applied before it:
 Dependencies are deduplicated by name: if two extensions depend on the same
 extension, it is applied only once.
 
-When loading from a directory or entry point, dependencies can be declared in
-the module's ``__init__.py``:
-
-.. code-block:: python
-
-    # my_theme/__init__.py
-    from automata.builtin.elements import listing_extension, schedule_extension
-
-    dependencies = [listing_extension, schedule_extension]
+Dependencies are declared in Python, on the ``Extension`` returned by
+``make_extension`` (or exported as ``extension``). A directory extension
+loaded by path has no dependencies.

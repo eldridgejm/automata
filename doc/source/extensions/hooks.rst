@@ -31,7 +31,6 @@ contribute templates, static files, and elements.
         inputs.static_files["style.css"] = "body { margin: 0; }"
         inputs.elements["greeting"] = GreetingElement
         inputs.pages["extra.html"] = "# Extra Page"
-        inputs.vars["theme_name"] = "my-theme"
         return inputs
 
 ``WebsiteInputs`` fields:
@@ -49,9 +48,11 @@ contribute templates, static files, and elements.
    * - ``elements``
      - ``dict[str, type[Element]]`` --- element name to class.
    * - ``pages``
-     - ``dict[str, str | bytes | Path]`` --- extra pages to render.
-   * - ``vars``
-     - ``dict[str, Any]`` --- variables merged into the render context.
+     - ``dict[str, str]`` --- extra pages to render.
+
+Extensions cannot add to the render context's ``vars``. Templates read an
+extension's configuration through ``theme`` and ``extensions`` instead (see
+:doc:`themes`).
 
 ``on_generate_pre``
 ^^^^^^^^^^^^^^^^^^^
@@ -70,7 +71,9 @@ Called before website generation begins. Can transform ``extra_content``
     def pre_generate(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
         extra = dict(args.extra_content or {})
         extra["generated.html"] = "# Auto-generated page"
-        return GeneratePreHookArgs(config=args.config, extra_content=extra)
+        return GeneratePreHookArgs(
+            build_directory=args.build_directory, extra_content=extra
+        )
 
 ``on_generate_post``
 ^^^^^^^^^^^^^^^^^^^^
@@ -87,7 +90,7 @@ CSS minification, image optimization).
     from automata.hooks import GeneratePostHookArgs
 
     def post_generate(args: GeneratePostHookArgs) -> None:
-        print(f"Website built at {args.config.build_directory}")
+        print(f"Website built at {args.build_directory}")
 
 
 Materials hooks
@@ -125,16 +128,17 @@ Filter hooks (``FilterHooks``):
 Hook priority
 -------------
 
-Hooks are registered with a ``priority`` (default 0). Lower values run first.
-When loading theme extensions from directories, hooks are registered at priority
-100, allowing user-registered hooks to run before (lower priority) or after
-(higher priority) them.
+Hooks are registered with a ``priority`` (default 0). Lower values run first;
+hooks with equal priority run in the order they were registered. ``Automata``
+registers the theme's hooks, then the other extensions' hooks, at priority 0
+when it is constructed, so hooks registered afterward at priority 0 run after
+them. Use a negative priority to run before them:
 
 .. code-block:: python
 
-    @hooks.on_generate_post.register(priority=50)
+    @project.hooks.on_generate_post.register(priority=-10)
     def my_hook(args):
-        ...  # runs before theme hooks (priority 100)
+        ...  # runs before extension hooks (priority 0)
 
 
 Shell script hooks
@@ -147,7 +151,7 @@ are serialized as JSON and piped to the command on stdin:
 
     project = Automata()
     project.hooks.on_generate_post.register_shell_script(
-        "cat | jq .config.build_directory",
+        "cat | jq .build_directory",
         priority=200,
     )
     project.generate()
@@ -167,15 +171,14 @@ The script receives the hook args as a JSON object on stdin. For example,
 .. code-block:: json
 
     {
-        "config": {
-            "build_directory": "_build",
-            "materials_directory_name": "materials",
-            "no_render_suffix": ".no_render",
-            "base_path": "/"
-        }
+        "build_directory": "_build"
     }
 
 Shell scripts can be disabled per-hook with ``allow_shell=False``.
+
+Directory extensions can also provide shell script hooks as files in a
+``hooks/`` subdirectory, each named after an observer hook point (see
+:doc:`themes`).
 
 
 Registering hooks in Python

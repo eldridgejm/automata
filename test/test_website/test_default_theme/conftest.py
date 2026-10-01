@@ -3,14 +3,12 @@
 from pytest import fixture
 
 import automata.website
-from automata._extension import apply_extension, extension_from_entry_point
-from automata.hooks import GenerateHooks
+from automata._extension import THEMES_GROUP, extension_from_entry_point
 
 
 @fixture
-def hooks():
-    h = GenerateHooks()
-    ext = extension_from_entry_point(
+def theme():
+    return extension_from_entry_point(
         "default",
         config={
             "short_title": "DSC 40B",
@@ -18,9 +16,8 @@ def hooks():
             "navigation": [],
             "rebuild_tailwind": False,
         },
+        group=THEMES_GROUP,
     )
-    apply_extension(ext, h)
-    return h
 
 
 def generate(tmpsite, **kwargs):

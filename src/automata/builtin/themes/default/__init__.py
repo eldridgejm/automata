@@ -30,40 +30,32 @@ def _collect_files(directory, as_text=False):
     return result
 
 
-def _build_extension():
-    """Build the default theme Extension."""
-    root = importlib.resources.files(__package__)
+_root = importlib.resources.files(__package__)
+_templates = _collect_files(_root / "templates", as_text=True)
+_static_files = _collect_files(_root / "static")
 
-    templates = _collect_files(root / "templates", as_text=True)
-    static_files = _collect_files(root / "static")
-    schema = json.loads((root / "schema.json").read_text())
+schema = json.loads((_root / "schema.json").read_text())
 
-    # ext is set after _build_extension returns; the closures read it lazily.
-    ext = None
+
+def make_extension(config: dict) -> Extension:
+    """Build the default theme Extension for the given (validated) config."""
 
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
-        inputs.templates.update(templates)
-        inputs.static_files.update(static_files)
+        inputs.templates.update(_templates)
+        inputs.static_files.update(_static_files)
         inputs.elements.update(elements)
-        if ext and ext.config:
-            inputs.vars["theme_config"] = ext.config
         return inputs
 
     def post_generate(args: GeneratePostHookArgs) -> None:
-        config = ext.config if ext else {}
         _hooks_module.post_generate(args.build_directory, config)
 
-    ext = Extension(
+    return Extension(
         name="default",
         hooks={
             "on_website_collect": collect,
             "on_generate_post": post_generate,
         },
+        config=config,
         schema=schema,
         dependencies=[listing_extension, schedule_extension],
     )
-
-    return ext
-
-
-extension = _build_extension()

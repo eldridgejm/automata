@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import dataclasses
 import importlib.metadata as metadata
-import importlib.resources
 import json
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from importlib.resources.abc import Traversable
-from typing import Any, cast
+from typing import Any
 
 import smartconfig.exceptions
 import smartconfig.types
 
 from .exceptions import Error
-from .hooks import WebsiteInputs
+from .hooks import GenerateHooks, WebsiteInputs
+
+# entry point groups: themes are set with website.theme, extensions are listed
+# under extensions:
+THEMES_GROUP = "automata.themes"
+EXTENSIONS_GROUP = "automata.extensions"
 
 
 @dataclasses.dataclass
@@ -97,24 +101,95 @@ def apply_extension(
         hook_point.register(priority=priority)(fn)
 
 
+def apply_extensions(
+    extensions: Iterable[Extension],
+    hooks: object,
+    priority: int = 0,
+) -> None:
+    """Register several extensions' hooks onto a hooks instance.
+
+    Like :func:`apply_extension`, but each extension (including shared
+    dependencies) is applied at most once across all of *extensions*.
+
+    """
+    applied: set[str] = set()
+    for extension in extensions:
+        apply_extension(extension, hooks, priority=priority, _applied=applied)
+
+
+def all_extensions(extensions: Iterable[Extension]) -> dict[str, Extension]:
+    """Return the given extensions and their dependencies, keyed by name.
+
+    Raises
+    ------
+    automata.exceptions.Error
+        If two different extensions have the same name.
+
+    """
+    found: dict[str, Extension] = {}
+
+    def visit(extension: Extension) -> None:
+        existing = found.get(extension.name)
+        if existing is extension:
+            return
+        if existing is not None:
+            raise Error(
+                f'Two different extensions are named "{extension.name}". '
+                f"Extension names must be unique."
+            )
+        found[extension.name] = extension
+        for dep in extension.dependencies:
+            visit(dep)
+
+    for extension in extensions:
+        visit(extension)
+
+    return found
+
+
+def check_theme(theme: Extension) -> None:
+    """Check that an extension can serve as a theme.
+
+    A theme (together with its dependencies) must provide a ``page.html``
+    template.
+
+    Raises
+    ------
+    automata.exceptions.Error
+        If the theme does not provide ``page.html``.
+
+    """
+    hooks = GenerateHooks()
+    apply_extension(theme, hooks)
+    inputs = hooks.on_website_collect(WebsiteInputs())
+    if "page.html" not in inputs.templates:
+        raise Error(f'Theme "{theme.name}" does not provide a "page.html" template.')
+
+
 # ---------------------------------------------------------------------------
 # Loading extensions from directories and entry points
 # ---------------------------------------------------------------------------
 
 
 def _resolve_config(
+    name: str,
     config: dict[str, Any] | None,
     schema: "smartconfig.types.Schema | None",
 ) -> dict[str, Any]:
-    """Validate and resolve extension config against a schema."""
+    """Validate and resolve extension config against a schema.
+
+    An omitted config is treated as empty, so that schema defaults are applied
+    and missing required keys are reported.
+
+    """
     import smartconfig
 
     resolved = config if config is not None else {}
-    if schema is not None and config is not None:
+    if schema is not None:
         try:
             resolved = smartconfig.resolve(resolved, schema)
         except smartconfig.exceptions.ResolutionError as e:
-            raise ValueError(f"Invalid extension configuration: {e}")
+            raise Error(f'Invalid configuration for extension "{name}": {e}') from e
     return resolved
 
 
@@ -157,11 +232,15 @@ def extension_from_directory(
 
     """
     if not directory.is_dir():
-        raise ValueError("Theme directory does not exist or is not a directory.")
+        raise Error(
+            f'Extension directory "{directory}" does not exist or is not a directory.'
+        )
 
     templates_dir = directory / "templates"
     if require_templates and not templates_dir.is_dir():
-        raise ValueError('Theme directory must contain a "templates" directory.')
+        raise Error(
+            f'Extension directory "{directory}" must contain a "templates" directory.'
+        )
 
     static_dir = directory / "static"
 
@@ -186,22 +265,19 @@ def extension_from_directory(
             schema = json.loads(schema_content)
             smartconfig.validate_schema(schema)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in schema.json: {e}")
+            raise Error(f"Invalid JSON in schema.json: {e}") from e
         except smartconfig.exceptions.InvalidSchemaError as e:
-            raise ValueError(f"Theme configuration schema is invalid: {e}")
+            raise Error(f"Theme configuration schema is invalid: {e}") from e
 
-    resolved_config = _resolve_config(config, schema)
+    resolved_config = _resolve_config(name, config, schema)
 
     # Build the hooks dict
     ext_hooks: dict[str, Any] = {}
 
-    # The on_website_collect hook contributes templates, static files,
-    # and exposes the extension's resolved config as vars.theme_config
+    # The on_website_collect hook contributes templates and static files
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
         inputs.templates.update(templates)
         inputs.static_files.update(static_files)
-        if resolved_config:
-            inputs.vars["theme_config"] = resolved_config
         return inputs
 
     ext_hooks["on_website_collect"] = collect
@@ -223,56 +299,102 @@ def extension_from_directory(
 def extension_from_entry_point(
     entry_point_name: str,
     config: dict[str, Any] | None = None,
+    *,
+    group: str = EXTENSIONS_GROUP,
 ) -> Extension:
     """Create an Extension from an entry point.
 
-    The entry point should refer to a module that either:
+    The entry point should refer to a module that exports either:
 
-    1. Exports an ``extension`` attribute containing an :class:`Extension`, or
-    2. Is a package with ``templates/`` and optionally ``static/`` directories
-       (i.e., a theme directory layout).
+    1. ``make_extension(config) -> Extension``, a factory called with the
+       extension's validated configuration. If the module also exports
+       ``schema``, the configuration is validated against it (and defaults
+       applied) before the factory is called. Each call builds a new
+       Extension, so its hooks can safely close over *config*.
+    2. ``extension``, an :class:`Extension` that takes no configuration.
 
     Parameters
     ----------
     entry_point_name : str
-        The name of the entry point in the ``"automata.themes"`` group.
+        The name of the entry point within *group*.
     config : dict[str, Any] | None
         Optional configuration for the extension.
+    group : str
+        The entry point group: :data:`EXTENSIONS_GROUP` (the default) or
+        :data:`THEMES_GROUP`.
 
     Returns
     -------
     Extension
         The created Extension.
 
+    Raises
+    ------
+    automata.exceptions.Error
+        If the entry point is not found, the module exports neither
+        ``make_extension`` nor ``extension``, or the configuration is invalid.
+
     """
-    entry_points = metadata.entry_points().select(group="automata.themes")
+    all_entry_points = metadata.entry_points()
+    entry_points = all_entry_points.select(group=group)
+    kind = "theme" if group == THEMES_GROUP else "extension"
+
     if entry_point_name not in entry_points.names:
-        available = ", ".join(sorted(entry_points.names)) or "none"
-        raise Error(
-            f'Unknown extension "{entry_point_name}". Available: {available}. '
-            f"To load an extension from a directory, give a path containing a "
-            f'slash (e.g., "./{entry_point_name}").'
-        )
-    entry_point = entry_points[entry_point_name]
+        message = f'Unknown {kind} "{entry_point_name}".'
+        if group == EXTENSIONS_GROUP and entry_point_name in (
+            all_entry_points.select(group=THEMES_GROUP).names
+        ):
+            message += (
+                f' "{entry_point_name}" is a theme; set it with website.theme, '
+                f"not under extensions."
+            )
+        elif group == THEMES_GROUP and entry_point_name in (
+            all_entry_points.select(group=EXTENSIONS_GROUP).names
+        ):
+            message += (
+                f' "{entry_point_name}" is an extension, not a theme; list it '
+                f"under extensions."
+            )
+        else:
+            available = ", ".join(sorted(entry_points.names)) or "none"
+            message += (
+                f" Available {kind}s: {available}. To load an extension from a "
+                f"directory, give a path containing a slash "
+                f'(e.g., "./{entry_point_name}").'
+            )
+        raise Error(message)
 
-    module = entry_point.load()
+    module = entry_points[entry_point_name].load()
+
+    if hasattr(module, "make_extension"):
+        schema = getattr(module, "schema", None)
+        resolved_config = _resolve_config(entry_point_name, config, schema)
+        extension = module.make_extension(resolved_config)
+        if not isinstance(extension, Extension):
+            raise Error(
+                f'make_extension() for {kind} "{entry_point_name}" did not return '
+                f"an Extension."
+            )
+        return extension
+
     if hasattr(module, "extension"):
-        ext = cast(Extension, module.extension)
-        resolved_config = _resolve_config(config, ext.schema)
-        ext.config = resolved_config
-        return ext
-    elif hasattr(module, "theme"):
-        # Backwards compatibility: fall through to directory loading.
-        pass
+        if config is not None:
+            raise Error(
+                f'{kind.capitalize()} "{entry_point_name}" does not accept '
+                f"configuration. To accept configuration, its module should "
+                f"export make_extension(config)."
+            )
+        extension = module.extension
+        if not isinstance(extension, Extension):
+            raise Error(
+                f'The "extension" attribute of {kind} "{entry_point_name}" is not '
+                f"an Extension."
+            )
+        return extension
 
-    # Check if the module declares dependencies
-    deps: list[Extension] = []
-    if hasattr(module, "dependencies"):
-        deps = module.dependencies
-
-    root = importlib.resources.files(module)
-    return extension_from_directory(
-        entry_point_name, root, config=config, dependencies=deps
+    raise Error(
+        f'The module for {kind} "{entry_point_name}" must export either '
+        f"make_extension(config) or extension."
     )
 
 

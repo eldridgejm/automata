@@ -45,9 +45,9 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Update build() to export the materials to a temporary directory and pass that to generate()
 - [x] Enable more markdown features (TOC, admonitions, etc.), in a way that is extensible.
 - [x] Build hooks (allowing scripts to run at certain points in the generation process)
-- [ ] Formalize extensions (themes become extensions)
-- [ ] Revise extension loading code
-- [ ] Refactor website.generate() to accept Python objects instead of file paths; theme loading is now done separately
+- [x] Formalize extensions (themes become extensions)
+- [x] Revise extension loading code
+- [x] Refactor website.generate() to accept Python objects instead of file paths; theme loading is now done separately
 - [ ] Revise the API layer
 - [ ] Improve test coverage
 - [ ] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
@@ -56,3 +56,10 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [ ] Thorough documentation of default theme, including elements
 - [ ] Better error messages
 - [ ] Flesh out the CLI with more commands
+- [ ] Rewrite DESIGN.md around hooks and extensions (it still describes the old "Resources" design)
+- [ ] Raise automata.exceptions.Error (not ValueError) when generate() finds no page.html
+- [ ] Allow directory extensions to declare dependencies
+- [ ] Document the on_website_generate_pre hook in hooks.rst
+- [ ] Warn about website.elements entries that no page uses
+- [ ] Decide on the unused announcement_box.html template, and whether announcements get release times
+- [ ] Fix the example's practice-problems script hook failing when run from another directory

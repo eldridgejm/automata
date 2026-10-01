@@ -54,7 +54,11 @@ def test_build_end_to_end(example_project):
     assert (build_dir / "index.html").exists(), "index.html should be generated"
 
     # Verify the schedule configured in website.elements is rendered on the home page
-    assert 'id="week-1"' in (build_dir / "index.html").read_text()
+    index_html = (build_dir / "index.html").read_text()
+    assert 'id="week-1"' in index_html
+
+    # Verify the theme's config reaches its templates
+    assert "Theoretical Foundations of Data Science II" in index_html
 
     # Verify theme static files were copied
     assert (build_dir / "static").exists(), "Style directory should exist"

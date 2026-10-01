@@ -4,7 +4,7 @@ import datetime
 from pathlib import Path
 
 from . import materials
-from ._extension import apply_extension
+from ._extension import Extension, apply_extensions
 from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
 from .exceptions import Error
 from .hooks import (
@@ -125,9 +125,11 @@ class Automata:
             path = Path.cwd()
         self.path: Path = path
         self.config: Config = read_config(path / CONFIGURATION_FILENAME)
+        self.theme: Extension
+        self.extensions: list[Extension]
+        self.theme, self.extensions = load_extensions(self.config, cwd=path)
         self.hooks: Hooks = Hooks()
-        for ext in load_extensions(self.config, cwd=path):
-            apply_extension(ext, self.hooks)
+        apply_extensions([self.theme, *self.extensions], self.hooks)
 
     # --- full pipeline ---
 
@@ -349,6 +351,8 @@ class Automata:
             base_path=self.config.website.base_path,
             materials_directory_name=self.config.website.materials_directory_name,
             element_configs=self.config.website.elements,
+            theme=self.theme,
+            extensions=self.extensions,
         )
 
     def resolve(self, path: Path) -> Publication[UnbuiltArtifact]:

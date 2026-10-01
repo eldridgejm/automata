@@ -55,8 +55,11 @@ Available variables in pages:
      - Generates a URL respecting the site's ``base_path``.
    * - ``current_time``
      - The current datetime (or the overridden time).
-   * - ``website_config``
-     - The website configuration object.
+   * - ``theme``
+     - The theme extension. Its config is ``theme.config``.
+   * - ``extensions``
+     - All loaded extensions (including the theme), keyed by name. For
+       example, ``extensions["practice-problems"].config``.
    * - ``frontmatter``
      - The current page's frontmatter (see below).
 

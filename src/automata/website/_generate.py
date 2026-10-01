@@ -5,13 +5,14 @@ import datetime
 import pathlib
 import shutil
 from importlib.resources.abc import Traversable
-from typing import Any, Callable, cast
+from typing import Any, Callable, Sequence, cast
 
 import jinja2
 import smartconfig
 import smartconfig.exceptions
 import smartconfig.types
 
+from .._extension import Extension, all_extensions, apply_extensions
 from ..hooks import (
     GenerateHooks,
     GeneratePostHookArgs,
@@ -54,6 +55,12 @@ class RenderContext:
     frontmatter: Frontmatter = dataclasses.field(
         default_factory=lambda: Frontmatter(vars={})
     )
+
+    # the site's theme, if known; templates read its config as theme.config
+    theme: Extension | None = None
+
+    # all loaded extensions (including the theme and dependencies), keyed by name
+    extensions: dict[str, Extension] = dataclasses.field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the context to a dictionary for use in Jinja2.
@@ -198,6 +205,8 @@ def _create_render_context(
     elements: dict[str, type],
     jinja_environment: jinja2.Environment,
     element_configs: dict[str, smartconfig.types.Configuration],
+    theme: Extension | None,
+    extensions: dict[str, Extension],
 ) -> RenderContext:
     """Create the render context with elements bound."""
     context = RenderContext(
@@ -206,6 +215,8 @@ def _create_render_context(
         current_time=current_time,
         vars=vars,
         base_path=base_path,
+        theme=theme,
+        extensions=extensions,
     )
 
     context.elements = {
@@ -338,13 +349,15 @@ def generate(
     base_path: str = "/",
     materials_directory_name: str = "materials",
     element_configs: dict[str, smartconfig.types.Configuration] | None = None,
+    theme: Extension | None = None,
+    extensions: Sequence[Extension] = (),
 ):
     """Generates a static website from course materials.
 
     Extensions contribute website inputs (templates, static files, elements,
-    pages, variables) by registering hooks on ``on_website_collect``. The
-    generation pipeline collects these inputs, renders pages, and produces the
-    final website.
+    pages) by registering hooks on ``on_website_collect``. The generation
+    pipeline collects these inputs, renders pages, and produces the final
+    website.
 
     Parameters
     ----------
@@ -367,8 +380,9 @@ def generate(
     render_markdown : Callable[[str], str], optional
         A function that converts markdown content to HTML.
     hooks : GenerateHooks, optional
-        Hooks instance. Extensions should already be registered on this
-        before calling generate.
+        Hooks instance. If given, *theme* and *extensions* should already be
+        registered on it; they are not registered again. If omitted, hooks
+        are created and *theme* and *extensions* are registered on them.
     base_path : str, optional
         URL base path for the site (default ``"/"``).
     materials_directory_name : str, optional
@@ -378,6 +392,11 @@ def generate(
         Configurations for elements, keyed by element name. An element called
         without a configuration uses its entry here (or an empty configuration
         if it has none).
+    theme : Extension, optional
+        The site's theme, available in templates as ``theme``.
+    extensions : Sequence[Extension], optional
+        The site's other extensions. These, the theme, and their dependencies
+        are available in templates as ``extensions``, keyed by name.
 
     """
     # set default values for optional parameters
@@ -386,7 +405,10 @@ def generate(
     vars = vars or {}
     element_configs = element_configs or {}
     current_time = current_time or datetime.datetime.now()
-    hooks = hooks or GenerateHooks()
+    loaded = [ext for ext in (theme, *extensions) if ext is not None]
+    if hooks is None:
+        hooks = GenerateHooks()
+        apply_extensions(loaded, hooks)
 
     # gather website inputs from extensions
     inputs = hooks.on_website_collect(WebsiteInputs())
@@ -401,9 +423,6 @@ def generate(
             f"{', '.join(unknown_elements)}. "
             f"Available elements: {', '.join(sorted(inputs.elements)) or 'none'}."
         )
-
-    # merge vars: extension defaults < explicit vars
-    merged_vars = {**inputs.vars, **vars}
 
     # run pre-generate hooks
     url_for = _create_url_for(base_path)
@@ -432,11 +451,13 @@ def generate(
         materials,
         url_for,
         current_time,
-        merged_vars,
+        vars,
         base_path,
         inputs.elements,
         jinja_environment,
         element_configs,
+        theme,
+        all_extensions(loaded),
     )
 
     # process pages and static content

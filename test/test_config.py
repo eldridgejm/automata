@@ -6,7 +6,7 @@ from textwrap import dedent
 import pytest
 
 from automata import exceptions
-from automata.config import Config, read_config
+from automata.config import Config, load_extensions, read_config
 
 
 def test_read_config_reads_valid_config(tmp_path: Path) -> None:
@@ -289,3 +289,90 @@ def test_read_config_reads_website_elements(tmp_path: Path) -> None:
     listing = config.website.elements["listing"]
     assert listing["title"] == "DSC 101"
     assert listing["cell"] == {"__template__": "${ publication.metadata.name }"}
+
+
+# load_extensions() ====================================================================
+
+
+def _write_config(tmp_path: Path, website_theme: str, extensions: str = "[]") -> Path:
+    config_file = tmp_path / "automata.yaml"
+    config_file.write_text(
+        dedent(
+            """
+            extensions: {extensions}
+            website:
+              theme: {theme}
+              content_directory: "./content"
+              build_directory: "./build"
+            """
+        ).format(theme=website_theme, extensions=extensions)
+    )
+    return config_file
+
+
+_DEFAULT_THEME = (
+    '{use: default, config: {short_title: "DSC 101", long_title: "Intro", '
+    "rebuild_tailwind: false}}"
+)
+
+
+def _make_extension_dir(path: Path, page_template: bool = False) -> None:
+    (path / "templates").mkdir(parents=True)
+    if page_template:
+        (path / "templates" / "page.html").write_text("${ content }")
+
+
+def test_load_extensions_returns_theme_and_extensions_separately(
+    tmp_path: Path,
+) -> None:
+    _make_extension_dir(tmp_path / "extensions" / "practice-problems")
+    config = read_config(
+        _write_config(tmp_path, _DEFAULT_THEME, "[extensions/practice-problems]")
+    )
+
+    theme, extensions = load_extensions(config, cwd=tmp_path)
+
+    assert theme.name == "default"
+    assert theme.config["short_title"] == "DSC 101"
+    assert [ext.name for ext in extensions] == ["practice-problems"]
+
+
+def test_load_extensions_names_directory_theme_by_basename(tmp_path: Path) -> None:
+    _make_extension_dir(tmp_path / "themes" / "my-theme", page_template=True)
+    config = read_config(_write_config(tmp_path, "themes/my-theme/"))
+
+    theme, _ = load_extensions(config, cwd=tmp_path)
+
+    assert theme.name == "my-theme"
+
+
+def test_load_extensions_raises_on_duplicate_names(tmp_path: Path) -> None:
+    _make_extension_dir(tmp_path / "a" / "tools")
+    _make_extension_dir(tmp_path / "b" / "tools")
+    config = read_config(_write_config(tmp_path, _DEFAULT_THEME, "[a/tools, b/tools]"))
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path)
+
+    assert '"tools"' in str(excinfo.value)
+
+
+def test_load_extensions_raises_if_theme_listed_as_extension(tmp_path: Path) -> None:
+    config = read_config(_write_config(tmp_path, _DEFAULT_THEME, "[default]"))
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path)
+
+    assert "website.theme" in str(excinfo.value)
+
+
+def test_load_extensions_raises_if_theme_lacks_page_template(tmp_path: Path) -> None:
+    _make_extension_dir(tmp_path / "themes" / "bare")
+    config = read_config(_write_config(tmp_path, "themes/bare"))
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path)
+
+    message = str(excinfo.value)
+    assert '"bare"' in message
+    assert "page.html" in message

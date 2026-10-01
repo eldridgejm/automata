@@ -3,7 +3,7 @@
 from conftest import generate
 
 
-def test_listing_element_renders_simple_table(tmpsite, hooks):
+def test_listing_element_renders_simple_table(tmpsite, theme):
     """Test rendering a simple listing with one column."""
     # given: a course with homeworks
     tmpsite.write_materials_json(
@@ -52,7 +52,7 @@ def test_listing_element_renders_simple_table(tmpsite, hooks):
     )
 
     # when
-    generate(tmpsite, hooks=hooks)
+    generate(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -62,7 +62,7 @@ def test_listing_element_renders_simple_table(tmpsite, hooks):
     assert "Homework 2" in output
 
 
-def test_listing_element_renders_multiple_columns(tmpsite, hooks):
+def test_listing_element_renders_multiple_columns(tmpsite, theme):
     """Test rendering a listing with multiple columns."""
     # given
     tmpsite.write_materials_json(
@@ -109,7 +109,7 @@ def test_listing_element_renders_multiple_columns(tmpsite, hooks):
     )
 
     # when
-    generate(tmpsite, hooks=hooks)
+    generate(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -119,7 +119,7 @@ def test_listing_element_renders_multiple_columns(tmpsite, hooks):
     assert "2024-01-15" in output
 
 
-def test_listing_element_with_numbered_rows(tmpsite, hooks):
+def test_listing_element_with_numbered_rows(tmpsite, theme):
     """Test that numbered=true adds row numbers."""
     # given
     tmpsite.write_materials_json(
@@ -165,7 +165,7 @@ def test_listing_element_with_numbered_rows(tmpsite, hooks):
     )
 
     # when
-    generate(tmpsite, hooks=hooks)
+    generate(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -173,7 +173,7 @@ def test_listing_element_with_numbered_rows(tmpsite, hooks):
     assert "<th" in output and "#" in output
 
 
-def test_listing_element_with_artifact_links(tmpsite, hooks):
+def test_listing_element_with_artifact_links(tmpsite, theme):
     """Test listing with links to artifacts."""
     # given
     tmpsite.write_materials_json(
@@ -212,14 +212,14 @@ def test_listing_element_with_artifact_links(tmpsite, hooks):
     )
 
     # when
-    generate(tmpsite, hooks=hooks)
+    generate(tmpsite, theme=theme)
 
     # then: artifacts should be accessible in templates
     output = tmpsite.get_output("index.html")
     assert "Homework 1" in output
 
 
-def test_listing_element_conditional_content_when_artifact_missing(tmpsite, hooks):
+def test_listing_element_conditional_content_when_artifact_missing(tmpsite, theme):
     """Test that missing artifacts show fallback content."""
     # given: hw01 has artifact, hw02 does not
     tmpsite.write_materials_json(
@@ -270,7 +270,7 @@ def test_listing_element_conditional_content_when_artifact_missing(tmpsite, hook
     )
 
     # when
-    generate(tmpsite, hooks=hooks)
+    generate(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -278,7 +278,7 @@ def test_listing_element_conditional_content_when_artifact_missing(tmpsite, hook
     assert "Not yet released" in output  # hw02 doesn't
 
 
-def test_listing_element_conditional_content_when_metadata_missing(tmpsite, hooks):
+def test_listing_element_conditional_content_when_metadata_missing(tmpsite, theme):
     """Test that missing metadata shows fallback content."""
     # given: hw01 has due date, hw02 does not
     tmpsite.write_materials_json(
@@ -327,7 +327,7 @@ def test_listing_element_conditional_content_when_metadata_missing(tmpsite, hook
     )
 
     # when
-    generate(tmpsite, hooks=hooks)
+    generate(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -335,7 +335,7 @@ def test_listing_element_conditional_content_when_metadata_missing(tmpsite, hook
     assert "TBD" in output  # hw02 doesn't
 
 
-def test_listing_element_conditional_content_non_null_metadata(tmpsite, hooks):
+def test_listing_element_conditional_content_non_null_metadata(tmpsite, theme):
     """Test that null metadata values show fallback content."""
     # given: hw01 has non-null due date, hw02 has null due date
     tmpsite.write_materials_json(
@@ -384,7 +384,7 @@ def test_listing_element_conditional_content_non_null_metadata(tmpsite, hooks):
     )
 
     # when
-    generate(tmpsite, hooks=hooks)
+    generate(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")

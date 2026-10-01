@@ -27,9 +27,18 @@ The primary interface is the ``Automata`` class.
 
         The parsed :class:`Config` object.
 
+    .. attribute:: theme
+
+        The theme :class:`Extension`, loaded from ``website.theme``.
+
+    .. attribute:: extensions
+
+        The other extensions, loaded from ``extensions`` in the order listed.
+
     .. attribute:: hooks
 
-        The :class:`Hooks` instance with all extensions registered.
+        The :class:`Hooks` instance with the theme and all extensions
+        registered.
 
     .. method:: generate(current_time=None)
 
@@ -125,7 +134,7 @@ Example: custom hooks
 
     @project.hooks.on_generate_post.register()
     def notify(args: GeneratePostHookArgs):
-        print(f"Site built at {args.config.build_directory}")
+        print(f"Site built at {args.build_directory}")
 
     project.generate()
 
@@ -135,7 +144,13 @@ Example: custom hooks
 
 .. code-block:: python
 
-    from automata._extension import Extension, apply_extension
+    from automata._extension import (
+        Extension,
+        apply_extension,
+        apply_extensions,
+        extension_from_directory,
+        extension_from_entry_point,
+    )
 
 .. class:: Extension(name, hooks, config=None, schema=None, dependencies=None)
 
@@ -149,15 +164,65 @@ Example: custom hooks
 
 .. function:: apply_extension(extension, hooks, priority=0)
 
-    Register an extension's hooks onto a hooks instance.
+    Register an extension's hooks onto a hooks instance. Dependencies are
+    applied first, and each extension is applied at most once (by name).
+
+.. function:: apply_extensions(extensions, hooks, priority=0)
+
+    Register several extensions' hooks onto a hooks instance, in order. Each
+    extension, including shared dependencies, is applied at most once across
+    all of *extensions*.
 
 .. function:: extension_from_directory(name, directory, config=None, require_templates=True, dependencies=None)
 
-    Create an Extension from a theme directory layout.
+    Create an Extension from a directory containing ``templates/`` and,
+    optionally, ``static/``, ``schema.json``, and ``hooks/``. If
+    ``schema.json`` is present, *config* is validated against it.
 
-.. function:: extension_from_entry_point(entry_point_name, config=None)
+.. function:: extension_from_entry_point(entry_point_name, config=None, *, group=EXTENSIONS_GROUP)
 
-    Create an Extension from an installed package's entry point.
+    Create an Extension from an installed package's entry point in *group*
+    (``EXTENSIONS_GROUP``, ``"automata.extensions"``, or ``THEMES_GROUP``,
+    ``"automata.themes"``). The module must export ``make_extension(config)``
+    or ``extension``. Raises :class:`automata.exceptions.Error` if the entry
+    point is not found or the config is invalid.
+
+.. code-block:: python
+
+    from automata.config import load_extensions
+
+.. function:: load_extensions(config, cwd)
+
+    Load the theme (from ``website.theme``) and the extensions (from
+    ``extensions``) named in a :class:`Config`. Relative paths are resolved
+    against *cwd*.
+
+    :returns: ``(theme, extensions)``, where *extensions* is a list in the
+        order listed.
+    :raises automata.exceptions.Error: If an extension cannot be loaded, the
+        theme does not provide ``page.html``, or two different extensions
+        share a name.
+
+
+``generate``
+------------
+
+.. code-block:: python
+
+    from automata.website import generate
+
+.. function:: generate(build_directory, materials_directory, pages=None, static_content=None, vars=None, current_time=None, render_markdown=..., hooks=None, base_path="/", materials_directory_name="materials", element_configs=None, theme=None, extensions=())
+
+    Generate a static website from exported materials. Most users should call
+    :meth:`Automata.generate_website` instead.
+
+    :param theme: The theme, available in templates as ``theme``.
+    :param extensions: The other extensions. These, the theme, and their
+        dependencies are available in templates as ``extensions``, keyed by
+        name.
+    :param hooks: A :class:`GenerateHooks` instance. If given, *theme* and
+        *extensions* are assumed to be registered on it already. If omitted,
+        hooks are created and *theme* and *extensions* are registered on them.
 
 
 Materials types

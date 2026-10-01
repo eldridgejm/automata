@@ -140,13 +140,17 @@ To test website generation with a custom theme:
 .. code-block:: python
 
     def test_with_custom_theme(tmpsite):
-        config = automata.website.WebsiteConfig(
-            build_directory=tmpsite.build_directory,
+        theme = extension_from_directory("test", theme_dir)
+        pages, static_content = tmpsite.load_content()
+
+        automata.website.generate(
+            tmpsite.build_directory,
+            tmpsite.materials_directory,
+            pages=pages,
+            static_content=static_content,
+            theme=theme,
         )
-
-        hooks = GenerateHooks()
-        ext = extension_from_directory("test", theme_dir)
-        apply_extension(ext, hooks)
-
-        automata.website.generate(config, tmpsite.materials_directory, hooks=hooks)
         assert "expected content" in tmpsite.get_output("index.html")
+
+When ``hooks`` is omitted, ``generate`` creates them and registers the theme
+and extensions itself.
