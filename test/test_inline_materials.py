@@ -1,7 +1,6 @@
 """Tests for inline materials defined in automata.yaml."""
 
 import datetime
-from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -71,98 +70,102 @@ def project_with_inline_materials(tmp_path):
     return project
 
 
-class TestInlineMaterialsDiscovery:
-
-    def test_inline_materials_are_discovered(self, project_with_inline_materials):
-        project = Automata(project_with_inline_materials)
-        universe = project.discover()
-        assert "homeworks" in universe.collections
-        assert "hw01" in universe.collections["homeworks"].publications
-        assert "hw02" in universe.collections["homeworks"].publications
-
-    def test_inline_materials_have_metadata(self, project_with_inline_materials):
-        project = Automata(project_with_inline_materials)
-        universe = project.discover()
-        hw01 = universe.collections["homeworks"].publications["hw01"]
-        assert hw01.metadata["name"] == "Homework 1"
-        assert hw01.metadata["due"] == datetime.date(2025, 1, 15)
-
-    def test_inline_materials_have_release_times(self, project_with_inline_materials):
-        project = Automata(project_with_inline_materials)
-        universe = project.discover()
-        hw01 = universe.collections["homeworks"].publications["hw01"]
-        artifact = hw01.artifacts["homework.pdf"]
-        assert artifact.release_time == datetime.datetime(2025, 1, 10, 12, 0, 0)
-
-    def test_inline_materials_have_no_recipe(self, project_with_inline_materials):
-        project = Automata(project_with_inline_materials)
-        universe = project.discover()
-        hw01 = universe.collections["homeworks"].publications["hw01"]
-        artifact = hw01.artifacts["homework.pdf"]
-        assert artifact.recipe is None
-
-    def test_inline_materials_release_time_filtering(
-        self, project_with_inline_materials
-    ):
-        """Materials with future release times are filtered during build."""
-        project = Automata(project_with_inline_materials)
-        universe = project.discover()
-
-        # Build at a time when hw01 is released but hw02 is not
-        built = project.build_materials(
-            universe, current_time=datetime.datetime(2025, 1, 15)
-        )
-
-        hw01 = built.collections["homeworks"].publications["hw01"]
-        hw02 = built.collections["homeworks"].publications["hw02"]
-
-        # hw01's artifact should be present (released on Jan 10)
-        assert "homework.pdf" in hw01.artifacts
-        # hw02's artifact should be filtered (releases on Jan 20)
-        assert "homework.pdf" not in hw02.artifacts
+# discovery ============================================================================
 
 
-class TestInlineMaterialsWithVariables:
+def test_inline_materials_are_discovered(project_with_inline_materials):
+    project = Automata(project_with_inline_materials)
+    universe = project.discover()
+    assert "homeworks" in universe.collections
+    assert "hw01" in universe.collections["homeworks"].publications
+    assert "hw02" in universe.collections["homeworks"].publications
 
-    def test_inline_materials_can_use_vars(self, tmp_path):
-        """Inline materials can reference vars from automata.yaml."""
-        project = tmp_path / "project"
-        project.mkdir()
 
-        yaml = (
-            "vars:\n"
-            "  base_due: 2025-01-15\n"
-            "\n"
-            "materials:\n"
-            "  homeworks:\n"
-            "    schema:\n"
-            "      required_artifacts: []\n"
-            "      metadata_schema:\n"
-            "        required_keys:\n"
-            "          due:\n"
-            "            type: date\n"
-            "    publications:\n"
-            "      hw01:\n"
-            "        metadata:\n"
-            "          due: ${ vars.base_due }\n"
-            "        artifacts: {}\n"
-            "\n"
-            "website:\n"
-            "  theme:\n"
-            '    use: "default"\n'
-            "    config:\n"
-            '      short_title: "Test"\n'
-            '      long_title: "Test Course"\n'
-            '  content_directory: "content"\n'
-            '  build_directory: "_build"\n'
-        )
-        (project / "automata.yaml").write_text(yaml)
+def test_inline_materials_have_metadata(project_with_inline_materials):
+    project = Automata(project_with_inline_materials)
+    universe = project.discover()
+    hw01 = universe.collections["homeworks"].publications["hw01"]
+    assert hw01.metadata["name"] == "Homework 1"
+    assert hw01.metadata["due"] == datetime.date(2025, 1, 15)
 
-        content = project / "content"
-        content.mkdir()
-        (content / "index.md").write_text("# Home")
 
-        a = Automata(project)
-        universe = a.discover()
-        hw01 = universe.collections["homeworks"].publications["hw01"]
-        assert hw01.metadata["due"] == datetime.date(2025, 1, 15)
+def test_inline_materials_have_release_times(project_with_inline_materials):
+    project = Automata(project_with_inline_materials)
+    universe = project.discover()
+    hw01 = universe.collections["homeworks"].publications["hw01"]
+    artifact = hw01.artifacts["homework.pdf"]
+    assert artifact.release_time == datetime.datetime(2025, 1, 10, 12, 0, 0)
+
+
+def test_inline_materials_have_no_recipe(project_with_inline_materials):
+    project = Automata(project_with_inline_materials)
+    universe = project.discover()
+    hw01 = universe.collections["homeworks"].publications["hw01"]
+    artifact = hw01.artifacts["homework.pdf"]
+    assert artifact.recipe is None
+
+
+def test_inline_materials_release_time_filtering(project_with_inline_materials):
+    """Materials with future release times are filtered during build."""
+    project = Automata(project_with_inline_materials)
+    universe = project.discover()
+
+    # Build at a time when hw01 is released but hw02 is not
+    built = project.build_materials(
+        universe, current_time=datetime.datetime(2025, 1, 15)
+    )
+
+    hw01 = built.collections["homeworks"].publications["hw01"]
+    hw02 = built.collections["homeworks"].publications["hw02"]
+
+    # hw01's artifact should be present (released on Jan 10)
+    assert "homework.pdf" in hw01.artifacts
+    # hw02's artifact should be filtered (releases on Jan 20)
+    assert "homework.pdf" not in hw02.artifacts
+
+
+# variables ============================================================================
+
+
+def test_inline_materials_can_use_vars(tmp_path):
+    """Inline materials can reference vars from automata.yaml."""
+    project = tmp_path / "project"
+    project.mkdir()
+
+    yaml = (
+        "vars:\n"
+        "  base_due: 2025-01-15\n"
+        "\n"
+        "materials:\n"
+        "  homeworks:\n"
+        "    schema:\n"
+        "      required_artifacts: []\n"
+        "      metadata_schema:\n"
+        "        required_keys:\n"
+        "          due:\n"
+        "            type: date\n"
+        "    publications:\n"
+        "      hw01:\n"
+        "        metadata:\n"
+        "          due: ${ vars.base_due }\n"
+        "        artifacts: {}\n"
+        "\n"
+        "website:\n"
+        "  theme:\n"
+        '    use: "default"\n'
+        "    config:\n"
+        '      short_title: "Test"\n'
+        '      long_title: "Test Course"\n'
+        '  content_directory: "content"\n'
+        '  build_directory: "_build"\n'
+    )
+    (project / "automata.yaml").write_text(yaml)
+
+    content = project / "content"
+    content.mkdir()
+    (content / "index.md").write_text("# Home")
+
+    a = Automata(project)
+    universe = a.discover()
+    hw01 = universe.collections["homeworks"].publications["hw01"]
+    assert hw01.metadata["due"] == datetime.date(2025, 1, 15)

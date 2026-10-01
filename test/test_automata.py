@@ -1,8 +1,6 @@
 """Tests for the Automata public API."""
 
 import json
-from datetime import datetime
-from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -63,92 +61,93 @@ def project_dir(tmp_path):
     return project
 
 
-class TestAutomataInit:
-
-    def test_reads_config(self, project_dir):
-        a = Automata(project_dir)
-        assert a.config.website.build_directory == "_build"
-
-    def test_path_is_stored(self, project_dir):
-        a = Automata(project_dir)
-        assert a.path == project_dir
-
-    def test_hooks_are_initialized(self, project_dir):
-        a = Automata(project_dir)
-        assert a.hooks is not None
+# Automata() ===========================================================================
 
 
-class TestDiscover:
-
-    def test_returns_universe(self, project_dir):
-        a = Automata(project_dir)
-        universe = a.discover()
-        assert isinstance(universe, Universe)
-        assert "homeworks" in universe.collections
+def test_init_reads_config(project_dir):
+    a = Automata(project_dir)
+    assert a.config.website.build_directory == "_build"
 
 
-class TestBuildMaterials:
-
-    def test_returns_built_universe(self, project_dir):
-        a = Automata(project_dir)
-        discovered = a.discover()
-        built = a.build_materials(
-            discovered, ignore_release_time=True, ignore_ready=True
-        )
-        assert isinstance(built, Universe)
-        assert "homeworks" in built.collections
+def test_init_stores_path(project_dir):
+    a = Automata(project_dir)
+    assert a.path == project_dir
 
 
-class TestExport:
-
-    def test_writes_materials_json(self, project_dir):
-        a = Automata(project_dir)
-        discovered = a.discover()
-        built = a.build_materials(
-            discovered, ignore_release_time=True, ignore_ready=True
-        )
-        a.export(built)
-
-        materials_json = project_dir / "_build" / "materials" / "materials.json"
-        assert materials_json.exists()
-        data = json.loads(materials_json.read_text())
-        assert "homeworks" in data["collections"]
-
-    def test_returns_exported_universe(self, project_dir):
-        a = Automata(project_dir)
-        discovered = a.discover()
-        built = a.build_materials(
-            discovered, ignore_release_time=True, ignore_ready=True
-        )
-        exported = a.export(built)
-        assert isinstance(exported, Universe)
+def test_init_initializes_hooks(project_dir):
+    a = Automata(project_dir)
+    assert a.hooks is not None
 
 
-class TestGenerateWebsite:
-
-    def test_generates_html(self, project_dir):
-        a = Automata(project_dir)
-        discovered = a.discover()
-        built = a.build_materials(
-            discovered, ignore_release_time=True, ignore_ready=True
-        )
-        a.export(built)
-        a.generate_website()
-
-        index = project_dir / "_build" / "index.html"
-        assert index.exists()
-        assert "Home" in index.read_text()
+# discover() ===========================================================================
 
 
-class TestGenerate:
+def test_discover_returns_universe(project_dir):
+    a = Automata(project_dir)
+    universe = a.discover()
+    assert isinstance(universe, Universe)
+    assert "homeworks" in universe.collections
 
-    def test_full_pipeline(self, project_dir):
-        a = Automata(project_dir)
-        a.generate()
 
-        index = project_dir / "_build" / "index.html"
-        assert index.exists()
-        assert "Home" in index.read_text()
+# build_materials() ====================================================================
 
-        materials_json = project_dir / "_build" / "materials" / "materials.json"
-        assert materials_json.exists()
+
+def test_build_materials_returns_built_universe(project_dir):
+    a = Automata(project_dir)
+    discovered = a.discover()
+    built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
+    assert isinstance(built, Universe)
+    assert "homeworks" in built.collections
+
+
+# export() =============================================================================
+
+
+def test_export_writes_materials_json(project_dir):
+    a = Automata(project_dir)
+    discovered = a.discover()
+    built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
+    a.export(built)
+
+    materials_json = project_dir / "_build" / "materials" / "materials.json"
+    assert materials_json.exists()
+    data = json.loads(materials_json.read_text())
+    assert "homeworks" in data["collections"]
+
+
+def test_export_returns_exported_universe(project_dir):
+    a = Automata(project_dir)
+    discovered = a.discover()
+    built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
+    exported = a.export(built)
+    assert isinstance(exported, Universe)
+
+
+# generate_website() ===================================================================
+
+
+def test_generate_website_generates_html(project_dir):
+    a = Automata(project_dir)
+    discovered = a.discover()
+    built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
+    a.export(built)
+    a.generate_website()
+
+    index = project_dir / "_build" / "index.html"
+    assert index.exists()
+    assert "Home" in index.read_text()
+
+
+# generate() ===========================================================================
+
+
+def test_generate_runs_full_pipeline(project_dir):
+    a = Automata(project_dir)
+    a.generate()
+
+    index = project_dir / "_build" / "index.html"
+    assert index.exists()
+    assert "Home" in index.read_text()
+
+    materials_json = project_dir / "_build" / "materials" / "materials.json"
+    assert materials_json.exists()
