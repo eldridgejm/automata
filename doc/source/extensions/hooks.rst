@@ -5,14 +5,32 @@ Extensions register callables on hook points. Hooks are either **observers**
 (fire-and-forget) or **pipelines** (transform data through a chain).
 
 
-Website generation hooks
-------------------------
+Render hooks
+------------
 
-These hooks are fired during website generation and are the primary way
-extensions customize behavior.
+These hooks are fired during the render-website step and are the primary way
+extensions customize behavior. In order, they are ``on_render_pre``,
+``on_render_collect``, ``on_render_extra_pages``, and ``on_render_post``.
 
-``on_website_collect``
-^^^^^^^^^^^^^^^^^^^^^^
+``on_render_pre``
+^^^^^^^^^^^^^^^^^
+
+**Type:** Observer
+
+**Signature:** ``(RenderPreHookArgs) -> None``
+
+Called before pages are read from the content directory. ``RenderPreHookArgs``
+has ``content_directory`` and ``build_directory``. Because files written to the
+content directory at this point are picked up as pages, this is the hook to use
+from a shell script that generates pages (for example, a practice-problem
+generator)::
+
+    my-extension/
+        hooks/
+            on_render_pre      # e.g.: python build_problems.py
+
+``on_render_collect``
+^^^^^^^^^^^^^^^^^^^^^
 
 **Type:** Pipeline
 
@@ -54,42 +72,42 @@ Extensions cannot add to the render context's ``vars``. Templates read an
 extension's configuration through ``theme`` and ``extensions`` instead (see
 :doc:`themes`).
 
-``on_generate_pre``
-^^^^^^^^^^^^^^^^^^^
+``on_render_extra_pages``
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Type:** Pipeline
 
-**Signature:** ``(GeneratePreHookArgs) -> GeneratePreHookArgs``
+**Signature:** ``(RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs``
 
-Called before website generation begins. Can transform ``extra_content``
-(additional pages to include in the output).
+Called before pages are rendered. Can add or change ``extra_content``
+(additional pages to include in the output, held in memory).
 
 .. code-block:: python
 
-    from automata.hooks import GeneratePreHookArgs
+    from automata.hooks import RenderExtraPagesHookArgs
 
-    def pre_generate(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+    def add_pages(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
         extra = dict(args.extra_content or {})
         extra["generated.html"] = "# Auto-generated page"
-        return GeneratePreHookArgs(
+        return RenderExtraPagesHookArgs(
             build_directory=args.build_directory, extra_content=extra
         )
 
-``on_generate_post``
-^^^^^^^^^^^^^^^^^^^^
+``on_render_post``
+^^^^^^^^^^^^^^^^^^
 
 **Type:** Observer
 
-**Signature:** ``(GeneratePostHookArgs) -> None``
+**Signature:** ``(RenderPostHookArgs) -> None``
 
-Called after website generation completes. Useful for post-processing (e.g.,
+Called after the website has been written to the build directory. Useful for post-processing (e.g.,
 CSS minification, image optimization).
 
 .. code-block:: python
 
-    from automata.hooks import GeneratePostHookArgs
+    from automata.hooks import RenderPostHookArgs
 
-    def post_generate(args: GeneratePostHookArgs) -> None:
+    def after_render(args: RenderPostHookArgs) -> None:
         print(f"Website built at {args.build_directory}")
 
 
@@ -107,14 +125,15 @@ Discovery hooks (``DiscoverHooks``):
 - ``on_discover_publication`` --- called when a publication is found.
 - ``on_discover_skip`` --- called when a directory is skipped.
 
-Build hooks (``BuildHooks``):
+Build hooks (``BuildHooks``), fired during the build-materials step, once per
+node or artifact (not once per site build):
 
-- ``on_build_node`` --- called when building a collection, publication, or artifact.
-- ``on_build_too_soon`` --- called when an artifact's release time hasn't passed.
-- ``on_build_not_ready`` --- called when an artifact has ``ready: false``.
-- ``on_build_missing`` --- called when an artifact is missing but ``missing_ok: true``.
-- ``on_build_recipe`` --- called when running an artifact's recipe.
-- ``on_build_success`` --- called when a build succeeds.
+- ``on_build_materials_node`` --- called when building a collection, publication, or artifact.
+- ``on_build_artifact_too_soon`` --- called when an artifact's release time hasn't passed.
+- ``on_build_artifact_not_ready`` --- called when an artifact has ``ready: false``.
+- ``on_build_artifact_missing`` --- called when an artifact is missing but ``missing_ok: true``.
+- ``on_build_artifact_recipe`` --- called when running an artifact's recipe.
+- ``on_build_artifact_success`` --- called when an artifact has been built.
 
 Export hooks (``ExportHooks``):
 
@@ -138,7 +157,7 @@ them. Use a negative priority to run before them:
 
 .. code-block:: python
 
-    @project.hooks.on_generate_post.register(priority=-10)
+    @project.hooks.on_render_post.register(priority=-10)
     def my_hook(args):
         ...  # runs before extension hooks (priority 0)
 
@@ -152,7 +171,7 @@ are serialized as JSON and piped to the command on stdin:
 .. code-block:: python
 
     project = Automata()
-    project.hooks.on_generate_post.register_shell_script(
+    project.hooks.on_render_post.register_shell_script(
         "cat | jq .build_directory",
         priority=200,
     )
@@ -162,13 +181,13 @@ Or from a script that processes the JSON payload:
 
 .. code-block:: python
 
-    project.hooks.on_build_success.register_shell_script(
+    project.hooks.on_build_artifact_success.register_shell_script(
         "python notify.py",
         priority=0,
     )
 
 The script receives the hook args as a JSON object on stdin. For example,
-``on_generate_post`` sends:
+``on_render_post`` sends:
 
 .. code-block:: json
 
@@ -191,12 +210,12 @@ Beyond extensions, hooks can be registered directly on a ``Hooks`` instance:
 .. code-block:: python
 
     from automata import Automata
-    from automata.hooks import GeneratePostHookArgs
+    from automata.hooks import RenderPostHookArgs
 
     project = Automata()
 
-    @project.hooks.on_generate_post.register()
-    def my_hook(args: GeneratePostHookArgs) -> None:
+    @project.hooks.on_render_post.register()
+    def my_hook(args: RenderPostHookArgs) -> None:
         print("Build complete!")
 
     project.build()

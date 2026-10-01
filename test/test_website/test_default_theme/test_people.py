@@ -1,4 +1,4 @@
-from conftest import generate
+from conftest import render
 
 
 def test_people_element_renders_single_group(tmpsite, theme):
@@ -25,7 +25,7 @@ def test_people_element_renders_single_group(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -62,7 +62,7 @@ def test_people_element_renders_multiple_groups(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -91,7 +91,7 @@ def test_people_element_person_without_optional_fields(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -117,7 +117,7 @@ def test_people_element_person_with_website_creates_link(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -142,7 +142,7 @@ def test_people_element_displays_photo_when_provided(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")

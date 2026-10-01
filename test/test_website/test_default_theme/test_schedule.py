@@ -1,11 +1,11 @@
 """Tests for the schedule element rendering in the default theme.
 
 These tests focus on how the default theme renders the schedule element,
-testing through the full generate() pipeline and inspecting HTML output.
+testing through the full render() pipeline and inspecting HTML output.
 """
 
 from bs4 import BeautifulSoup, Tag
-from conftest import generate
+from conftest import render
 
 
 def find_week(html: str, week: int) -> Tag:
@@ -62,7 +62,7 @@ def test_schedule_element_renders_basic_week(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -114,7 +114,7 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -178,7 +178,7 @@ def test_schedule_element_renders_html_resource(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -244,7 +244,7 @@ def test_schedule_element_renders_markdown_resource(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -322,7 +322,7 @@ def test_schedule_element_renders_metadata_links_resource(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -400,7 +400,7 @@ def test_schedule_element_renders_artifact_links_resource(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -480,7 +480,7 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(tmpsite, 
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -552,7 +552,7 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then - title should not appear since content is only whitespace
     output = tmpsite.get_output("index.html")
@@ -616,7 +616,7 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then - title should not appear since content is only whitespace
     output = tmpsite.get_output("index.html")
@@ -690,7 +690,7 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then - title should not appear since there are no items
     output = tmpsite.get_output("index.html")
@@ -766,7 +766,7 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then - title should not appear since metadata key is missing
     output = tmpsite.get_output("index.html")
@@ -835,7 +835,7 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then - title should not appear since there are no artifacts
     output = tmpsite.get_output("index.html")
@@ -898,7 +898,7 @@ def test_schedule_element_resource_with_icon(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -953,7 +953,7 @@ def test_schedule_element_renders_extra_primary_listings(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -1011,7 +1011,7 @@ def test_schedule_element_renders_extra_secondary_listings(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")

@@ -18,7 +18,7 @@ optional ``config``, ``schema``, and ``dependencies``:
 
     my_extension = Extension(
         name="my-extension",
-        hooks={"on_website_collect": collect},
+        hooks={"on_render_collect": collect},
     )
 
 The ``hooks`` dictionary maps hook point names to callables. When the extension
@@ -112,7 +112,7 @@ user's config is validated against it, and defaults are applied, before
 
         return Extension(
             name="my-extension",
-            hooks={"on_website_collect": collect},
+            hooks={"on_render_collect": collect},
             config=config,
             schema=schema,
         )
@@ -149,7 +149,7 @@ automatically applied before it:
 
     my_theme = Extension(
         name="my-theme",
-        hooks={"on_website_collect": collect},
+        hooks={"on_render_collect": collect},
         dependencies=[schedule_extension],
     )
 

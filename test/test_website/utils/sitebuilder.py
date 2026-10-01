@@ -84,7 +84,7 @@ class SiteBuilder:
         Returns
         -------
         tuple[dict[str, str], dict[str, str | bytes]]
-            (pages, static_content) suitable for passing to generate().
+            (pages, static_content) suitable for passing to render().
 
         """
         pages: dict[str, str] = {}

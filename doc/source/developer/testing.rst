@@ -25,7 +25,7 @@ Tests are in the ``test/`` directory, mirroring the source structure:
     │
     ├── test_website/              # Website generation tests
     │   ├── conftest.py            # SiteBuilder fixture
-    │   ├── test_generate.py       # Core generation tests
+    │   ├── test_render.py         # Core rendering tests
     │   ├── test_theme.py          # Extension loading from directories
     │   ├── test_elements.py       # Element base class tests
     │   │
@@ -95,7 +95,7 @@ Utility for creating temporary website projects:
 
     def test_something(tmpsite):
         tmpsite.make_page("index.md", "# Home")
-        # ... call generate() ...
+        # ... call render() ...
         output = tmpsite.get_output("index.html")
         assert "Home" in output
 
@@ -117,22 +117,22 @@ explicitly with ``-m integration``.
 Writing tests for extensions
 ----------------------------
 
-To test an extension's ``on_website_collect`` hook:
+To test an extension's ``on_render_collect`` hook:
 
 .. code-block:: python
 
     from automata._extension import Extension, apply_extension
-    from automata.hooks import GenerateHooks, WebsiteInputs
+    from automata.hooks import RenderHooks, WebsiteInputs
 
     def test_my_extension():
         ext = Extension(
             name="test",
-            hooks={"on_website_collect": my_collect_fn},
+            hooks={"on_render_collect": my_collect_fn},
         )
-        hooks = GenerateHooks()
+        hooks = RenderHooks()
         apply_extension(ext, hooks)
 
-        inputs = hooks.on_website_collect(WebsiteInputs())
+        inputs = hooks.on_render_collect(WebsiteInputs())
         assert "page.html" in inputs.templates
 
 To test website generation with a custom theme:
@@ -143,7 +143,7 @@ To test website generation with a custom theme:
         theme = extension_from_directory("test", theme_dir)
         pages, static_content = tmpsite.load_content()
 
-        automata.website.generate(
+        automata.website.render(
             tmpsite.build_directory,
             tmpsite.materials_directory,
             pages=pages,
@@ -152,5 +152,5 @@ To test website generation with a custom theme:
         )
         assert "expected content" in tmpsite.get_output("index.html")
 
-When ``hooks`` is omitted, ``generate`` creates them and registers the theme
+When ``hooks`` is omitted, ``render`` creates them and registers the theme
 and extensions itself.

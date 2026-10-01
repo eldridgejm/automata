@@ -42,7 +42,7 @@ class DiscoverHooks(HooksBase):
 
 
 @dataclass
-class BuildNodeHookArgs:
+class BuildMaterialsNodeHookArgs:
     """Argument passed when building a node (collection/publication/artifact)."""
 
     key: str
@@ -62,7 +62,7 @@ class BuildArtifactHookArgs:
 
 
 @dataclass
-class BuildSuccessHookArgs:
+class BuildArtifactSuccessHookArgs:
     """Argument passed when a build succeeds."""
 
     workdir: pathlib.Path
@@ -71,24 +71,24 @@ class BuildSuccessHookArgs:
 
 
 class BuildHooks(HooksBase):
-    """Hooks for the build phase."""
+    """Hooks for the build-materials step (fired once per node or artifact)."""
 
-    on_build_node: ObserverHook[BuildNodeHookArgs]
+    on_build_materials_node: ObserverHook[BuildMaterialsNodeHookArgs]
     """Called when building a collection, publication, or artifact."""
 
-    on_build_too_soon: ObserverHook[BuildArtifactHookArgs]
+    on_build_artifact_too_soon: ObserverHook[BuildArtifactHookArgs]
     """Called when an artifact's release time hasn't passed yet."""
 
-    on_build_not_ready: ObserverHook[BuildArtifactHookArgs]
+    on_build_artifact_not_ready: ObserverHook[BuildArtifactHookArgs]
     """Called when an artifact is not ready."""
 
-    on_build_missing: ObserverHook[BuildArtifactHookArgs]
+    on_build_artifact_missing: ObserverHook[BuildArtifactHookArgs]
     """Called when an artifact is missing but missing_ok is True."""
 
-    on_build_recipe: ObserverHook[BuildArtifactHookArgs]
+    on_build_artifact_recipe: ObserverHook[BuildArtifactHookArgs]
     """Called when running an artifact's recipe."""
 
-    on_build_success: ObserverHook[BuildSuccessHookArgs]
+    on_build_artifact_success: ObserverHook[BuildArtifactSuccessHookArgs]
     """Called when a build succeeds."""
 
 
@@ -151,9 +151,9 @@ class FilterHooks(HooksBase):
 class WebsiteInputs:
     """Accumulated website inputs gathered from extensions.
 
-    Extensions register hooks on ``on_website_collect`` to contribute
-    templates, static files, elements, and pages to the website generation
-    pipeline.
+    Extensions register hooks on ``on_render_collect`` to contribute
+    templates, static files, elements, and pages to the website when it is
+    rendered.
     """
 
     templates: dict[str, str] = field(default_factory=dict)
@@ -162,11 +162,11 @@ class WebsiteInputs:
     pages: dict[str, str] = field(default_factory=dict)
 
 
-# generate -----------------------------------------------------------------------------
+# render -------------------------------------------------------------------------------
 
 
 @dataclass
-class WebsiteGeneratePreHookArgs:
+class RenderPreHookArgs:
     """Argument passed before website content is loaded.
 
     Fired before ``_load_content_directory`` reads pages from disk, giving
@@ -179,10 +179,11 @@ class WebsiteGeneratePreHookArgs:
 
 
 @dataclass
-class GeneratePreHookArgs:
-    """Argument passed to the pre-generate hook.
+class RenderExtraPagesHookArgs:
+    """Argument passed to the ``on_render_extra_pages`` hook.
 
-    This is a pipeline hook that can transform extra_content before generation.
+    This is a pipeline hook that can add or change extra pages (in
+    ``extra_content``) before pages are rendered.
     """
 
     build_directory: pathlib.Path
@@ -190,27 +191,27 @@ class GeneratePreHookArgs:
 
 
 @dataclass
-class GeneratePostHookArgs:
-    """Argument passed to the post-generate hook."""
+class RenderPostHookArgs:
+    """Argument passed to the ``on_render_post`` hook."""
 
     build_directory: pathlib.Path
 
 
-class GenerateHooks(HooksBase):
-    """Hooks for the website generation phase."""
+class RenderHooks(HooksBase):
+    """Hooks for the render-website step."""
 
-    on_website_generate_pre: ObserverHook[WebsiteGeneratePreHookArgs]
+    on_render_pre: ObserverHook[RenderPreHookArgs]
     """Called before content is loaded from disk. Script hooks can use this
     to generate files into the content directory."""
 
-    on_website_collect: PipelineHook[WebsiteInputs]
+    on_render_collect: PipelineHook[WebsiteInputs]
     """Called to gather website inputs (templates, static files, elements, etc.)."""
 
-    on_generate_pre: PipelineHook[GeneratePreHookArgs]
-    """Called before generation. Can transform extra_content."""
+    on_render_extra_pages: PipelineHook[RenderExtraPagesHookArgs]
+    """Called before pages are rendered. Can add or change extra pages."""
 
-    on_generate_post: ObserverHook[GeneratePostHookArgs]
-    """Called after generation completes."""
+    on_render_post: ObserverHook[RenderPostHookArgs]
+    """Called after the website has been written to the build directory."""
 
 
 # publish hooks ========================================================================
@@ -264,7 +265,7 @@ class Hooks(
     BuildHooks,
     ExportHooks,
     FilterHooks,
-    GenerateHooks,
+    RenderHooks,
     PublishHooks,
 ):
     """Central registry of all hooks in automata."""

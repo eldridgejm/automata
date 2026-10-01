@@ -870,5 +870,5 @@ def _collect(inputs):
 
 extension = Extension(
     name="builtin-schedule",
-    hooks={"on_website_collect": _collect},
+    hooks={"on_render_collect": _collect},
 )

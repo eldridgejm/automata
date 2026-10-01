@@ -1,7 +1,7 @@
 """Tests for the schedule element functionality.
 
 These tests focus on the internal logic and functionality of the Schedule element,
-testing it directly rather than through the full generate() pipeline.
+testing it directly rather than through the full render() pipeline.
 """
 
 import datetime

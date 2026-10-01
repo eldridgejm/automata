@@ -103,5 +103,5 @@ def _collect(inputs):
 
 extension = Extension(
     name="builtin-listing",
-    hooks={"on_website_collect": _collect},
+    hooks={"on_render_collect": _collect},
 )

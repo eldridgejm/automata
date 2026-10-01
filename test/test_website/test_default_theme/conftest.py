@@ -20,10 +20,10 @@ def theme():
     )
 
 
-def generate(tmpsite, **kwargs):
-    """Helper that loads content and calls generate with pages/static_content."""
+def render(tmpsite, **kwargs):
+    """Helper that loads content and calls render with pages/static_content."""
     pages, static_content = tmpsite.load_content()
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,

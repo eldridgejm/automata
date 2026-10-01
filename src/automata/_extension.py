@@ -8,13 +8,13 @@ import json
 import subprocess
 from collections.abc import Callable, Iterable
 from importlib.resources.abc import Traversable
-from typing import Any
+from typing import Any, get_origin, get_type_hints
 
 import smartconfig.exceptions
 import smartconfig.types
 
 from .exceptions import Error
-from .hooks import GenerateHooks, WebsiteInputs
+from .hooks import RenderHooks, WebsiteInputs
 
 # entry point groups: themes are set with website.theme, extensions are listed
 # under extensions:
@@ -29,7 +29,7 @@ class Extension:
     An extension is the fundamental unit of customization in automata. It maps
     hook point names to callables that are registered when the extension is
     applied. For example, a theme extension registers a hook on
-    ``on_website_collect`` to provide templates, static files, and elements.
+    ``on_render_collect`` to provide templates, static files, and elements.
 
     Extensions can declare *dependencies* — other extensions that are
     automatically applied first.
@@ -159,9 +159,9 @@ def check_theme(theme: Extension) -> None:
         If the theme does not provide ``page.html``.
 
     """
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extension(theme, hooks)
-    inputs = hooks.on_website_collect(WebsiteInputs())
+    inputs = hooks.on_render_collect(WebsiteInputs())
     if "page.html" not in inputs.templates:
         raise Error(f'Theme "{theme.name}" does not provide a "page.html" template.')
 
@@ -208,7 +208,7 @@ def extension_from_directory(
     - ``static/`` --- static files served alongside the website.
     - ``schema.json`` --- JSON schema for validating extension config.
     - ``hooks/`` --- shell script hooks. Each file is named after an
-      observer hook point (e.g., ``on_generate_post``). The file content
+      observer hook point (e.g., ``on_render_post``). The file content
       is the shell command; hook args are piped as JSON on stdin.
 
     Parameters
@@ -274,13 +274,13 @@ def extension_from_directory(
     # Build the hooks dict
     ext_hooks: dict[str, Any] = {}
 
-    # The on_website_collect hook contributes templates and static files
+    # The on_render_collect hook contributes templates and static files
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
         inputs.templates.update(templates)
         inputs.static_files.update(static_files)
         return inputs
 
-    ext_hooks["on_website_collect"] = collect
+    ext_hooks["on_render_collect"] = collect
 
     # Load script hooks from hooks/ directory
     hooks_dir = directory / "hooks"
@@ -427,13 +427,20 @@ def _load_script_hooks(hooks_dir: Traversable) -> dict[str, Callable]:
     """Load shell script hooks from a hooks/ directory.
 
     Each file in the directory is named after an observer hook point
-    (e.g., ``on_generate_post``, ``on_build_success``). The file content
+    (e.g., ``on_render_post``, ``on_build_artifact_success``). The file content
     is the shell command to run. Hook args are serialized as JSON and
     piped to the command on stdin.
 
     Returns a dict mapping hook point names to callables.
     """
-    from .hooks._internals import _default_serializer
+    from .hooks import Hooks
+    from .hooks._internals import ObserverHook, _default_serializer
+
+    observer_hooks = sorted(
+        name
+        for name, hint in get_type_hints(Hooks).items()
+        if get_origin(hint) is ObserverHook
+    )
 
     script_hooks: dict[str, Callable] = {}
 
@@ -442,6 +449,12 @@ def _load_script_hooks(hooks_dir: Traversable) -> dict[str, Callable]:
             continue
 
         hook_name = entry.name
+        if hook_name not in observer_hooks:
+            raise Error(
+                f'Script hook "{hook_name}" in "{hooks_dir}" is not an observer '
+                f"hook point. Script hook files must be named after one of: "
+                f"{', '.join(observer_hooks)}."
+            )
         command = entry.read_text().strip()
         if not command:
             continue

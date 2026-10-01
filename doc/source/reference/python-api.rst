@@ -178,12 +178,12 @@ Example: custom hooks
 .. code-block:: python
 
     from automata import Automata
-    from automata.hooks import GeneratePostHookArgs
+    from automata.hooks import RenderPostHookArgs
 
     project = Automata()
 
-    @project.hooks.on_generate_post.register()
-    def notify(args: GeneratePostHookArgs):
+    @project.hooks.on_render_post.register()
+    def notify(args: RenderPostHookArgs):
         print(f"Site built at {args.build_directory}")
 
     project.build()
@@ -254,23 +254,23 @@ Example: custom hooks
         share a name.
 
 
-``generate``
-------------
+``render``
+----------
 
 .. code-block:: python
 
-    from automata.website import generate
+    from automata.website import render
 
-.. function:: generate(build_directory, materials_directory, pages=None, static_content=None, vars=None, current_time=None, render_markdown=..., hooks=None, base_path="/", materials_directory_name="materials", element_configs=None, theme=None, extensions=(), materials=None)
+.. function:: render(build_directory, materials_directory, pages=None, static_content=None, vars=None, current_time=None, render_markdown=..., hooks=None, base_path="/", materials_directory_name="materials", element_configs=None, theme=None, extensions=(), materials=None)
 
-    Generate a static website from exported materials. Most users should call
+    Render a static website from exported materials. Most users should call
     :meth:`Automata.render_website` instead.
 
     :param theme: The theme, available in templates as ``theme``.
     :param extensions: The other extensions. These, the theme, and their
         dependencies are available in templates as ``extensions``, keyed by
         name.
-    :param hooks: A :class:`GenerateHooks` instance. If given, *theme* and
+    :param hooks: A :class:`RenderHooks` instance. If given, *theme* and
         *extensions* are assumed to be registered on it already. If omitted,
         hooks are created and *theme* and *extensions* are registered on them.
     :param materials: The exported materials to render with. If omitted,

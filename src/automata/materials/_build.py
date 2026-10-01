@@ -8,9 +8,9 @@ from typing import Any, Optional, TypedDict, Unpack, cast, overload
 
 from automata.hooks import (
     BuildArtifactHookArgs,
+    BuildArtifactSuccessHookArgs,
     BuildHooks,
-    BuildNodeHookArgs,
-    BuildSuccessHookArgs,
+    BuildMaterialsNodeHookArgs,
 )
 
 from ._types import (
@@ -86,11 +86,11 @@ def _build_artifact(
         and artifact.release_time is not None
         and artifact.release_time > current_time
     ):
-        hooks.on_build_too_soon(_artifact_to_hook_args(artifact))
+        hooks.on_build_artifact_too_soon(_artifact_to_hook_args(artifact))
         return None
 
     if not artifact.ready and not ignore_ready:
-        hooks.on_build_not_ready(_artifact_to_hook_args(artifact))
+        hooks.on_build_artifact_not_ready(_artifact_to_hook_args(artifact))
         return None
 
     if artifact.recipe is None:
@@ -98,7 +98,7 @@ def _build_artifact(
         stderr = None
         returncode = None
     else:
-        hooks.on_build_recipe(_artifact_to_hook_args(artifact))
+        hooks.on_build_artifact_recipe(_artifact_to_hook_args(artifact))
 
         kwargs = {
             "cwd": artifact.workdir,
@@ -122,7 +122,7 @@ def _build_artifact(
     path = artifact.workdir / artifact.path
     if not exists(path):
         if artifact.missing_ok:
-            hooks.on_build_missing(_artifact_to_hook_args(artifact))
+            hooks.on_build_artifact_missing(_artifact_to_hook_args(artifact))
             return None
         else:
             raise BuildError(f"Artifact {path} does not exist at {path}.")
@@ -130,8 +130,8 @@ def _build_artifact(
     output = dataclasses.replace(
         output, returncode=returncode, stdout=stdout, stderr=stderr
     )
-    hooks.on_build_success(
-        BuildSuccessHookArgs(
+    hooks.on_build_artifact_success(
+        BuildArtifactSuccessHookArgs(
             workdir=output.workdir,
             path=output.path,
             returncode=output.returncode,
@@ -267,8 +267,10 @@ def build(
 
         assert isinstance(child, (Collection, Publication, UnbuiltArtifact))
 
-        hook_args = BuildNodeHookArgs(key=child_key, node_type=node_type_name(child))
-        hooks.on_build_node(hook_args)
+        hook_args = BuildMaterialsNodeHookArgs(
+            key=child_key, node_type=node_type_name(child)
+        )
+        hooks.on_build_materials_node(hook_args)
 
         result = build(child, **kwargs)  # type: ignore
         # if a node is not built (perhaps due to it not being ready), the

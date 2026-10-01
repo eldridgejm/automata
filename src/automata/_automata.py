@@ -14,7 +14,7 @@ from .hooks import (
     PublisherRegistryArgs,
     PublishPostHookArgs,
     PublishPreHookArgs,
-    WebsiteGeneratePreHookArgs,
+    RenderPreHookArgs,
 )
 from .materials import (
     BuiltArtifact,
@@ -25,7 +25,7 @@ from .materials import (
     find_parent_collection,
 )
 from .materials._filter import ArtifactType, Predicate
-from .website import generate as _generate_website
+from .website import render as _website_render
 
 
 def _load_content_directory(
@@ -473,8 +473,8 @@ class Automata:
         materials_output_dir = build_dir / self.config.website.materials_directory_name
         content_dir = self.path / self.config.website.content_directory
 
-        self.hooks.on_website_generate_pre(
-            WebsiteGeneratePreHookArgs(
+        self.hooks.on_render_pre(
+            RenderPreHookArgs(
                 content_directory=content_dir,
                 build_directory=build_dir,
             )
@@ -486,7 +486,7 @@ class Automata:
             no_render_suffix=self.config.website.no_render_suffix,
         )
 
-        _generate_website(
+        _website_render(
             build_dir,
             materials_output_dir,
             pages=pages,

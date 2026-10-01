@@ -15,9 +15,9 @@ import smartconfig.types
 
 from .._extension import Extension, all_extensions, apply_extensions
 from ..hooks import (
-    GenerateHooks,
-    GeneratePostHookArgs,
-    GeneratePreHookArgs,
+    RenderExtraPagesHookArgs,
+    RenderHooks,
+    RenderPostHookArgs,
     WebsiteInputs,
 )
 from ..materials import ExportedArtifact, Universe, deserialize
@@ -338,7 +338,7 @@ def _write_static_content(
             output_path.write_text(content)
 
 
-def generate(
+def render(
     build_directory: pathlib.Path,
     materials_directory: pathlib.Path,
     pages: dict[str, str] | None = None,
@@ -346,7 +346,7 @@ def generate(
     vars: dict[str, Any] | None = None,
     current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown_util.render,
-    hooks: GenerateHooks | None = None,
+    hooks: RenderHooks | None = None,
     base_path: str = "/",
     materials_directory_name: str = "materials",
     element_configs: dict[str, smartconfig.types.Configuration] | None = None,
@@ -357,7 +357,7 @@ def generate(
     """Generates a static website from course materials.
 
     Extensions contribute website inputs (templates, static files, elements,
-    pages) by registering hooks on ``on_website_collect``. The generation
+    pages) by registering hooks on ``on_render_collect``. The generation
     pipeline collects these inputs, renders pages, and produces the final
     website.
 
@@ -382,7 +382,7 @@ def generate(
         The current date and time to be used during rendering.
     render_markdown : Callable[[str], str], optional
         A function that converts markdown content to HTML.
-    hooks : GenerateHooks, optional
+    hooks : RenderHooks, optional
         Hooks instance. If given, *theme* and *extensions* should already be
         registered on it; they are not registered again. If omitted, hooks
         are created and *theme* and *extensions* are registered on them.
@@ -413,11 +413,11 @@ def generate(
     current_time = current_time or datetime.datetime.now()
     loaded = [ext for ext in (theme, *extensions) if ext is not None]
     if hooks is None:
-        hooks = GenerateHooks()
+        hooks = RenderHooks()
         apply_extensions(loaded, hooks)
 
     # gather website inputs from extensions
-    inputs = hooks.on_website_collect(WebsiteInputs())
+    inputs = hooks.on_render_collect(WebsiteInputs())
 
     if "page.html" not in inputs.templates:
         raise ValueError('No extension provided a "page.html" template.')
@@ -430,13 +430,13 @@ def generate(
             f"Available elements: {', '.join(sorted(inputs.elements)) or 'none'}."
         )
 
-    # run pre-generate hooks
+    # run on_render_extra_pages hooks
     url_for = _create_url_for(base_path)
-    pre_args = hooks.on_generate_pre(
-        GeneratePreHookArgs(build_directory=build_directory, extra_content=None)
+    pre_args = hooks.on_render_extra_pages(
+        RenderExtraPagesHookArgs(build_directory=build_directory, extra_content=None)
     )
 
-    # collect extra pages from extensions and pre-generate hooks
+    # collect extra pages from extensions and on_render_extra_pages hooks
     all_pages = dict(pages)
     if inputs.pages:
         # extension pages go first; explicit pages override
@@ -480,7 +480,7 @@ def generate(
     )
     _write_static_content(static_content, build_directory)
 
-    # write binary extra content from pre-generate hooks
+    # write binary extra content from on_render_extra_pages hooks
     if pre_args.extra_content:
         binary_extra: dict[str, str | bytes] = {}
         for key, value in pre_args.extra_content.items():
@@ -495,4 +495,4 @@ def generate(
     _copy_materials_to_build(
         materials_directory, build_directory, materials_directory_name
     )
-    hooks.on_generate_post(GeneratePostHookArgs(build_directory=build_directory))
+    hooks.on_render_post(RenderPostHookArgs(build_directory=build_directory))

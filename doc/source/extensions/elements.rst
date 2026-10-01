@@ -2,7 +2,7 @@ Creating Custom Elements
 ========================
 
 Elements are callable Python classes that generate HTML. They are registered via
-the ``on_website_collect`` hook and become available in pages as
+the ``on_render_collect`` hook and become available in pages as
 ``${ elements.my_element(config) }``.
 
 
@@ -64,7 +64,7 @@ automatically. The resolved config is available in the template as
 Registering elements as an extension
 -------------------------------------
 
-Elements are contributed via the ``on_website_collect`` hook:
+Elements are contributed via the ``on_render_collect`` hook:
 
 .. code-block:: python
 
@@ -78,7 +78,7 @@ Elements are contributed via the ``on_website_collect`` hook:
 
     my_elements = Extension(
         name="my-elements",
-        hooks={"on_website_collect": _collect},
+        hooks={"on_render_collect": _collect},
     )
 
 If the module exports it as ``extension`` and registers it in the
@@ -102,7 +102,7 @@ Registering elements from a theme
 ---------------------------------
 
 A theme built with ``make_extension`` can also contribute elements from its own
-``on_website_collect`` hook. To combine this with the directory layout, wrap the
+``on_render_collect`` hook. To combine this with the directory layout, wrap the
 hook of the extension built by ``extension_from_directory``:
 
 .. code-block:: python
@@ -115,14 +115,14 @@ hook of the extension built by ``extension_from_directory``:
 
     def make_extension(config):
         ext = extension_from_directory("my-theme", files(__name__), config=config)
-        collect_files = ext.hooks["on_website_collect"]
+        collect_files = ext.hooks["on_render_collect"]
 
         def collect(inputs):
             inputs = collect_files(inputs)
             inputs.elements["greeting"] = Greeting
             return inputs
 
-        ext.hooks["on_website_collect"] = collect
+        ext.hooks["on_render_collect"] = collect
         return ext
 
 Directory extensions loaded by path (e.g., ``./my-theme``) cannot provide

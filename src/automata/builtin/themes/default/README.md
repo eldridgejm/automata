@@ -12,7 +12,7 @@ The default theme automatically rebuilds Tailwind CSS after website generation t
 
 ### How It Works
 
-When you generate your site:
+When you build your site:
 1. The site is generated with the pre-built CSS
 2. After generation completes, the post-build hook runs
 3. The hook scans all HTML files in the build directory for Tailwind classes

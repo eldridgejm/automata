@@ -13,7 +13,7 @@ from automata._extension import (
     extension_from_entry_point,
 )
 from automata.exceptions import Error
-from automata.hooks import GenerateHooks, WebsiteInputs
+from automata.hooks import RenderHooks, WebsiteInputs
 
 
 def _make_extension(**kwargs):
@@ -72,9 +72,9 @@ _TITLE_SCHEMA = {
 
 
 def test_extension_has_name_and_hooks():
-    ext = Extension(name="my-ext", hooks={"on_generate_post": lambda args: None})
+    ext = Extension(name="my-ext", hooks={"on_render_post": lambda args: None})
     assert ext.name == "my-ext"
-    assert "on_generate_post" in ext.hooks
+    assert "on_render_post" in ext.hooks
 
 
 def test_extension_defaults():
@@ -94,11 +94,11 @@ def test_apply_extension_registers_hooks_on_hooks_instance():
         inputs.templates["test.html"] = "<html></html>"
         return inputs
 
-    ext = _make_extension(hooks={"on_website_collect": my_collect})
-    hooks = GenerateHooks()
+    ext = _make_extension(hooks={"on_render_collect": my_collect})
+    hooks = RenderHooks()
     apply_extension(ext, hooks)
 
-    result = hooks.on_website_collect(WebsiteInputs())
+    result = hooks.on_render_collect(WebsiteInputs())
     assert "collect" in call_log
     assert "test.html" in result.templates
 
@@ -114,20 +114,20 @@ def test_apply_extension_priority_controls_execution_order():
         call_log.append("b")
         return inputs
 
-    ext_a = _make_extension(name="a", hooks={"on_website_collect": hook_a})
-    ext_b = _make_extension(name="b", hooks={"on_website_collect": hook_b})
+    ext_a = _make_extension(name="a", hooks={"on_render_collect": hook_a})
+    ext_b = _make_extension(name="b", hooks={"on_render_collect": hook_b})
 
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extension(ext_a, hooks, priority=10)
     apply_extension(ext_b, hooks, priority=0)
 
-    hooks.on_website_collect(WebsiteInputs())
+    hooks.on_render_collect(WebsiteInputs())
     assert call_log == ["b", "a"]
 
 
 def test_apply_extension_raises_on_unknown_hook_name():
     ext = _make_extension(hooks={"on_nonexistent_hook": lambda x: x})
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
 
     with pytest.raises(AttributeError):
         apply_extension(ext, hooks)
@@ -145,21 +145,19 @@ def test_later_extension_overrides_templates():
         inputs.templates["page.html"] = "<override>"
         return inputs
 
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extension(
-        _make_extension(name="base", hooks={"on_website_collect": base_collect}),
+        _make_extension(name="base", hooks={"on_render_collect": base_collect}),
         hooks,
         priority=0,
     )
     apply_extension(
-        _make_extension(
-            name="override", hooks={"on_website_collect": override_collect}
-        ),
+        _make_extension(name="override", hooks={"on_render_collect": override_collect}),
         hooks,
         priority=1,
     )
 
-    result = hooks.on_website_collect(WebsiteInputs())
+    result = hooks.on_render_collect(WebsiteInputs())
     assert result.templates["page.html"] == "<override>"
 
 
@@ -173,17 +171,17 @@ def test_extensions_accumulate_different_keys():
         inputs.pages["extra.html"] = "# Extra"
         return inputs
 
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extension(
-        _make_extension(name="theme", hooks={"on_website_collect": theme_collect}),
+        _make_extension(name="theme", hooks={"on_render_collect": theme_collect}),
         hooks,
     )
     apply_extension(
-        _make_extension(name="plugin", hooks={"on_website_collect": plugin_collect}),
+        _make_extension(name="plugin", hooks={"on_render_collect": plugin_collect}),
         hooks,
     )
 
-    result = hooks.on_website_collect(WebsiteInputs())
+    result = hooks.on_render_collect(WebsiteInputs())
     assert "page.html" in result.templates
     assert "style.css" in result.static_files
     assert "extra.html" in result.pages
@@ -199,13 +197,13 @@ def test_apply_extensions_registers_shared_dependency_once():
         calls.append("dep")
         return inputs
 
-    dep = _make_extension(name="dep", hooks={"on_website_collect": dep_collect})
+    dep = _make_extension(name="dep", hooks={"on_render_collect": dep_collect})
     a = _make_extension(name="a", dependencies=[dep])
     b = _make_extension(name="b", dependencies=[dep])
 
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extensions([a, b], hooks)
-    hooks.on_website_collect(WebsiteInputs())
+    hooks.on_render_collect(WebsiteInputs())
 
     assert calls == ["dep"]
 

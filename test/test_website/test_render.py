@@ -14,9 +14,9 @@ from automata._extension import (
 )
 from automata.exceptions import Error
 from automata.hooks import (
-    GenerateHooks,
-    GeneratePostHookArgs,
-    GeneratePreHookArgs,
+    RenderExtraPagesHookArgs,
+    RenderHooks,
+    RenderPostHookArgs,
     WebsiteInputs,
 )
 
@@ -28,10 +28,10 @@ def _make_theme(theme_dir=None, entry_point="default", config=None):
     return extension_from_entry_point(entry_point, config=config, group=THEMES_GROUP)
 
 
-def _generate(tmpsite, **kwargs):
-    """Helper: load content from tmpsite and call generate()."""
+def _render(tmpsite, **kwargs):
+    """Helper: load content from tmpsite and call render()."""
     pages, static_content = tmpsite.load_content()
-    return automata.website.generate(
+    return automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
@@ -56,7 +56,7 @@ def theme():
 
 @fixture
 def hooks(theme):
-    h = GenerateHooks()
+    h = RenderHooks()
     apply_extension(theme, h)
     return h
 
@@ -69,7 +69,7 @@ def test_converts_pages_from_markdown_to_html(tmpsite, theme):
     tmpsite.make_page("one.md", "# This is a header\n**this is bold!**")
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     assert "This is a header</h1>" in tmpsite.get_output("one.html")
@@ -81,7 +81,7 @@ def test_converts_pages_from_markdown_to_html_recursively(tmpsite, theme):
     tmpsite.make_page("subdir/one.md", "# This is a header\n**this is bold!**")
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     assert "This is a header</h1>" in tmpsite.get_output("subdir/one.html")
@@ -96,7 +96,7 @@ def tests_renders_html_pages(tmpsite, theme):
     )
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     assert "<h1>About this site</h1>" in tmpsite.get_output("about.html")
@@ -107,7 +107,7 @@ def test_copies_files_from_content_to_output(tmpsite, theme):
     tmpsite.make_page("data/tabular/one.txt", "This is a text file in a subdir.")
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     assert "This is a text file in a subdir." in tmpsite.get_output(
@@ -120,7 +120,7 @@ def test_vars_can_be_used_in_markdown_pages(tmpsite, theme):
     tmpsite.make_page("index.md", "The value of 'foo' is ${ vars.foo }.")
 
     # when
-    _generate(tmpsite, vars={"foo": "bar"}, theme=theme)
+    _render(tmpsite, vars={"foo": "bar"}, theme=theme)
 
     # then
     assert "The value of 'foo' is bar." in tmpsite.get_output("index.html")
@@ -131,7 +131,7 @@ def test_vars_can_be_used_in_html_pages(tmpsite, theme):
     tmpsite.make_page("about.html", "<p>The value of 'foo' is ${ vars.foo }.</p>")
 
     # when
-    _generate(tmpsite, vars={"foo": "bar"}, theme=theme)
+    _render(tmpsite, vars={"foo": "bar"}, theme=theme)
 
     # then
     assert "<p>The value of 'foo' is bar.</p>" in tmpsite.get_output("about.html")
@@ -144,7 +144,7 @@ def test_files_with_no_render_suffix_are_copied_with_no_render_suffix_removed(
     tmpsite.make_page("data/sample.txt.NO_RENDER", "This is a raw text file.")
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     assert "This is a raw text file." in tmpsite.get_output("data/sample.txt")
@@ -157,7 +157,7 @@ def test_html_files_with_no_render_suffix_are_not_rendered(tmpsite, theme):
     )
 
     # when
-    _generate(tmpsite, vars={"foo": "bar"}, theme=theme)
+    _render(tmpsite, vars={"foo": "bar"}, theme=theme)
 
     # then
     assert "<h1>Info Page</h1><p>This is ${ vars.foo }.</p>" in tmpsite.get_output(
@@ -170,7 +170,7 @@ def test_markdown_files_with_no_render_suffix_are_not_rendered(tmpsite, theme):
     tmpsite.make_page("readme.md.NO_RENDER", "# Readme\nThis is ${ vars.foo }.")
 
     # when
-    _generate(tmpsite, vars={"foo": "bar"}, theme=theme)
+    _render(tmpsite, vars={"foo": "bar"}, theme=theme)
 
     # then
     assert "# Readme\nThis is ${ vars.foo }." in tmpsite.get_output("readme.md")
@@ -182,7 +182,7 @@ def test_no_render_suffix_of_none_means_nothing_is_renamed(tmpsite, theme):
 
     # when: load content with no_render_suffix=None so nothing is renamed
     pages, static_content = tmpsite.load_content(no_render_suffix=None)
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
@@ -224,7 +224,7 @@ def test_materials_are_loaded_and_available_in_rendering_contex(
     )
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("materials.html")
@@ -250,7 +250,7 @@ def test_exception_is_raised_if_materials_directory_missing(tmpsite, theme):
 
     # when / then
     with raises(automata.website.exceptions.WebsiteError) as exc:
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
     assert "Materials directory not found at" in str(exc.value)
 
@@ -274,7 +274,7 @@ def test_exception_is_raised_if_materials_json_missing(tmpsite, theme):
 
     # when / then
     with raises(automata.website.exceptions.WebsiteError) as exc:
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
     assert "materials.json not found at" in str(exc.value)
 
@@ -290,7 +290,7 @@ def _exported_example(default_example_course, tmpsite):
     return automata.materials.export(universe, tmpsite.materials_directory)
 
 
-def test_generate_uses_given_materials_instead_of_materials_json(
+def test_render_uses_given_materials_instead_of_materials_json(
     tmpsite, default_example_course, theme
 ):
     # given: materials exported, and no materials.json to fall back on
@@ -301,16 +301,14 @@ def test_generate_uses_given_materials_instead_of_materials_json(
     )
 
     # when
-    _generate(tmpsite, theme=theme, materials=universe)
+    _render(tmpsite, theme=theme, materials=universe)
 
     # then
     for name in universe.collections:
         assert f"[{name}]" in tmpsite.get_output("index.html")
 
 
-def test_generate_does_not_modify_given_materials(
-    tmpsite, default_example_course, theme
-):
+def test_render_does_not_modify_given_materials(tmpsite, default_example_course, theme):
     # given
     import automata.materials
 
@@ -319,7 +317,7 @@ def test_generate_does_not_modify_given_materials(
     tmpsite.make_page("index.md", "Home")
 
     # when: base_path causes artifact paths to be rewritten for rendering
-    _generate(tmpsite, theme=theme, materials=universe, base_path="/course/")
+    _render(tmpsite, theme=theme, materials=universe, base_path="/course/")
 
     # then
     assert automata.materials.serialize(universe) == before
@@ -335,7 +333,7 @@ def test_missing_variable_in_markdown_page_raises_error(tmpsite, theme):
 
     # when / then
     with raises(Exception) as exc_info:
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
     assert "missing_var" in str(exc_info.value)
 
@@ -347,7 +345,7 @@ def test_missing_variable_in_html_page_raises_error(tmpsite, theme):
 
     # when / then
     with raises(Exception) as exc_info:
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
     assert "missing_var" in str(exc_info.value)
 
@@ -365,7 +363,7 @@ def test_custom_markdown_engine_can_be_injected(tmpsite, theme):
         return f"[CUSTOM]{markdown_text}[/CUSTOM]"
 
     # when
-    _generate(tmpsite, render_markdown=custom_markdown_engine, theme=theme)
+    _render(tmpsite, render_markdown=custom_markdown_engine, theme=theme)
 
     # then
     output = tmpsite.get_output("test.html")
@@ -385,7 +383,7 @@ def test_frontmatter_in_markdown_page(tmpsite, theme):
     )
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("info.html")
@@ -402,7 +400,7 @@ def test_frontmatter_in_html_page(tmpsite, theme):
     )
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("info.html")
@@ -416,7 +414,7 @@ def test_pages_without_frontmatter_still_work(tmpsite, theme):
     tmpsite.make_page("legacy.md", "# Legacy Page\n\nNo frontmatter here.")
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("legacy.html")
@@ -434,7 +432,7 @@ def test_invalid_yaml_raises_page_error(tmpsite, theme):
 
     # when / then
     with raises(automata.website.PageError) as exc:
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
     assert "bad.html" in str(exc.value)
 
@@ -449,7 +447,7 @@ def test_invalid_frontmatter_key_raises_page_error(tmpsite, theme):
 
     # when / then
     with raises(automata.website.PageError) as exc:
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
     assert "bad_key.html" in str(exc.value)
 
@@ -463,7 +461,7 @@ def test_empty_frontmatter(tmpsite, theme):
     )
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("empty.html")
@@ -481,7 +479,7 @@ def test_frontmatter_with_nested_vars_structures(tmpsite, theme):
     )
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("nested.html")
@@ -501,7 +499,7 @@ def test_url_for_with_default_base_path(tmpsite, theme):
     )
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -519,7 +517,7 @@ def test_url_for_with_custom_base_path(tmpsite, theme):
     )
 
     # when
-    _generate(tmpsite, theme=theme, base_path="/course")
+    _render(tmpsite, theme=theme, base_path="/course")
 
     # then
     output = tmpsite.get_output("index.html")
@@ -530,16 +528,16 @@ def test_url_for_with_custom_base_path(tmpsite, theme):
 # themes ===============================================================================
 
 
-def test_generate_uses_default_theme_by_default(tmpsite, theme):
+def test_render_uses_default_theme_by_default(tmpsite, theme):
     tmpsite.make_page("index.md", "Home page")
 
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # Expect default theme to add a recognizable marker to the rendered page.
     assert 'data-automata-theme="default"' in tmpsite.get_output("index.html")
 
 
-def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
+def test_render_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
     # given
     tmpsite.make_page("index.md", "# Custom Theme Test")
 
@@ -556,7 +554,7 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
     theme = _make_theme(theme_dir=custom_theme_dir)
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -564,7 +562,7 @@ def test_generate_can_use_custom_theme_via_directory_path(tmpsite, tmp_path):
     assert "Custom Theme Test" in output
 
 
-def test_generate_supports_template_inheritance(tmpsite, tmp_path):
+def test_render_supports_template_inheritance(tmpsite, tmp_path):
     # given
     tmpsite.make_page(
         "index.md",
@@ -587,7 +585,7 @@ def test_generate_supports_template_inheritance(tmpsite, tmp_path):
     theme = _make_theme(theme_dir=custom_theme_dir)
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -597,7 +595,7 @@ def test_generate_supports_template_inheritance(tmpsite, tmp_path):
     assert "Hello from layout" in output
 
 
-def test_generate_uses_frontmatter_template(tmpsite, tmp_path):
+def test_render_uses_frontmatter_template(tmpsite, tmp_path):
     # given
     tmpsite.make_page(
         "index.md",
@@ -618,7 +616,7 @@ def test_generate_uses_frontmatter_template(tmpsite, tmp_path):
     theme = _make_theme(theme_dir=custom_theme_dir)
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -627,7 +625,7 @@ def test_generate_uses_frontmatter_template(tmpsite, tmp_path):
     assert "BASE:" not in output
 
 
-def test_generate_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
+def test_render_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
     # given
     tmpsite.make_page(
         "index.md",
@@ -643,12 +641,12 @@ def test_generate_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
 
     # when / then
     with raises(automata.website.PageError, match="missing.html") as exc_info:
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
     assert exc_info.value.path == pathlib.Path("index.html")
 
 
-def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
+def test_render_requires_base_template_in_theme(tmpsite, tmp_path):
     # given
     tmpsite.make_page("index.md", "# Missing Base")
 
@@ -661,10 +659,10 @@ def test_generate_requires_base_template_in_theme(tmpsite, tmp_path):
 
     # when / then
     with raises(ValueError, match="page.html"):
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
 
-def test_generate_can_override_theme_template(tmpsite, tmp_path, hooks, theme):
+def test_render_can_override_theme_template(tmpsite, tmp_path, hooks, theme):
     """Test that theme templates can be overridden."""
     # given
     tmpsite.make_page("index.md", "# Override Test")
@@ -683,7 +681,7 @@ def test_generate_can_override_theme_template(tmpsite, tmp_path, hooks, theme):
     apply_extension(override_ext, hooks, priority=1)
 
     # when
-    _generate(tmpsite, hooks=hooks, theme=theme)
+    _render(tmpsite, hooks=hooks, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -691,7 +689,7 @@ def test_generate_can_override_theme_template(tmpsite, tmp_path, hooks, theme):
     assert "Override Test" in output
 
 
-def test_generate_overrides_template_can_extend_builtin_template(tmpsite, tmp_path):
+def test_render_overrides_template_can_extend_builtin_template(tmpsite, tmp_path):
     # given
     tmpsite.make_page(
         "index.md",
@@ -717,7 +715,7 @@ def test_generate_overrides_template_can_extend_builtin_template(tmpsite, tmp_pa
     )
 
     # when
-    _generate(tmpsite, theme=theme, extensions=[override_ext])
+    _render(tmpsite, theme=theme, extensions=[override_ext])
 
     # then
     output = tmpsite.get_output("index.html")
@@ -726,7 +724,7 @@ def test_generate_overrides_template_can_extend_builtin_template(tmpsite, tmp_pa
     assert "Hello from override" in output
 
 
-def test_generate_can_override_only_static_files(tmpsite, tmp_path):
+def test_render_can_override_only_static_files(tmpsite, tmp_path):
     """Test that only static files can be overridden without templates."""
     # given
     tmpsite.make_page("index.md", "# Static Override Test")
@@ -749,28 +747,28 @@ def test_generate_can_override_only_static_files(tmpsite, tmp_path):
     )
 
     # when
-    _generate(tmpsite, theme=theme, extensions=[override_ext])
+    _render(tmpsite, theme=theme, extensions=[override_ext])
 
     # then - verify the custom static file was copied to output
     custom_css = tmpsite.get_output("custom.css")
     assert "body { color: red; }" in custom_css
 
 
-def test_generate_copies_static_files_from_theme(tmpsite, theme):
+def test_render_copies_static_files_from_theme(tmpsite, theme):
     """Test that static files from the theme are copied to output."""
     # given
     tmpsite.make_page("index.md", "# Test Page")
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then - verify default theme's static CSS file was copied
     style_css = tmpsite.get_output("static/style.css")
     assert "tailwindcss" in style_css  # default theme uses Tailwind CSS
 
 
-def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
-    """Test that generate() handles str, bytes, and Traversable static files."""
+def test_render_handles_all_static_file_types(tmpsite, tmp_path):
+    """Test that render() handles str, bytes, and Traversable static files."""
     # given
     tmpsite.make_page("index.md", "# Test Page")
 
@@ -789,13 +787,13 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
         )
         return inputs
 
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extension(
-        Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks
+        Extension(name="test-theme", hooks={"on_render_collect": collect}), hooks
     )
 
     # when
-    _generate(tmpsite, hooks=hooks)
+    _render(tmpsite, hooks=hooks)
 
     # then - verify all three types were copied correctly
     assert tmpsite.get_output("string.txt") == "string content"
@@ -806,7 +804,7 @@ def test_generate_handles_all_static_file_types(tmpsite, tmp_path):
 # elements =============================================================================
 
 
-def test_generate_supports_theme_elements(tmpsite):
+def test_render_supports_theme_elements(tmpsite):
     """Test using a simple class as a theme element."""
     tmpsite.make_page(
         "index.html",
@@ -822,18 +820,18 @@ def test_generate_supports_theme_elements(tmpsite):
         inputs.elements.update({"simple": SimpleElement})
         return inputs
 
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extension(
-        Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks
+        Extension(name="test-theme", hooks={"on_render_collect": collect}), hooks
     )
 
-    _generate(tmpsite, hooks=hooks)
+    _render(tmpsite, hooks=hooks)
 
     output = tmpsite.get_output("index.html")
     assert '<span data-element="simple">Hello</span>' in output
 
 
-def test_generate_with_template_element(tmpsite):
+def test_render_with_template_element(tmpsite):
     tmpsite.make_page(
         "index.html",
         '${ elements.badge({"label": "Welcome", "tone": "warning"}) }',
@@ -865,12 +863,12 @@ def test_generate_with_template_element(tmpsite):
         inputs.elements.update({"badge": BadgeElement})
         return inputs
 
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extension(
-        Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks
+        Extension(name="test-theme", hooks={"on_render_collect": collect}), hooks
     )
 
-    _generate(tmpsite, hooks=hooks)
+    _render(tmpsite, hooks=hooks)
 
     output = tmpsite.get_output("index.html")
     assert '<span class="badge warning">Welcome:/' in output
@@ -909,9 +907,9 @@ def _badge_hooks(schema=_BadgeConfig._schema()):
         inputs.elements.update({"badge": BadgeElement})
         return inputs
 
-    hooks = GenerateHooks()
+    hooks = RenderHooks()
     apply_extension(
-        Extension(name="test-theme", hooks={"on_website_collect": collect}), hooks
+        Extension(name="test-theme", hooks={"on_render_collect": collect}), hooks
     )
     return hooks
 
@@ -919,7 +917,7 @@ def _badge_hooks(schema=_BadgeConfig._schema()):
 def test_element_called_without_config_uses_configured_config(tmpsite):
     tmpsite.make_page("index.html", "${ elements.badge() }")
 
-    _generate(
+    _render(
         tmpsite,
         hooks=_badge_hooks(),
         element_configs={"badge": {"label": "From YAML", "tone": "warning"}},
@@ -932,7 +930,7 @@ def test_element_called_without_config_uses_configured_config(tmpsite):
 def test_element_called_without_config_and_none_configured_uses_empty_config(tmpsite):
     tmpsite.make_page("index.html", "${ elements.badge() }")
 
-    _generate(tmpsite, hooks=_badge_hooks())
+    _render(tmpsite, hooks=_badge_hooks())
 
     output = tmpsite.get_output("index.html")
     assert '<span class="badge info">default label</span>' in output
@@ -942,7 +940,7 @@ def test_element_called_with_config_ignores_configured_config(tmpsite):
     # the explicit config replaces the configured one entirely; no merging
     tmpsite.make_page("index.html", '${ elements.badge({"label": "From page"}) }')
 
-    _generate(
+    _render(
         tmpsite,
         hooks=_badge_hooks(),
         element_configs={"badge": {"label": "From YAML", "tone": "warning"}},
@@ -955,7 +953,7 @@ def test_element_called_with_config_ignores_configured_config(tmpsite):
 def test_element_called_with_empty_config_ignores_configured_config(tmpsite):
     tmpsite.make_page("index.html", "${ elements.badge({}) }")
 
-    _generate(
+    _render(
         tmpsite,
         hooks=_badge_hooks(),
         element_configs={"badge": {"label": "From YAML", "tone": "warning"}},
@@ -971,7 +969,7 @@ def test_unconfigured_element_error_mentions_website_elements(
     tmpsite.make_page("index.html", "${ elements.badge() }")
 
     with raises(automata.website.exceptions.PageError) as excinfo:
-        _generate(tmpsite, hooks=_badge_hooks(_RequiredBadgeConfig._schema()))
+        _render(tmpsite, hooks=_badge_hooks(_RequiredBadgeConfig._schema()))
 
     message = str(excinfo.value)
     assert "index.html" in message
@@ -985,7 +983,7 @@ def test_element_with_invalid_configured_config_error_mentions_website_elements(
     tmpsite.make_page("index.html", "${ elements.badge() }")
 
     with raises(automata.website.exceptions.PageError) as excinfo:
-        _generate(
+        _render(
             tmpsite,
             hooks=_badge_hooks(_RequiredBadgeConfig._schema()),
             element_configs={"badge": {"tone": "warning"}},
@@ -1000,7 +998,7 @@ def test_configuring_unknown_element_raises(tmpsite):
     tmpsite.make_page("index.html", "Hello")
 
     with raises(automata.website.exceptions.WebsiteError) as excinfo:
-        _generate(
+        _render(
             tmpsite,
             hooks=_badge_hooks(),
             element_configs={"bagde": {"label": "Typo"}},
@@ -1021,21 +1019,21 @@ def _page_theme(name="test-theme", config=None, dependencies=()):
 
     return Extension(
         name=name,
-        hooks={"on_website_collect": collect},
+        hooks={"on_render_collect": collect},
         config=config or {},
         dependencies=list(dependencies),
     )
 
 
-def test_generate_makes_theme_available_in_templates(tmpsite):
+def test_render_makes_theme_available_in_templates(tmpsite):
     tmpsite.make_page("index.md", "${ theme.name }: ${ theme.config.title }")
 
-    _generate(tmpsite, theme=_page_theme(config={"title": "My Course"}))
+    _render(tmpsite, theme=_page_theme(config={"title": "My Course"}))
 
     assert "test-theme: My Course" in tmpsite.get_output("index.html")
 
 
-def test_generate_makes_extensions_available_in_templates_by_name(tmpsite):
+def test_render_makes_extensions_available_in_templates_by_name(tmpsite):
     dep = Extension(name="dep-ext", hooks={}, config={"b": "from dep"})
     ext = Extension(
         name="my-ext", hooks={}, config={"a": "from ext"}, dependencies=[dep]
@@ -1045,40 +1043,40 @@ def test_generate_makes_extensions_available_in_templates_by_name(tmpsite):
         '${ extensions["my-ext"].config.a } / ${ extensions["dep-ext"].config.b }',
     )
 
-    _generate(tmpsite, theme=_page_theme(), extensions=[ext])
+    _render(tmpsite, theme=_page_theme(), extensions=[ext])
 
     assert "from ext / from dep" in tmpsite.get_output("index.html")
 
 
-def test_generate_includes_theme_and_its_dependencies_in_extensions(tmpsite):
+def test_render_includes_theme_and_its_dependencies_in_extensions(tmpsite):
     dep = Extension(name="theme-dep", hooks={})
     tmpsite.make_page("index.md", "${ extensions | sort | join(',') }")
 
-    _generate(tmpsite, theme=_page_theme(dependencies=[dep]))
+    _render(tmpsite, theme=_page_theme(dependencies=[dep]))
 
     assert "test-theme,theme-dep" in tmpsite.get_output("index.html")
 
 
-def test_generate_applies_theme_and_extensions_when_hooks_omitted(tmpsite):
+def test_render_applies_theme_and_extensions_when_hooks_omitted(tmpsite):
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
         inputs.pages["extra.html"] = "Extra page"
         return inputs
 
-    ext = Extension(name="pages-ext", hooks={"on_website_collect": collect})
+    ext = Extension(name="pages-ext", hooks={"on_render_collect": collect})
 
-    _generate(tmpsite, theme=_page_theme(), extensions=[ext])
+    _render(tmpsite, theme=_page_theme(), extensions=[ext])
 
     assert "Extra page" in tmpsite.get_output("extra.html")
 
 
-def test_generate_does_not_add_extension_config_to_vars(tmpsite, tmp_path):
+def test_render_does_not_add_extension_config_to_vars(tmpsite, tmp_path):
     theme_dir = tmp_path / "custom_theme"
     (theme_dir / "templates").mkdir(parents=True)
     (theme_dir / "templates" / "page.html").write_text("${ content }")
     ext = extension_from_directory("custom", theme_dir, config={"title": "My Course"})
     tmpsite.make_page("index.md", "${ vars | length }")
 
-    _generate(tmpsite, theme=ext, vars={})
+    _render(tmpsite, theme=ext, vars={})
 
     assert tmpsite.get_output("index.html").strip() == "<p>0</p>"
 
@@ -1209,7 +1207,7 @@ def test_extension_from_directory_applies_defaults(tmp_path):
 # hooks ===========================================================================
 
 
-def test_generate_executes_script_hook_from_theme(tmpsite, tmp_path):
+def test_render_executes_script_hook_from_theme(tmpsite, tmp_path):
     """Test that script hooks run and receive hook args as JSON on stdin."""
     # given: a theme with a script hook that saves stdin (the JSON args) to a file
     theme_dir = tmp_path / "theme"
@@ -1220,14 +1218,14 @@ def test_generate_executes_script_hook_from_theme(tmpsite, tmp_path):
     (templates_dir / "page.html").write_text("<html>${ content }</html>")
 
     captured_file = tmp_path / "captured_args.json"
-    (hooks_dir / "on_generate_post").write_text(f"cat > '{captured_file}'")
+    (hooks_dir / "on_render_post").write_text(f"cat > '{captured_file}'")
 
     tmpsite.make_page("index.md", "# Home")
 
     theme = _make_theme(theme_dir=theme_dir)
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then: the script ran and received the hook args as JSON
     import json
@@ -1237,8 +1235,8 @@ def test_generate_executes_script_hook_from_theme(tmpsite, tmp_path):
     assert "build_directory" in args
 
 
-def test_generate_continues_without_hooks(tmpsite, tmp_path):
-    """Test that generate() works normally when theme has no hooks."""
+def test_render_continues_without_hooks(tmpsite, tmp_path):
+    """Test that render() works normally when theme has no hooks."""
     # given: a theme without hooks.py
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
@@ -1250,12 +1248,12 @@ def test_generate_continues_without_hooks(tmpsite, tmp_path):
     theme = _make_theme(theme_dir=theme_dir)
 
     # when / then: should not raise
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
     assert "Home" in tmpsite.get_output("index.html")
 
 
-def test_generate_handles_materials_already_in_build_directory(tmpsite, theme):
-    """Test that generate() works when materials directory is already in build dir."""
+def test_render_handles_materials_already_in_build_directory(tmpsite, theme):
+    """Test that render() works when materials directory is already in build dir."""
     # given - create materials directly in the build directory
     materials_in_build = tmpsite.build_directory / "materials"
     materials_in_build.mkdir(parents=True, exist_ok=True)
@@ -1272,7 +1270,7 @@ def test_generate_handles_materials_already_in_build_directory(tmpsite, theme):
     # when - pass the materials directory that's already in the build directory
     # This should not raise an error and should not try to copy to itself
     pages, static_content = tmpsite.load_content()
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         materials_in_build,
         pages=pages,
@@ -1320,7 +1318,7 @@ def test_default_theme_tailwind_rebuild_with_npx_available(tmpsite, monkeypatch)
     )
 
     # when
-    _generate(tmpsite, theme=theme)
+    _render(tmpsite, theme=theme)
 
     # then - Tailwind CLI should have been called
     tailwind_calls = [c for c in mock_run_calls if "@tailwindcss/cli" in str(c)]
@@ -1351,7 +1349,7 @@ def test_default_theme_fallback_when_npx_not_available(tmpsite, monkeypatch, cap
     import logging
 
     with caplog.at_level(logging.WARNING):
-        _generate(tmpsite, theme=theme)
+        _render(tmpsite, theme=theme)
 
     # then - should have warned about npx not being available
     assert any("npx not found" in record.message for record in caplog.records)
@@ -1370,7 +1368,7 @@ def test_extra_content_with_string_renders_through_full_pipeline(tmpsite, theme)
     pages["extra.html"] = markdown_content
 
     # when
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
@@ -1399,7 +1397,7 @@ vars:
     pages["greeting.html"] = content_with_frontmatter
 
     # when
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
@@ -1420,7 +1418,7 @@ def test_extra_content_with_bytes_writes_binary(tmpsite, theme):
     static_content["image.png"] = binary_content
 
     # when
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
@@ -1443,7 +1441,7 @@ def test_extra_content_with_path_copies_file(tmpsite, theme, tmp_path):
     static_content["copied.txt"] = source_file.read_text()
 
     # when
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
@@ -1463,7 +1461,7 @@ def test_extra_content_creates_subdirectories(tmpsite, theme):
     pages["deep/nested/page.html"] = content
 
     # when
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
@@ -1487,7 +1485,7 @@ def test_extra_content_with_multiple_items(tmpsite, theme, tmp_path):
     static_content["data.json"] = source_file.read_text()
 
     # when
-    automata.website.generate(
+    automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,
         pages=pages,
@@ -1504,83 +1502,83 @@ def test_extra_content_with_multiple_items(tmpsite, theme, tmp_path):
 # hooks parameter =====================================================================
 
 
-def test_generate_accepts_hooks_parameter(tmpsite, hooks, theme):
-    """Test that generate() accepts a hooks parameter."""
+def test_render_accepts_hooks_parameter(tmpsite, hooks, theme):
+    """Test that render() accepts a hooks parameter."""
     tmpsite.make_page("index.md", "# Test")
 
     # should not raise
-    _generate(tmpsite, hooks=hooks, theme=theme)
+    _render(tmpsite, hooks=hooks, theme=theme)
 
     assert "Test" in tmpsite.get_output("index.html")
 
 
-def test_user_pre_generate_hook_is_called(tmpsite, hooks, theme):
-    """Test that user-registered pre-generate hooks are called."""
+def test_user_render_extra_pages_hook_is_called(tmpsite, hooks, theme):
+    """Test that user-registered on_render_extra_pages hooks are called."""
     call_log = []
 
-    @hooks.on_generate_pre.register()
-    def my_pre_hook(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
-        call_log.append("pre_generate called")
+    @hooks.on_render_extra_pages.register()
+    def my_pre_hook(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
+        call_log.append("render_extra_pages called")
         return args
 
     tmpsite.make_page("index.md", "# Test")
-    _generate(tmpsite, hooks=hooks, theme=theme)
+    _render(tmpsite, hooks=hooks, theme=theme)
 
-    assert "pre_generate called" in call_log
+    assert "render_extra_pages called" in call_log
 
 
-def test_user_post_generate_hook_is_called(tmpsite, hooks, theme):
-    """Test that user-registered post-generate hooks are called."""
+def test_user_post_render_hook_is_called(tmpsite, hooks, theme):
+    """Test that user-registered on_render_post hooks are called."""
     call_log = []
 
-    @hooks.on_generate_post.register()
-    def my_post_hook(args: GeneratePostHookArgs) -> None:
-        call_log.append("post_generate called")
+    @hooks.on_render_post.register()
+    def my_post_hook(args: RenderPostHookArgs) -> None:
+        call_log.append("post_render called")
 
     tmpsite.make_page("index.md", "# Test")
-    _generate(tmpsite, hooks=hooks, theme=theme)
+    _render(tmpsite, hooks=hooks, theme=theme)
 
-    assert "post_generate called" in call_log
+    assert "post_render called" in call_log
 
 
-def test_user_pre_generate_hook_can_add_extra_content(tmpsite, hooks, theme):
-    """Test that user pre-generate hooks can add extra content."""
+def test_user_render_extra_pages_hook_can_add_extra_content(tmpsite, hooks, theme):
+    """Test that on_render_extra_pages hooks can add extra content."""
 
-    @hooks.on_generate_pre.register()
-    def add_extra_page(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+    @hooks.on_render_extra_pages.register()
+    def add_extra_page(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
         extra = args.extra_content or {}
         extra["from-hook.html"] = "# Added by hook"
-        return GeneratePreHookArgs(
+        return RenderExtraPagesHookArgs(
             build_directory=args.build_directory, extra_content=extra
         )
 
     tmpsite.make_page("index.md", "# Test")
-    _generate(tmpsite, hooks=hooks, theme=theme)
+    _render(tmpsite, hooks=hooks, theme=theme)
 
     assert "<h1>Added by hook</h1>" in tmpsite.get_output("from-hook.html")
 
 
-def test_pre_generate_pipeline_chains_transformations(tmpsite, hooks, theme):
-    """Test that pre-generate pipeline hooks chain their transformations."""
+def test_render_extra_pages_pipeline_chains_transformations(tmpsite, hooks, theme):
+    """Test that on_render_extra_pages hooks chain their transformations."""
 
-    @hooks.on_generate_pre.register()
-    def add_page_a(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+    @hooks.on_render_extra_pages.register()
+    def add_page_a(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
         extra = dict(args.extra_content or {})
         extra["a.html"] = "# Page A"
-        return GeneratePreHookArgs(
+        return RenderExtraPagesHookArgs(
             build_directory=args.build_directory, extra_content=extra
         )
 
-    @hooks.on_generate_pre.register()
-    def add_page_b(args: GeneratePreHookArgs) -> GeneratePreHookArgs:
+    @hooks.on_render_extra_pages.register()
+    def add_page_b(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
         extra = dict(args.extra_content or {})
         extra["b.html"] = "# Page B"
-        return GeneratePreHookArgs(
+        return RenderExtraPagesHookArgs(
             build_directory=args.build_directory, extra_content=extra
         )
 
     tmpsite.make_page("index.md", "# Test")
-    _generate(tmpsite, hooks=hooks, theme=theme)
+    _render(tmpsite, hooks=hooks, theme=theme)
 
     # Both pages should be generated (pipeline chains results)
     assert "<h1>Page A</h1>" in tmpsite.get_output("a.html")
@@ -1591,12 +1589,12 @@ def test_hooks_receive_build_directory(tmpsite, hooks, theme):
     """Test that hooks receive the build directory."""
     received = []
 
-    @hooks.on_generate_post.register()
-    def capture(args: GeneratePostHookArgs) -> None:
+    @hooks.on_render_post.register()
+    def capture(args: RenderPostHookArgs) -> None:
         received.append(args.build_directory)
 
     tmpsite.make_page("index.md", "# Test")
-    _generate(tmpsite, hooks=hooks, theme=theme)
+    _render(tmpsite, hooks=hooks, theme=theme)
 
     assert len(received) == 1
     assert received[0] == tmpsite.build_directory

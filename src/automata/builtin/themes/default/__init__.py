@@ -5,7 +5,7 @@ import json
 
 from automata._extension import Extension
 from automata.builtin.elements import listing_extension, schedule_extension
-from automata.hooks import GeneratePostHookArgs, WebsiteInputs
+from automata.hooks import RenderPostHookArgs, WebsiteInputs
 
 from . import hooks as _hooks_module
 from .elements import elements
@@ -46,14 +46,14 @@ def make_extension(config: dict) -> Extension:
         inputs.elements.update(elements)
         return inputs
 
-    def post_generate(args: GeneratePostHookArgs) -> None:
-        _hooks_module.post_generate(args.build_directory, config)
+    def post_render(args: RenderPostHookArgs) -> None:
+        _hooks_module.post_render(args.build_directory, config)
 
     return Extension(
         name="default",
         hooks={
-            "on_website_collect": collect,
-            "on_generate_post": post_generate,
+            "on_render_collect": collect,
+            "on_render_post": post_render,
         },
         config=config,
         schema=schema,

@@ -38,7 +38,7 @@ Module overview
     ├── website/
     │   ├── __init__.py          # Public API for website
     │   ├── _config.py           # WebsiteConfig
-    │   ├── _generate.py         # Website generation pipeline
+    │   ├── _render.py           # Website rendering pipeline
     │   ├── _elements.py         # Element, BasicElement, TemplateElement
     │   ├── _frontmatter.py      # Frontmatter parsing
     │   └── exceptions.py        # WebsiteError, PageError
@@ -76,7 +76,7 @@ either a ``make_extension(config)`` factory or an ``extension`` object.
 ``load_extensions`` in ``config.py`` returns ``(theme, extensions)``. It checks
 that the theme provides ``page.html`` and that no two different extensions
 share a name. ``Automata`` keeps these as ``.theme`` and ``.extensions``,
-registers them with ``apply_extensions``, and passes them to ``generate`` so
+registers them with ``apply_extensions``, and passes them to ``website.render`` so
 that templates can read them as ``theme`` and ``extensions``.
 
 Hooks system
@@ -93,7 +93,7 @@ The hooks system (``hooks/``) provides two hook types:
 per ``__init__`` call, preventing shared state between instances.
 
 Hook groups inherit from ``HooksBase``: ``DiscoverHooks``, ``BuildHooks``,
-``ExportHooks``, ``FilterHooks``, ``GenerateHooks``. The ``Hooks`` class
+``ExportHooks``, ``FilterHooks``, ``RenderHooks``. The ``Hooks`` class
 inherits from all of them.
 
 Materials pipeline
@@ -115,18 +115,18 @@ type. This enforces that you can't skip a step.
 Website generation
 ^^^^^^^^^^^^^^^^^^
 
-``website/_generate.py`` orchestrates:
+``website/_render.py`` orchestrates:
 
-1. Fire ``on_website_collect`` to gather templates, static files, elements from
+1. Fire ``on_render_collect`` to gather templates, static files, elements from
    extensions.
-2. Fire ``on_generate_pre`` for pre-processing.
+2. Fire ``on_render_extra_pages`` for pre-processing.
 3. Create a Jinja2 environment from collected templates.
 4. Load materials from ``materials.json``.
 5. Process the content directory (render Markdown/HTML, copy static files).
 6. Process extra content from extensions and hooks.
 7. Copy static files from extensions.
 8. Copy materials to the build directory.
-9. Fire ``on_generate_post`` for post-processing.
+9. Fire ``on_render_post`` for post-processing.
 
 
 Data flow
@@ -155,10 +155,10 @@ Data flow
         │
         └─── render_website(materials)
                  │
-                 ├── on_website_collect (gather templates, elements, etc.)
+                 ├── on_render_collect (gather templates, elements, etc.)
                  ├── render content directory
                  ├── copy static files
-                 └── on_generate_post (e.g., rebuild Tailwind CSS)
+                 └── on_render_post (e.g., rebuild Tailwind CSS)
 
 
 Configuration resolution

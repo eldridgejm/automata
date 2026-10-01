@@ -11,14 +11,14 @@ from automata._extension import (
     extension_from_entry_point,
 )
 from automata.exceptions import Error
-from automata.hooks import GenerateHooks, WebsiteInputs
+from automata.hooks import RenderHooks, WebsiteInputs
 
 
 def _collect(ext: Extension) -> WebsiteInputs:
-    """Helper: apply extension to hooks, fire on_website_collect, return inputs."""
-    hooks = GenerateHooks()
+    """Helper: apply extension to hooks, fire on_render_collect, return inputs."""
+    hooks = RenderHooks()
     apply_extension(ext, hooks)
-    return hooks.on_website_collect(WebsiteInputs())
+    return hooks.on_render_collect(WebsiteInputs())
 
 
 # extension_from_directory =============================================================
@@ -235,13 +235,13 @@ def test_from_directory_loads_script_hooks(tmp_path: Path) -> None:
     templates_dir.mkdir(parents=True)
     hooks_dir.mkdir()
     (templates_dir / "base.html").write_text("<html></html>")
-    (hooks_dir / "on_generate_post").write_text("cat > /dev/null")
-    (hooks_dir / "on_build_success").write_text("cat > /dev/null")
+    (hooks_dir / "on_render_post").write_text("cat > /dev/null")
+    (hooks_dir / "on_build_artifact_success").write_text("cat > /dev/null")
 
     ext = extension_from_directory("test", theme_dir)
 
-    assert "on_generate_post" in ext.hooks
-    assert "on_build_success" in ext.hooks
+    assert "on_render_post" in ext.hooks
+    assert "on_build_artifact_success" in ext.hooks
 
 
 def test_from_directory_works_without_hooks_dir(tmp_path: Path) -> None:
@@ -252,8 +252,8 @@ def test_from_directory_works_without_hooks_dir(tmp_path: Path) -> None:
 
     ext = extension_from_directory("test", theme_dir)
 
-    # only on_website_collect should be present (no script hooks)
-    assert list(ext.hooks.keys()) == ["on_website_collect"]
+    # only on_render_collect should be present (no script hooks)
+    assert list(ext.hooks.keys()) == ["on_render_collect"]
 
 
 def test_from_directory_ignores_empty_hook_scripts(tmp_path: Path) -> None:
@@ -263,8 +263,47 @@ def test_from_directory_ignores_empty_hook_scripts(tmp_path: Path) -> None:
     templates_dir.mkdir(parents=True)
     hooks_dir.mkdir()
     (templates_dir / "base.html").write_text("<html></html>")
-    (hooks_dir / "on_generate_post").write_text("")  # empty script
+    (hooks_dir / "on_render_post").write_text("")  # empty script
 
     ext = extension_from_directory("test", theme_dir)
 
-    assert "on_generate_post" not in ext.hooks
+    assert "on_render_post" not in ext.hooks
+
+
+def test_from_directory_raises_on_unknown_hook_script(tmp_path: Path) -> None:
+    theme_dir = tmp_path / "theme"
+    (theme_dir / "templates").mkdir(parents=True)
+    (theme_dir / "hooks").mkdir()
+    (theme_dir / "hooks" / "on_generate_post").write_text("cat > /dev/null")
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_directory("test", theme_dir)
+
+    message = str(excinfo.value)
+    assert "on_generate_post" in message
+    assert "on_render_post" in message  # lists the valid names
+
+
+def test_from_directory_raises_on_hook_script_for_pipeline_hook(tmp_path: Path) -> None:
+    theme_dir = tmp_path / "theme"
+    (theme_dir / "templates").mkdir(parents=True)
+    (theme_dir / "hooks").mkdir()
+    (theme_dir / "hooks" / "on_render_collect").write_text("cat > /dev/null")
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_directory("test", theme_dir)
+
+    assert "on_render_collect" in str(excinfo.value)
+
+
+def test_from_directory_loads_renamed_hook_scripts(tmp_path: Path) -> None:
+    theme_dir = tmp_path / "theme"
+    (theme_dir / "templates").mkdir(parents=True)
+    (theme_dir / "hooks").mkdir()
+    (theme_dir / "hooks" / "on_render_pre").write_text("cat > /dev/null")
+    (theme_dir / "hooks" / "on_build_artifact_success").write_text("cat > /dev/null")
+
+    ext = extension_from_directory("test", theme_dir)
+
+    assert "on_render_pre" in ext.hooks
+    assert "on_build_artifact_success" in ext.hooks

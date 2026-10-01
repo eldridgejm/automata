@@ -2,7 +2,7 @@ Creating a Theme
 ================
 
 A theme is an extension that provides HTML templates, static files (CSS, JS),
-and optionally custom elements. It hooks into ``on_website_collect`` to
+and optionally custom elements. It hooks into ``on_render_collect`` to
 contribute these resources to the website generation pipeline.
 
 A site has exactly one theme, set with ``website.theme`` in ``automata.yaml``.
@@ -24,7 +24,7 @@ The simplest way to create a theme is as a directory:
         static/
             style.css        # optional: static files copied to output
         hooks/
-            on_generate_post # optional: shell script hooks
+            on_render_post # optional: shell script hooks
         schema.json          # optional: config validation schema
 
 Point ``website.theme`` at the directory with a path containing a slash:
@@ -35,7 +35,7 @@ Point ``website.theme`` at the directory with a path containing a slash:
       theme: ./my-theme
 
 When loaded, this directory is converted into an ``Extension`` named after the
-directory (here, ``my-theme``), whose ``on_website_collect`` hook provides the
+directory (here, ``my-theme``), whose ``on_render_collect`` hook provides the
 templates and static files.
 
 A directory theme cannot provide elements or Python hooks. For those, package
@@ -158,27 +158,27 @@ the command; the hook args are piped to it as JSON on stdin:
 
 .. code-block:: text
 
-    # my-theme/hooks/on_generate_post
+    # my-theme/hooks/on_render_post
     echo "Site built at $(jq -r .build_directory)"
 
 Any observer hook point can be used this way (see :doc:`hooks`).
 
 A packaged theme can instead register a Python callable on
-``on_generate_post`` in ``make_extension``, closing over its config. The
+``on_render_post`` in ``make_extension``, closing over its config. The
 default theme does this to rebuild Tailwind CSS:
 
 .. code-block:: python
 
-    from automata.hooks import GeneratePostHookArgs
+    from automata.hooks import RenderPostHookArgs
 
     def make_extension(config):
-        def post_generate(args: GeneratePostHookArgs) -> None:
+        def post_render(args: RenderPostHookArgs) -> None:
             if config["rebuild_tailwind"]:
                 ...  # rebuild CSS in args.build_directory
 
         return Extension(
             name="my-theme",
-            hooks={"on_website_collect": collect, "on_generate_post": post_generate},
+            hooks={"on_render_collect": collect, "on_render_post": post_render},
             config=config,
         )
 

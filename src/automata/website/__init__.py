@@ -4,7 +4,7 @@ from .._extension import extension_from_directory, extension_from_entry_point
 from . import exceptions
 from ._elements import BasicElement, Element, TemplateElement
 from ._frontmatter import Frontmatter
-from ._generate import RenderContext, generate
+from ._render import RenderContext, render
 from .exceptions import PageError
 
 __all__ = [
@@ -14,7 +14,7 @@ __all__ = [
     "Element",
     "BasicElement",
     "TemplateElement",
-    "generate",
+    "render",
     "extension_from_directory",
     "extension_from_entry_point",
     "exceptions",

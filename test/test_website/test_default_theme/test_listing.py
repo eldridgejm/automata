@@ -1,6 +1,6 @@
 """Tests for the listing element."""
 
-from conftest import generate
+from conftest import render
 
 
 def test_listing_element_renders_simple_table(tmpsite, theme):
@@ -52,7 +52,7 @@ def test_listing_element_renders_simple_table(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -109,7 +109,7 @@ def test_listing_element_renders_multiple_columns(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -165,7 +165,7 @@ def test_listing_element_with_numbered_rows(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -212,7 +212,7 @@ def test_listing_element_with_artifact_links(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then: artifacts should be accessible in templates
     output = tmpsite.get_output("index.html")
@@ -270,7 +270,7 @@ def test_listing_element_conditional_content_when_artifact_missing(tmpsite, them
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -327,7 +327,7 @@ def test_listing_element_conditional_content_when_metadata_missing(tmpsite, them
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
@@ -384,7 +384,7 @@ def test_listing_element_conditional_content_non_null_metadata(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, theme=theme)
+    render(tmpsite, theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")

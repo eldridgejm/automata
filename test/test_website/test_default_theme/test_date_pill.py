@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from conftest import generate
+from conftest import render
 
 
 def test_date_pill_uses_now_for_current_date(tmpsite, theme):
@@ -14,14 +14,14 @@ def test_date_pill_uses_now_for_current_date(tmpsite, theme):
     )
 
     # when
-    generate(tmpsite, current_time=datetime(2024, 6, 15), theme=theme)
+    render(tmpsite, current_time=datetime(2024, 6, 15), theme=theme)
 
     # then
     output = tmpsite.get_output("index.html")
     assert "Before!" in output
 
     # when
-    generate(tmpsite, current_time=datetime(2024, 6, 17), theme=theme)
+    render(tmpsite, current_time=datetime(2024, 6, 17), theme=theme)
     output = tmpsite.get_output("index.html")
     assert "After!" in output
 
@@ -37,7 +37,7 @@ def test_date_pill_with_template_variables(tmpsite, theme):
     )
 
     # when
-    generate(
+    render(
         tmpsite,
         current_time=datetime(2024, 6, 15),
         vars={"foo": "BAR"},
