@@ -62,4 +62,5 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Document the on_website_generate_pre hook in hooks.rst (now on_render_pre)
 - [ ] Warn about website.elements entries that no page uses
 - [ ] Decide on the unused announcement_box.html template, and whether announcements get release times
-- [ ] Fix the example's practice-problems script hook failing when run from another directory
+- [x] Fix the example's practice-problems script hook failing when run from another directory
+- [ ] Decide whether a failing script hook (nonzero exit) should fail the build; today its exit code is ignored, which hid the practice-problems path bug in a passing test

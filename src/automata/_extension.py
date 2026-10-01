@@ -5,6 +5,8 @@ from __future__ import annotations
 import dataclasses
 import importlib.metadata as metadata
 import json
+import os
+import pathlib
 import subprocess
 from collections.abc import Callable, Iterable
 from importlib.resources.abc import Traversable
@@ -199,6 +201,7 @@ def extension_from_directory(
     config: dict[str, Any] | None = None,
     require_templates: bool = True,
     dependencies: list[Extension] | None = None,
+    project_directory: pathlib.Path | None = None,
 ) -> Extension:
     """Create an Extension from a directory.
 
@@ -209,7 +212,9 @@ def extension_from_directory(
     - ``schema.json`` --- JSON schema for validating extension config.
     - ``hooks/`` --- shell script hooks. Each file is named after an
       observer hook point (e.g., ``on_render_post``). The file content
-      is the shell command; hook args are piped as JSON on stdin.
+      is the shell command; hook args are piped as JSON on stdin. The
+      command runs in *project_directory* (if given), with the environment
+      variables ``AUTOMATA_PROJECT_DIR`` and ``AUTOMATA_EXTENSION_DIR`` set.
 
     Parameters
     ----------
@@ -224,6 +229,10 @@ def extension_from_directory(
         subdirectory.
     dependencies : list[Extension] | None
         Extensions that must be applied before this one.
+    project_directory : pathlib.Path | None
+        The project root (the directory containing ``automata.yaml``). Script
+        hooks run there, so relative paths in their commands are relative to
+        the project. If None, they run in the current working directory.
 
     Returns
     -------
@@ -285,7 +294,7 @@ def extension_from_directory(
     # Load script hooks from hooks/ directory
     hooks_dir = directory / "hooks"
     if hooks_dir.is_dir():
-        ext_hooks.update(_load_script_hooks(hooks_dir))
+        ext_hooks.update(_load_script_hooks(hooks_dir, directory, project_directory))
 
     return Extension(
         name=name,
@@ -423,13 +432,21 @@ def _walk(
             on_file(key, entry)
 
 
-def _load_script_hooks(hooks_dir: Traversable) -> dict[str, Callable]:
+def _load_script_hooks(
+    hooks_dir: Traversable,
+    extension_directory: Traversable,
+    project_directory: pathlib.Path | None,
+) -> dict[str, Callable]:
     """Load shell script hooks from a hooks/ directory.
 
     Each file in the directory is named after an observer hook point
     (e.g., ``on_render_post``, ``on_build_artifact_success``). The file content
     is the shell command to run. Hook args are serialized as JSON and
     piped to the command on stdin.
+
+    Commands run in *project_directory* (or the current working directory if
+    it is None), with ``AUTOMATA_EXTENSION_DIR`` and (if known)
+    ``AUTOMATA_PROJECT_DIR`` set in their environment.
 
     Returns a dict mapping hook point names to callables.
     """
@@ -441,6 +458,11 @@ def _load_script_hooks(hooks_dir: Traversable) -> dict[str, Callable]:
         for name, hint in get_type_hints(Hooks).items()
         if get_origin(hint) is ObserverHook
     )
+
+    cwd = None if project_directory is None else project_directory.absolute()
+    env = {**os.environ, "AUTOMATA_EXTENSION_DIR": str(extension_directory)}
+    if cwd is not None:
+        env["AUTOMATA_PROJECT_DIR"] = str(cwd)
 
     script_hooks: dict[str, Callable] = {}
 
@@ -462,7 +484,9 @@ def _load_script_hooks(hooks_dir: Traversable) -> dict[str, Callable]:
         def _make_hook(cmd: str) -> Callable:
             def _hook(args: Any) -> None:
                 payload = _default_serializer(args)
-                subprocess.run(cmd, input=payload, shell=True, text=True)
+                subprocess.run(
+                    cmd, input=payload, shell=True, text=True, cwd=cwd, env=env
+                )
 
             return _hook
 

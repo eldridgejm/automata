@@ -161,7 +161,9 @@ the command; the hook args are piped to it as JSON on stdin:
     # my-theme/hooks/on_render_post
     echo "Site built at $(jq -r .build_directory)"
 
-Any observer hook point can be used this way (see :doc:`hooks`).
+Any observer hook point can be used this way. The command runs from the
+project root, with ``AUTOMATA_PROJECT_DIR`` and ``AUTOMATA_EXTENSION_DIR`` set
+(see :doc:`hooks`).
 
 A packaged theme can instead register a Python callable on
 ``on_render_post`` in ``make_extension``, closing over its config. The

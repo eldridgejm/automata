@@ -64,6 +64,10 @@ def test_build_end_to_end(example_project):
     # Verify the theme's config reaches its templates
     assert "Theoretical Foundations of Data Science II" in index_html
 
+    # Verify the practice-problems script hook ran (from the project root,
+    # even though the test process runs elsewhere) and its pages were rendered
+    assert (build_dir / "practice" / "week-01.html").exists()
+
     # Verify theme static files were copied
     assert (build_dir / "static").exists(), "Style directory should exist"
     assert (build_dir / "static" / "style.css").exists(), "CSS file should be copied"

@@ -307,3 +307,54 @@ def test_from_directory_loads_renamed_hook_scripts(tmp_path: Path) -> None:
 
     assert "on_render_pre" in ext.hooks
     assert "on_build_artifact_success" in ext.hooks
+
+
+def _run_render_post(ext, build_directory):
+    """Apply an extension to fresh hooks and fire on_render_post."""
+    from automata.hooks import Hooks, RenderPostHookArgs
+
+    hooks = Hooks()
+    apply_extension(ext, hooks)
+    hooks.on_render_post(RenderPostHookArgs(build_directory=build_directory))
+
+
+def test_script_hooks_run_in_project_directory(tmp_path: Path, monkeypatch) -> None:
+    # given: the process is running somewhere other than the project
+    project = tmp_path / "project"
+    ext_dir = project / "extensions" / "tools"
+    (ext_dir / "hooks").mkdir(parents=True)
+    (ext_dir / "hooks" / "on_render_post").write_text("cat > /dev/null && touch ran")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    ext = extension_from_directory(
+        "tools", ext_dir, require_templates=False, project_directory=project
+    )
+
+    # when
+    _run_render_post(ext, project / "_build")
+
+    # then
+    assert (project / "ran").exists()
+    assert not (elsewhere / "ran").exists()
+
+
+def test_script_hooks_receive_project_and_extension_directories(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    ext_dir = project / "extensions" / "tools"
+    (ext_dir / "hooks").mkdir(parents=True)
+    (ext_dir / "hooks" / "on_render_post").write_text(
+        'cat > /dev/null && echo "$AUTOMATA_PROJECT_DIR" > project.txt '
+        '&& echo "$AUTOMATA_EXTENSION_DIR" > extension.txt'
+    )
+
+    ext = extension_from_directory(
+        "tools", ext_dir, require_templates=False, project_directory=project
+    )
+    _run_render_post(ext, project / "_build")
+
+    assert (project / "project.txt").read_text().strip() == str(project)
+    assert (project / "extension.txt").read_text().strip() == str(ext_dir)

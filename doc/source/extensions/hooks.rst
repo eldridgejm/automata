@@ -199,7 +199,15 @@ Shell scripts can be disabled per-hook with ``allow_shell=False``.
 
 Directory extensions can also provide shell script hooks as files in a
 ``hooks/`` subdirectory, each named after an observer hook point (see
-:doc:`themes`).
+:doc:`themes`). A file named after anything else is an error when the extension
+is loaded. These commands run from the project root (the directory containing
+``automata.yaml``), whatever directory automata was started from, so relative
+paths in them are relative to the project. Two environment variables are set:
+
+- ``AUTOMATA_PROJECT_DIR`` --- the project root.
+- ``AUTOMATA_EXTENSION_DIR`` --- the extension's own directory, for running
+  scripts that ship with the extension (e.g.,
+  ``sh "$AUTOMATA_EXTENSION_DIR/build.sh"``).
 
 
 Registering hooks in Python

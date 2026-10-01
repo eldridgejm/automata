@@ -161,7 +161,11 @@ def _load_extension_spec(spec: Any, cwd: Path, group: str) -> Extension:
     if "/" in name or "\\" in name:
         # directory extensions are named after the directory itself
         return extension_from_directory(
-            Path(name).name, cwd / name, config=ext_config, require_templates=False
+            Path(name).name,
+            cwd / name,
+            config=ext_config,
+            require_templates=False,
+            project_directory=cwd,
         )
     else:
         return extension_from_entry_point(name, config=ext_config, group=group)
