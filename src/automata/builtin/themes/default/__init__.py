@@ -7,8 +7,8 @@ from automata._extension import Extension
 from automata.builtin.elements import listing_extension, schedule_extension
 from automata.hooks import GeneratePostHookArgs, WebsiteInputs
 
-from .elements import elements
 from . import hooks as _hooks_module
+from .elements import elements
 
 
 def _collect_files(directory, as_text=False):

@@ -16,10 +16,10 @@ from ._definitions import (
     GeneratePostHookArgs,
     GeneratePreHookArgs,
     Hooks,
+    PublisherRegistryArgs,
     PublishHooks,
     PublishPostHookArgs,
     PublishPreHookArgs,
-    PublisherRegistryArgs,
     WebsiteGeneratePreHookArgs,
     WebsiteInputs,
 )

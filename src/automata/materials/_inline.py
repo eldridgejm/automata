@@ -5,7 +5,7 @@ from typing import Any, Mapping, Optional
 
 from ._discover_collection import parse_collection
 from ._discover_publication import parse_publication
-from ._types import Collection, PublicationSchema, UnbuiltArtifact, Universe
+from ._types import Collection, UnbuiltArtifact, Universe
 
 
 def _last_publication(collection: Collection) -> Optional[Any]:
@@ -56,26 +56,23 @@ def discover_inline(
         collection_yaml = {
             "publication_schema": {
                 "required_artifacts": schema_def.get("required_artifacts", []),
-                **{
-                    k: v
-                    for k, v in schema_def.items()
-                    if k != "required_artifacts"
-                },
+                **{k: v for k, v in schema_def.items() if k != "required_artifacts"},
             },
         }
 
         # Use a synthetic source path for error messages
         source = project_path / "automata.yaml"
 
-        collection, _ = parse_collection(
-            collection_yaml, source=source, vars=vars
-        )
+        collection, _ = parse_collection(collection_yaml, source=source, vars=vars)
 
         # Resolve each publication
         for pub_key, raw_pub in raw_publications.items():
             # Ensure no recipes are specified
             for artifact_key, artifact_def in raw_pub.get("artifacts", {}).items():
-                if isinstance(artifact_def, dict) and artifact_def.get("recipe") is not None:
+                if (
+                    isinstance(artifact_def, dict)
+                    and artifact_def.get("recipe") is not None
+                ):
                     raise ValueError(
                         f"Inline materials cannot have recipes "
                         f"(collection={collection_name!r}, "

@@ -159,7 +159,7 @@ class WebsiteInputs:
     templates: dict[str, str] = field(default_factory=dict)
     static_files: dict[str, "str | bytes | Traversable"] = field(default_factory=dict)
     elements: dict[str, "type[Element]"] = field(default_factory=dict)
-    pages: dict[str, "str | bytes | pathlib.Path"] = field(default_factory=dict)
+    pages: dict[str, str] = field(default_factory=dict)
     vars: dict[str, Any] = field(default_factory=dict)
 
 

@@ -5,7 +5,6 @@ testing through the full generate() pipeline and inspecting HTML output.
 """
 
 from bs4 import BeautifulSoup, Tag
-
 from conftest import generate
 
 

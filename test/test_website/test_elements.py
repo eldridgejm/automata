@@ -1,9 +1,9 @@
+import jinja2
 from pytest import fixture, raises
 from smartconfig.types import ConfigurationDict
 
 from automata.materials import ExportedArtifact, Universe
 from automata.website import BasicElement, RenderContext
-import jinja2
 
 
 @fixture

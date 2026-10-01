@@ -3,20 +3,22 @@
 from pytest import fixture
 
 import automata.website
-from automata._extension import apply_extension
+from automata._extension import apply_extension, extension_from_entry_point
 from automata.hooks import GenerateHooks
-from automata._extension import extension_from_entry_point
 
 
 @fixture
 def hooks():
     h = GenerateHooks()
-    ext = extension_from_entry_point("default", config={
-        "short_title": "DSC 40B",
-        "long_title": "Theoretical Foundations of Data Science II",
-        "navigation": [],
-        "rebuild_tailwind": False,
-    })
+    ext = extension_from_entry_point(
+        "default",
+        config={
+            "short_title": "DSC 40B",
+            "long_title": "Theoretical Foundations of Data Science II",
+            "navigation": [],
+            "rebuild_tailwind": False,
+        },
+    )
     apply_extension(ext, h)
     return h
 

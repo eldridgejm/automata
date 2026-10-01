@@ -30,9 +30,8 @@ def publish(build_directory: Path, config: dict[str, Any]) -> None:
     remote = config.get("remote", "origin")
     message = config.get("message", "Deploy to GitHub Pages")
 
-    _run = lambda *args, **kw: subprocess.run(
-        args, check=True, capture_output=True, text=True, **kw
-    )
+    def _run(*args, **kw):
+        return subprocess.run(args, check=True, capture_output=True, text=True, **kw)
 
     # Work in a temporary directory so we don't disturb the working tree
     with tempfile.TemporaryDirectory() as tmpdir:

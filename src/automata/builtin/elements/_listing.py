@@ -5,7 +5,6 @@ from typing import Any, cast
 import smartconfig
 
 from automata._extension import Extension
-from automata.hooks import WebsiteInputs
 from automata.util.resolution import string_or_template_string, unwrap_templates
 from automata.website import TemplateElement
 

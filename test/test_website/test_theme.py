@@ -3,9 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from automata._extension import Extension, apply_extension
+from automata._extension import (
+    Extension,
+    apply_extension,
+    extension_from_directory,
+    extension_from_entry_point,
+)
 from automata.hooks import GenerateHooks, WebsiteInputs
-from automata._extension import extension_from_directory, extension_from_entry_point
 
 
 def _collect(ext: Extension) -> WebsiteInputs:
