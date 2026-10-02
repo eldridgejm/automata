@@ -1119,3 +1119,20 @@ def test_for_each_link_errors_give_its_keypath(schedule_element):
         "primary_activity_collections.0.for_each_publication.resources.0."
         "for_each_link.text"
     )
+
+
+def test_an_announcement_for_a_week_not_in_the_schedule_is_an_error(schedule_element):
+    config = _weekly_config(
+        announcements=[
+            {"week": 1, "content": "Welcome", "urgent": False},
+            {"week": 5, "content": "Too late", "urgent": False},
+        ]
+    )
+
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
+        schedule_element.template_vars(config)
+
+    assert format_keypath(excinfo.value.keypath) == "announcements.1.week"
+    assert excinfo.value.reason == (
+        "Week 5 is not in the schedule, which has weeks 1 to 3."
+    )

@@ -753,7 +753,18 @@ def make_announcements(
     past_weeks, _ = automata.util.weeks.order_weeks_by_recency(weeks, current_date)
     most_recent_week = past_weeks[0] if past_weeks else None
 
-    for announcement_config in element_config.get("announcements", []):
+    numbers = sorted(week.number for week in weeks)
+    for i, announcement_config in enumerate(element_config.get("announcements", [])):
+        week = announcement_config["week"]
+        if week is not None and week not in week_to_announcements:
+            raise smartconfig.exceptions.ResolutionError(
+                f"Week {week} is not in the schedule, which has weeks "
+                f"{numbers[0]} to {numbers[-1]}."
+                if numbers
+                else f"Week {week} is not in the schedule, which has no weeks.",
+                ("announcements", str(i), "week"),
+            )
+
         start = announcement_config.get("start_displaying_on")
         if start is not None and start > current_date:
             continue
