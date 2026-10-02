@@ -2,7 +2,7 @@
 
 import datetime
 from dataclasses import dataclass
-from typing import Any, TypeVar, cast
+from typing import Any, Callable, TypeVar, cast
 
 import smartconfig
 
@@ -12,7 +12,6 @@ import automata.util.weeks
 from automata.extensions import Extension
 from automata.util.resolution import string_or_template_string
 from automata.website import RenderContext, TemplateElement
-from automata.website.exceptions import WebsiteError
 
 from ._common import get_collection
 
@@ -302,11 +301,12 @@ def make_activity_from_config(
 
     # Validate that activities only use allowed resource types
     # (artifact_links and metadata_links require a publication context)
-    for resource in resolved_config["resources"]:
+    for i, resource in enumerate(resolved_config["resources"]):
         if resource["type"] not in ("html", "markdown", "links"):
-            raise WebsiteError(
+            raise smartconfig.exceptions.ResolutionError(
                 f"Extra activities can only use 'html', 'markdown', or 'links' "
-                f"resource types, but got '{resource['type']}'"
+                f"resource types, but got '{resource['type']}'.",
+                ("resources", str(i), "type"),
             )
 
     return Activity(
@@ -465,7 +465,6 @@ def make_activities_from_collection_config(
     """
 
     collection = get_collection(context, config["collection"], "schedule")
-    publications = list(collection.publications.values())
 
     for_each_publication_config = config["for_each_publication"]
 
@@ -517,13 +516,22 @@ def make_activities_from_collection_config(
                 )
         return config
 
-    activity_configs = automata.materials.resolve_for_each_publication(
-        publications,
-        for_each_publication_config,
-        schema=ACTIVITY_CONFIG_SCHEMA_WITH_DATES,
-        vars=context.to_dict(),
-        fixup=fixup,
-    )
+    # resolve one publication at a time, so that errors can name it
+    activity_configs = []
+    for key, publication in collection.publications.items():
+        try:
+            activity_configs += automata.materials.resolve_for_each_publication(
+                [publication],
+                for_each_publication_config,
+                schema=ACTIVITY_CONFIG_SCHEMA_WITH_DATES,
+                vars=context.to_dict(),
+                fixup=fixup,
+            )
+        except smartconfig.exceptions.ResolutionError as e:
+            raise smartconfig.exceptions.ResolutionError(
+                f'{e.reason} (for publication "{key}")',
+                ("for_each_publication", *e.keypath),
+            ) from None
 
     # finally, convert each activity config into an Activity instance
     return [
@@ -577,29 +585,28 @@ def make_activities(
 
     """
 
+    def each(key: str, make: Callable[[Any, RenderContext], Any]) -> list:
+        """Apply *make* to each entry of config[key], naming the entry in errors."""
+        results = []
+        for i, entry in enumerate(config[key]):
+            try:
+                results.append(make(entry, context))
+            except smartconfig.exceptions.ResolutionError as e:
+                raise smartconfig.exceptions.ResolutionError(
+                    e.reason, (key, str(i), *e.keypath)
+                ) from None
+        return results
+
     primary_activities = flatten(
-        [
-            make_activities_from_collection_config(activity_collection_config, context)
-            for activity_collection_config in config["primary_activity_collections"]
-        ]
+        each("primary_activity_collections", make_activities_from_collection_config)
     )
-
     secondary_activities = flatten(
-        [
-            make_activities_from_collection_config(activity_collection_config, context)
-            for activity_collection_config in config["secondary_activity_collections"]
-        ]
+        each("secondary_activity_collections", make_activities_from_collection_config)
     )
-
-    primary_activities += [
-        make_activity_from_config(activity_config, context)
-        for activity_config in config["extra_primary_activities"]
-    ]
-
-    secondary_activities += [
-        make_activity_from_config(activity_config, context)
-        for activity_config in config["extra_secondary_activities"]
-    ]
+    primary_activities += each("extra_primary_activities", make_activity_from_config)
+    secondary_activities += each(
+        "extra_secondary_activities", make_activity_from_config
+    )
 
     week_to_primary_activities = automata.util.weeks.place_into_display_weeks(
         primary_activities,
@@ -767,7 +774,10 @@ def order_weeks(
     elif week_order == "chronological":
         return sorted(weeks, key=lambda w: w.start_date)
     else:
-        raise WebsiteError(f"Unsupported week_order: {week_order}")
+        raise smartconfig.exceptions.ResolutionError(
+            f'Must be "this_week_first" or "chronological", not "{week_order}".',
+            ("week_order",),
+        )
 
 
 # schedule element =====================================================================

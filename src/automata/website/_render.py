@@ -23,6 +23,7 @@ from ..hooks import (
 )
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util import markdown as markdown_util
+from ..util.resolution import describe_config_error, format_keypath
 from ._frontmatter import Frontmatter, read_frontmatter
 from .exceptions import PageError, WebsiteError
 
@@ -183,24 +184,40 @@ class _BoundElement:
                 f"configuration), but was given {len(args)}."
             )
         config = args[0] if args else None
-        key = f"website.elements.{self.name}"
+        key = ("website", "elements", self.name)
 
+        # where the configuration came from, as a prefix for error messages
+        note = ""
         if config is not None:
-            source = "passed in the page"
+            where = f"the configuration passed to elements.{self.name}"
+            prefix: tuple = ()
             if self.configured is not None:
-                source += f" ({key} is ignored when a configuration is passed)"
-        elif self.configured is not None:
-            config = self.configured
-            source = f"from {key}"
+                note = (
+                    f" ({format_keypath(key)} is ignored when a configuration is "
+                    f"passed.)"
+                )
         else:
-            config = {}
-            source = f"none passed in the page, and {key} is not set"
+            where = None
+            prefix = key
+            if self.configured is not None:
+                config = self.configured
+            else:
+                config = {}
+                note = (
+                    f" ({format_keypath(key)} is not set, and the page passed no "
+                    f"configuration.)"
+                )
 
         try:
             return self.element(config)
+        except smartconfig.exceptions.ResolutionError as e:
+            message = describe_config_error(e.reason, (*prefix, *e.keypath))
+            if where is not None:
+                message = f"{where}: {message}"
+            raise WebsiteError(message + note) from None
         except smartconfig.exceptions.Error as e:
             raise WebsiteError(
-                f'Invalid configuration for element "{self.name}" ({source}): {e}'
+                f'Invalid configuration for element "{self.name}": {e}{note}'
             ) from e
 
 

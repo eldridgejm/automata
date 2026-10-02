@@ -1018,6 +1018,33 @@ def test_element_with_invalid_configured_config_error_mentions_website_elements(
     assert "label" in message
 
 
+def test_configured_element_errors_give_the_website_elements_keypath(tmpsite):
+    tmpsite.make_page("index.html", "${ elements.badge() }")
+
+    with raises(automata.website.exceptions.PageError) as excinfo:
+        _render(
+            tmpsite,
+            hooks=_badge_hooks(),
+            element_configs={"badge": {"label": ["a", "list"]}},
+        )
+
+    assert str(excinfo.value).endswith(
+        "website.elements.badge.label: Expected a string, but got a list."
+    )
+
+
+def test_passed_element_config_errors_name_the_element(tmpsite):
+    tmpsite.make_page("index.html", '${ elements.badge({"label": ["a"]}) }')
+
+    with raises(automata.website.exceptions.PageError) as excinfo:
+        _render(tmpsite, hooks=_badge_hooks())
+
+    assert str(excinfo.value).endswith(
+        "the configuration passed to elements.badge: label: Expected a string, "
+        "but got a list."
+    )
+
+
 def test_configuring_unknown_element_raises(tmpsite):
     tmpsite.make_page("index.html", "Hello")
 

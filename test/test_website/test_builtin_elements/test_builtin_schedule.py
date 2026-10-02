@@ -14,6 +14,7 @@ import smartconfig.types
 import automata.materials
 import automata.website
 from automata.builtin.elements import Schedule
+from automata.util.resolution import format_keypath
 from automata.website import RenderContext
 
 # Fixtures ===========================================================================
@@ -797,11 +798,14 @@ def test_this_week_first_week_order_starts_with_the_current_week(schedule_elemen
     assert [week.number for week in tvars["weeks"]][0] == 2
 
 
-def test_unknown_week_order_is_an_error(schedule_element):
-    with pytest.raises(automata.website.exceptions.WebsiteError) as excinfo:
+def test_unknown_week_order_is_an_error_naming_the_choices(schedule_element):
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
         schedule_element.template_vars(_weekly_config(week_order="alphabetical"))
 
-    assert "alphabetical" in str(excinfo.value)
+    assert format_keypath(excinfo.value.keypath) == "week_order"
+    assert excinfo.value.reason == (
+        'Must be "this_week_first" or "chronological", not "alphabetical".'
+    )
 
 
 # extra activities =====================================================================
@@ -820,10 +824,70 @@ def test_extra_activities_cannot_use_publication_resources(schedule_element):
         ]
     )
 
-    with pytest.raises(automata.website.exceptions.WebsiteError) as excinfo:
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
         schedule_element.template_vars(config)
 
-    assert "artifact_links" in str(excinfo.value)
+    assert format_keypath(excinfo.value.keypath) == (
+        "extra_primary_activities.0.resources.0.type"
+    )
+    assert "artifact_links" in excinfo.value.reason
+
+
+def test_extra_activity_errors_give_the_activity_index(schedule_element):
+    good = {
+        "title": "Review session",
+        "start_displaying_on": datetime.date(2024, 1, 10),
+        "resources": [],
+    }
+    bad = {**good, "start_displaying_on": "not a date"}
+    config = _weekly_config(extra_secondary_activities=[good, bad])
+
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
+        schedule_element.template_vars(config)
+
+    assert format_keypath(excinfo.value.keypath) == (
+        "extra_secondary_activities.1.start_displaying_on"
+    )
+
+
+# publication errors ===================================================================
+
+
+def test_publication_errors_give_the_keypath_and_the_publication(schedule_element):
+    def lecture(metadata):
+        return automata.materials.Publication(metadata=metadata, artifacts={})
+
+    schedule_element.context.materials = automata.materials.Universe(
+        collections={
+            "lectures": automata.materials.Collection(
+                publication_schema=None,
+                publications={
+                    "lecture01": lecture({"date": "2024-01-08"}),
+                    "lecture02": lecture({}),
+                },
+            )
+        }
+    )
+    config = _weekly_config(
+        primary_activity_collections=[
+            {
+                "collection": "lectures",
+                "for_each_publication": {
+                    "start_displaying_on": "${ publication.metadata.date }",
+                    "title": "Lecture",
+                    "resources": [],
+                },
+            }
+        ]
+    )
+
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
+        schedule_element.template_vars(config)
+
+    assert format_keypath(excinfo.value.keypath) == (
+        "primary_activity_collections.0.for_each_publication.start_displaying_on"
+    )
+    assert excinfo.value.reason.endswith('(for publication "lecture02")')
 
 
 def test_unknown_collection_in_schedule_is_reported(schedule_element):
