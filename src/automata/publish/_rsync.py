@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ..exceptions import Error
+from ._options import check_options
 
 
 def publish(
@@ -45,6 +46,7 @@ def publish(
         If ``host`` or ``remote_path`` is missing, or rsync is not installed.
 
     """
+    check_options("rsync", config, ("delete", "host", "remote_path", "user"))
     host = config.get("host")
     remote_path = config.get("remote_path")
     for key, value in [("host", host), ("remote_path", remote_path)]:

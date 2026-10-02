@@ -396,3 +396,34 @@ def test_a_failing_rsync_is_a_clear_error(tmp_path):
         "rsync to example.com:/var/www failed with exit status 12 (its output is "
         "above)."
     )
+
+
+# unknown options ======================================================================
+
+
+def test_gh_pages_rejects_an_unknown_option(tmp_path):
+    with pytest.raises(Error) as excinfo:
+        gh_pages_publish(tmp_path, {"brach": "site"}, tmp_path)
+
+    assert str(excinfo.value) == (
+        'The gh-pages publish strategy has no option "brach". Its options are '
+        "branch, message, remote, user_email, user_name."
+    )
+
+
+def test_rsync_rejects_an_unknown_option(tmp_path):
+    run = _Recorder()
+
+    with pytest.raises(Error) as excinfo:
+        rsync_publish(
+            tmp_path,
+            {"host": "example.com", "remote_path": "/srv", "dleete": False},
+            tmp_path,
+            run=run,
+        )
+
+    assert str(excinfo.value) == (
+        'The rsync publish strategy has no option "dleete". Its options are '
+        "delete, host, remote_path, user."
+    )
+    assert run.commands == []

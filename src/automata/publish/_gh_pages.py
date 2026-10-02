@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ..exceptions import Error
+from ._options import check_options
 
 
 def publish(
@@ -49,6 +50,9 @@ def publish(
         If no commit identity can be found.
 
     """
+    check_options(
+        "gh-pages", config, ("branch", "message", "remote", "user_email", "user_name")
+    )
     branch = config.get("branch", "gh-pages")
     remote = config.get("remote", "origin")
     message = config.get("message", "Deploy to GitHub Pages")
