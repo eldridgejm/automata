@@ -54,7 +54,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Improve the listing element by moving more of the logic outside of the template
 - [ ] Thorough documentation of website abstraction
 - [ ] Thorough documentation of default theme, including elements
-- [ ] Better error messages
+- [x] Better error messages
   - [x] Tracebacks only for unexpected errors; build failures name the artifact and show its output
   - [x] Configuration errors give FILE: KEYPATH: REASON (automata.yaml, extensions, publication.yaml, collection.yaml, inline materials, schema.json)
   - [x] Element configuration errors give the full keypath (website.elements.<name>..., schedule entry index and publication)
@@ -62,6 +62,9 @@ In this branch, we will implement the website feature "from scratch". We have al
   - [x] Undefined keys suggest a close key ("Did you mean ...?") or list the keys (smartconfig StrictUndefined)
   - [x] Line numbers for YAML configuration errors (a keypath-to-line source map, following __include__)
   - [x] A missing required key's keypath ends at the missing key (smartconfig convention); the line falls back to the dict that lacks it
+  - [x] A datetime field needs a time: a bare date or a phrase without one is an error that shows how to add a time (a phrase starting from a datetime takes its time)
+  - [x] Nested collections name both collections and the fix (nested publications are allowed)
+  - [x] A config schema declared in extension.py or an installed module is validated when the extension loads, blaming the module; a schema without make_extension(config) is an error
 - [ ] Flesh out the CLI with more commands
 - [x] Rewrite DESIGN.md around hooks and extensions (deleted instead: it was a working note, and the design is implemented)
 - [x] Raise automata.exceptions.Error (not ValueError) when website.render() finds no page.html
