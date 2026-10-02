@@ -1,6 +1,6 @@
 """Tests for loading pages and static content from a content directory."""
 
-from automata.website import load_content_directory
+from automata.website import Page, load_content_directory
 
 
 def _write(path, content):
@@ -20,9 +20,9 @@ def test_markdown_and_html_files_are_pages_keyed_by_output_path(tmp_path):
     pages, static = load_content_directory(content, content / "materials")
 
     assert pages == {
-        "index.html": "# Home",
-        "about.html": "<h1>About</h1>",
-        "notes/week-01.html": "# Week 1",
+        "index.html": Page("# Home", content / "index.md"),
+        "about.html": Page("<h1>About</h1>", content / "about.html"),
+        "notes/week-01.html": Page("# Week 1", content / "notes" / "week-01.md"),
     }
     assert static == {}
 
@@ -79,5 +79,5 @@ def test_the_materials_directory_is_skipped(tmp_path):
 
     pages, static = load_content_directory(content, content / "materials")
 
-    assert pages == {"index.html": "# Home"}
+    assert pages == {"index.html": Page("# Home", content / "index.md")}
     assert static == {}

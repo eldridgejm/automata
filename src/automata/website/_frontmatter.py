@@ -1,9 +1,11 @@
 from pathlib import Path
 from typing import Any
 
+import smartconfig.exceptions
 from smartconfig import Prototype
 
-from automata.util.resolution import resolve
+from automata.exceptions import Error
+from automata.util.resolution import describe_config_error, resolve
 from automata.util.yaml import parse_yaml
 
 
@@ -39,7 +41,10 @@ def _parse_yaml_frontmatter(
 
     """
     data = parse_yaml(yaml_content, first_line=2)
-    return resolve(data, Frontmatter, base_path=base_path)
+    try:
+        return resolve(data, Frontmatter, base_path=base_path)
+    except smartconfig.exceptions.ResolutionError as e:
+        raise Error(describe_config_error(e.reason, e.keypath)) from None
 
 
 def _find_and_extract_frontmatter_yaml(content: str) -> tuple[str | None, str]:

@@ -1,4 +1,3 @@
-import pathlib
 import shutil
 
 import smartconfig
@@ -434,7 +433,7 @@ def test_invalid_yaml_raises_page_error(tmpsite, theme):
     with raises(automata.website.PageError) as exc:
         _render(tmpsite, theme=theme)
 
-    assert "bad.html" in str(exc.value)
+    assert "bad.md" in str(exc.value)
 
 
 def test_frontmatter_yaml_errors_give_the_line_in_the_page(tmpsite, theme):
@@ -445,6 +444,98 @@ def test_frontmatter_yaml_errors_give_the_line_in_the_page(tmpsite, theme):
         _render(tmpsite, theme=theme)
 
     assert "line 3" in str(exc.value)
+
+
+def _page_error(tmpsite, **kwargs) -> str:
+    with raises(automata.website.PageError) as exc:
+        _render(tmpsite, **kwargs)
+    return str(exc.value)
+
+
+def test_page_errors_name_the_source_file_and_line(tmpsite, theme):
+    tmpsite.make_page("notes/page.md", "# Notes\n\n${ nope }\n")
+    source = tmpsite.content_directory / "notes" / "page.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message == f"{source}:3: 'nope' is undefined"
+
+
+def test_page_error_lines_count_the_frontmatter(tmpsite, theme):
+    # the frontmatter is lines 1-4, so the bad line is line 7 of the file
+    tmpsite.make_page("index.md", "---\nvars:\n  a: 1\n---\nok\n\n${ nope }\n")
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message.startswith(f"{source}:7: ")
+
+
+def test_page_syntax_errors_give_the_line(tmpsite, theme):
+    tmpsite.make_page("index.md", "---\ntemplate: page.html\n---\nok\n{% if %}\n")
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message.startswith(f"{source}:5: ")
+
+
+def test_frontmatter_errors_name_the_file_and_keypath(tmpsite, theme):
+    tmpsite.make_page("index.md", "---\nvars: [1, 2]\n---\nok\n")
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message == f"{source}: vars: Expected a dict, but got a list."
+
+
+def test_frontmatter_yaml_errors_name_the_file(tmpsite, theme):
+    tmpsite.make_page("bad.md", "---\ntitle: a\n  bad: indent\n---\n\n# Content")
+    source = tmpsite.content_directory / "bad.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message.startswith(f"{source}: Invalid YAML, line 3, ")
+
+
+def test_frontmatter_include_is_relative_to_the_page(tmpsite, theme):
+    (tmpsite.content_directory / "notes").mkdir()
+    (tmpsite.content_directory / "notes" / "data.yaml").write_text("greeting: hi\n")
+    tmpsite.make_page(
+        "notes/page.md",
+        "---\nvars:\n  __include__: data.yaml\n---\n${ frontmatter.vars.greeting }",
+    )
+
+    _render(tmpsite, theme=theme)
+
+    assert "hi" in (tmpsite.build_directory / "notes" / "page.html").read_text()
+
+
+def _theme_with_page_template(tmp_path, template):
+    theme_dir = tmp_path / "custom_theme"
+    (theme_dir / "templates").mkdir(parents=True)
+    (theme_dir / "templates" / "page.html").write_text(template)
+    return _make_theme(theme_dir=theme_dir)
+
+
+def test_theme_template_errors_name_the_template_and_line(tmpsite, tmp_path):
+    tmpsite.make_page("index.md", "ok")
+    theme = _theme_with_page_template(tmp_path, "<html>\n${ content }\n${ nope }\n")
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message == f"{source}: template page.html, line 3: 'nope' is undefined"
+
+
+def test_theme_template_syntax_errors_name_the_template_and_line(tmpsite, tmp_path):
+    tmpsite.make_page("index.md", "ok")
+    theme = _theme_with_page_template(tmp_path, "<html>\n{% if %}\n</html>\n")
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message.startswith(f"{source}: template page.html, line 2: ")
 
 
 def test_calling_an_element_with_too_many_arguments_is_reported(tmpsite, theme):
@@ -470,7 +561,7 @@ def test_invalid_frontmatter_key_raises_page_error(tmpsite, theme):
     with raises(automata.website.PageError) as exc:
         _render(tmpsite, theme=theme)
 
-    assert "bad_key.html" in str(exc.value)
+    assert "bad_key.md" in str(exc.value)
 
 
 def test_empty_frontmatter(tmpsite, theme):
@@ -664,7 +755,7 @@ def test_render_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
     with raises(automata.website.PageError, match="missing.html") as exc_info:
         _render(tmpsite, theme=theme)
 
-    assert exc_info.value.path == pathlib.Path("index.html")
+    assert exc_info.value.path == tmpsite.content_directory / "index.md"
     assert isinstance(
         exc_info.value.__cause__, automata.website.exceptions.WebsiteError
     )

@@ -19,10 +19,14 @@ class PageError(WebsiteError):
         Description of the error
     path : pathlib.Path
         Path to the file that caused the error
+    line : int | None
+        The line of the file with the error, if known
 
     """
 
-    def __init__(self, message: str, path: pathlib.Path):
+    def __init__(self, message: str, path: pathlib.Path, line: int | None = None):
         self.message = message
         self.path = path
-        super().__init__(f"Error processing page {path}: {message}")
+        self.line = line
+        location = str(path) if line is None else f"{path}:{line}"
+        super().__init__(f"{location}: {message}")

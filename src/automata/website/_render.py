@@ -6,7 +6,7 @@ import datetime
 import pathlib
 import shutil
 from importlib.resources.abc import Traversable
-from typing import Any, Callable, Sequence, cast
+from typing import Any, Callable, Container, Mapping, Sequence, cast
 
 import jinja2
 import smartconfig
@@ -24,6 +24,7 @@ from ..hooks import (
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util import markdown as markdown_util
 from ..util.resolution import describe_config_error, format_keypath
+from ._content import Page
 from ._frontmatter import Frontmatter, read_frontmatter
 from .exceptions import PageError, WebsiteError
 
@@ -91,10 +92,44 @@ def _interpolate(
     ).render(**context.to_dict())
 
 
+class _NamedDictLoader(jinja2.DictLoader):
+    """A DictLoader that gives each template its name as its filename.
+
+    Jinja reports errors in a template at its filename, so this lets error
+    messages name the theme template and line.
+
+    """
+
+    def get_source(self, environment, template):
+        source, _, uptodate = super().get_source(environment, template)
+        return source, template, uptodate
+
+
+def _template_line(
+    traceback: Any, filenames: Container[str], outermost: bool = False
+) -> tuple[str, int] | None:
+    """The template and line at which a Jinja rendering error occurred.
+
+    Jinja rewrites tracebacks so that frames in template code have the
+    template's filename and line. This returns the innermost (or outermost)
+    such frame whose filename is in *filenames*, or None if there is none.
+
+    """
+    found = None
+    while traceback is not None:
+        filename = traceback.tb_frame.f_code.co_filename
+        if filename in filenames:
+            found = (filename, traceback.tb_lineno)
+            if outermost:
+                break
+        traceback = traceback.tb_next
+    return found
+
+
 def _create_jinja_environment(templates: dict[str, str]) -> jinja2.Environment:
     """Create a Jinja2 environment from a dictionary of templates."""
     return jinja2.Environment(
-        loader=jinja2.DictLoader(templates),
+        loader=_NamedDictLoader(templates),
         undefined=jinja2.StrictUndefined,
         variable_start_string="${",
         variable_end_string="}",
@@ -272,20 +307,41 @@ def _copy_materials_to_build(
 
 
 def _render_page(
-    content: str,
+    page: Page,
+    path: pathlib.Path,
     jinja_environment: jinja2.Environment,
     context: RenderContext,
     markdown_renderer: Callable[[str], str] | None = None,
-    base_path: pathlib.Path | None = None,
 ) -> str:
-    """Renders page content to HTML."""
-    frontmatter, content = read_frontmatter(content, base_path=base_path)
+    """Renders page content to HTML.
+
+    Errors are raised as :class:`PageError` naming *path* and, where known,
+    the line of the page or of the theme template.
+
+    """
+    base_path = page.source.parent if page.source is not None else None
+    try:
+        frontmatter, content = read_frontmatter(page.content, base_path=base_path)
+    except Exception as e:
+        raise PageError(str(e), path) from e
+
+    # lines before the content (the frontmatter), so that errors give the line of
+    # the file rather than of the content
+    offset = page.content[: len(page.content) - len(content)].count("\n")
 
     # create a new context with the frontmatter
     context = dataclasses.replace(context, frontmatter=frontmatter)
 
     # interpolate variables in the content
-    rendered_content = _interpolate(content, context)
+    try:
+        rendered_content = _interpolate(content, context)
+    except jinja2.TemplateSyntaxError as e:
+        raise PageError(e.message or str(e), path, e.lineno + offset) from e
+    except Exception as e:
+        # the page is the outermost template; elements render their own inside it
+        where = _template_line(e.__traceback__, {"<template>"}, outermost=True)
+        line = where[1] + offset if where is not None else None
+        raise PageError(str(e), path, line) from e
 
     # render markdown to HTML if a markdown renderer is provided
     if markdown_renderer is not None:
@@ -299,11 +355,21 @@ def _render_page(
     if template_name not in jinja_environment.list_templates():
         raise WebsiteError(f'Template "{template_name}" not found.')
 
-    return jinja_environment.get_template(template_name).render(
-        **context.to_dict(),
-        base_url_path=base_url_path,
-        content=rendered_content,
-    )
+    try:
+        return jinja_environment.get_template(template_name).render(
+            **context.to_dict(),
+            base_url_path=base_url_path,
+            content=rendered_content,
+        )
+    except jinja2.TemplateSyntaxError as e:
+        message = f"template {e.name}, line {e.lineno}: {e.message}"
+        raise PageError(message, path) from e
+    except Exception as e:
+        where = _template_line(e.__traceback__, jinja_environment.list_templates())
+        message = str(e)
+        if where is not None:
+            message = f"template {where[0]}, line {where[1]}: {message}"
+        raise PageError(message, path) from e
 
 
 def _fix_artifact_paths(
@@ -318,7 +384,7 @@ def _fix_artifact_paths(
 
 
 def _process_pages(
-    pages: dict[str, str],
+    pages: dict[str, str | Page],
     build_directory: pathlib.Path,
     jinja_environment: jinja2.Environment,
     context: RenderContext,
@@ -330,19 +396,27 @@ def _process_pages(
     template.  Keys are output paths (should end in ``.html``).
 
     """
-    for relative_path, content in pages.items():
+    for relative_path, page in pages.items():
         output_path = build_directory / relative_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
+        if isinstance(page, str):
+            page = Page(page)
+        # errors name the source file, or the output path of pages without one
+        path = page.source or pathlib.Path(relative_path)
+
         try:
             rendered = _render_page(
-                content,
+                page,
+                path,
                 jinja_environment,
                 context,
                 markdown_renderer=render_markdown,
             )
+        except PageError:
+            raise
         except Exception as e:
-            raise PageError(str(e), pathlib.Path(relative_path)) from e
+            raise PageError(str(e), path) from e
 
         output_path.write_text(rendered)
 
@@ -365,7 +439,7 @@ def _write_static_content(
 def render(
     build_directory: pathlib.Path,
     materials_directory: pathlib.Path,
-    pages: dict[str, str] | None = None,
+    pages: Mapping[str, str | Page] | None = None,
     static_content: dict[str, str | bytes] | None = None,
     vars: dict[str, Any] | None = None,
     current_time: datetime.datetime | None = None,
@@ -392,7 +466,7 @@ def render(
     materials_directory : pathlib.Path
         The path to the directory containing the exported materials. Its
         ``materials.json`` is read unless *materials* is given.
-    pages : dict[str, str], optional
+    pages : Mapping[str, str | Page], optional
         Pre-loaded page content. Keys are output paths (e.g.,
         ``"index.html"``). Values are page content (Markdown or HTML).
         All pages are rendered as Markdown, interpolated, and wrapped
