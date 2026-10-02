@@ -49,7 +49,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Revise extension loading code
 - [x] Refactor website.generate() to accept Python objects instead of file paths; theme loading is now done separately
 - [x] Revise the API layer
-- [ ] Improve test coverage
+- [x] Improve test coverage
 - [x] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
 - [ ] Improve the listing element by moving more of the logic outside of the template
 - [ ] Thorough documentation of website abstraction
@@ -65,3 +65,5 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Fix the example's practice-problems script hook failing when run from another directory
 - [ ] Decide whether a failing script hook (nonzero exit) should fail the build; today its exit code is ignored, which hid the practice-problems path bug in a passing test
 - [ ] Fix smartconfig key order: resolve() iterates free-form dict keys through a set difference (_internals.py: extra_keys = dct.keys() - expected_keys), so their order depends on PYTHONHASHSEED; then tag, bump the dependency, and remove the xfail on test_inline_publications_keep_their_order
+- [ ] gh-pages: supply a default git identity for its commit, so publishing works on machines without one (e.g., CI); then drop the GIT_* setenv calls in test_publish.py
+- [ ] Element template errors raise a bare Exception (website/_elements.py _resolve); raise a specific automata error
