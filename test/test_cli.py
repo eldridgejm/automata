@@ -392,3 +392,47 @@ def test_failing_script_hook_fails_the_build(project):
         result.output
     )
     assert not (project / "_build" / "index.html").exists()
+
+
+# build errors =========================================================================
+
+
+def _failing_recipe_project(project):
+    pub = project / "notes" / "01-intro"
+    pub.mkdir(parents=True)
+    (project / "notes" / "collection.yaml").write_text(
+        "publication_schema:\n  required_artifacts: [notes.pdf]\n"
+    )
+    (pub / "publication.yaml").write_text(
+        "metadata: {}\nartifacts:\n  notes.pdf:\n"
+        "    recipe: \"echo '! LaTeX Error: File not found.' && exit 1\"\n"
+    )
+
+
+def test_failing_recipe_shows_the_artifact_and_its_output(project):
+    _failing_recipe_project(project)
+
+    result = runner.invoke(app, ["build"])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "Error: Building notes/01-intro/notes.pdf failed" in result.output
+    assert "! LaTeX Error: File not found." in result.output
+
+
+@pytest.mark.parametrize("command", ["build", "build-materials", "export"])
+def test_verbose_flag_streams_recipe_output(project, command):
+    _failing_recipe_project(project)
+
+    result = runner.invoke(app, [command, "--verbose"])
+
+    # the recipe's output streams to the terminal, so the error points to it
+    assert "output shown above" in result.output
+
+
+def test_publish_verbose_flag_streams_recipe_output(publishing_project):
+    _failing_recipe_project(publishing_project)
+
+    result = runner.invoke(app, ["publish", "--verbose"])
+
+    assert "output shown above" in result.output

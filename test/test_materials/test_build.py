@@ -1,5 +1,6 @@
 import datetime
 import pathlib
+import subprocess
 from unittest.mock import Mock
 
 from pytest import raises
@@ -268,8 +269,11 @@ def test_build_error_message_on_missing_artifact(temporary_course):
         automata.materials.build(universe)
 
     error_message = str(exc_info.value)
-    assert "homework.pdf" in error_message
-    assert "does not exist" in error_message
+    assert error_message.startswith(
+        "Recipe for homeworks/01-intro/homework.pdf finished, but homework.pdf "
+        "was not created"
+    )
+    assert "this does not create homework.pdf" in error_message  # its output
 
 
 def test_build_error_message_includes_artifact_path(temporary_course):
@@ -302,6 +306,124 @@ def test_build_error_message_includes_artifact_path(temporary_course):
 
     error_message = str(exc_info.value)
     assert "output/homework.pdf" in error_message
+
+
+def _failing_course(temporary_course, recipe):
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts:
+                - homework.pdf
+        """,
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        f"""
+        metadata: {{}}
+        artifacts:
+            homework.pdf:
+                recipe: {recipe}
+        """,
+    )
+    return automata.materials.discover(temporary_course.path)
+
+
+def test_recipe_failure_names_the_artifact_command_directory_and_status(
+    temporary_course,
+):
+    universe = _failing_course(temporary_course, "echo compiling && exit 3")
+
+    with raises(automata.materials.exceptions.BuildError) as exc_info:
+        automata.materials.build(universe)
+
+    message = str(exc_info.value)
+    assert message.startswith(
+        "Building homeworks/01-intro/homework.pdf failed (exit status 3)."
+    )
+    assert "recipe: echo compiling && exit 3" in message
+    assert f"in: {temporary_course.path / 'homeworks' / '01-intro'}" in message
+
+
+def test_recipe_failure_shows_stdout_and_stderr_in_order(temporary_course):
+    # LaTeX writes its errors to stdout, not stderr
+    universe = _failing_course(
+        temporary_course,
+        "echo 'first (stdout)' && echo 'second (stderr)' >&2 "
+        "&& echo '! Undefined control sequence.' && exit 1",
+    )
+
+    with raises(automata.materials.exceptions.BuildError) as exc_info:
+        automata.materials.build(universe)
+
+    message = str(exc_info.value)
+    first = message.index("first (stdout)")
+    second = message.index("second (stderr)")
+    third = message.index("! Undefined control sequence.")
+    assert first < second < third
+
+
+def test_recipe_failure_shows_only_the_last_lines_of_long_output(temporary_course):
+    universe = _failing_course(
+        temporary_course, "for i in $(seq 1 100); do echo line-$i; done; exit 1"
+    )
+
+    with raises(automata.materials.exceptions.BuildError) as exc_info:
+        automata.materials.build(universe)
+
+    message = str(exc_info.value)
+    assert "line-100" in message
+    assert "line-71" in message
+    assert "line-70\n" not in message
+    assert "last 30 of 100 lines" in message
+
+
+def test_missing_file_without_a_recipe_names_the_artifact(temporary_course):
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts:
+                - homework.pdf
+        """,
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "01-intro",
+        """
+        metadata: {}
+        artifacts:
+            homework.pdf:
+                path: homework.pdf
+        """,
+    )
+    universe = automata.materials.discover(temporary_course.path)
+
+    with raises(automata.materials.exceptions.BuildError) as exc_info:
+        automata.materials.build(universe)
+
+    message = str(exc_info.value)
+    assert "homeworks/01-intro/homework.pdf" in message
+    assert "does not exist" in message
+
+
+def test_verbose_build_streams_output_instead_of_capturing_it(temporary_course):
+    # given: a fake runner that records how it was asked to run the recipe
+    universe = _failing_course(temporary_course, "make homework.pdf")
+    calls = []
+
+    def run(cmd, **kwargs):
+        calls.append(kwargs)
+        return subprocess.CompletedProcess(cmd, 2)
+
+    # when
+    with raises(automata.materials.exceptions.BuildError) as exc_info:
+        automata.materials.build(universe, verbose=True, run=run)
+
+    # then: output was not captured, and the message points to it
+    assert "stdout" not in calls[0]
+    assert "output shown above" in str(exc_info.value)
 
 
 def test_build_raises_when_artifact_already_built():

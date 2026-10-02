@@ -24,7 +24,7 @@ and then deploys.
 
 ::
 
-    automata build [--current-time TIME]
+    automata build [--current-time TIME] [--verbose]
 
 Options:
 
@@ -32,6 +32,11 @@ Options:
   and date-based logic. Accepts ISO datetime (``"2026-01-15T12:00:00"``) or
   relative days (``"+5"`` for 5 days in the future, ``"-3"`` for 3 days in the
   past).
+- ``--verbose`` / ``-v`` --- Show each recipe's output as it runs. By default
+  it is captured: if a recipe fails, the error names the artifact (e.g.
+  ``homeworks/01-intro/homework.pdf``), the recipe, its directory, and its exit
+  status, followed by the last 30 lines of its output (stdout and stderr
+  together). ``publish``, ``build-materials``, and ``export`` accept it too.
 
 
 ``automata clean-build-directory``
@@ -55,7 +60,7 @@ Build the site, then deploy it to the targets configured under ``publish:`` in
 
 ::
 
-    automata publish [TARGET] [--current-time TIME]
+    automata publish [TARGET] [--current-time TIME] [--verbose]
 
 With no ``TARGET``, publishes to every configured target, in order; prints
 ``Published to <target>.`` for each. An unknown target or strategy is an error,
@@ -81,7 +86,7 @@ Discover and build materials (run recipes, check release times).
 
 ::
 
-    automata build-materials [--current-time TIME]
+    automata build-materials [--current-time TIME] [--verbose]
 
 
 ``automata export``
@@ -91,7 +96,7 @@ Discover, build, and export materials to the build directory.
 
 ::
 
-    automata export [--current-time TIME]
+    automata export [--current-time TIME] [--verbose]
 
 
 ``automata render-website``

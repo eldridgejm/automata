@@ -80,7 +80,9 @@ class Automata:
 
     # --- full pipeline ---
 
-    def build(self, current_time: datetime.datetime | None = None) -> None:
+    def build(
+        self, current_time: datetime.datetime | None = None, verbose: bool = False
+    ) -> None:
         """Run the full pipeline and produce the site in the build directory.
 
         Cleans the build directory (if ``website.clean_build_directory`` is
@@ -92,13 +94,18 @@ class Automata:
         current_time : datetime.datetime | None
             The current time for release-time checks and scheduling.
             If *None*, uses the system time.
+        verbose : bool
+            If true, recipes' output goes to the terminal as they run, rather
+            than being captured (and shown only if a recipe fails).
 
         """
         current_time = current_time or datetime.datetime.now()
         if self.config.website.clean_build_directory:
             self.clean_build_directory()
         discovered = self.discover()
-        built = self.build_materials(discovered, current_time=current_time)
+        built = self.build_materials(
+            discovered, current_time=current_time, verbose=verbose
+        )
         exported = self.export(built)
         self.render_website(exported, current_time=current_time)
 
@@ -154,6 +161,7 @@ class Automata:
         self,
         target: str | None = None,
         current_time: datetime.datetime | None = None,
+        verbose: bool = False,
     ) -> list[str]:
         """Run the full pipeline and deploy the built site.
 
@@ -215,7 +223,7 @@ class Automata:
                 )
             publishers[name] = publisher
 
-        self.build(current_time=current_time)
+        self.build(current_time=current_time, verbose=verbose)
 
         build_dir = self.path / self.config.website.build_directory
 

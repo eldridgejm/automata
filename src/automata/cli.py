@@ -82,6 +82,17 @@ _current_time_option = typer.Option(
 )
 
 
+_verbose_option = typer.Option(
+    False,
+    "--verbose",
+    "-v",
+    help=(
+        "Show each recipe's output as it runs. By default it is captured, and "
+        "the end of it is shown only if the recipe fails."
+    ),
+)
+
+
 def _find_project_root() -> pathlib.Path | None:
     """The nearest directory, at or above the cwd, containing automata.yaml."""
     config_path = find_config(pathlib.Path.cwd())
@@ -114,9 +125,12 @@ def _project() -> Automata:
 
 
 @_command()
-def build(current_time: Optional[str] = _current_time_option):
+def build(
+    current_time: Optional[str] = _current_time_option,
+    verbose: bool = _verbose_option,
+):
     """Run the full pipeline and produce the site in the build directory."""
-    _project().build(current_time=_get_current_time(current_time))
+    _project().build(current_time=_get_current_time(current_time), verbose=verbose)
 
 
 def _complete_publish_targets(incomplete: str) -> list[str]:
@@ -139,11 +153,12 @@ def publish(
         autocompletion=_complete_publish_targets,
     ),
     current_time: Optional[str] = _current_time_option,
+    verbose: bool = _verbose_option,
 ):
     """Run the full pipeline and deploy the built site."""
     project = _project()
     published = project.publish(
-        target=target, current_time=_get_current_time(current_time)
+        target=target, current_time=_get_current_time(current_time), verbose=verbose
     )
 
     for name in published:
@@ -168,21 +183,29 @@ def clean_build_directory():
 
 
 @_command(name="build-materials")
-def build_materials(current_time: Optional[str] = _current_time_option):
+def build_materials(
+    current_time: Optional[str] = _current_time_option,
+    verbose: bool = _verbose_option,
+):
     """Discover and build materials (run recipes, check release times)."""
     project = _project()
     discovered = project.discover()
-    project.build_materials(discovered, current_time=_get_current_time(current_time))
+    project.build_materials(
+        discovered, current_time=_get_current_time(current_time), verbose=verbose
+    )
     typer.echo("Materials built.")
 
 
 @_command()
-def export(current_time: Optional[str] = _current_time_option):
+def export(
+    current_time: Optional[str] = _current_time_option,
+    verbose: bool = _verbose_option,
+):
     """Discover, build, and export materials to the build directory."""
     project = _project()
     discovered = project.discover()
     built = project.build_materials(
-        discovered, current_time=_get_current_time(current_time)
+        discovered, current_time=_get_current_time(current_time), verbose=verbose
     )
     project.export(built)
     typer.echo("Materials exported.")

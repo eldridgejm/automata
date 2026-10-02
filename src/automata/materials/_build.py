@@ -38,6 +38,30 @@ def _artifact_to_hook_args(artifact: UnbuiltArtifact) -> BuildArtifactHookArgs:
     )
 
 
+# how many lines of a failed recipe's output to show
+_OUTPUT_LINES_SHOWN = 30
+
+
+def _describe_output(output: str | None) -> str:
+    """The end of a recipe's output, for an error message."""
+    if output is None:
+        return "\n(See the recipe's output shown above.)"
+    lines = output.rstrip("\n").splitlines()
+    if not lines:
+        return "\n(The recipe printed no output.)"
+    if len(lines) <= _OUTPUT_LINES_SHOWN:
+        header = "Output:"
+    else:
+        header = f"Output (last {_OUTPUT_LINES_SHOWN} of {len(lines)} lines):"
+    shown = lines[-_OUTPUT_LINES_SHOWN:]
+    return f"\n{header}\n" + "\n".join(f"  {line}" for line in shown)
+
+
+def _escape(value: object) -> str:
+    """Escape braces so a value can go into a BuildError summary."""
+    return str(value).replace("{", "{{").replace("}", "}}")
+
+
 def _build_artifact(
     artifact: UnbuiltArtifact,
     *,
@@ -104,28 +128,53 @@ def _build_artifact(
             "cwd": artifact.workdir,
         }
         if not verbose:
+            # one stream, so stdout and stderr stay in the order printed
             kwargs["stdout"] = subprocess.PIPE  # type: ignore
-            kwargs["stderr"] = subprocess.PIPE  # type: ignore
+            kwargs["stderr"] = subprocess.STDOUT  # type: ignore
 
         proc = run(artifact.recipe, shell=True, **kwargs)
+        if isinstance(proc.stdout, bytes):
+            captured = proc.stdout.decode(errors="replace")
+        elif isinstance(proc.stdout, str):
+            captured = proc.stdout
+        else:
+            captured = None  # not captured (verbose): it went to the terminal
 
         if proc.returncode:
-            msg = "There was a problem while building the artifact"
-            if proc.stderr is not None:
-                msg += f":\n{proc.stderr.decode()}"
-            raise BuildError(msg)
+            raise BuildError(
+                f"Building {{name}} failed (exit status {proc.returncode}).",
+                fallback_name=_escape(artifact.workdir / artifact.path),
+                details=(
+                    f"\n  recipe: {artifact.recipe}\n  in: {artifact.workdir}"
+                    + _describe_output(captured)
+                ),
+            )
 
         returncode = proc.returncode
-        stdout = None if proc.stdout is None else proc.stdout.decode()
-        stderr = None if proc.stderr is None else proc.stderr.decode()
+        stdout = captured
+        stderr = None
 
     path = artifact.workdir / artifact.path
     if not exists(path):
         if artifact.missing_ok:
             hooks.on_build_artifact_missing(_artifact_to_hook_args(artifact))
             return None
+        elif artifact.recipe is not None:
+            raise BuildError(
+                f"Recipe for {{name}} finished, but {_escape(artifact.path)} was "
+                f"not created (expected at {_escape(path)}).",
+                fallback_name=_escape(path),
+                details=(
+                    f"\n  recipe: {artifact.recipe}\n  in: {artifact.workdir}"
+                    + _describe_output(stdout)
+                ),
+            )
         else:
-            raise BuildError(f"Artifact {path} does not exist at {path}.")
+            raise BuildError(
+                f"Artifact {{name}} has no recipe, and its file {_escape(path)} "
+                f"does not exist.",
+                fallback_name=_escape(path),
+            )
 
     output = dataclasses.replace(
         output, returncode=returncode, stdout=stdout, stderr=stderr
@@ -272,7 +321,13 @@ def build(
         )
         hooks.on_build_materials_node(hook_args)
 
-        result = build(child, **kwargs)  # type: ignore
+        try:
+            result = build(child, **kwargs)  # type: ignore
+        except BuildError as error:
+            # record the artifact's name (e.g. homeworks/01-intro/homework.pdf)
+            if child_key != ".":
+                error.key_path.insert(0, child_key)
+            raise
         # if a node is not built (perhaps due to it not being ready), the
         # result is None. this next conditional prevents such nodes from
         # appearing in the tree
