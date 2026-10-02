@@ -35,10 +35,7 @@ Each top-level key is a collection name:
                 path: exams/midterm/exam.pdf
               solution.pdf:
                 path: exams/midterm/solution.pdf
-                release_time:
-                  __datetime.offset__:
-                    after: ${ vars.midterm_date }
-                    by: "3 days"
+                release_time: 3 days after ${ vars.midterm_date }
 
 **Inline materials cannot have recipes.** If you need to run a build command to
 produce an artifact (e.g., compiling LaTeX), use filesystem materials instead.
@@ -214,14 +211,53 @@ dates relative to each other:
     # lectures/02-time_complexity/publication.yaml
     metadata:
       number: 2
-      date:
-        __datetime.parse__: "first tuesday, thursday after ${ previous.metadata.date }"
+      date: first tuesday, thursday after ${ previous.metadata.date }
       topic: "Time Complexity"
 
 This computes the date of lecture 2 as the first Tuesday or Thursday after the
 date of lecture 1. By defining lecture 1's date in terms of
 ``${ vars.date_of_first_lecture }``, changing one variable in ``automata.yaml``
 cascades through the entire lecture schedule.
+
+
+.. _date-phrases:
+
+Date phrases
+------------
+
+Any field whose type is ``date`` or ``datetime`` accepts, besides an ISO date
+like ``2026-10-06`` or ``2026-10-06 23:59:00``, a *date phrase*. This includes
+``release_time`` and any metadata key declared ``type: date`` or
+``type: datetime`` in ``collection.yaml``:
+
+.. code-block:: yaml
+
+    metadata:
+      due: ${ vars.first_homework_due } at 23:59:00
+      released: 7 days before ${ this.metadata.due } at 00:00:00
+    artifacts:
+      solution.pdf:
+        release_time: 1 day after ${ this.metadata.due }
+
+The forms are:
+
+- **Offsets:** ``3 days after <date>``, ``2 weeks before <date>``.
+- **Weekdays:** ``first tuesday, thursday after <date>`` (or
+  ``first tuesday or thursday after <date>``).
+- **A time of day:** any form may end with ``at HH:MM:SS``, e.g.
+  ``2026-10-06 at 23:59:00``.
+
+A date phrase given to a ``datetime`` field without ``at`` means midnight. A
+string that is a valid ISO date is always read as that date; only other strings
+are read as phrases. If a phrase can't be read, the error names the field and
+shows the text, e.g. ``Cannot read "7 dyas before 2026-10-06" as a date or a
+date phrase``.
+
+Phrases are recognized only in fields typed as dates. Elsewhere, such as in
+``vars`` or a field of type ``any``, a phrase is kept as a string; it is read
+as a date where it is used in a date field. To get a date in an untyped place,
+use the explicit function ``__datetime.parse__`` (or the YAML tag
+``!datetime.parse``), which accepts the same phrases.
 
 
 Inline publications in ``collection.yaml``

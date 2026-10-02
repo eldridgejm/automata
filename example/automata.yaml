@@ -32,16 +32,10 @@ materials:
         artifacts:
           exam.pdf:
             path: exams/midterm/exam.pdf
-            release_time:
-              __datetime.offset__:
-                after: ${ vars.midterm_date }
-                by: "3 days"
+            release_time: 3 days after ${ vars.midterm_date }
           solution.pdf:
             path: exams/midterm/solution.pdf
-            release_time:
-              __datetime.offset__:
-                after: ${ vars.midterm_date }
-                by: "3 days"
+            release_time: 3 days after ${ vars.midterm_date }
       final:
         metadata:
           name: "Final Exam"
@@ -49,16 +43,10 @@ materials:
         artifacts:
           exam.pdf:
             path: exams/final/exam.pdf
-            release_time:
-              __datetime.offset__:
-                after: ${ vars.final_date }
-                by: "3 days"
+            release_time: 3 days after ${ vars.final_date }
           solution.pdf:
             path: exams/final/solution.pdf
-            release_time:
-              __datetime.offset__:
-                after: ${ vars.final_date }
-                by: "3 days"
+            release_time: 3 days after ${ vars.final_date }
 
 website:
   theme:

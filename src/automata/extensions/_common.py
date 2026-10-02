@@ -9,6 +9,7 @@ import smartconfig.exceptions
 import smartconfig.types
 
 from ..exceptions import Error
+from ..util.resolution import resolve
 from ._types import Extension
 
 
@@ -26,7 +27,7 @@ def resolve_config(
     resolved = config if config is not None else {}
     if schema is not None:
         try:
-            resolved = smartconfig.resolve(resolved, schema)
+            resolved = resolve(resolved, schema)
         except smartconfig.exceptions.ResolutionError as e:
             raise Error(f'Invalid configuration for extension "{name}": {e}') from e
     return resolved

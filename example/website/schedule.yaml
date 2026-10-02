@@ -110,8 +110,7 @@ secondary_activity_collections:
 
   - collection: labs
     for_each_publication:
-      start_displaying_on: !template
-        __datetime.parse__: "2 days before ${ publication.metadata.released }"
+      start_displaying_on: !template "2 days before ${ publication.metadata.released }"
       due_datetime: !template "${ publication.metadata.due }"
       title: Lab
       resources:

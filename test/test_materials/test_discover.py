@@ -741,6 +741,69 @@ def test_on_discover_skip_shell_script_receives_json(default_example_course, tmp
     assert "01-intro" in content["path"]
 
 
+# date phrases
+# --------------------------------------------------------------------------------------
+
+
+def test_discover_reads_plain_date_phrases(temporary_course):
+    """Date phrases work without __datetime.parse__ in typed date fields."""
+    import datetime
+
+    temporary_course.create_collection(
+        "homeworks",
+        """
+            publication_schema:
+                required_artifacts:
+                    - homework.pdf
+                metadata_schema:
+                    required_keys:
+                        due:
+                            type: datetime
+                        released:
+                            type: datetime
+                is_ordered: true
+        """,
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+            metadata:
+                due: 2026-10-06 at 23:59:00
+                released: 7 days before ${this.metadata.due} at 00:00:00
+            artifacts:
+                homework.pdf:
+                    release_time: ${this.metadata.released}
+                    missing_ok: true
+        """,
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "02",
+        """
+            metadata:
+                due: 7 days after ${previous.metadata.due}
+                released: 1 day after ${previous.metadata.due} at 00:00:00
+            artifacts:
+                homework.pdf:
+                    release_time: 1 day after ${this.metadata.released}
+                    missing_ok: true
+        """,
+    )
+
+    pubs = discover(temporary_course.path).collections["homeworks"].publications
+
+    assert pubs["01"].metadata["due"] == datetime.datetime(2026, 10, 6, 23, 59)
+    assert pubs["01"].metadata["released"] == datetime.datetime(2026, 9, 29, 0, 0)
+    assert pubs["01"].artifacts["homework.pdf"].release_time == datetime.datetime(
+        2026, 9, 29, 0, 0
+    )
+    assert pubs["02"].metadata["due"] == datetime.datetime(2026, 10, 13, 23, 59)
+    assert pubs["02"].artifacts["homework.pdf"].release_time == datetime.datetime(
+        2026, 10, 8, 0, 0
+    )
+
+
 # inline publications
 # --------------------------------------------------------------------------------------
 

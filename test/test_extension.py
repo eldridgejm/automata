@@ -402,3 +402,18 @@ def test_docs_do_not_import_the_private_extension_module():
     ]
 
     assert offenders == []
+
+
+def test_extension_config_accepts_date_phrases(register_entry_point):
+    import datetime
+
+    schema = {"type": "dict", "required_keys": {"start": {"type": "date"}}}
+    register_entry_point(
+        EXTENSIONS_GROUP, "my-ext", schema=schema, make_extension=_factory("my-ext")
+    )
+
+    ext = extension_from_entry_point(
+        "my-ext", config={"start": "7 days after 2026-01-01"}
+    )
+
+    assert ext.config["start"] == datetime.date(2026, 1, 8)

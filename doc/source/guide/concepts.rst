@@ -141,24 +141,16 @@ This lets you schedule releases ahead of time.
         path: homeworks/hw01/solution.pdf
         release_time: 2026-01-22 12:00:00
 
-Release times can be computed relative to other dates using smartconfig
-functions:
+Release times can be computed relative to other dates by writing a date
+phrase:
 
 .. code-block:: yaml
 
     artifacts:
       solution.pdf:
         path: homeworks/hw01/solution.pdf
-        release_time:
-          __datetime.offset__:
-            after: ${ vars.hw01_due_date }
-            by: "3 days"
+        release_time: 3 days after ${ vars.hw01_due_date } at 00:00:00
 
-Available datetime functions:
-
-- ``__datetime.offset__``: Offset a date by a duration. Takes ``after`` (or
-  ``before``) and ``by`` (e.g., ``"7 days"``, ``"2 weeks"``).
-- ``__datetime.at__``: Combine a date and a time into a datetime. Takes
-  ``date`` and ``time``.
-- ``__datetime.parse__``: Parse a natural-language date expression, such as
-  ``"first tuesday, thursday after 2026-01-15"``.
+Any field whose type is ``date`` or ``datetime`` (such as ``release_time``,
+or a metadata key declared ``type: datetime``) accepts a phrase; see
+:ref:`date-phrases`.

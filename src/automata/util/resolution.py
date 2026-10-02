@@ -1,9 +1,14 @@
 """Utilities for configuration resolution."""
 
+import datetime
+import types
 import typing
 from pathlib import Path
 
 import smartconfig
+import smartconfig.converters
+import smartconfig.exceptions
+import smartconfig.stdlib.datetime
 
 from .yaml import parse_yaml
 
@@ -143,6 +148,56 @@ def resolve_for_each(
     return resolved_configs
 
 
+def _parse_date_phrase(value: str) -> datetime.date | datetime.datetime:
+    """Parse a date phrase like "7 days after 2026-01-01 at 23:59:00".
+
+    Uses the same syntax as smartconfig's ``__datetime.parse__`` function.
+    """
+    args = types.SimpleNamespace(input=value, keypath=())
+    try:
+        return smartconfig.stdlib.datetime.parse(args)  # type: ignore[arg-type]
+    except smartconfig.exceptions.ResolutionError:
+        raise smartconfig.exceptions.ConversionError(
+            f'Cannot read "{value}" as a date or a date phrase (like '
+            f'"3 days after 2026-01-01", "first monday, wednesday after '
+            f'2026-01-01", or "2026-01-01 at 23:59:00").'
+        ) from None
+
+
+def _date_or_phrase(value: typing.Any) -> datetime.date:
+    """Convert to a date, reading strings that are not ISO dates as phrases."""
+    try:
+        return smartconfig.converters.date(value)
+    except smartconfig.exceptions.ConversionError:
+        if not isinstance(value, str):
+            raise
+    result = _parse_date_phrase(value)
+    return result.date() if isinstance(result, datetime.datetime) else result
+
+
+def _datetime_or_phrase(value: typing.Any) -> datetime.datetime:
+    """Convert to a datetime, reading strings that are not ISO as phrases."""
+    try:
+        return smartconfig.converters.datetime(value)
+    except smartconfig.exceptions.ConversionError:
+        if not isinstance(value, str):
+            raise
+    result = _parse_date_phrase(value)
+    if isinstance(result, datetime.datetime):
+        return result
+    return datetime.datetime.combine(result, datetime.time())
+
+
+# The converters automata uses for every resolution: smartconfig's defaults,
+# except that date and datetime fields also accept date phrases, so
+# __datetime.parse__ is not needed for them.
+CONVERTERS: dict[str, typing.Callable] = {
+    **smartconfig.DEFAULT_CONVERTERS,
+    "date": _date_or_phrase,
+    "datetime": _datetime_or_phrase,
+}
+
+
 @typing.overload
 def resolve(
     config: smartconfig.types.Configuration,
@@ -189,6 +244,12 @@ def resolve(
 
     This function wraps smartconfig.resolve() and automatically provides built-in
     functions like 'include' for common operations.
+
+    Fields of type ``date`` or ``datetime`` accept date phrases as well as ISO
+    strings and date objects, e.g. ``"7 days before ${this.metadata.due} at
+    00:00:00"`` or ``"first tuesday, thursday after 2026-09-24"`` (the syntax of
+    ``__datetime.parse__``). ISO strings are read exactly as before; phrases are
+    only tried for strings that are not ISO dates.
 
     Parameters
     ----------
@@ -238,4 +299,5 @@ def resolve(
         user_functions = kwargs.pop("functions")
         functions.update(user_functions)
 
+    kwargs.setdefault("converters", CONVERTERS)
     return smartconfig.resolve(config, schema, functions=functions, **kwargs)

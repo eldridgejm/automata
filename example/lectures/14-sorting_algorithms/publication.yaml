@@ -1,7 +1,6 @@
 metadata:
   number: 14
-  date:
-    __datetime.parse__: "first monday, wednesday after ${ previous.metadata.date }"
+  date: first monday, wednesday after ${ previous.metadata.date }
   topic: "Advanced Sorting Algorithms"
 
 artifacts:

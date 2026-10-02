@@ -401,3 +401,103 @@ def test_resolve_for_each_publication_fixup_receives_publication():
     assert result[0]["artifact_count"] == 1
     assert result[1]["title"] == "Pub2"
     assert result[1]["artifact_count"] == 2
+
+
+# date phrases in date and datetime fields
+# ============================================================================
+
+
+def _resolve_field(value, type_, **kwargs):
+    from automata.util.resolution import resolve
+
+    schema = {"type": "dict", "required_keys": {"when": {"type": type_}}}
+    return resolve({"when": value}, schema, **kwargs)["when"]
+
+
+def test_date_field_accepts_an_offset_phrase():
+    import datetime
+
+    assert _resolve_field("7 days after 2026-01-01", "date") == datetime.date(
+        2026, 1, 8
+    )
+
+
+def test_datetime_field_accepts_a_date_with_an_at_time():
+    import datetime
+
+    assert _resolve_field("2026-10-06 at 23:59:00", "datetime") == datetime.datetime(
+        2026, 10, 6, 23, 59
+    )
+
+
+def test_datetime_field_accepts_an_offset_phrase_with_an_at_time():
+    import datetime
+
+    result = _resolve_field("7 days before 2026-10-06 at 00:00:00", "datetime")
+
+    assert result == datetime.datetime(2026, 9, 29, 0, 0)
+
+
+def test_datetime_field_given_a_date_phrase_is_midnight():
+    import datetime
+
+    result = _resolve_field("3 days after 2026-01-01", "datetime")
+
+    assert result == datetime.datetime(2026, 1, 4, 0, 0)
+
+
+def test_date_field_accepts_first_weekday_phrases():
+    import datetime
+
+    # 2026-09-24 is a Thursday; the next Tuesday or Thursday is 2026-09-29
+    for phrase in [
+        "first tuesday, thursday after 2026-09-24",
+        "first tuesday or thursday after 2026-09-24",
+    ]:
+        assert _resolve_field(phrase, "date") == datetime.date(2026, 9, 29)
+
+
+def test_date_phrases_can_use_interpolated_values():
+    import datetime
+
+    result = _resolve_field(
+        "${ due } at 23:59:00", "datetime", global_variables={"due": "2026-10-06"}
+    )
+
+    assert result == datetime.datetime(2026, 10, 6, 23, 59)
+
+
+def test_iso_strings_and_date_objects_convert_as_before():
+    import datetime
+
+    assert _resolve_field("2026-10-06", "date") == datetime.date(2026, 10, 6)
+    assert _resolve_field("2026-10-06 23:59:00", "datetime") == datetime.datetime(
+        2026, 10, 6, 23, 59
+    )
+    assert _resolve_field(datetime.date(2026, 10, 6), "date") == datetime.date(
+        2026, 10, 6
+    )
+
+
+def test_explicit_datetime_parse_still_works():
+    import datetime
+
+    result = _resolve_field({"__datetime.parse__": "3 days after 2026-01-01"}, "date")
+
+    assert result == datetime.date(2026, 1, 4)
+
+
+def test_unreadable_date_phrase_gives_a_clear_error():
+    import pytest
+
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
+        _resolve_field("7 dyas before 2026-10-06", "datetime")
+
+    message = str(excinfo.value)
+    assert "7 dyas before 2026-10-06" in message
+    assert "date phrase" in message
+    assert '"when"' in message  # names the field
+
+
+def test_phrases_in_untyped_fields_stay_strings():
+    assert _resolve_field("7 days after 2026-01-01", "any") == "7 days after 2026-01-01"
