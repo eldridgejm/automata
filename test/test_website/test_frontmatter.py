@@ -34,3 +34,25 @@ def test_unclosed_frontmatter_is_content():
 
     assert frontmatter == Frontmatter(vars={})
     assert rest == "---\ntemplate: x.html\n# Hi"
+
+
+# variables ============================================================================
+
+
+def test_global_vars_are_available_in_frontmatter():
+    frontmatter, _ = read_frontmatter(
+        '---\nvars:\n  title: "${ vars.course } Syllabus"\n---\n',
+        vars={"course": "DSC 40B"},
+    )
+
+    assert frontmatter.vars == {"title": "DSC 40B Syllabus"}
+
+
+def test_frontmatter_refers_to_itself_as_this():
+    frontmatter, _ = read_frontmatter(
+        "---\nvars:\n  course: DSC 40B\n"
+        '  title: "${ this.vars.course } Syllabus"\n---\n',
+        vars={"course": "global"},
+    )
+
+    assert frontmatter.vars["title"] == "DSC 40B Syllabus"

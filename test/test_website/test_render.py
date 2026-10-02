@@ -579,6 +579,32 @@ def test_frontmatter_errors_name_the_file_and_keypath(tmpsite, theme):
     assert message == f"{source}:3: vars: Expected a dict, but got a list."
 
 
+def test_frontmatter_can_use_global_vars(tmpsite, theme):
+    tmpsite.make_page(
+        "index.md",
+        '---\nvars:\n  title: "${ vars.course } Syllabus"\n---\n'
+        "# ${ frontmatter.vars.title }\n",
+    )
+
+    _render(tmpsite, theme=theme, vars={"course": "DSC 40B"})
+
+    assert "DSC 40B Syllabus" in tmpsite.get_output("index.html")
+
+
+def test_frontmatter_errors_give_the_keypath_without_this(tmpsite, theme):
+    tmpsite.make_page(
+        "index.md", '---\ntemplate: page.html\nvars:\n  title: "${ vars.nope }"\n---\n'
+    )
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme, vars={"course": "DSC 40B"})
+
+    # vars are the global variables: "nope" isn't one of them
+    assert message == (
+        f'{source}:4: vars.title: The dict has no key "nope". Its keys are "course".'
+    )
+
+
 def test_frontmatter_errors_at_an_include_give_the_line_of_the_include(tmpsite, theme):
     (tmpsite.content_directory / "data.yaml").write_text("a: 1\nb: [1, 2]\n")
     tmpsite.make_page(

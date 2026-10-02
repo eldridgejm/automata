@@ -347,7 +347,9 @@ def _render_page(
     """
     base_path = page.source.parent if page.source is not None else None
     try:
-        frontmatter, content = read_frontmatter(page.content, base_path=base_path)
+        frontmatter, content = read_frontmatter(
+            page.content, base_path=base_path, vars=context.vars
+        )
     except FrontmatterError as e:
         raise PageError(e.message, path, e.line) from e
     except Exception as e:

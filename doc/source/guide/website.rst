@@ -101,6 +101,20 @@ Frontmatter fields:
 - ``vars``: Page-specific variables, accessible via ``frontmatter.vars``.
 - ``template``: Which theme template to use. Defaults to ``page.html``.
 
+Inside the frontmatter, ``vars`` are the global variables from
+``automata.yaml``, as everywhere else, and the frontmatter refers to itself as
+``this``, as a publication does in ``publication.yaml``:
+
+.. code-block:: markdown
+
+    ---
+    vars:
+      title: "${ vars.course_name } Syllabus"
+      heading: "${ this.vars.title } (updated weekly)"
+    ---
+
+    # ${ frontmatter.vars.heading }
+
 
 Using elements
 --------------
