@@ -97,6 +97,18 @@ def test_shell_script_with_custom_serializer(tmp_path):
     assert output_file.read_text() == "custom:hello"
 
 
+def test_failing_shell_script_raises(tmp_path):
+    from automata.exceptions import Error
+
+    hook = ObserverHook[SampleArgs]()
+    hook.register_shell_script("cat > /dev/null && exit 2")
+
+    with pytest.raises(Error) as excinfo:
+        hook(SampleArgs(message="hello"))
+
+    assert "exit status 2" in str(excinfo.value)
+
+
 def test_shell_script_with_non_dataclass_args_raises(tmp_path):
     hook = ObserverHook[int]()
     hook.register_shell_script(f"cat > {tmp_path / 'out.json'}")

@@ -359,3 +359,23 @@ def test_script_hooks_receive_project_and_extension_directories(
 
     assert (project / "project.txt").read_text().strip() == str(project)
     assert (project / "extension.txt").read_text().strip() == str(ext_dir)
+
+
+def test_failing_script_hook_raises_naming_the_hook_and_extension(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    ext_dir = project / "extensions" / "tools"
+    (ext_dir / "hooks").mkdir(parents=True)
+    (ext_dir / "hooks" / "on_render_post").write_text("cat > /dev/null && exit 3")
+
+    ext = extension_from_directory(
+        "tools", ext_dir, require_templates=False, project_directory=project
+    )
+
+    with pytest.raises(Error) as excinfo:
+        _run_render_post(ext, project / "_build")
+
+    message = str(excinfo.value)
+    assert 'Script hook "on_render_post" of extension "tools"' in message
+    assert "exit status 3" in message

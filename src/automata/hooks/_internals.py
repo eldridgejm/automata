@@ -6,6 +6,8 @@ import subprocess
 from collections.abc import Callable
 from typing import Any, get_origin, get_type_hints
 
+from ..exceptions import Error
+
 
 def _default_serializer(value: object) -> str:
     """Default serializer for shell script hooks.
@@ -15,6 +17,34 @@ def _default_serializer(value: object) -> str:
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
         return json.dumps(dataclasses.asdict(value), default=str)
     raise TypeError(f"Cannot serialize {type(value).__name__}; expected a dataclass")
+
+
+def run_shell_hook(
+    command: str,
+    payload: str,
+    *,
+    description: str,
+    cwd: str | None = None,
+    env: dict[str, str] | None = None,
+) -> None:
+    """Run a hook's shell command, piping *payload* to it on stdin.
+
+    The command's output goes to the terminal as it runs.
+
+    Raises
+    ------
+    automata.exceptions.Error
+        If the command exits with a nonzero status. The message starts with
+        *description*.
+
+    """
+    result = subprocess.run(
+        command, input=payload, shell=True, text=True, cwd=cwd, env=env
+    )
+    if result.returncode != 0:
+        raise Error(
+            f"{description} failed with exit status {result.returncode}: {command}"
+        )
 
 
 class ObserverHook[T]:
@@ -53,8 +83,9 @@ class ObserverHook[T]:
             raise TypeError("Shell scripts are not enabled for this hook")
 
         def _shell_impl(value: T) -> None:
-            payload = self.serializer(value)
-            subprocess.run(command, input=payload, shell=True, text=True)
+            run_shell_hook(
+                command, self.serializer(value), description="Shell script hook"
+            )
 
         self.register(priority=priority)(_shell_impl)
 

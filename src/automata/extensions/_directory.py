@@ -7,7 +7,6 @@ import itertools
 import json
 import os
 import pathlib
-import subprocess
 import sys
 import types
 from collections.abc import Callable
@@ -239,7 +238,9 @@ def _extension_from_files(
     # Load script hooks from hooks/ directory
     hooks_dir = directory / "hooks"
     if hooks_dir.is_dir():
-        ext_hooks.update(_load_script_hooks(hooks_dir, directory, project_directory))
+        ext_hooks.update(
+            _load_script_hooks(name, hooks_dir, directory, project_directory)
+        )
 
     return Extension(
         name=name,
@@ -309,6 +310,7 @@ def _walk(
 
 
 def _load_script_hooks(
+    extension_name: str,
     hooks_dir: Traversable,
     extension_directory: Traversable,
     project_directory: pathlib.Path | None,
@@ -327,7 +329,7 @@ def _load_script_hooks(
     Returns a dict mapping hook point names to callables.
     """
     from ..hooks import Hooks
-    from ..hooks._internals import ObserverHook, _default_serializer
+    from ..hooks._internals import ObserverHook, _default_serializer, run_shell_hook
 
     observer_hooks = sorted(
         name
@@ -357,15 +359,20 @@ def _load_script_hooks(
         if not command:
             continue
 
-        def _make_hook(cmd: str) -> Callable:
+        def _make_hook(cmd: str, description: str) -> Callable:
             def _hook(args: Any) -> None:
-                payload = _default_serializer(args)
-                subprocess.run(
-                    cmd, input=payload, shell=True, text=True, cwd=cwd, env=env
+                run_shell_hook(
+                    cmd,
+                    _default_serializer(args),
+                    description=description,
+                    cwd=None if cwd is None else str(cwd),
+                    env=env,
                 )
 
             return _hook
 
-        script_hooks[hook_name] = _make_hook(command)
+        script_hooks[hook_name] = _make_hook(
+            command, f'Script hook "{hook_name}" of extension "{extension_name}"'
+        )
 
     return script_hooks

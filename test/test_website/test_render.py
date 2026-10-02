@@ -644,6 +644,9 @@ def test_render_errors_for_missing_frontmatter_template(tmpsite, tmp_path):
         _render(tmpsite, theme=theme)
 
     assert exc_info.value.path == pathlib.Path("index.html")
+    assert isinstance(
+        exc_info.value.__cause__, automata.website.exceptions.WebsiteError
+    )
 
 
 def test_render_requires_base_template_in_theme(tmpsite, tmp_path):
@@ -658,7 +661,7 @@ def test_render_requires_base_template_in_theme(tmpsite, tmp_path):
     theme = _make_theme(theme_dir=custom_theme_dir)
 
     # when / then
-    with raises(ValueError, match="page.html"):
+    with raises(automata.website.exceptions.WebsiteError, match="page.html"):
         _render(tmpsite, theme=theme)
 
 
@@ -1418,6 +1421,7 @@ def test_element_template_resolving_an_undefined_variable_names_it(tmpsite):
         _render(tmpsite, hooks=_greeting_hooks("${ resolve(element_config.text) }"))
 
     assert "nobody" in str(excinfo.value)
+    assert type(excinfo.value.__cause__) is automata.website.exceptions.WebsiteError
 
 
 def test_element_resolving_a_missing_config_key_names_it(tmpsite):
@@ -1427,6 +1431,7 @@ def test_element_resolving_a_missing_config_key_names_it(tmpsite):
         _render(tmpsite, hooks=_greeting_hooks("${ resolve(element_config.missing) }"))
 
     assert "missing" in str(excinfo.value)
+    assert type(excinfo.value.__cause__) is automata.website.exceptions.WebsiteError
 
 
 # extra_content =======================================================================

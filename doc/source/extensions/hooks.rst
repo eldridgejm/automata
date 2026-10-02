@@ -222,6 +222,11 @@ paths in them are relative to the project. Two environment variables are set:
   scripts that ship with the extension (e.g.,
   ``sh "$AUTOMATA_EXTENSION_DIR/build.sh"``).
 
+A script hook that exits with a nonzero status stops the build with an error
+naming the hook and the extension, e.g. ``Script hook "on_render_pre" of
+extension "practice-problems" failed with exit status 1``. The script's output
+appears in the terminal as it runs.
+
 
 Registering hooks in Python
 ----------------------------

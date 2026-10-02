@@ -373,3 +373,22 @@ def test_yaml_syntax_error_in_automata_yaml_prints_without_a_traceback(project):
     assert isinstance(result.exception, SystemExit)
     assert "Invalid YAML in" in result.output
     assert "line 3" in result.output
+
+
+def test_failing_script_hook_fails_the_build(project):
+    ext_dir = project / "extensions" / "generator"
+    (ext_dir / "hooks").mkdir(parents=True)
+    (ext_dir / "hooks" / "on_render_pre").write_text(
+        "cat > /dev/null && echo 'problem generator crashed' >&2 && exit 1"
+    )
+    config = project / "automata.yaml"
+    config.write_text("extensions:\n  - extensions/generator\n" + config.read_text())
+
+    result = runner.invoke(app, ["build"])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert 'Error: Script hook "on_render_pre" of extension "generator"' in (
+        result.output
+    )
+    assert not (project / "_build" / "index.html").exists()

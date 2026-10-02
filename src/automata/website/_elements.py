@@ -9,6 +9,7 @@ from ..materials import Publication
 from ..util import markdown as markdown_util
 from ..util.resolution import resolve
 from ._render import RenderContext
+from .exceptions import WebsiteError
 
 
 class Element(ABC):
@@ -89,7 +90,7 @@ def _resolve(
 
     # Check if template_str is actually undefined
     if isinstance(template_str, jinja2.Undefined):
-        raise ValueError(
+        raise WebsiteError(
             f"Cannot resolve undefined template string. "
             f"The template variable is undefined: {template_str._undefined_name}"
         )
@@ -108,7 +109,7 @@ def _resolve(
         )
         return template.render(**vars)
     except jinja2.UndefinedError as exc:
-        raise Exception(f"Error evaluating template: {exc}")
+        raise WebsiteError(f"Error evaluating template: {exc}") from exc
 
 
 def _is_something_missing(publication: Publication, requirements) -> bool:

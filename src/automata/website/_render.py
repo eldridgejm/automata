@@ -274,7 +274,7 @@ def _render_page(
 
     template_name = context.frontmatter.template
     if template_name not in jinja_environment.list_templates():
-        raise ValueError(f'Template "{template_name}" not found.')
+        raise WebsiteError(f'Template "{template_name}" not found.')
 
     return jinja_environment.get_template(template_name).render(
         **context.to_dict(),
@@ -421,7 +421,7 @@ def render(
     inputs = hooks.on_render_collect(WebsiteInputs())
 
     if "page.html" not in inputs.templates:
-        raise ValueError('No extension provided a "page.html" template.')
+        raise WebsiteError('No extension provided a "page.html" template.')
 
     unknown_elements = sorted(set(element_configs) - set(inputs.elements))
     if unknown_elements:
