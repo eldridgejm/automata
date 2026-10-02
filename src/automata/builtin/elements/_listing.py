@@ -1,12 +1,16 @@
 """Listing element for displaying collections in a table."""
 
+from dataclasses import dataclass
 from typing import Any, cast
 
+import jinja2
 import smartconfig
 
 from automata.extensions import Extension
+from automata.materials import Publication
 from automata.util.resolution import string_or_template_string, unwrap_templates
 from automata.website import TemplateElement
+from automata.website.exceptions import WebsiteError
 
 REQUIREMENTS_CONFIG_SCHEMA = {
     "type": "dict",
@@ -75,25 +79,87 @@ class Listing(TemplateElement):
         self,
         config: smartconfig.types.Configuration,
     ) -> dict[str, Any]:
-        """Provide additional template variables."""
-        tvars = super().template_vars(config)
+        """Build the table: its headings, and one row per publication.
 
-        # Get the collection
+        Each cell's content is chosen and resolved here, so the template only
+        lays out the table.
+        """
+        tvars = super().template_vars(config)
+        resolve = tvars["resolve"]
+
         config_dict = cast(dict[str, Any], config)
         collection_name = cast(str, config_dict["collection"])
         collection = self.context.materials.collections[collection_name]
+        columns = config_dict["columns"]
 
-        # Get publications sorted by key
-        publications_and_keys = sorted(collection.publications.items())
-        publications = [v for (k, v) in publications_and_keys]
+        rows = []
+        for number, (key, publication) in enumerate(
+            sorted(collection.publications.items()), start=1
+        ):
+            cells = []
+            for column in columns:
+                content = _cell_content(publication, column)
+                try:
+                    cells.append(resolve(content, {"publication": publication}))
+                except (WebsiteError, jinja2.TemplateError) as e:
+                    raise WebsiteError(
+                        f'Listing of "{collection_name}", column '
+                        f'"{column["heading"]}", publication "{key}": {e}'
+                    ) from e
+            rows.append(ListingRow(number=number, cells=cells))
 
         tvars.update(
             {
-                "publications": publications,
+                "headings": [column["heading"] for column in columns],
+                "rows": rows,
+                "numbered": config_dict["numbered"],
             }
         )
-
         return tvars
+
+
+@dataclass
+class ListingRow:
+    """One row of a listing: its 1-based number and its cells' content."""
+
+    number: int
+    cells: list[str]
+
+
+def _cell_content(publication: Publication, column: dict[str, Any]) -> str:
+    """The (unresolved) content for a column's cell in a publication's row.
+
+    If the column requires something the publication lacks and the column
+    gives ``cell_content_if_missing``, that is used; otherwise ``cell_content``.
+    """
+    requires = column.get("requires")
+    if requires is not None and requires["cell_content_if_missing"] is not None:
+        if _is_something_missing(publication, requires):
+            return str(requires["cell_content_if_missing"])
+    return str(column["cell_content"])
+
+
+def _is_something_missing(publication: Publication, requirements) -> bool:
+    """Check if a publication is missing required artifacts or metadata."""
+    if requirements is None:
+        return False
+
+    for artifact in requirements.get("artifacts", []):
+        if artifact not in publication.artifacts:
+            return True
+
+    for metadata_key in requirements.get("metadata", []):
+        if metadata_key not in publication.metadata:
+            return True
+
+    for metadata_key in requirements.get("non_null_metadata", []):
+        if (
+            metadata_key not in publication.metadata
+            or publication.metadata[metadata_key] is None
+        ):
+            return True
+
+    return False
 
 
 def _collect(inputs):

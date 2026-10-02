@@ -51,7 +51,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Revise the API layer
 - [x] Improve test coverage
 - [x] Add checks to make sure that artifacts that are released and then unreleased do not still appear in the materials.
-- [ ] Improve the listing element by moving more of the logic outside of the template
+- [x] Improve the listing element by moving more of the logic outside of the template
 - [ ] Thorough documentation of website abstraction
 - [ ] Thorough documentation of default theme, including elements
 - [ ] Better error messages

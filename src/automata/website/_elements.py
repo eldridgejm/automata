@@ -5,7 +5,6 @@ from typing import Any
 import jinja2
 import smartconfig
 
-from ..materials import Publication
 from ..util import markdown as markdown_util
 from ..util.resolution import resolve
 from ._render import RenderContext
@@ -112,32 +111,6 @@ def _resolve(
         raise WebsiteError(f"Error evaluating template: {exc}") from exc
 
 
-def _is_something_missing(publication: Publication, requirements) -> bool:
-    """Check if a publication is missing required artifacts or metadata."""
-    if requirements is None:
-        return False
-
-    # Check for missing artifacts
-    for artifact in requirements.get("artifacts", []):
-        if artifact not in publication.artifacts:
-            return True
-
-    # Check for missing metadata
-    for metadata_key in requirements.get("metadata", []):
-        if metadata_key not in publication.metadata:
-            return True
-
-    # Check for null metadata
-    for metadata_key in requirements.get("non_null_metadata", []):
-        if (
-            metadata_key not in publication.metadata
-            or publication.metadata[metadata_key] is None
-        ):
-            return True
-
-    return False
-
-
 def _md_to_html(md_text: str) -> str:
     """Convert markdown text to HTML."""
     md_text = md_text.strip()
@@ -167,7 +140,6 @@ class TemplateElement(BasicElement):
     ) -> dict[str, Any]:
         return {
             "resolve": partial(_resolve, self.context),
-            "is_something_missing": _is_something_missing,
             **self.context.to_dict(),
         }
 
