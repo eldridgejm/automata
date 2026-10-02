@@ -167,7 +167,7 @@ def format_keypath(keypath: typing.Sequence[typing.Any]) -> str:
 def describe_config_error(
     reason: str,
     keypath: typing.Sequence[typing.Any] = (),
-    file: Path | Traversable | None = None,
+    file: str | Path | Traversable | None = None,
     line: int | None = None,
     source_map: SourceMap | None = None,
 ) -> str:

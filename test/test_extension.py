@@ -356,6 +356,64 @@ def test_extension_from_entry_point_raises_if_module_exports_no_extension():
     assert "extension" in message
 
 
+def test_an_invalid_schema_in_an_installed_module_blames_the_module():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP,
+            "my-ext",
+            __file__="/site-packages/my_ext/__init__.py",
+            schema={"type": "dict", "required_keys": {"size": {"type": "integr"}}},
+            make_extension=_factory("my-ext"),
+        )
+    ]
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_entry_point("my-ext", config={"size": 3}, entry_points=eps)
+
+    assert str(excinfo.value) == (
+        "/site-packages/my_ext/__init__.py: schema.required_keys.size.type: "
+        "Invalid type: integr."
+    )
+
+
+def test_an_invalid_schema_in_a_module_without_a_file_names_the_extension():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP,
+            "my-ext",
+            schema={"type": "dict", "requried_keys": {}},
+            make_extension=_factory("my-ext"),
+        )
+    ]
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_entry_point("my-ext", entry_points=eps)
+
+    assert str(excinfo.value) == (
+        'The module of extension "my-ext": schema.requried_keys: Unexpected key.'
+    )
+
+
+def test_a_schema_in_an_installed_module_without_make_extension_is_an_error():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP,
+            "my-ext",
+            schema=_TITLE_SCHEMA,
+            extension=_make_extension(name="my-ext"),
+        )
+    ]
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_entry_point("my-ext", entry_points=eps)
+
+    assert str(excinfo.value) == (
+        'Extension "my-ext" defines a config schema but no make_extension(config), '
+        "so the schema is never used. Export make_extension(config), or remove "
+        "the schema."
+    )
+
+
 # public API ===========================================================================
 
 

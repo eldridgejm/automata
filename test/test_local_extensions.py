@@ -471,3 +471,70 @@ def test_extension_from_directory_cannot_import_python_from_a_zip(tmp_path):
         extension_from_directory("theme", directory, allow_python=True)
 
     assert "not a filesystem path" in str(excinfo.value)
+
+
+# schemas in extension.py ==============================================================
+
+
+@pytest.mark.parametrize(
+    "schema, expected",
+    [
+        (
+            '{"type": "dict", "required_keys": {"size": {"type": "integr"}}}',
+            "schema.required_keys.size.type: Invalid type: integr.",
+        ),
+        (
+            '{"type": "dict", "requried_keys": {"size": {"type": "integer"}}}',
+            "schema.requried_keys: Unexpected key.",
+        ),
+    ],
+)
+def test_an_invalid_schema_in_extension_py_blames_extension_py(
+    tmp_path, schema, expected
+):
+    project = _write_project(
+        tmp_path / "project", "  - {use: extensions/sized, config: {size: 3}}"
+    )
+    extension_dir = _write_extension(
+        project / "extensions" / "sized",
+        {
+            "extension.py": f"""\
+                from automata.extensions import Extension
+
+                schema = {schema}
+
+                def make_extension(config):
+                    return Extension(name="sized", hooks={{}}, config=config)
+            """,
+        },
+    )
+
+    with pytest.raises(Error) as excinfo:
+        _load(project)
+
+    assert str(excinfo.value) == f"{extension_dir / 'extension.py'}: {expected}"
+
+
+def test_a_schema_without_make_extension_is_an_error(tmp_path):
+    project = _write_project(tmp_path / "project", "  - extensions/sized")
+    _write_extension(
+        project / "extensions" / "sized",
+        {
+            "extension.py": """\
+                from automata.extensions import Extension
+
+                schema = {"type": "dict"}
+
+                extension = Extension(name="sized", hooks={})
+            """,
+        },
+    )
+
+    with pytest.raises(Error) as excinfo:
+        _load(project)
+
+    assert str(excinfo.value) == (
+        'Extension "sized" defines a config schema but no make_extension(config), '
+        "so the schema is never used. Export make_extension(config), or remove "
+        "the schema."
+    )

@@ -9,7 +9,7 @@ import smartconfig.exceptions
 import smartconfig.types
 
 from ..exceptions import Error
-from ..util.resolution import resolve
+from ..util.resolution import describe_config_error, resolve
 from ._types import Extension
 
 
@@ -47,6 +47,35 @@ def resolve_config(
     return resolved
 
 
+def _check_module_schema(module: Any, name: str, kind: str) -> None:
+    """Check the config schema a module declares, blaming the module if it's wrong.
+
+    Without this, a mistake in the schema is reported as a mistake in the
+    user's configuration (e.g. a misspelled "required_keys" makes a correct
+    key "unexpected").
+
+    """
+    schema = getattr(module, "schema", None)
+    if schema is None:
+        return
+
+    if not hasattr(module, "make_extension"):
+        raise Error(
+            f'{kind.capitalize()} "{name}" defines a config schema but no '
+            f"make_extension(config), so the schema is never used. Export "
+            f"make_extension(config), or remove the schema."
+        )
+
+    try:
+        smartconfig.validate_schema(schema)
+    except smartconfig.exceptions.InvalidSchemaError as e:
+        # a module imported from a file (e.g. extension.py) knows its file
+        where = getattr(module, "__file__", None) or f'The module of {kind} "{name}"'
+        raise Error(
+            describe_config_error(e.reason, ("schema", *e.keypath), file=where)
+        ) from None
+
+
 def extension_from_module(
     module: Any,
     name: str,
@@ -55,6 +84,8 @@ def extension_from_module(
     schema: smartconfig.types.Schema | None,
 ) -> Extension:
     """Build an Extension from a module exporting make_extension or extension."""
+    _check_module_schema(module, name, kind)
+
     if hasattr(module, "make_extension"):
         resolved_config = resolve_config(name, config, schema)
         try:
