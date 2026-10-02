@@ -10,6 +10,7 @@ import smartconfig.converters
 import smartconfig.exceptions
 import smartconfig.stdlib.datetime
 
+from ..exceptions import Error
 from .yaml import parse_yaml
 
 T = typing.TypeVar("T")
@@ -289,8 +290,11 @@ def resolve(
             include_path = typing.cast(str, include_path)
 
             include_path = base_path / include_path
-            yaml_content = include_path.read_text()
-            return parse_yaml(yaml_content)
+            try:
+                yaml_content = include_path.read_text()
+            except FileNotFoundError:
+                raise Error(f'Included file "{include_path}" not found.') from None
+            return parse_yaml(yaml_content, source=include_path)
 
         functions["include"] = include
 

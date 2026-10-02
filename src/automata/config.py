@@ -126,7 +126,7 @@ def read_config(path: Path) -> Config:
 
     """
     yaml_content = path.read_text()
-    config_dict = parse_yaml(yaml_content)
+    config_dict = parse_yaml(yaml_content, source=path)
 
     try:
         return resolve(config_dict, Config, base_path=path.parent)

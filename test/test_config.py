@@ -401,3 +401,46 @@ def test_find_config_searches_upward_from_a_file(tmp_path: Path) -> None:
     page.write_text("# Home")
 
     assert find_config(page) == tmp_path / "automata.yaml"
+
+
+# YAML errors ==========================================================================
+
+
+def test_read_config_reports_a_yaml_syntax_error_with_file_and_line(
+    tmp_path: Path,
+) -> None:
+    config_file = tmp_path / "automata.yaml"
+    config_file.write_text("website:\n  theme: default\n   content_directory: x\n")
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    message = str(excinfo.value)
+    assert f"Invalid YAML in {config_file}, line 3" in message
+
+
+def test_read_config_reports_a_syntax_error_in_an_included_file(tmp_path: Path) -> None:
+    (tmp_path / "schedule.yaml").write_text("a: [1, 2\nb: 3\n")
+    config_file = _write_config(tmp_path, _DEFAULT_THEME)
+    config_file.write_text(
+        "vars:\n  schedule:\n    __include__: schedule.yaml\n" + config_file.read_text()
+    )
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert f"Invalid YAML in {tmp_path / 'schedule.yaml'}, line 2" in str(excinfo.value)
+
+
+def test_read_config_reports_a_missing_included_file(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, _DEFAULT_THEME)
+    config_file.write_text(
+        "vars:\n  schedule:\n    __include__: missing.yaml\n" + config_file.read_text()
+    )
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    message = str(excinfo.value)
+    assert "missing.yaml" in message
+    assert "not found" in message

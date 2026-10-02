@@ -362,3 +362,14 @@ def test_errors_during_the_build_print_without_a_traceback(project):
     assert isinstance(result.exception, SystemExit)
     assert "Error:" in result.output
     assert "recipe" in result.output
+
+
+def test_yaml_syntax_error_in_automata_yaml_prints_without_a_traceback(project):
+    (project / "automata.yaml").write_text("website:\n  theme: default\n   x: 1\n")
+
+    result = runner.invoke(app, ["build"])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "Invalid YAML in" in result.output
+    assert "line 3" in result.output

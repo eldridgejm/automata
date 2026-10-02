@@ -741,6 +741,27 @@ def test_on_discover_skip_shell_script_receives_json(default_example_course, tmp
     assert "01-intro" in content["path"]
 
 
+# YAML errors
+# --------------------------------------------------------------------------------------
+
+
+def test_discover_reports_a_yaml_syntax_error_with_file_and_line(temporary_course):
+    temporary_course.create_collection(
+        "homeworks", "publication_schema:\n    required_artifacts: []\n"
+    )
+    temporary_course.create_publication(
+        "homeworks", "01", "metadata:\n  due: [2026-01-01\nartifacts: {}\n"
+    )
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    message = str(excinfo.value)
+    assert "publication.yaml" in message
+    assert "line 2" in message
+    assert "<unicode string>" not in message
+
+
 # date phrases
 # --------------------------------------------------------------------------------------
 
