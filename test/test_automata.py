@@ -740,3 +740,20 @@ def test_a_missing_content_directory_is_reported(project_dir):
     message = str(excinfo.value)
     assert "content_directory" in message
     assert str(project_dir / "content") in message
+
+
+# discovery ============================================================================
+
+
+def test_discover_skips_the_build_directory_and_hidden_directories(tmp_path):
+    # given: publication.yaml files in a stale build and in a hidden directory
+    project = _write_release_project(tmp_path / "project")
+    for directory in ["_build/materials/old", ".drafts/hw99", ".venv/lib/pkg"]:
+        (project / directory).mkdir(parents=True)
+        (project / directory / "publication.yaml").write_text("artifacts: {}")
+
+    # when
+    universe = Automata(project).discover()
+
+    # then
+    assert universe.collections["default"].publications == {}

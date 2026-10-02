@@ -278,7 +278,9 @@ class Automata:
         """Discover materials from the project directory.
 
         Discovers materials from the filesystem and merges any inline
-        materials defined in ``automata.yaml``.
+        materials defined in ``automata.yaml``. The build directory and
+        directories whose names start with a dot (``.git``, ``.venv``) are
+        skipped.
 
         Returns
         -------
@@ -286,8 +288,15 @@ class Automata:
             The discovered, unbuilt materials universe.
 
         """
+        # the build directory holds copies of materials (and, without cleaning,
+        # stale ones), and hidden directories (.git, .venv) hold none
+        build_dir = (self.path / self.config.website.build_directory).resolve()
+
+        def skip(directory: Path) -> bool:
+            return directory.name.startswith(".") or directory.resolve() == build_dir
+
         universe = materials.discover(
-            self.path, vars=self.config.vars, hooks=self.hooks
+            self.path, skip=skip, vars=self.config.vars, hooks=self.hooks
         )
 
         if self.config.materials:
