@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata as metadata
+from collections.abc import Iterable
 from typing import Any
 
 from ..exceptions import Error
@@ -15,6 +16,7 @@ def extension_from_entry_point(
     config: dict[str, Any] | None = None,
     *,
     group: str = EXTENSIONS_GROUP,
+    entry_points: Iterable[Any] | None = None,
 ) -> Extension:
     """Create an Extension from an entry point.
 
@@ -36,6 +38,10 @@ def extension_from_entry_point(
     group : str
         The entry point group: :data:`EXTENSIONS_GROUP` (the default) or
         :data:`THEMES_GROUP`.
+    entry_points : Iterable | None
+        The entry points to search. If None (the default), the installed
+        packages' entry points. Each needs ``name``, ``group``, and ``load()``;
+        tests pass fakes.
 
     Returns
     -------
@@ -49,28 +55,30 @@ def extension_from_entry_point(
         ``make_extension`` nor ``extension``, or the configuration is invalid.
 
     """
-    all_entry_points = metadata.entry_points()
-    entry_points = all_entry_points.select(group=group)
+    if entry_points is None:
+        entry_points = metadata.entry_points()
+    all_entry_points = list(entry_points)
+
+    def names_in(group_name: str) -> set[str]:
+        return {ep.name for ep in all_entry_points if ep.group == group_name}
+
+    in_group = {ep.name: ep for ep in all_entry_points if ep.group == group}
     kind = "theme" if group == THEMES_GROUP else "extension"
 
-    if entry_point_name not in entry_points.names:
+    if entry_point_name not in in_group:
         message = f'Unknown {kind} "{entry_point_name}".'
-        if group == EXTENSIONS_GROUP and entry_point_name in (
-            all_entry_points.select(group=THEMES_GROUP).names
-        ):
+        if group == EXTENSIONS_GROUP and entry_point_name in names_in(THEMES_GROUP):
             message += (
                 f' "{entry_point_name}" is a theme; set it with website.theme, '
                 f"not under extensions."
             )
-        elif group == THEMES_GROUP and entry_point_name in (
-            all_entry_points.select(group=EXTENSIONS_GROUP).names
-        ):
+        elif group == THEMES_GROUP and entry_point_name in names_in(EXTENSIONS_GROUP):
             message += (
                 f' "{entry_point_name}" is an extension, not a theme; list it '
                 f"under extensions."
             )
         else:
-            available = ", ".join(sorted(entry_points.names)) or "none"
+            available = ", ".join(sorted(in_group)) or "none"
             message += (
                 f" Available {kind}s: {available}. To load an extension from a "
                 f"directory, give a path containing a slash "
@@ -78,7 +86,7 @@ def extension_from_entry_point(
             )
         raise Error(message)
 
-    module = entry_points[entry_point_name].load()
+    module = in_group[entry_point_name].load()
     return extension_from_module(
         module, entry_point_name, kind, config, getattr(module, "schema", None)
     )

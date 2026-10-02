@@ -1,5 +1,3 @@
-import importlib.metadata as metadata
-import sys
 import types
 
 import pytest
@@ -22,34 +20,16 @@ def _make_extension(**kwargs):
     return Extension(**defaults)
 
 
-@pytest.fixture
-def register_entry_point(monkeypatch):
-    """Register a fake entry point: ``register_entry_point(group, name, **attrs)``.
+class _FakeEntryPoint:
+    """An installed entry point, as far as extension_from_entry_point cares."""
 
-    Creates a module with the given attributes and makes it loadable through
-    ``importlib.metadata.entry_points()`` under the given group and name.
+    def __init__(self, group, name, **module_attrs):
+        self.group = group
+        self.name = name
+        self._module = types.SimpleNamespace(**module_attrs)
 
-    """
-    registered = []
-    real_entry_points = metadata.entry_points
-
-    def fake_entry_points(**kwargs):
-        eps = metadata.EntryPoints([*real_entry_points(), *registered])
-        return eps.select(**kwargs) if kwargs else eps
-
-    monkeypatch.setattr(metadata, "entry_points", fake_entry_points)
-
-    def register(group, name, **attrs):
-        module_name = f"_fake_automata_extension_{len(registered)}"
-        module = types.ModuleType(module_name)
-        for key, value in attrs.items():
-            setattr(module, key, value)
-        monkeypatch.setitem(sys.modules, module_name, module)
-        registered.append(
-            metadata.EntryPoint(name=name, value=module_name, group=group)
-        )
-
-    return register
+    def load(self):
+        return self._module
 
 
 def _factory(name, schema=None):
@@ -234,130 +214,138 @@ def test_extension_from_entry_point_hints_when_theme_is_used_as_extension():
     assert "website.theme" in str(excinfo.value)
 
 
-def test_extension_from_entry_point_hints_when_extension_is_used_as_theme(
-    register_entry_point,
-):
-    register_entry_point(
-        EXTENSIONS_GROUP, "my-ext", extension=_make_extension(name="my-ext")
-    )
+def test_extension_from_entry_point_hints_when_extension_is_used_as_theme():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP, "my-ext", extension=_make_extension(name="my-ext")
+        )
+    ]
 
     with pytest.raises(Error) as excinfo:
-        extension_from_entry_point("my-ext", group=THEMES_GROUP)
+        extension_from_entry_point("my-ext", group=THEMES_GROUP, entry_points=eps)
 
     assert "extensions" in str(excinfo.value)
 
 
-def test_extension_from_entry_point_calls_factory_with_validated_config(
-    register_entry_point,
-):
-    register_entry_point(
-        EXTENSIONS_GROUP,
-        "my-ext",
-        schema=_TITLE_SCHEMA,
-        make_extension=_factory("my-ext"),
-    )
+def test_extension_from_entry_point_calls_factory_with_validated_config():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP,
+            "my-ext",
+            schema=_TITLE_SCHEMA,
+            make_extension=_factory("my-ext"),
+        )
+    ]
 
-    ext = extension_from_entry_point("my-ext", config={"title": "Hello"})
+    ext = extension_from_entry_point(
+        "my-ext", config={"title": "Hello"}, entry_points=eps
+    )
 
     assert ext.config == {"title": "Hello", "subtitle": "none"}
 
 
-def test_extension_from_entry_point_factory_builds_independent_extensions(
-    register_entry_point,
-):
-    register_entry_point(
-        EXTENSIONS_GROUP,
-        "my-ext",
-        schema=_TITLE_SCHEMA,
-        make_extension=_factory("my-ext"),
-    )
+def test_extension_from_entry_point_factory_builds_independent_extensions():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP,
+            "my-ext",
+            schema=_TITLE_SCHEMA,
+            make_extension=_factory("my-ext"),
+        )
+    ]
 
-    first = extension_from_entry_point("my-ext", config={"title": "First"})
-    second = extension_from_entry_point("my-ext", config={"title": "Second"})
+    first = extension_from_entry_point(
+        "my-ext", config={"title": "First"}, entry_points=eps
+    )
+    second = extension_from_entry_point(
+        "my-ext", config={"title": "Second"}, entry_points=eps
+    )
 
     assert first is not second
     assert first.config["title"] == "First"
     assert second.config["title"] == "Second"
 
 
-def test_extension_from_entry_point_applies_defaults_when_config_omitted(
-    register_entry_point,
-):
+def test_extension_from_entry_point_applies_defaults_when_config_omitted():
     schema = {
         "type": "dict",
         "optional_keys": {"subtitle": {"type": "string", "default": "none"}},
     }
-    register_entry_point(
-        EXTENSIONS_GROUP, "my-ext", schema=schema, make_extension=_factory("my-ext")
-    )
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP, "my-ext", schema=schema, make_extension=_factory("my-ext")
+        )
+    ]
 
-    ext = extension_from_entry_point("my-ext")
+    ext = extension_from_entry_point("my-ext", entry_points=eps)
 
     assert ext.config == {"subtitle": "none"}
 
 
-def test_extension_from_entry_point_raises_on_missing_required_config(
-    register_entry_point,
-):
-    register_entry_point(
-        EXTENSIONS_GROUP,
-        "my-ext",
-        schema=_TITLE_SCHEMA,
-        make_extension=_factory("my-ext"),
-    )
+def test_extension_from_entry_point_raises_on_missing_required_config():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP,
+            "my-ext",
+            schema=_TITLE_SCHEMA,
+            make_extension=_factory("my-ext"),
+        )
+    ]
 
     with pytest.raises(Error) as excinfo:
-        extension_from_entry_point("my-ext")
+        extension_from_entry_point("my-ext", entry_points=eps)
 
     message = str(excinfo.value)
     assert "my-ext" in message
     assert "title" in message
 
 
-def test_extension_from_entry_point_raises_on_invalid_config(register_entry_point):
-    register_entry_point(
-        EXTENSIONS_GROUP,
-        "my-ext",
-        schema=_TITLE_SCHEMA,
-        make_extension=_factory("my-ext"),
-    )
+def test_extension_from_entry_point_raises_on_invalid_config():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP,
+            "my-ext",
+            schema=_TITLE_SCHEMA,
+            make_extension=_factory("my-ext"),
+        )
+    ]
 
     with pytest.raises(Error):
-        extension_from_entry_point("my-ext", config={"title": "Hi", "bogus": 1})
+        extension_from_entry_point(
+            "my-ext", config={"title": "Hi", "bogus": 1}, entry_points=eps
+        )
 
 
-def test_extension_from_entry_point_uses_plain_extension_attribute(
-    register_entry_point,
-):
+def test_extension_from_entry_point_uses_plain_extension_attribute():
     plain = _make_extension(name="my-ext")
-    register_entry_point(EXTENSIONS_GROUP, "my-ext", extension=plain)
+    eps = [_FakeEntryPoint(EXTENSIONS_GROUP, "my-ext", extension=plain)]
 
-    ext = extension_from_entry_point("my-ext")
+    ext = extension_from_entry_point("my-ext", entry_points=eps)
 
     assert ext.name == "my-ext"
     assert ext.config == {}
 
 
-def test_extension_from_entry_point_raises_if_plain_extension_given_config(
-    register_entry_point,
-):
-    register_entry_point(
-        EXTENSIONS_GROUP, "my-ext", extension=_make_extension(name="my-ext")
-    )
+def test_extension_from_entry_point_raises_if_plain_extension_given_config():
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP, "my-ext", extension=_make_extension(name="my-ext")
+        )
+    ]
 
     with pytest.raises(Error) as excinfo:
-        extension_from_entry_point("my-ext", config={"title": "Hello"})
+        extension_from_entry_point(
+            "my-ext", config={"title": "Hello"}, entry_points=eps
+        )
 
     assert "my-ext" in str(excinfo.value)
 
 
-def test_extension_from_entry_point_raises_if_module_exports_no_extension(
-    register_entry_point,
-):
-    register_entry_point(EXTENSIONS_GROUP, "my-ext")
+def test_extension_from_entry_point_raises_if_module_exports_no_extension():
+    eps = [_FakeEntryPoint(EXTENSIONS_GROUP, "my-ext")]
 
     with pytest.raises(Error) as excinfo:
-        extension_from_entry_point("my-ext")
+        extension_from_entry_point("my-ext", entry_points=eps)
 
     message = str(excinfo.value)
     assert "make_extension" in message
@@ -404,16 +392,18 @@ def test_docs_do_not_import_the_private_extension_module():
     assert offenders == []
 
 
-def test_extension_config_accepts_date_phrases(register_entry_point):
+def test_extension_config_accepts_date_phrases():
     import datetime
 
     schema = {"type": "dict", "required_keys": {"start": {"type": "date"}}}
-    register_entry_point(
-        EXTENSIONS_GROUP, "my-ext", schema=schema, make_extension=_factory("my-ext")
-    )
+    eps = [
+        _FakeEntryPoint(
+            EXTENSIONS_GROUP, "my-ext", schema=schema, make_extension=_factory("my-ext")
+        )
+    ]
 
     ext = extension_from_entry_point(
-        "my-ext", config={"start": "7 days after 2026-01-01"}
+        "my-ext", config={"start": "7 days after 2026-01-01"}, entry_points=eps
     )
 
     assert ext.config["start"] == datetime.date(2026, 1, 8)

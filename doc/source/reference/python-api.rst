@@ -255,13 +255,15 @@ Example: custom hooks
     imports itself; directory paths in ``automata.yaml`` are loaded with it set
     to true.
 
-.. function:: extension_from_entry_point(entry_point_name, config=None, *, group=EXTENSIONS_GROUP)
+.. function:: extension_from_entry_point(entry_point_name, config=None, *, group=EXTENSIONS_GROUP, entry_points=None)
 
     Create an Extension from an installed package's entry point in *group*
     (``EXTENSIONS_GROUP``, ``"automata.extensions"``, or ``THEMES_GROUP``,
     ``"automata.themes"``). The module must export ``make_extension(config)``
     or ``extension``. Raises :class:`automata.exceptions.Error` if the entry
-    point is not found or the config is invalid.
+    point is not found or the config is invalid. *entry_points* is the set of
+    entry points to search (default: those of the installed packages); each
+    needs ``name``, ``group``, and ``load()``, so tests can pass fakes.
 
 .. code-block:: python
 
