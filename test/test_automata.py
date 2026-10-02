@@ -416,6 +416,59 @@ def test_clean_build_directory_refuses_directory_with_automata_yaml(tmp_path):
     assert (other / "automata.yaml").exists()
 
 
+def test_clean_build_directory_refuses_a_directory_holding_materials(tmp_path):
+    # given: the build directory is a collection (here, nested one level)
+    project = _write_release_project(tmp_path / "project", build_directory="course")
+    collection = project / "course" / "hw"
+    (collection / "hw01").mkdir(parents=True)
+    (collection / "collection.yaml").write_text("publication_schema: {}")
+    (collection / "hw01" / "publication.yaml").write_text("artifacts: {}")
+
+    # when / then
+    with pytest.raises(Error) as excinfo:
+        Automata(project).clean_build_directory()
+
+    assert "contains course materials" in str(excinfo.value)
+    assert (collection / "hw01" / "publication.yaml").exists()
+
+
+@pytest.mark.parametrize("build_directory", ["extensions/site", "extensions"])
+def test_clean_build_directory_refuses_an_extension_directory(
+    tmp_path, build_directory
+):
+    # given: the build directory is (or contains) a directory extension
+    project = _write_release_project(
+        tmp_path / "project",
+        build_directory=build_directory,
+        extra="extensions: [extensions/site]",
+    )
+    extension = project / "extensions" / "site"
+    (extension / "templates").mkdir(parents=True)
+    (extension / "templates" / "partial.html").write_text("keep me")
+
+    # when / then
+    with pytest.raises(Error) as excinfo:
+        Automata(project).clean_build_directory()
+
+    assert "extension" in str(excinfo.value)
+    assert (extension / "templates" / "partial.html").exists()
+
+
+def test_clean_build_directory_refuses_a_directory_outside_the_project(tmp_path):
+    # given
+    project = _write_release_project(tmp_path / "project", build_directory="../sibling")
+    sibling = tmp_path / "sibling"
+    sibling.mkdir()
+    (sibling / "notes.txt").write_text("not ours")
+
+    # when / then
+    with pytest.raises(Error) as excinfo:
+        Automata(project).clean_build_directory()
+
+    assert "outside the project" in str(excinfo.value)
+    assert (sibling / "notes.txt").exists()
+
+
 # script hooks =========================================================================
 
 

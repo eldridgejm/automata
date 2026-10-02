@@ -44,8 +44,9 @@ Options:
 
 Empty the build directory, keeping top-level entries whose names start with a
 dot (such as ``.git``). Refuses, with an error, if the build directory is or
-contains the project or content directory, lies inside the content directory,
-or contains an ``automata.yaml`` file.
+contains the project or content directory; lies outside the project or inside
+the content directory; contains an ``automata.yaml`` file or course materials;
+or is, contains, or lies inside a directory extension.
 
 ::
 

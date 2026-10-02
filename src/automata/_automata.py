@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 from typing import Any, cast
 
-from . import materials
+from . import constants, materials
 from .config import (
     CONFIGURATION_FILENAME,
     Config,
@@ -133,8 +133,10 @@ class Automata:
         ------
         automata.exceptions.Error
             If the build directory is, or contains, the project root or the
-            content directory, lies inside the content directory, or contains
-            an ``automata.yaml`` file. Nothing is deleted in that case.
+            content directory; lies outside the project or inside the content
+            directory; contains an ``automata.yaml`` file or course materials
+            (a ``collection.yaml`` or ``publication.yaml``); or is, contains, or
+            lies inside a directory extension. Nothing is deleted in that case.
 
         """
         build_dir = (self.path / self.config.website.build_directory).resolve()
@@ -144,12 +146,24 @@ class Automata:
         problem = None
         if project_dir.is_relative_to(build_dir):
             problem = "is or contains the project directory"
+        elif not build_dir.is_relative_to(project_dir):
+            problem = "is outside the project directory"
         elif content_dir.is_relative_to(build_dir):
             problem = "is or contains the content directory"
         elif build_dir.is_relative_to(content_dir):
             problem = "is inside the content directory"
         elif (build_dir / CONFIGURATION_FILENAME).exists():
             problem = f"contains an {CONFIGURATION_FILENAME} file"
+        elif any(
+            build_dir.is_relative_to(extension) or extension.is_relative_to(build_dir)
+            for extension in self._extension_directories()
+        ):
+            problem = "is, contains, or is inside an extension directory"
+        elif _holds_materials(build_dir):
+            problem = (
+                f"contains course materials (a {constants.COLLECTION_FILE} or "
+                f"{constants.PUBLICATION_FILE} file)"
+            )
 
         if problem is not None:
             raise Error(
@@ -424,6 +438,16 @@ class Automata:
             )
         return cast(Universe[ExportedArtifact], loaded)
 
+    def _extension_directories(self) -> list[Path]:
+        """The directories of the theme and extensions loaded from paths."""
+        specs = [self.config.website.theme, *self.config.extensions]
+        names = [spec.get("use") if isinstance(spec, dict) else spec for spec in specs]
+        return [
+            (self.path / name).resolve()
+            for name in names
+            if isinstance(name, str) and ("/" in name or "\\" in name)
+        ]
+
     def _materials_json_path(self) -> Path:
         """Path to the materials.json written by export()."""
         return (
@@ -525,6 +549,17 @@ class Automata:
         else:
             universe = materials.discover(pub_dir, vars=self.config.vars)
             return universe.collections["default"].publications["."]
+
+
+def _holds_materials(directory: Path) -> bool:
+    """Whether *directory* contains a collection.yaml or publication.yaml."""
+    if not directory.is_dir():
+        return False
+    return any(
+        path.is_file()
+        for name in (constants.COLLECTION_FILE, constants.PUBLICATION_FILE)
+        for path in directory.rglob(name)
+    )
 
 
 def _check_publish_target(name: str, entry: Any) -> None:
