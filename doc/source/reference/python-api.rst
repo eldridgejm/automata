@@ -158,14 +158,15 @@ The primary interface is the ``Automata`` class.
 
     .. method:: status(current_time=None)
 
-        What is released and scheduled, and whether the site is up to date (see
-        ``automata status``). Builds nothing and runs no recipes or hooks.
+        What is released and what is scheduled (see ``automata status``): what
+        the materials say, without looking at any build. Builds nothing and
+        runs no recipes or hooks.
 
         :param current_time: Override the current time.
         :type current_time: datetime or None
-        :returns: Each artifact's state (``status.artifacts``), the counts, the
-            next releases, the out-of-date artifacts, and when the site was last
-            built; ``status.to_dict()`` gives it as JSON-ready data.
+        :returns: Each artifact's state (``status.artifacts``), the counts of
+            each state, and the next releases; ``status.to_dict()`` gives it as
+            JSON-ready data.
         :rtype: Status
 
     .. method:: check(current_time=None)

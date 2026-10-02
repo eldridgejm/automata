@@ -494,20 +494,11 @@ def _schedule_homework(project, release_time):
     config.write_text("\n".join(lines) + "\n")
 
 
-def test_status_summarizes_the_artifacts_and_the_build(project):
+def test_status_summarizes_the_artifacts(project):
     result = _invoke("status")
 
     assert "Artifacts: 1 released" in result.output
-    assert "Last build: never" in result.output
-    assert "1 artifact is out of date: run automata build" in result.output
-
-
-def test_status_after_a_build_is_up_to_date(project):
-    _invoke("build")
-
-    result = _invoke("status")
-
-    assert "Up to date." in result.output
+    assert "build" not in result.output.lower()
 
 
 def test_status_shows_the_next_releases(project):
@@ -523,8 +514,7 @@ def test_status_shows_the_next_releases(project):
 def test_status_verbose_lists_every_artifact(project):
     result = _invoke("status", "--verbose")
 
-    assert "homeworks/hw01/homework.pdf" in result.output
-    assert "released, not on the site" in result.output
+    assert "homeworks/hw01/homework.pdf  released" in result.output
 
 
 def test_status_json_gives_every_artifact(project):
@@ -534,7 +524,7 @@ def test_status_json_gives_every_artifact(project):
 
     data = json.loads(result.stdout)
     assert [a["key"] for a in data["artifacts"]] == ["homeworks/hw01/homework.pdf"]
-    assert data["out_of_date"] == ["homeworks/hw01/homework.pdf"]
+    assert "out_of_date" not in data
 
 
 def test_status_json_with_a_current_time_is_still_json(project):
@@ -555,15 +545,6 @@ def test_status_json_with_broken_config_is_json_with_the_error(project):
     assert result.exit_code == 1
     error = json.loads(result.stdout)["error"]
     assert error.startswith(f"{project / 'automata.yaml'}:1: website: ")
-
-
-def test_status_exit_code_is_2_when_out_of_date(project):
-    result = runner.invoke(app, ["status", "--exit-code"])
-    assert result.exit_code == 2
-
-    _invoke("build")
-    result = runner.invoke(app, ["status", "--exit-code"])
-    assert result.exit_code == 0
 
 
 # check ================================================================================

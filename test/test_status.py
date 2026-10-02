@@ -112,51 +112,6 @@ def test_status_lists_the_next_releases_in_order(tmp_path):
     ]
 
 
-def test_status_before_any_build_has_everything_released_out_of_date(tmp_path):
-    project = write_status_project(tmp_path / "project")
-
-    status = Automata(project).status(current_time=JAN_15)
-
-    assert status.last_built is None
-    assert [a.key for a in status.out_of_date] == ["hw/hw01/homework.txt"]
-
-
-def test_status_right_after_a_build_is_up_to_date(tmp_path):
-    project = write_status_project(tmp_path / "project")
-    Automata(project).build(current_time=JAN_15)
-
-    status = Automata(project).status(current_time=JAN_15)
-
-    assert status.last_built is not None
-    assert status.out_of_date == []
-    assert {a.key for a in status.artifacts if a.on_site} == {"hw/hw01/homework.txt"}
-
-
-def test_status_reports_artifacts_released_since_the_last_build(tmp_path):
-    project = write_status_project(tmp_path / "project")
-    Automata(project).build(current_time=JAN_15)
-
-    status = Automata(project).status(current_time=FEB_2)
-
-    assert [a.key for a in status.out_of_date] == [
-        "hw/hw01/solution.txt",
-        "hw/hw02/homework.txt",
-    ]
-
-
-def test_status_reports_artifacts_on_the_site_that_are_not_released(tmp_path):
-    # e.g. a release time moved later after the site was built
-    project = write_status_project(tmp_path / "project")
-    Automata(project).build(current_time=FEB_2)
-
-    status = Automata(project).status(current_time=JAN_15)
-
-    assert [a.key for a in status.out_of_date] == [
-        "hw/hw01/solution.txt",
-        "hw/hw02/homework.txt",
-    ]
-
-
 def test_status_builds_nothing_and_runs_no_recipes(tmp_path):
     project = write_status_project(tmp_path / "project")
     (project / "hw" / "hw01" / "publication.yaml").write_text(
@@ -176,10 +131,8 @@ def test_status_as_a_dict_is_json(tmp_path):
 
     assert json.loads(json.dumps(data)) == data
     assert data["current_time"] == "2025-01-15T12:00:00"
-    assert data["last_built"] is None
     assert data["counts"]["scheduled"] == 2
     assert data["next_releases"] == ["hw/hw02/homework.txt", "hw/hw01/solution.txt"]
-    assert data["out_of_date"] == ["hw/hw01/homework.txt"]
     assert data["artifacts"][1] == {
         "key": "hw/hw01/solution.txt",
         "collection": "hw",
@@ -187,9 +140,19 @@ def test_status_as_a_dict_is_json(tmp_path):
         "artifact": "solution.txt",
         "state": "scheduled",
         "release_time": "2025-02-01T00:00:00",
-        "on_site": False,
-        "out_of_date": False,
     }
+
+
+def test_status_does_not_depend_on_the_build(tmp_path):
+    # the site may be built elsewhere (e.g. by a remote runner), so status
+    # reports only what the materials say
+    project = write_status_project(tmp_path / "project")
+    before = Automata(project).status(current_time=JAN_15).to_dict()
+
+    Automata(project).build(current_time=JAN_15)
+    after = Automata(project).status(current_time=JAN_15).to_dict()
+
+    assert after == before
 
 
 def test_status_classes_and_problem_are_exported_from_automata():

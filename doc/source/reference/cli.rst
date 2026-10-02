@@ -132,32 +132,27 @@ variables interpolated and defaults applied.
 ``automata status``
 -------------------
 
-Show what is released and scheduled, and whether the site is up to date with
-it. Builds nothing: it reads the materials and the last build's
-``materials.json``.
+Show what is released and what is scheduled to be. It reports what the
+materials say, as of now (or ``--current-time``); it doesn't look at any build,
+since the site may be built and deployed elsewhere. Builds nothing.
 
 ::
 
-    automata status [--verbose] [--json] [--exit-code] [--current-time TIME]
+    automata status [--verbose] [--json] [--current-time TIME]
 
 Each artifact is *released* (its release time has passed, or it has none, and
 it is ready), *scheduled* (its release time is in the future), *not ready*
 (``ready: false``), or *missing* (no recipe, and its file doesn't exist). The
-summary gives the number in each state, the next releases, and when the site
-was last built. An artifact is *out of date* if it is released but not on the
-site, or on the site but not released (e.g. its release time was moved later):
-run ``automata build`` to bring the site up to date::
+summary gives the number in each state and the next releases::
 
     Artifacts: 69 released, 4 scheduled, 7 not ready
     Next releases:
       exams/midterm/exam.pdf      2025-10-30 00:00 (in 40 days)
       exams/final/exam.pdf        2025-12-13 00:00 (in 84 days)
-    Last build: 2025-09-19 18:02 (6 hours ago). Up to date.
 
 ``--verbose`` lists every artifact and its state. ``--json`` prints the full
 status as JSON, for programs; an error is printed as JSON too
-(``{"error": "..."}``). ``--exit-code`` makes the command exit with status 2 if
-the site is out of date (an error exits with 1), e.g. for a scheduled job.
+(``{"error": "..."}``).
 
 
 ``automata check``

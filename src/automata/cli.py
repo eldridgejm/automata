@@ -286,26 +286,15 @@ def _when(when: datetime.datetime, now: datetime.datetime) -> str:
 
 
 def _describe_artifact(artifact: ArtifactStatus, now: datetime.datetime) -> str:
-    """An artifact's state, for people, e.g. "released, not on the site"."""
+    """An artifact's state, for people, e.g. "scheduled for 2025-02-01 00:00"."""
     if artifact.state == "released":
-        site = "on the site" if artifact.on_site else "not on the site"
-        return typer.style(
-            f"released, {site}", fg="yellow" if artifact.out_of_date else "green"
-        )
+        return typer.style("released", fg="green")
     if artifact.state == "scheduled":
         assert artifact.release_time is not None
-        text = f"scheduled for {_when(artifact.release_time, now)}"
-    elif artifact.state == "not ready":
-        text = "not ready"
-    else:
-        text = "missing (no recipe, and its file doesn't exist)"
-    if artifact.on_site:
-        return typer.style(f"{text}, but on the site", fg="yellow")
-    return text
-
-
-def _plural(n: int, noun: str) -> str:
-    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
+        return f"scheduled for {_when(artifact.release_time, now)}"
+    if artifact.state == "not ready":
+        return typer.style("not ready", fg="yellow")
+    return typer.style("missing (no recipe, and its file doesn't exist)", fg="yellow")
 
 
 def _print_status(status: Status, verbose: bool) -> None:
@@ -319,40 +308,18 @@ def _print_status(status: Status, verbose: bool) -> None:
         width = max(len(a.key) for a in shown)
         for artifact in shown:
             assert artifact.release_time is not None
-            typer.echo(
-                f"  {artifact.key:<{width}}  {_when(artifact.release_time, now)}"
-            )
+            when = _when(artifact.release_time, now)
+            typer.echo(f"  {artifact.key:<{width}}  {when}")
         if len(status.next_releases) > len(shown):
             more = len(status.next_releases) - len(shown)
             typer.echo(f"  and {more} more (see automata status --verbose)")
-
-    built = "never" if status.last_built is None else _when(status.last_built, now)
-    out_of_date = status.out_of_date
-    if not out_of_date:
-        typer.echo(f"Last build: {built}. " + typer.style("Up to date.", fg="green"))
-    else:
-        is_are = "is" if len(out_of_date) == 1 else "are"
-        typer.echo(
-            f"Last build: {built}. "
-            + typer.style(
-                f"{_plural(len(out_of_date), 'artifact')} {is_are} out of date: run "
-                f"automata build.",
-                fg="yellow",
-            )
-        )
-        if not verbose:
-            for artifact in out_of_date[:5]:
-                typer.echo(f"  {artifact.key}: {_describe_artifact(artifact, now)}")
-            if len(out_of_date) > 5:
-                typer.echo(f"  and {len(out_of_date) - 5} more")
 
     if verbose and status.artifacts:
         typer.echo("All artifacts:")
         width = max(len(a.key) for a in status.artifacts)
         for artifact in status.artifacts:
-            typer.echo(
-                f"  {artifact.key:<{width}}  {_describe_artifact(artifact, now)}"
-            )
+            described = _describe_artifact(artifact, now)
+            typer.echo(f"  {artifact.key:<{width}}  {described}")
 
 
 @_command()
@@ -369,15 +336,11 @@ def status(
             'JSON too: {"error": "..."}.'
         ),
     ),
-    exit_code: bool = typer.Option(
-        False,
-        "--exit-code",
-        help="Exit with status 2 if the site is out of date (errors exit with 1).",
-    ),
 ):
-    """Show what is released and scheduled, and whether the site is up to date.
+    """Show what is released and what is scheduled to be.
 
-    Builds nothing: reads the materials and the last build's materials.json.
+    Reports what the materials say; it doesn't look at any build, and builds
+    nothing.
     """
     if json_output:
         try:
@@ -392,11 +355,12 @@ def status(
         result = _project().status(current_time=_get_current_time(current_time))
         _print_status(result, verbose)
 
-    if exit_code and result.out_of_date:
-        raise typer.Exit(code=2)
-
 
 # check ================================================================================
+
+
+def _plural(n: int, noun: str) -> str:
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
 
 
 def _indent(text: str, prefix: str) -> str:

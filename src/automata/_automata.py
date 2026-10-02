@@ -329,10 +329,11 @@ class Automata:
         return universe
 
     def status(self, current_time: datetime.datetime | None = None) -> Status:
-        """The status of the materials: what is released, scheduled, and on the site.
+        """The status of the materials: what is released and what is scheduled.
 
-        Builds nothing and runs no recipes or hooks: it discovers the materials
-        and reads the last build's ``materials.json`` (if any).
+        Reports what the materials say, as of *current_time*; it doesn't look at
+        any build (the site may be built and deployed elsewhere). Builds nothing
+        and runs no recipes or hooks.
 
         Parameters
         ----------
@@ -342,8 +343,8 @@ class Automata:
         Returns
         -------
         Status
-            Each artifact's state and whether it is on the site, the next
-            releases, and which artifacts are out of date.
+            Each artifact's state, the counts of each state, and the next
+            releases.
 
         Raises
         ------
@@ -351,15 +352,8 @@ class Automata:
             If the materials can't be discovered.
 
         """
-        current_time = current_time or datetime.datetime.now()
-        materials_json = self._materials_json_path()
-        exported = None
-        if materials_json.is_file():
-            loaded = materials.deserialize(materials_json.read_text())
-            if isinstance(loaded, Universe):
-                exported = cast(Universe[ExportedArtifact], loaded)
         return make_status(
-            self._discover(hooks=None), materials_json, exported, current_time
+            self._discover(hooks=None), current_time or datetime.datetime.now()
         )
 
     def check(self, current_time: datetime.datetime | None = None) -> list[Problem]:
