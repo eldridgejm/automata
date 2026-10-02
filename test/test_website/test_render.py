@@ -1341,6 +1341,94 @@ def test_default_theme_renders_without_npx(tmpsite, caplog):
     assert any("npx not found" in record.getMessage() for record in caplog.records)
 
 
+# url_for and extra pages from hooks ==================================================
+
+
+def test_url_for_leaves_absolute_urls_unchanged(tmpsite, theme):
+    tmpsite.make_page(
+        "index.md",
+        "${ url_for('https://example.com/a') } ${ url_for('http://x.org') } "
+        "${ url_for('syllabus.html') }",
+    )
+
+    _render(tmpsite, theme=theme, base_path="/course/")
+
+    output = tmpsite.get_output("index.html")
+    assert "https://example.com/a http://x.org /course/syllabus.html" in output
+
+
+def test_on_render_extra_pages_can_add_binary_files_and_copy_paths(
+    tmpsite, hooks, theme, tmp_path
+):
+    # given: a hook that adds bytes and a file path as extra content
+    source = tmp_path / "handout.pdf"
+    source.write_bytes(b"%PDF-1.4 handout")
+
+    @hooks.on_render_extra_pages.register()
+    def add_files(args):
+        extra = dict(args.extra_content or {})
+        extra["logo.png"] = b"\x89PNG"
+        extra["handouts/handout.pdf"] = source
+        return automata.hooks.RenderExtraPagesHookArgs(
+            build_directory=args.build_directory, extra_content=extra
+        )
+
+    tmpsite.make_page("index.md", "# Home")
+
+    # when
+    _render(tmpsite, hooks=hooks, theme=theme)
+
+    # then
+    build = tmpsite.build_directory
+    assert (build / "logo.png").read_bytes() == b"\x89PNG"
+    assert (build / "handouts" / "handout.pdf").read_bytes() == b"%PDF-1.4 handout"
+
+
+# errors in element templates ==========================================================
+
+
+def _greeting_hooks(template, schema=None):
+    """Hooks providing a page template and a 'greeting' element using *template*.
+
+    With no *schema*, the element's config reaches the template unresolved, so
+    ``${ ... }`` in it is first evaluated by the template's ``resolve()``.
+    """
+
+    class Greeting(automata.website.TemplateElement):
+        template = "greeting.html"
+
+    Greeting.schema = schema
+
+    def collect(inputs):
+        inputs.templates.update(
+            {"page.html": "${ content }", "greeting.html": template}
+        )
+        inputs.elements["greeting"] = Greeting
+        return inputs
+
+    h = RenderHooks()
+    apply_extension(Extension(name="t", hooks={"on_render_collect": collect}), h)
+    return h
+
+
+def test_element_template_resolving_an_undefined_variable_names_it(tmpsite):
+    tmpsite.make_page("index.md", '${ elements.greeting({"text": "Hi ${ nobody }"}) }')
+
+    with raises(automata.website.exceptions.PageError) as excinfo:
+        _render(tmpsite, hooks=_greeting_hooks("${ resolve(element_config.text) }"))
+
+    assert "nobody" in str(excinfo.value)
+
+
+def test_element_resolving_a_missing_config_key_names_it(tmpsite):
+    tmpsite.make_page("index.md", '${ elements.greeting({"text": "Hi"}) }')
+
+    with raises(automata.website.exceptions.PageError) as excinfo:
+        _render(tmpsite, hooks=_greeting_hooks("${ resolve(element_config.missing) }"))
+
+    assert "missing" in str(excinfo.value)
+
+
 # extra_content =======================================================================
 
 

@@ -376,3 +376,28 @@ def test_load_extensions_raises_if_theme_lacks_page_template(tmp_path: Path) -> 
     message = str(excinfo.value)
     assert '"bare"' in message
     assert "page.html" in message
+
+
+def test_load_extensions_rejects_an_extension_spec_of_the_wrong_type(
+    tmp_path: Path,
+) -> None:
+    config = read_config(_write_config(tmp_path, _DEFAULT_THEME, "[42]"))
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path)
+
+    assert "Invalid extension spec" in str(excinfo.value)
+
+
+# find_config() ========================================================================
+
+
+def test_find_config_searches_upward_from_a_file(tmp_path: Path) -> None:
+    from automata.config import find_config
+
+    (tmp_path / "automata.yaml").write_text("")
+    page = tmp_path / "content" / "index.md"
+    page.parent.mkdir()
+    page.write_text("# Home")
+
+    assert find_config(page) == tmp_path / "automata.yaml"

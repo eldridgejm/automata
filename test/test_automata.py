@@ -583,3 +583,50 @@ def test_publish_checks_the_target_before_building(project_dir):
         project.publish("third")
 
     assert not (project_dir / "_build").exists()
+
+
+# resolve() ============================================================================
+
+
+def test_resolve_a_publication_in_an_ordered_collection(project_dir):
+    # given: an ordered collection where hw02's due date depends on hw01's
+    lectures = project_dir / "lectures"
+    (lectures / "01").mkdir(parents=True)
+    (lectures / "02").mkdir()
+    (lectures / "collection.yaml").write_text(
+        dedent("""\
+            publication_schema:
+                required_artifacts: []
+                metadata_schema:
+                    required_keys:
+                        date: {type: date}
+                is_ordered: true
+        """)
+    )
+    (lectures / "01" / "publication.yaml").write_text(
+        "metadata:\n  date: 2026-01-05\nartifacts: {}\n"
+    )
+    (lectures / "02" / "publication.yaml").write_text(
+        "metadata:\n  date: 7 days after ${ previous.metadata.date }\nartifacts: {}\n"
+    )
+
+    # when
+    publication = Automata(project_dir).resolve(lectures / "02" / "publication.yaml")
+
+    # then
+    import datetime
+
+    assert publication.metadata["date"] == datetime.date(2026, 1, 12)
+
+
+def test_resolve_a_publication_outside_any_collection(project_dir):
+    notes = project_dir / "notes"
+    notes.mkdir()
+    (notes / "publication.yaml").write_text(
+        "metadata:\n  title: Notes\nartifacts:\n  notes.pdf:\n    missing_ok: true\n"
+    )
+
+    publication = Automata(project_dir).resolve(notes / "publication.yaml")
+
+    assert publication.metadata == {"title": "Notes"}
+    assert "notes.pdf" in publication.artifacts

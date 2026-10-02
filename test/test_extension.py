@@ -407,3 +407,23 @@ def test_extension_config_accepts_date_phrases():
     )
 
     assert ext.config["start"] == datetime.date(2026, 1, 8)
+
+
+def test_extension_from_entry_point_rejects_a_factory_returning_a_non_extension():
+    eps = [
+        _FakeEntryPoint(EXTENSIONS_GROUP, "my-ext", make_extension=lambda config: 42)
+    ]
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_entry_point("my-ext", entry_points=eps)
+
+    assert "did not return an Extension" in str(excinfo.value)
+
+
+def test_extension_from_entry_point_rejects_an_extension_attribute_of_wrong_type():
+    eps = [_FakeEntryPoint(EXTENSIONS_GROUP, "my-ext", extension="not an extension")]
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_entry_point("my-ext", entry_points=eps)
+
+    assert "is not an Extension" in str(excinfo.value)

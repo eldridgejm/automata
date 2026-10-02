@@ -97,6 +97,14 @@ def test_shell_script_with_custom_serializer(tmp_path):
     assert output_file.read_text() == "custom:hello"
 
 
+def test_shell_script_with_non_dataclass_args_raises(tmp_path):
+    hook = ObserverHook[int]()
+    hook.register_shell_script(f"cat > {tmp_path / 'out.json'}")
+
+    with pytest.raises(TypeError, match="expected a dataclass"):
+        hook(42)
+
+
 # PipelineHook =========================================================================
 
 

@@ -246,3 +246,102 @@ def test_publish_without_publish_targets_prints_an_error(project):
 
     assert result.exit_code == 1
     assert "publish" in result.output
+
+
+# discover =============================================================================
+
+
+def test_discover_prints_each_collection_and_its_publication_count(project):
+    result = _invoke("discover")
+
+    assert "homeworks: 1 publication(s)" in result.output
+
+
+# --current-time =======================================================================
+
+
+def test_current_time_accepts_days_relative_to_now(project):
+    import datetime
+
+    result = _invoke("build-materials", "--current-time", "+5")
+
+    expected = (datetime.datetime.now() + datetime.timedelta(days=5)).date()
+    assert f"Running as if it is currently {expected}" in result.output
+
+
+def test_invalid_current_time_prints_an_error(project):
+    result = runner.invoke(app, ["build", "--current-time", "next tuesday"])
+
+    assert result.exit_code == 1
+    assert "Invalid --current-time" in result.output
+    assert not (project / "_build").exists()
+
+
+# errors ===============================================================================
+
+
+def test_invalid_automata_yaml_prints_an_error_without_a_traceback(project):
+    (project / "automata.yaml").write_text("website: 3\n")
+
+    result = runner.invoke(app, ["build"])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "Invalid configuration" in result.output
+
+
+def test_clean_build_directory_refusal_prints_an_error(project):
+    config = project / "automata.yaml"
+    config.write_text(
+        config.read_text().replace('build_directory: "_build"', 'build_directory: "."')
+    )
+
+    result = runner.invoke(app, ["clean-build-directory"])
+
+    assert result.exit_code == 1
+    assert "Refusing to clean" in result.output
+    assert (project / "automata.yaml").exists()
+
+
+# resolve ==============================================================================
+
+
+def test_resolve_prints_the_publication_as_json(project, tmp_path):
+    import json
+
+    pub = project / "notes" / "publication.yaml"
+    pub.parent.mkdir()
+    pub.write_text(
+        "metadata:\n  title: Notes\n  due: 3 days after 2026-01-01\n"
+        "artifacts:\n  notes.pdf:\n    missing_ok: true\n"
+    )
+
+    result = _invoke("resolve", str(pub))
+
+    resolved = json.loads(result.output)
+    assert resolved["metadata"]["title"] == "Notes"
+    assert "notes.pdf" in resolved["artifacts"]
+
+
+def test_resolve_missing_file_prints_an_error(project):
+    result = runner.invoke(app, ["resolve", "nowhere/publication.yaml"])
+
+    assert result.exit_code == 1
+    assert "Error" in result.output
+
+
+# tab completion =======================================================================
+
+
+def test_publish_target_completion_lists_matching_targets(publishing_project):
+    from automata.cli import _complete_publish_targets
+
+    assert sorted(_complete_publish_targets("")) == ["first", "second"]
+    assert _complete_publish_targets("se") == ["second"]
+
+
+def test_publish_target_completion_outside_a_project_is_empty(tmp_path):
+    from automata.cli import _complete_publish_targets
+
+    with contextlib.chdir(tmp_path):
+        assert _complete_publish_targets("") == []

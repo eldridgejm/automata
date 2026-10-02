@@ -456,3 +456,18 @@ def test_extension_from_directory_loads_extension_py_when_allowed(tmp_path):
     )
 
     assert "greeting" in _collect(ext).elements
+
+
+def test_extension_from_directory_cannot_import_python_from_a_zip(tmp_path):
+    import zipfile
+
+    archive = tmp_path / "theme.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("theme/templates/page.html", "${ content }")
+        zf.writestr("theme/extension.py", "extension = None\n")
+    directory = zipfile.Path(archive, "theme/")
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_directory("theme", directory, allow_python=True)
+
+    assert "not a filesystem path" in str(excinfo.value)

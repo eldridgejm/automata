@@ -169,7 +169,7 @@ class WebsiteInputs:
 class RenderPreHookArgs:
     """Argument passed before website content is loaded.
 
-    Fired before ``_load_content_directory`` reads pages from disk, giving
+    Fired before ``load_content_directory`` reads pages from disk, giving
     script hooks (or other observers) a chance to generate files into the
     content directory.
     """

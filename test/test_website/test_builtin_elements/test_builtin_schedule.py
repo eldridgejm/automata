@@ -760,3 +760,67 @@ def test_artifact_links_filters_nonexistent_artifacts(schedule_element):
     assert len(resource["links"]) == 1  # Only pdf exists
     assert resource["links"][0]["text"] == "pdf"
     assert resource["links"][0]["url"] == "/lectures/lecture01/slides.pdf"
+
+
+# week order ===========================================================================
+
+
+def _weekly_config(**overrides):
+    config = {
+        "week_topics": ["One", "Two", "Three"],
+        "first_week_start_date": datetime.date(2024, 1, 8),
+        "primary_activity_collections": [],
+        "secondary_activity_collections": [],
+        "extra_primary_activities": [],
+        "extra_secondary_activities": [],
+        "events": [],
+        "announcements": [],
+    }
+    config.update(overrides)
+    return config
+
+
+def test_chronological_week_order_lists_weeks_from_first_to_last(schedule_element):
+    # current time is in week 2, so this_week_first would start with week 2
+    schedule_element.context.current_time = datetime.datetime(2024, 1, 17)
+
+    tvars = schedule_element.template_vars(_weekly_config(week_order="chronological"))
+
+    assert [week.number for week in tvars["weeks"]] == [1, 2, 3]
+
+
+def test_this_week_first_week_order_starts_with_the_current_week(schedule_element):
+    schedule_element.context.current_time = datetime.datetime(2024, 1, 17)
+
+    tvars = schedule_element.template_vars(_weekly_config(week_order="this_week_first"))
+
+    assert [week.number for week in tvars["weeks"]][0] == 2
+
+
+def test_unknown_week_order_is_an_error(schedule_element):
+    with pytest.raises(automata.website.exceptions.WebsiteError) as excinfo:
+        schedule_element.template_vars(_weekly_config(week_order="alphabetical"))
+
+    assert "alphabetical" in str(excinfo.value)
+
+
+# extra activities =====================================================================
+
+
+def test_extra_activities_cannot_use_publication_resources(schedule_element):
+    config = _weekly_config(
+        extra_primary_activities=[
+            {
+                "title": "Review session",
+                "start_displaying_on": datetime.date(2024, 1, 10),
+                "resources": [
+                    {"type": "artifact_links", "title": "Slides", "links": []}
+                ],
+            }
+        ]
+    )
+
+    with pytest.raises(automata.website.exceptions.WebsiteError) as excinfo:
+        schedule_element.template_vars(config)
+
+    assert "artifact_links" in str(excinfo.value)

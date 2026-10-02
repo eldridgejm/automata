@@ -207,3 +207,35 @@ def test_inline_materials_can_use_vars(tmp_path):
     universe = a.discover()
     hw01 = universe.collections["homeworks"].publications["hw01"]
     assert hw01.metadata["due"] == datetime.date(2025, 1, 15)
+
+
+def test_inline_materials_cannot_have_recipes(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "automata.yaml").write_text(
+        dedent("""\
+            materials:
+              homeworks:
+                schema:
+                  required_artifacts: [homework.pdf]
+                publications:
+                  hw01:
+                    artifacts:
+                      homework.pdf:
+                        recipe: make homework.pdf
+
+            website:
+              theme:
+                use: "default"
+                config: {short_title: "T", long_title: "Test"}
+              content_directory: "content"
+              build_directory: "_build"
+        """)
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        Automata(project).discover()
+
+    message = str(excinfo.value)
+    assert "recipe" in message
+    assert "homework.pdf" in message
