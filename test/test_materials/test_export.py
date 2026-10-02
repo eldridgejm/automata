@@ -138,6 +138,26 @@ def test_exporting_a_file_again_replaces_it(temporary_course, outdir):
     assert exported.read_text() == "new\n"
 
 
+def test_publications_with_numeric_keys_are_exported(temporary_course, outdir):
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts: [hw.txt]
+        publications:
+            01:
+                artifacts:
+                    hw.txt:
+                        recipe: touch hw.txt
+        """,
+    )
+
+    built = automata.materials.build(automata.materials.discover(temporary_course.path))
+    automata.materials.export(built, outdir)
+
+    assert (outdir / "homeworks" / "01" / "hw.txt").is_file()
+
+
 def test_export_raises_when_artifact_not_built(outdir):
     """Test that export() raises ValueError when given an unbuilt artifact."""
     # given: a publication containing an unbuilt artifact

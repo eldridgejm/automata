@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 from textwrap import dedent
 
@@ -166,12 +167,24 @@ def test_locate_finds_keys_outside_includes_in_the_file_itself() -> None:
     assert outer.locate(("nope",)) == (Path("outer.yaml"), None)
 
 
-def test_source_map_keys_are_the_parsed_keys() -> None:
-    # YAML reads 01 as the integer 1, so errors give the keypath ("1", ...)
+def test_mapping_keys_are_kept_as_written() -> None:
+    # YAML would read these keys as an int, a float, a bool, and a date
+    data = parse_yaml("01: a\n1.5: b\ntrue: c\n2025-01-01: d\n")
+
+    assert data == {"01": "a", "1.5": "b", "true": "c", "2025-01-01": "d"}
+
+
+def test_values_are_still_parsed() -> None:
+    data = parse_yaml("a: 01\nb: true\nc: 2025-01-01\n")
+
+    assert data == {"a": 1, "b": True, "c": datetime.date(2025, 1, 1)}
+
+
+def test_source_map_keys_are_the_keys_as_written() -> None:
     _, source_map = parse_yaml_with_source_map("01:\n  a: 1\nfalse: 2\n")
 
-    assert source_map.line_of(("1", "a")) == 2
-    assert source_map.line_of(("False",)) == 3
+    assert source_map.line_of(("01", "a")) == 2
+    assert source_map.line_of(("false",)) == 3
 
 
 # merge keys ===========================================================================

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from ruamel.yaml import YAML
+from ruamel.yaml.constructor import SafeConstructor
 from ruamel.yaml.error import MarkedYAMLError, YAMLError
 from ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
 
@@ -119,6 +120,30 @@ def value_at(data: Any, keypath: Sequence[Any]) -> Located:
 
 # the tag of the "<<" key in "<<: *anchor"
 _MERGE_TAG = "tag:yaml.org,2002:merge"
+_STR_TAG = "tag:yaml.org,2002:str"
+
+
+def _key_as_written(key_node: Any) -> Any:
+    """A scalar key node, as a string node of the text it is written as."""
+    if not isinstance(key_node, ScalarNode) or key_node.tag in (_MERGE_TAG, _STR_TAG):
+        return key_node
+    return ScalarNode(_STR_TAG, key_node.value, key_node.start_mark, key_node.end_mark)
+
+
+class _Constructor(SafeConstructor):
+    """A safe constructor that reads every mapping key as the text it is written as.
+
+    YAML would read the key ``01`` as the integer 1, ``true`` as a boolean, and
+    ``2025-01-01`` as a date; configuration keys (and the keys of keypaths in
+    errors) are strings, as written.
+    """
+
+    def construct_mapping(self, node: Any, deep: bool = False) -> Any:
+        if isinstance(node, MappingNode):
+            # merge "<<: *anchor" keys first, so the merged keys are converted too
+            self.flatten_mapping(node)
+            node.value = [(_key_as_written(k), v) for k, v in node.value]
+        return super().construct_mapping(node, deep=deep)
 
 
 def _record_lines(
@@ -126,12 +151,10 @@ def _record_lines(
     keypath: tuple[str, ...],
     lines: dict[tuple[str, ...], int],
     offset: int,
-    constructor: Any,
 ) -> None:
     """Record the line of every key and item under *node* in *lines*.
 
-    Keys are recorded as parsed (e.g. ``01`` as ``"1"``), since keypaths in
-    errors come from the parsed data.
+    Keys are recorded as written (e.g. ``01`` as ``"01"``), as they are parsed.
 
     """
     if isinstance(node, MappingNode):
@@ -148,19 +171,18 @@ def _record_lines(
                     else [value_node]
                 )
                 for source in sources:
-                    _record_lines(source, keypath, merged, offset, constructor)
+                    _record_lines(source, keypath, merged, offset)
                 continue
-            key = constructor.construct_object(key_node)
-            child = (*keypath, str(key))
+            child = (*keypath, str(key_node.value))
             lines[child] = key_node.start_mark.line + 1 + offset
-            _record_lines(value_node, child, lines, offset, constructor)
+            _record_lines(value_node, child, lines, offset)
         for child, line in merged.items():
             lines.setdefault(child, line)
     elif isinstance(node, SequenceNode):
         for i, item_node in enumerate(node.value):
             child = (*keypath, str(i))
             lines[child] = item_node.start_mark.line + 1 + offset
-            _record_lines(item_node, child, lines, offset, constructor)
+            _record_lines(item_node, child, lines, offset)
 
 
 def parse_yaml_with_source_map(
@@ -181,7 +203,7 @@ def parse_yaml_with_source_map(
     yaml = YAML(typ="safe")
     node = yaml.compose(yaml_content)
     source_map = SourceMap(source, data=data)
-    _record_lines(node, (), source_map.lines, first_line - 1, yaml.constructor)
+    _record_lines(node, (), source_map.lines, first_line - 1)
     return data, source_map
 
 
@@ -229,6 +251,7 @@ def parse_yaml(
         return {f"__{tag_suffix}__": value}
 
     yaml = YAML(typ="safe")
+    yaml.Constructor = _Constructor
     yaml.default_flow_style = False
     yaml.constructor.add_multi_constructor("!", generic_constructor)
     try:

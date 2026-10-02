@@ -754,3 +754,14 @@ def test_merge_keys_are_allowed_in_automata_yaml(tmp_path: Path) -> None:
     config = read_config(config_file)
 
     assert config.website.build_directory == "./build"
+
+
+def test_numeric_keys_are_read_as_strings(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, _DEFAULT_THEME)
+    config_file.write_text(
+        "vars:\n  topics: {1: Intro, 2: Sorting}\n" + config_file.read_text()
+    )
+
+    config = read_config(config_file)
+
+    assert config.vars == {"topics": {"1": "Intro", "2": "Sorting"}}
