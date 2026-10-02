@@ -172,3 +172,35 @@ def test_source_map_keys_are_the_parsed_keys() -> None:
 
     assert source_map.line_of(("1", "a")) == 2
     assert source_map.line_of(("False",)) == 3
+
+
+# merge keys ===========================================================================
+
+_MERGE = dedent(
+    """\
+    base: &base
+      theme: default
+      build_directory: _build
+    website:
+      <<: *base
+      build_directory: _site
+    """
+)
+
+
+def test_merge_keys_parse_with_a_source_map() -> None:
+    data, _ = parse_yaml_with_source_map(_MERGE)
+
+    assert data["website"] == {"theme": "default", "build_directory": "_site"}
+
+
+def test_merged_keys_are_located_where_they_are_defined() -> None:
+    _, source_map = parse_yaml_with_source_map(_MERGE)
+
+    assert source_map.line_of(("website", "theme")) == 2
+
+
+def test_keys_written_next_to_a_merge_keep_their_own_line() -> None:
+    _, source_map = parse_yaml_with_source_map(_MERGE)
+
+    assert source_map.line_of(("website", "build_directory")) == 6

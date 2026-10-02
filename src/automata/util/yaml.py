@@ -117,6 +117,10 @@ def value_at(data: Any, keypath: Sequence[Any]) -> Located:
     return located
 
 
+# the tag of the "<<" key in "<<: *anchor"
+_MERGE_TAG = "tag:yaml.org,2002:merge"
+
+
 def _record_lines(
     node: Any,
     keypath: tuple[str, ...],
@@ -131,13 +135,27 @@ def _record_lines(
 
     """
     if isinstance(node, MappingNode):
+        # keys merged in with "<<: *anchor" are located where the anchor defines
+        # them, unless the mapping also writes them explicitly
+        merged: dict[tuple[str, ...], int] = {}
         for key_node, value_node in node.value:
             if not isinstance(key_node, ScalarNode):
+                continue
+            if key_node.tag == _MERGE_TAG:
+                sources = (
+                    value_node.value
+                    if isinstance(value_node, SequenceNode)
+                    else [value_node]
+                )
+                for source in sources:
+                    _record_lines(source, keypath, merged, offset, constructor)
                 continue
             key = constructor.construct_object(key_node)
             child = (*keypath, str(key))
             lines[child] = key_node.start_mark.line + 1 + offset
             _record_lines(value_node, child, lines, offset, constructor)
+        for child, line in merged.items():
+            lines.setdefault(child, line)
     elif isinstance(node, SequenceNode):
         for i, item_node in enumerate(node.value):
             child = (*keypath, str(i))

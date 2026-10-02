@@ -733,3 +733,24 @@ def test_a_missing_key_gets_no_template_hint(tmp_path: Path) -> None:
         f'{config_file}:3: vars.title: "vars" has no key "cours". '
         'Did you mean "course"?'
     )
+
+
+def test_merge_keys_are_allowed_in_automata_yaml(tmp_path: Path) -> None:
+    config_file = tmp_path / "automata.yaml"
+    config_file.write_text(
+        dedent(
+            """\
+            vars:
+              dirs: &dirs
+                content_directory: "./content"
+                build_directory: "./build"
+            website:
+              <<: *dirs
+              theme: default
+            """
+        )
+    )
+
+    config = read_config(config_file)
+
+    assert config.website.build_directory == "./build"
