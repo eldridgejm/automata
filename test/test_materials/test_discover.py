@@ -2254,3 +2254,22 @@ def test_templates_combined_with_vars(temporary_course):
     universe = discover(temporary_course.path, vars={"course": "CS101"})
     pub = universe.collections["hw"].publications["01"]
     assert pub.metadata["title"] == "CS101 - Homework 1"
+
+
+# the default collection ===============================================================
+
+
+def test_a_collection_directory_named_default_is_an_error(temporary_course):
+    # it would replace the collection of publications not in any collection
+    temporary_course.create_collection(
+        "default", "publication_schema:\n    required_artifacts: []"
+    )
+    collection_file = temporary_course.path / "default" / "collection.yaml"
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    assert str(excinfo.value) == (
+        f'{collection_file}: The collection name "default" is reserved for '
+        "publications that aren't in a collection. Rename the directory."
+    )

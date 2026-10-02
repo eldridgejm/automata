@@ -253,7 +253,7 @@ def _init_default_collection(
     )
     collection = Collection(publication_schema=default_schema, publications={})
     raw_publications = _read_publication_files(publication_paths, root_directory)
-    return "default", collection, raw_publications
+    return constants.DEFAULT_COLLECTION, collection, raw_publications
 
 
 def _init_collection_from_file(
@@ -289,6 +289,10 @@ def _init_collection_from_file(
     except DiscoveryError as exc:
         raise _with_line(exc, source_map) from None
     key = str(collection_path.relative_to(root_directory))
+    if key == constants.DEFAULT_COLLECTION:
+        raise DiscoveryError(
+            f"{constants.DEFAULT_COLLECTION_RESERVED} Rename the directory.", file_path
+        )
     hooks.on_discover_collection(DiscoverHookArgs(path=file_path, key=key))
 
     if inline_publications is not None and publication_paths:

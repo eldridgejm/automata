@@ -3,6 +3,7 @@
 import pathlib
 from typing import Any, Mapping, Optional
 
+from automata import constants
 from automata.exceptions import Error
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
 
@@ -116,6 +117,15 @@ def discover_inline(
     collections: dict[str, Collection[UnbuiltArtifact]] = {}
 
     for collection_name, collection_def in materials_config.items():
+        if collection_name == constants.DEFAULT_COLLECTION:
+            raise Error(
+                describe_config_error(
+                    f"{constants.DEFAULT_COLLECTION_RESERVED} Rename it.",
+                    ("materials", collection_name),
+                    file=project_path / "automata.yaml",
+                    source_map=source_map,
+                )
+            )
         _check_inline_collection(collection_name, collection_def)
         schema_def = collection_def.get("schema", {})
         raw_publications = collection_def.get("publications", {})

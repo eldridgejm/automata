@@ -311,3 +311,30 @@ def test_inline_materials_errors_give_the_keypath_in_automata_yaml(
         Automata(project).discover()
 
     assert str(excinfo.value).startswith(f"{config_file}{expected}")
+
+
+def test_an_inline_collection_named_default_is_an_error(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    config_file = project / "automata.yaml"
+    config_file.write_text(
+        "materials:\n"
+        "  default:\n"
+        "    schema: {required_artifacts: []}\n"
+        + dedent("""\
+            website:
+              theme:
+                use: "default"
+                config: {short_title: "T", long_title: "Test"}
+              content_directory: "content"
+              build_directory: "_build"
+        """)
+    )
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).discover()
+
+    assert str(excinfo.value) == (
+        f'{config_file}:2: materials.default: The collection name "default" is '
+        "reserved for publications that aren't in a collection. Rename it."
+    )
