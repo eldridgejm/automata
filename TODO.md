@@ -68,6 +68,11 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Allow directory extensions to declare dependencies (via extension.py)
 - [x] Document the on_website_generate_pre hook in hooks.rst (now on_render_pre)
 - [ ] Warn about website.elements entries that no page uses
+- [ ] Explain a missing !template in element configuration. Today a per-publication value written without !template (e.g. a listing's cell_content of "${ publication.metadata.topic }") fails when automata.yaml is read with only "'publication' is undefined", since website.elements is resolved before any element schema is known. A hint keyed on that message was tried and dropped: it also fires for vars and inline materials, where !template is the wrong fix. Plan:
+  - Mark template fields in element schemas with a recognizable marker (string_or_template_string() is most of the way there; a dynamic schema receives its keypath, so it can record which keypaths are template fields)
+  - Have read_config read website.elements without resolving it, and resolve every configured element's config against its element's schema (with vars available) when rendering starts, so errors stay early and unused entries are checked too (see the item above)
+  - Keep requiring !template, for explicitness; use the marker for messages both ways: an undefined name in a template field gets "this field is a template: write it as !template", and !template on a non-template field gets "remove !template" instead of "Expected a string, but got a dict"
+  - Background: elements resolved their own config until the schedule revamp (9f03d7d) moved its config into vars, which are resolved when automata.yaml is read; per-publication values used a second delimiter, $( ... ), before that
 - [ ] Decide on the unused announcement_box.html template, and whether announcements get release times
 - [x] Fix the example's practice-problems script hook failing when run from another directory
 - [x] Decide whether a failing script hook (nonzero exit) should fail the build (decided: yes); today its exit code is ignored, which hid the practice-problems path bug in a passing test
