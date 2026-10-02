@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any, cast
 
 from . import constants, materials
+from ._check import Problem, run_checks
+from ._status import Status, make_status
 from .config import (
     CONFIGURATION_FILENAME,
     Config,
@@ -231,21 +233,14 @@ class Automata:
         else:
             targets = self.config.publish
 
-        # Build publisher registry: start with builtins, let extensions add more
-        from . import publish as publish_module
-
-        initial = publish_module.registry.all()
-        registry = self.hooks.on_register_publishers(
-            PublisherRegistryArgs(publishers=initial)
-        )
-
         # check every strategy before building, so a typo fails fast
+        registry_publishers = self._publishers()
         publishers = {}
         for name, entry in targets.items():
             strategy_name = entry["strategy"]
-            publisher = registry.publishers.get(strategy_name)
+            publisher = registry_publishers.get(strategy_name)
             if publisher is None:
-                available = ", ".join(sorted(registry.publishers)) or "(none)"
+                available = ", ".join(sorted(registry_publishers)) or "(none)"
                 raise Error(
                     f"Unknown publish strategy: {strategy_name!r}. "
                     f"Available: {available}"
@@ -288,6 +283,17 @@ class Automata:
             The discovered, unbuilt materials universe.
 
         """
+        return self._discover(hooks=self.hooks)
+
+    def _discover(
+        self, hooks: Hooks | None, errors: list[Error] | None = None
+    ) -> Universe[UnbuiltArtifact]:
+        """Discover materials (see :meth:`discover`).
+
+        *hooks* may be None, to run no discovery hooks (as :meth:`status` and
+        :meth:`check` don't). If *errors* is given, an error in a collection is
+        appended to it, and the collection left out, rather than raised.
+        """
         # the build directory holds copies of materials (and, without cleaning,
         # stale ones), and hidden directories (.git, .venv) hold none
         build_dir = (self.path / self.config.website.build_directory).resolve()
@@ -296,7 +302,7 @@ class Automata:
             return directory.name.startswith(".") or directory.resolve() == build_dir
 
         universe = materials.discover(
-            self.path, skip=skip, vars=self.config.vars, hooks=self.hooks
+            self.path, skip=skip, vars=self.config.vars, hooks=hooks, errors=errors
         )
 
         if self.config.materials:
@@ -304,18 +310,94 @@ class Automata:
                 self.config.materials,
                 self.path,
                 vars=self.config.vars,
-                hooks=self.hooks,
+                hooks=hooks,
                 source_map=self.source_map,
+                errors=errors,
             )
             for key in sorted(inline.collections.keys() & universe.collections.keys()):
-                raise Error(
+                error = Error(
                     f'Collection "{key}" is defined both under materials in '
                     f"{CONFIGURATION_FILENAME} and as the directory "
                     f"{self.path / key}. Rename one of them."
                 )
+                if errors is None:
+                    raise error
+                errors.append(error)
+                del inline.collections[key]
             universe = inline.merge(universe)
 
         return universe
+
+    def status(self, current_time: datetime.datetime | None = None) -> Status:
+        """The status of the materials: what is released, scheduled, and on the site.
+
+        Builds nothing and runs no recipes or hooks: it discovers the materials
+        and reads the last build's ``materials.json`` (if any).
+
+        Parameters
+        ----------
+        current_time : datetime.datetime | None
+            The time to give the status for. If *None*, uses the system time.
+
+        Returns
+        -------
+        Status
+            Each artifact's state and whether it is on the site, the next
+            releases, and which artifacts are out of date.
+
+        Raises
+        ------
+        automata.exceptions.Error
+            If the materials can't be discovered.
+
+        """
+        current_time = current_time or datetime.datetime.now()
+        materials_json = self._materials_json_path()
+        exported = None
+        if materials_json.is_file():
+            loaded = materials.deserialize(materials_json.read_text())
+            if isinstance(loaded, Universe):
+                exported = cast(Universe[ExportedArtifact], loaded)
+        return make_status(
+            self._discover(hooks=None), materials_json, exported, current_time
+        )
+
+    def check(self, current_time: datetime.datetime | None = None) -> list[Problem]:
+        """Check the project for problems, without building anything.
+
+        Each check runs on its own, so every problem is found at once:
+
+        - the collections and publications (each collection separately), and
+          released artifacts without a recipe whose file doesn't exist;
+        - each page's frontmatter and template syntax;
+        - the syntax of the theme's and extensions' templates;
+        - ``website.elements``: unknown elements, and configurations that don't
+          match their element's schema, whether or not a page uses them;
+        - the publish targets and their strategies.
+
+        Runs no recipes or hooks, and writes nothing.
+
+        Parameters
+        ----------
+        current_time : datetime.datetime | None
+            The time to check releases against. If *None*, uses the system time.
+
+        Returns
+        -------
+        list[Problem]
+            The problems found; empty if there are none.
+
+        """
+        return run_checks(self, current_time or datetime.datetime.now())
+
+    def _publishers(self) -> dict[str, Any]:
+        """The publish strategies: the built-in ones, and those extensions add."""
+        from . import publish as publish_module
+
+        registry = self.hooks.on_register_publishers(
+            PublisherRegistryArgs(publishers=publish_module.registry.all())
+        )
+        return registry.publishers
 
     def build_materials(
         self,

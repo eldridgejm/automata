@@ -95,7 +95,7 @@ def load_content_directory(
 class _Sources:
     """The content files that become each path of the built site."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # the file each output path comes from
         self.files: dict[str, Path] = {}
         # for each directory of the output, a file that becomes a path inside it

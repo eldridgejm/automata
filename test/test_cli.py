@@ -477,3 +477,136 @@ def test_configuration_errors_print_without_a_traceback(project, bad_vars, expec
     assert result.exit_code == 1
     assert isinstance(result.exception, SystemExit)
     assert expected in result.output
+
+
+# status ===============================================================================
+
+
+def _schedule_homework(project, release_time):
+    """Give the homework a release time (next to its path, at the same indent)."""
+    config = project / "automata.yaml"
+    lines = []
+    for line in config.read_text().splitlines():
+        lines.append(line)
+        if line.strip() == "path: homeworks/hw01/homework.pdf":
+            indent = line[: len(line) - len(line.lstrip())]
+            lines.append(f"{indent}release_time: {release_time}")
+    config.write_text("\n".join(lines) + "\n")
+
+
+def test_status_summarizes_the_artifacts_and_the_build(project):
+    result = _invoke("status")
+
+    assert "Artifacts: 1 released" in result.output
+    assert "Last build: never" in result.output
+    assert "1 artifact is out of date: run automata build" in result.output
+
+
+def test_status_after_a_build_is_up_to_date(project):
+    _invoke("build")
+
+    result = _invoke("status")
+
+    assert "Up to date." in result.output
+
+
+def test_status_shows_the_next_releases(project):
+    _schedule_homework(project, "2025-06-01 00:00:00")
+
+    result = _invoke("status", "--current-time", "2025-05-01T00:00:00")
+
+    assert "Next releases:" in result.output
+    assert "homeworks/hw01/homework.pdf" in result.output
+    assert "2025-06-01 00:00 (in 31 days)" in result.output
+
+
+def test_status_verbose_lists_every_artifact(project):
+    result = _invoke("status", "--verbose")
+
+    assert "homeworks/hw01/homework.pdf" in result.output
+    assert "released, not on the site" in result.output
+
+
+def test_status_json_gives_every_artifact(project):
+    import json
+
+    result = _invoke("status", "--json")
+
+    data = json.loads(result.stdout)
+    assert [a["key"] for a in data["artifacts"]] == ["homeworks/hw01/homework.pdf"]
+    assert data["out_of_date"] == ["homeworks/hw01/homework.pdf"]
+
+
+def test_status_json_with_a_current_time_is_still_json(project):
+    import json
+
+    result = _invoke("status", "--json", "--current-time", "2025-05-01T00:00:00")
+
+    assert json.loads(result.stdout)["current_time"] == "2025-05-01T00:00:00"
+
+
+def test_status_json_with_broken_config_is_json_with_the_error(project):
+    import json
+
+    (project / "automata.yaml").write_text("website: 3\n")
+
+    result = runner.invoke(app, ["status", "--json"])
+
+    assert result.exit_code == 1
+    error = json.loads(result.stdout)["error"]
+    assert error.startswith(f"{project / 'automata.yaml'}:1: website: ")
+
+
+def test_status_exit_code_is_2_when_out_of_date(project):
+    result = runner.invoke(app, ["status", "--exit-code"])
+    assert result.exit_code == 2
+
+    _invoke("build")
+    result = runner.invoke(app, ["status", "--exit-code"])
+    assert result.exit_code == 0
+
+
+# check ================================================================================
+
+
+def test_check_with_no_problems(project):
+    result = _invoke("check")
+
+    assert "No problems found." in result.output
+
+
+def test_check_reports_every_problem_and_fails(project):
+    (project / "content" / "a.md").write_text("{% if %}\n")
+    (project / "content" / "b.md").write_text("---\nvars: [1]\n---\n")
+
+    result = runner.invoke(app, ["check"])
+
+    assert result.exit_code == 1
+    assert str(project / "content" / "a.md") in result.output
+    assert str(project / "content" / "b.md") in result.output
+    assert "2 problems found." in result.output
+
+
+def test_check_json_gives_the_problems(project):
+    import json
+
+    (project / "content" / "a.md").write_text("{% if %}\n")
+
+    result = runner.invoke(app, ["check", "--json"])
+
+    assert result.exit_code == 1
+    (problem,) = json.loads(result.stdout)["problems"]
+    assert problem["area"] == "pages"
+
+
+def test_check_reports_broken_config_as_a_problem(project):
+    import json
+
+    (project / "automata.yaml").write_text("website: 3\n")
+
+    result = runner.invoke(app, ["check", "--json"])
+
+    assert result.exit_code == 1
+    (problem,) = json.loads(result.stdout)["problems"]
+    assert problem["area"] == "configuration"
+    assert problem["message"].startswith(f"{project / 'automata.yaml'}:1: website: ")

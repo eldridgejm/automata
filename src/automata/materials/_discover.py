@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional
 from automata import constants
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
 
+from ..exceptions import Error
 from ..util.yaml import SourceMap, parse_yaml_with_source_map
 from ._discover_collection import parse_collection
 from ._discover_publication import parse_publication
@@ -389,6 +390,7 @@ def discover(
     skip: Optional[Callable[[pathlib.Path], bool]] = None,
     hooks: Optional[DiscoverHooks] = None,
     vars: Optional[dict[str, Any]] = None,
+    errors: Optional[list[Error]] = None,
 ) -> Universe[UnbuiltArtifact]:
     """Discover the course materials in the filesystem.
 
@@ -412,6 +414,10 @@ def discover(
         A dictionary of user-defined variables to be available during interpolation
         within collection.yaml and publication.yaml files. If omitted, no user-defined
         variables will be available.
+    errors : Optional[list[Error]]
+        If given, an error in a collection is appended to this list, and the
+        collection left out, rather than raised; the other collections are
+        still discovered. (Used to report every problem at once.)
 
     Returns
     -------
@@ -444,17 +450,29 @@ def discover(
     if hooks is None:
         hooks = DiscoverHooks()
 
-    scan_result = _scan_filesystem(root_directory, skip=skip, hooks=hooks)
+    try:
+        scan_result = _scan_filesystem(root_directory, skip=skip, hooks=hooks)
+    except DiscoveryError as exc:
+        if errors is None:
+            raise
+        errors.append(exc)
+        return Universe({})
 
     collections = {}
     for collection_path, publication_paths in scan_result.items():
-        key, collection = _make_collection(
-            collection_path,
-            publication_paths,
-            root_directory,
-            hooks=hooks,
-            vars=vars,
-        )
+        try:
+            key, collection = _make_collection(
+                collection_path,
+                publication_paths,
+                root_directory,
+                hooks=hooks,
+                vars=vars,
+            )
+        except DiscoveryError as exc:
+            if errors is None:
+                raise
+            errors.append(exc)
+            continue
         collections[key] = collection
 
     return Universe(collections)

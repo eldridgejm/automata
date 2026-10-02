@@ -156,6 +156,33 @@ The primary interface is the ``Automata`` class.
         :returns: The resolved publication.
         :rtype: Publication[UnbuiltArtifact]
 
+    .. method:: status(current_time=None)
+
+        What is released and scheduled, and whether the site is up to date (see
+        ``automata status``). Builds nothing and runs no recipes or hooks.
+
+        :param current_time: Override the current time.
+        :type current_time: datetime or None
+        :returns: Each artifact's state (``status.artifacts``), the counts, the
+            next releases, the out-of-date artifacts, and when the site was last
+            built; ``status.to_dict()`` gives it as JSON-ready data.
+        :rtype: Status
+
+    .. method:: check(current_time=None)
+
+        Check the project for problems without building anything (see
+        ``automata check``), returning every problem found.
+
+        :param current_time: Override the current time.
+        :type current_time: datetime or None
+        :returns: The problems, each with an ``area`` and a ``message``; empty if
+            there are none.
+        :rtype: list[Problem]
+
+    ``Status``, ``ArtifactStatus`` (an artifact's status, in
+    ``status.artifacts``) and ``Problem`` can be imported from ``automata``,
+    e.g. for type annotations.
+
 
 Example: step-by-step pipeline
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

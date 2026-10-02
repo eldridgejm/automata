@@ -82,6 +82,7 @@ def discover_inline(
     vars: Optional[Mapping[str, Any]] = None,
     hooks: Optional[DiscoverHooks] = None,
     source_map: Optional[SourceMap] = None,
+    errors: Optional[list[Error]] = None,
 ) -> Universe[UnbuiltArtifact]:
     """Create a Universe from inline materials defined in config.
 
@@ -101,6 +102,9 @@ def discover_inline(
         and ``key`` set to the collection or publication name.
     source_map : SourceMap | None
         The source map of ``automata.yaml``, used to give the line of errors.
+    errors : list[Error] | None
+        If given, an error in a collection is appended to this list, and the
+        collection left out, rather than raised.
 
     Returns
     -------
@@ -117,84 +121,98 @@ def discover_inline(
     collections: dict[str, Collection[UnbuiltArtifact]] = {}
 
     for collection_name, collection_def in materials_config.items():
-        if collection_name == constants.DEFAULT_COLLECTION:
-            raise Error(
-                describe_config_error(
-                    f"{constants.DEFAULT_COLLECTION_RESERVED} Rename it.",
-                    ("materials", collection_name),
-                    file=project_path / "automata.yaml",
-                    source_map=source_map,
-                )
-            )
-        _check_inline_collection(collection_name, collection_def)
-        schema_def = collection_def.get("schema", {})
-        raw_publications = collection_def.get("publications", {})
-
-        # Build a collection.yaml-style dict for parse_collection
-        collection_yaml = {
-            "publication_schema": {
-                "required_artifacts": schema_def.get("required_artifacts", []),
-                **{k: v for k, v in schema_def.items() if k != "required_artifacts"},
-            },
-        }
-
-        # Use a synthetic source path for error messages
-        source = project_path / "automata.yaml"
-
         try:
-            collection, _ = parse_collection(collection_yaml, source=source, vars=vars)
-        except DiscoveryError as exc:
-            # keypaths start with the synthetic "publication_schema" key
-            raise _in_automata_yaml(
-                exc,
-                source,
-                ("materials", collection_name, "schema"),
-                source_map,
-                drop=1,
-            ) from None
-        hooks.on_discover_collection(DiscoverHookArgs(path=source, key=collection_name))
-
-        # Resolve each publication
-        for pub_key, raw_pub in raw_publications.items():
-            # Ensure no recipes are specified. (Artifacts that aren't a mapping are
-            # reported, with their location, when the publication is resolved.)
-            raw_artifacts = raw_pub.get("artifacts")
-            if not isinstance(raw_artifacts, dict):
-                raw_artifacts = {}
-            for artifact_key, artifact_def in raw_artifacts.items():
-                if (
-                    isinstance(artifact_def, dict)
-                    and artifact_def.get("recipe") is not None
-                ):
-                    raise Error(
-                        f"Inline materials cannot have recipes "
-                        f"(collection={collection_name!r}, "
-                        f"publication={pub_key!r}, "
-                        f"artifact={artifact_key!r}). "
-                        f"Use filesystem materials instead."
+            if collection_name == constants.DEFAULT_COLLECTION:
+                raise Error(
+                    describe_config_error(
+                        f"{constants.DEFAULT_COLLECTION_RESERVED} Rename it.",
+                        ("materials", collection_name),
+                        file=project_path / "automata.yaml",
+                        source_map=source_map,
                     )
+                )
+            _check_inline_collection(collection_name, collection_def)
+            schema_def = collection_def.get("schema", {})
+            raw_publications = collection_def.get("publications", {})
 
-            previous = _last_publication(collection)
+            # Build a collection.yaml-style dict for parse_collection
+            collection_yaml = {
+                "publication_schema": {
+                    "required_artifacts": schema_def.get("required_artifacts", []),
+                    **{
+                        k: v for k, v in schema_def.items() if k != "required_artifacts"
+                    },
+                },
+            }
+
+            # Use a synthetic source path for error messages
+            source = project_path / "automata.yaml"
+
             try:
-                publication = parse_publication(
-                    raw_pub,
-                    workdir=project_path,
-                    publication_schema=collection.publication_schema,
-                    vars=vars,
-                    previous=previous,
-                    templates=collection.templates,
-                    source=source,
+                collection, _ = parse_collection(
+                    collection_yaml, source=source, vars=vars
                 )
             except DiscoveryError as exc:
+                # keypaths start with the synthetic "publication_schema" key
                 raise _in_automata_yaml(
                     exc,
                     source,
-                    ("materials", collection_name, "publications", pub_key),
+                    ("materials", collection_name, "schema"),
                     source_map,
+                    drop=1,
                 ) from None
-            collection.publications[pub_key] = publication
-            hooks.on_discover_publication(DiscoverHookArgs(path=source, key=pub_key))
+            hooks.on_discover_collection(
+                DiscoverHookArgs(path=source, key=collection_name)
+            )
 
+            # Resolve each publication
+            for pub_key, raw_pub in raw_publications.items():
+                # Ensure no recipes are specified. (Artifacts that aren't a mapping are
+                # reported, with their location, when the publication is resolved.)
+                raw_artifacts = raw_pub.get("artifacts")
+                if not isinstance(raw_artifacts, dict):
+                    raw_artifacts = {}
+                for artifact_key, artifact_def in raw_artifacts.items():
+                    if (
+                        isinstance(artifact_def, dict)
+                        and artifact_def.get("recipe") is not None
+                    ):
+                        raise Error(
+                            f"Inline materials cannot have recipes "
+                            f"(collection={collection_name!r}, "
+                            f"publication={pub_key!r}, "
+                            f"artifact={artifact_key!r}). "
+                            f"Use filesystem materials instead."
+                        )
+
+                previous = _last_publication(collection)
+                try:
+                    publication = parse_publication(
+                        raw_pub,
+                        workdir=project_path,
+                        publication_schema=collection.publication_schema,
+                        vars=vars,
+                        previous=previous,
+                        templates=collection.templates,
+                        source=source,
+                    )
+                except DiscoveryError as exc:
+                    raise _in_automata_yaml(
+                        exc,
+                        source,
+                        ("materials", collection_name, "publications", pub_key),
+                        source_map,
+                    ) from None
+                collection.publications[pub_key] = publication
+                hooks.on_discover_publication(
+                    DiscoverHookArgs(path=source, key=pub_key)
+                )
+
+        except Error as exc:
+            if errors is None:
+                raise
+            errors.append(exc)
+            continue
         collections[collection_name] = collection
 
     return Universe(collections)
