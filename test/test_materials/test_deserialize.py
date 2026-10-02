@@ -163,3 +163,25 @@ def test_serialize_deserialize_collection_directly():
     # then
     assert collection == result
     assert isinstance(result, automata.materials.Collection)
+
+
+def test_only_the_date_formats_serialize_writes_become_dates():
+    import datetime
+
+    import automata.materials
+
+    metadata = {
+        "due": datetime.datetime(2025, 1, 1, 23, 59),
+        "day": datetime.date(2025, 1, 1),
+        "precise": datetime.datetime(2025, 1, 1, 23, 59, 0, 500),
+        # strings Python's fromisoformat would also read as dates
+        "code": "20250101",
+        "week": "2025-W40",
+        "iso": "2025-10-01T12:00:00",
+        "compact": "2025-01-01T235900",
+    }
+    publication = automata.materials.Publication(metadata=metadata, artifacts={})
+
+    result = automata.materials.deserialize(automata.materials.serialize(publication))
+
+    assert result.metadata == metadata

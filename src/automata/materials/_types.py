@@ -4,6 +4,7 @@ import dataclasses
 import datetime
 import json
 import pathlib
+import re
 import typing
 
 # material hierarchy nodes =============================================================
@@ -403,35 +404,32 @@ def serialize(node) -> str:
     return json.dumps(dct, default=object_serializer, indent=4)
 
 
+# the forms serialize() writes dates and datetimes in: str() of a date, or of a
+# datetime (with microseconds and an offset, if it has them)
+_DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
+_DATETIME_PATTERN = re.compile(
+    r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{6})?([+-]\d{2}:\d{2})?"
+)
+
+
 def _convert_to_time(s: str) -> datetime.date | datetime.datetime:
-    """Convert a string to a date or datetime object.
+    """Convert a string written by serialize() to a date or datetime object.
 
-    Parameters
-    ----------
-    s : str
-        The string to convert. See below for the expected format.
+    Only the exact forms serialize() writes are converted: other strings that
+    look like dates (e.g. "20250101" or "2025-W40", which
+    ``datetime.date.fromisoformat`` also accepts) stay strings.
 
-    Returns
-    -------
-    datetime.date | datetime.datetime
-        The converted date or datetime object.
-
-    Notes
-    -----
-
-    The string must be in ISO 8601 format. The function will attempt to convert
-    the string to a date object first, and then to a datetime object if that
-    fails. If both fail, a ValueError is raised.
+    Raises
+    ------
+    ValueError
+        If the string is not a date or datetime in those forms.
 
     """
-    converters = [datetime.date.fromisoformat, datetime.datetime.fromisoformat]
-    for converter in converters:
-        try:
-            return converter(s)
-        except ValueError:
-            continue
-    else:
-        raise ValueError("Not a time.")
+    if _DATE_PATTERN.fullmatch(s):
+        return datetime.date.fromisoformat(s)
+    if _DATETIME_PATTERN.fullmatch(s):
+        return datetime.datetime.fromisoformat(s)
+    raise ValueError("Not a time.")
 
 
 def deserialize(s: str) -> Universe | Collection | Publication | Artifact:
