@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import get_type_hints
 
 from ..exceptions import Error
 from ..hooks import RenderHooks, WebsiteInputs
@@ -49,7 +50,13 @@ def apply_extension(
     _applied.add(extension.name)
 
     for hook_name, fn in extension.hooks.items():
-        hook_point = getattr(hooks, hook_name)
+        hook_point = getattr(hooks, hook_name, None)
+        if hook_point is None:
+            known = sorted(get_type_hints(type(hooks)))
+            raise Error(
+                f'Extension "{extension.name}" registers unknown hook '
+                f'"{hook_name}". Known hooks: {", ".join(known)}.'
+            )
         hook_point.register(priority=priority)(fn)
 
 

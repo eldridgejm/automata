@@ -55,7 +55,13 @@ def publish(
     user_name, user_email = _identity(config, project_directory)
 
     def _run(*args, **kw):
-        return subprocess.run(args, check=True, capture_output=True, text=True, **kw)
+        result = subprocess.run(args, capture_output=True, text=True, **kw)
+        if result.returncode != 0:
+            raise Error(
+                f"gh-pages publishing failed: `{' '.join(args)}` exited with status "
+                f"{result.returncode}: {result.stderr.strip()}"
+            )
+        return result
 
     # Work in a temporary directory so we don't disturb the working tree
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -66,13 +72,15 @@ def publish(
         remote_url = _get_remote_url(remote, project_directory)
         _run("git", "remote", "add", "origin", remote_url, cwd=tmp)
 
-        # Try to fetch the existing branch; it's fine if it doesn't exist yet
-        try:
-            _run("git", "fetch", "origin", branch, cwd=tmp)
+        # Fetch the existing branch; it's fine if it doesn't exist yet
+        fetched = subprocess.run(
+            ["git", "fetch", "origin", branch], cwd=tmp, capture_output=True
+        )
+        if fetched.returncode == 0:
             _run("git", "checkout", branch, cwd=tmp)
             # Clean out old content
             _run("git", "rm", "-rf", ".", cwd=tmp)
-        except subprocess.CalledProcessError:
+        else:
             # Branch doesn't exist yet — start with an orphan
             _run("git", "checkout", "--orphan", branch, cwd=tmp)
 
@@ -144,8 +152,12 @@ def _get_remote_url(remote: str, project_directory: Path) -> str:
     result = subprocess.run(
         ["git", "remote", "get-url", remote],
         cwd=project_directory,
-        check=True,
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        raise Error(
+            f'The gh-pages publish strategy could not find git remote "{remote}" '
+            f"in {project_directory}: {result.stderr.strip()}"
+        )
     return result.stdout.strip()

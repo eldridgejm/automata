@@ -1,5 +1,6 @@
 import datetime
 
+import pytest
 from pytest import raises
 
 from automata.hooks import DiscoverHookArgs, Hooks
@@ -760,6 +761,20 @@ def test_discover_reports_a_yaml_syntax_error_with_file_and_line(temporary_cours
     assert "publication.yaml" in message
     assert "line 2" in message
     assert "<unicode string>" not in message
+
+
+@pytest.mark.parametrize("contents", ["", "- 1\n- 2"])
+def test_discover_reports_a_collection_yaml_that_is_not_a_mapping(
+    temporary_course, contents
+):
+    temporary_course.create_collection("homeworks", contents)
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    message = str(excinfo.value)
+    assert "collection.yaml" in message
+    assert "must be a mapping" in message
 
 
 # date phrases

@@ -106,11 +106,15 @@ def test_apply_extension_priority_controls_execution_order():
 
 
 def test_apply_extension_raises_on_unknown_hook_name():
-    ext = _make_extension(hooks={"on_nonexistent_hook": lambda x: x})
+    ext = _make_extension(name="tools", hooks={"on_rendr_post": lambda x: x})
     hooks = RenderHooks()
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(Error) as excinfo:
         apply_extension(ext, hooks)
+
+    message = str(excinfo.value)
+    assert 'Extension "tools" registers unknown hook "on_rendr_post"' in message
+    assert "on_render_post" in message  # lists the known hooks
 
 
 # composing multiple extensions ========================================================
@@ -427,3 +431,17 @@ def test_extension_from_entry_point_rejects_an_extension_attribute_of_wrong_type
         extension_from_entry_point("my-ext", entry_points=eps)
 
     assert "is not an Extension" in str(excinfo.value)
+
+
+def test_extension_from_entry_point_reports_a_failing_factory():
+    def make_extension(config):
+        return config["missing"]
+
+    eps = [_FakeEntryPoint(EXTENSIONS_GROUP, "my-ext", make_extension=make_extension)]
+
+    with pytest.raises(Error) as excinfo:
+        extension_from_entry_point("my-ext", entry_points=eps)
+
+    message = str(excinfo.value)
+    assert 'make_extension() of extension "my-ext" failed' in message
+    assert "KeyError" in message

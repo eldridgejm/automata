@@ -38,7 +38,7 @@ def _parse_yaml_frontmatter(
         The parsed frontmatter.
 
     """
-    data = parse_yaml(yaml_content)
+    data = parse_yaml(yaml_content, first_line=2)
     return resolve(data, Frontmatter, base_path=base_path)
 
 

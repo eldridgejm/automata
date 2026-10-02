@@ -10,7 +10,9 @@ from ruamel.yaml.nodes import MappingNode, ScalarNode, SequenceNode
 from ..exceptions import Error
 
 
-def parse_yaml(yaml_content: str, source: Path | None = None) -> Any:
+def parse_yaml(
+    yaml_content: str, source: Path | None = None, first_line: int = 1
+) -> Any:
     """Parse a YAML string into a Python object.
 
     Tags starting with ! are converted to dict-form function calls like
@@ -22,6 +24,9 @@ def parse_yaml(yaml_content: str, source: Path | None = None) -> Any:
         The YAML content to parse.
     source : Path | None
         The file the content came from, named in error messages.
+    first_line : int
+        The line of the file on which the content starts (e.g. 2 for page
+        frontmatter, which follows a ``---`` line), for error messages.
 
     Returns
     -------
@@ -54,10 +59,10 @@ def parse_yaml(yaml_content: str, source: Path | None = None) -> Any:
     try:
         return yaml.load(yaml_content)
     except YAMLError as exc:
-        raise Error(_describe_yaml_error(exc, source)) from None
+        raise Error(_describe_yaml_error(exc, source, first_line - 1)) from None
 
 
-def _describe_yaml_error(exc: YAMLError, source: Path | None) -> str:
+def _describe_yaml_error(exc: YAMLError, source: Path | None, offset: int = 0) -> str:
     """A one-line description of a YAML error, with 1-based line and column."""
     message = "Invalid YAML"
     if source is not None:
@@ -67,10 +72,12 @@ def _describe_yaml_error(exc: YAMLError, source: Path | None) -> str:
         return f"{message}: {exc}"
 
     mark = exc.problem_mark
-    message += f", line {mark.line + 1}, column {mark.column + 1}: {exc.problem}"
+    message += (
+        f", line {mark.line + 1 + offset}, column {mark.column + 1}: {exc.problem}"
+    )
     if exc.context:
         message += f" ({exc.context}"
         if exc.context_mark is not None:
-            message += f" starting at line {exc.context_mark.line + 1}"
+            message += f" starting at line {exc.context_mark.line + 1 + offset}"
         message += ")"
     return message

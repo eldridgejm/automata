@@ -3,7 +3,7 @@
 import datetime
 import shutil
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from . import materials
 from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
@@ -192,6 +192,9 @@ class Automata:
         if not self.config.publish:
             raise Error("No 'publish' entries found in automata.yaml.")
 
+        for name, entry in self.config.publish.items():
+            _check_publish_target(name, entry)
+
         if target is not None:
             if target not in self.config.publish:
                 available = ", ".join(sorted(self.config.publish))
@@ -268,6 +271,12 @@ class Automata:
                 vars=self.config.vars,
                 hooks=self.hooks,
             )
+            for key in sorted(inline.collections.keys() & universe.collections.keys()):
+                raise Error(
+                    f'Collection "{key}" is defined both under materials in '
+                    f"{CONFIGURATION_FILENAME} and as the directory "
+                    f"{self.path / key}. Rename one of them."
+                )
             universe = inline.merge(universe)
 
         return universe
@@ -390,7 +399,8 @@ class Automata:
         if not materials_json.is_file():
             raise Error(
                 f'No exported materials found: "{materials_json}" does not exist. '
-                f"Run export() first (note that clean_build_directory() removes it)."
+                f"Export the materials first (automata export, or Automata.export in "
+                f"Python); cleaning the build directory removes them."
             )
 
         loaded = materials.deserialize(materials_json.read_text())
@@ -442,6 +452,12 @@ class Automata:
                 build_directory=build_dir,
             )
         )
+
+        if not content_dir.is_dir():
+            raise Error(
+                f'website.content_directory "{self.config.website.content_directory}" '
+                f"does not exist ({content_dir})."
+            )
 
         pages, static_content = load_content_directory(
             content_dir,
@@ -495,3 +511,22 @@ class Automata:
         else:
             universe = materials.discover(pub_dir, vars=self.config.vars)
             return universe.collections["default"].publications["."]
+
+
+def _check_publish_target(name: str, entry: Any) -> None:
+    """Check the shape of one publish target, naming it in any error."""
+    where = f"publish.{name}"
+    if not isinstance(entry, dict):
+        raise Error(
+            f'{where} must be a mapping with "strategy" and "config" keys, not '
+            f"{entry!r}."
+        )
+    for key in entry:
+        if key not in ("strategy", "config"):
+            raise Error(
+                f'{where} has unknown key "{key}" (expected "strategy" and "config").'
+            )
+    if not isinstance(entry.get("strategy"), str):
+        raise Error(f'{where} must have a "strategy" (e.g. gh-pages or rsync).')
+    if not isinstance(entry.get("config", {}), dict):
+        raise Error(f"{where}.config must be a mapping.")

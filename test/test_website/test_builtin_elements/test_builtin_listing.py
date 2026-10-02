@@ -153,3 +153,14 @@ def test_an_error_in_a_cell_names_the_column_and_publication(listing):
     assert '"Grade"' in message
     assert '"hw01"' in message
     assert "grade" in message
+
+
+def test_an_unknown_collection_is_reported_with_the_available_ones(listing):
+    with pytest.raises(WebsiteError) as excinfo:
+        listing.template_vars(
+            {"collection": "homewrks", "columns": [], "numbered": False}
+        )
+
+    message = str(excinfo.value)
+    assert 'unknown collection "homewrks"' in message
+    assert "homeworks" in message

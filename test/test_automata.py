@@ -625,3 +625,65 @@ def test_resolve_a_publication_outside_any_collection(project_dir):
 
     assert publication.metadata == {"title": "Notes"}
     assert "notes.pdf" in publication.artifacts
+
+
+# malformed configuration ==============================================================
+
+
+@pytest.mark.parametrize(
+    "targets, expected",
+    [
+        ("      site:\n        config: {}\n", 'publish.site must have a "strategy"'),
+        ("      site: gh-pages\n", "publish.site must be a mapping"),
+        (
+            "      site:\n        strategy: recording\n        confg: {}\n",
+            'publish.site has unknown key "confg"',
+        ),
+        (
+            "      site:\n        strategy: recording\n        config: [1]\n",
+            "publish.site.config must be a mapping",
+        ),
+    ],
+)
+def test_malformed_publish_targets_are_reported_before_building(
+    project_dir, targets, expected
+):
+    _add_publish_targets(project_dir, targets)
+    project = Automata(project_dir)
+    _record_publishes(project)
+
+    with pytest.raises(Error) as excinfo:
+        project.publish()
+
+    assert expected in str(excinfo.value)
+    assert not (project_dir / "_build").exists()
+
+
+def test_a_collection_defined_inline_and_on_disk_is_reported(project_dir):
+    # project_dir has a homeworks/ collection on disk; define one inline too
+    config = project_dir / "automata.yaml"
+    config.write_text(
+        "materials:\n  homeworks:\n    schema: {required_artifacts: []}\n"
+        "    publications: {}\n" + config.read_text()
+    )
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project_dir).discover()
+
+    message = str(excinfo.value)
+    assert '"homeworks"' in message
+    assert "automata.yaml" in message
+    assert str(project_dir / "homeworks") in message
+
+
+def test_a_missing_content_directory_is_reported(project_dir):
+    import shutil
+
+    shutil.rmtree(project_dir / "content")
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project_dir).build()
+
+    message = str(excinfo.value)
+    assert "content_directory" in message
+    assert str(project_dir / "content") in message

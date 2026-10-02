@@ -108,7 +108,8 @@ def test_render_website_fails_helpfully_without_exported_materials(project):
     result = runner.invoke(app, ["render-website"])
 
     assert result.exit_code == 1
-    assert "export" in result.output
+    assert "automata export" in result.output
+    assert "export()" not in result.output
 
 
 # old names ============================================================================

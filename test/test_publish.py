@@ -210,6 +210,31 @@ def test_gh_pages_without_any_identity_is_a_clear_error(
     assert "user_email" in message
 
 
+@pytest.mark.integration
+def test_gh_pages_outside_a_git_repository_is_a_clear_error(tmp_path):
+    build_dir = tmp_path / "_build"
+    build_dir.mkdir()
+
+    with pytest.raises(Error) as excinfo:
+        gh_pages_publish(
+            build_dir, {"user_name": "a", "user_email": "a@example.com"}, tmp_path
+        )
+
+    message = str(excinfo.value)
+    assert 'git remote "origin"' in message
+    assert str(tmp_path) in message
+
+
+@pytest.mark.integration
+def test_gh_pages_with_an_unknown_remote_is_a_clear_error(git_project):
+    project, build_dir, remote = git_project
+
+    with pytest.raises(Error) as excinfo:
+        gh_pages_publish(build_dir, {"remote": "upstream"}, project)
+
+    assert 'git remote "upstream"' in str(excinfo.value)
+
+
 # rsync strategy =======================================================================
 
 

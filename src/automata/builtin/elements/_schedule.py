@@ -14,6 +14,8 @@ from automata.util.resolution import string_or_template_string
 from automata.website import RenderContext, TemplateElement
 from automata.website.exceptions import WebsiteError
 
+from ._common import get_collection
+
 # helpers ==============================================================================
 
 T = TypeVar("T")
@@ -462,7 +464,7 @@ def make_activities_from_collection_config(
 
     """
 
-    collection = context.materials.collections[config["collection"]]
+    collection = get_collection(context, config["collection"], "schedule")
     publications = list(collection.publications.values())
 
     for_each_publication_config = config["for_each_publication"]

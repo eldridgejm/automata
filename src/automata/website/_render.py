@@ -176,7 +176,13 @@ class _BoundElement:
         self.element = element
         self.configured = configured
 
-    def __call__(self, config: smartconfig.types.Configuration | None = None) -> str:
+    def __call__(self, *args: smartconfig.types.Configuration) -> str:
+        if len(args) > 1:
+            raise WebsiteError(
+                f"elements.{self.name} takes at most one argument (its "
+                f"configuration), but was given {len(args)}."
+            )
+        config = args[0] if args else None
         key = f"website.elements.{self.name}"
 
         if config is not None:

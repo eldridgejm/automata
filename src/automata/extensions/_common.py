@@ -43,7 +43,14 @@ def extension_from_module(
     """Build an Extension from a module exporting make_extension or extension."""
     if hasattr(module, "make_extension"):
         resolved_config = resolve_config(name, config, schema)
-        extension = module.make_extension(resolved_config)
+        try:
+            extension = module.make_extension(resolved_config)
+        except Error:
+            raise
+        except Exception as e:
+            raise Error(
+                f'make_extension() of {kind} "{name}" failed: {type(e).__name__}: {e}'
+            ) from e
         if not isinstance(extension, Extension):
             raise Error(
                 f'make_extension() for {kind} "{name}" did not return an Extension.'

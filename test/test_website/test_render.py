@@ -437,6 +437,27 @@ def test_invalid_yaml_raises_page_error(tmpsite, theme):
     assert "bad.html" in str(exc.value)
 
 
+def test_frontmatter_yaml_errors_give_the_line_in_the_page(tmpsite, theme):
+    # the bad line is line 3 of the page (line 2 of the frontmatter)
+    tmpsite.make_page("bad.md", "---\ntitle: a\n  bad: indent\n---\n\n# Content")
+
+    with raises(automata.website.PageError) as exc:
+        _render(tmpsite, theme=theme)
+
+    assert "line 3" in str(exc.value)
+
+
+def test_calling_an_element_with_too_many_arguments_is_reported(tmpsite, theme):
+    tmpsite.make_page("index.md", "${ elements.button({}, {}) }")
+
+    with raises(automata.website.PageError) as exc:
+        _render(tmpsite, theme=theme)
+
+    message = str(exc.value)
+    assert "elements.button takes at most one argument" in message
+    assert "positional arguments" not in message
+
+
 def test_invalid_frontmatter_key_raises_page_error(tmpsite, theme):
     """Test that invalid frontmatter keys raise an error."""
     # given

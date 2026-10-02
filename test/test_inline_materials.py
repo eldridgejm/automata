@@ -232,3 +232,42 @@ def test_inline_materials_cannot_have_recipes(tmp_path):
     message = str(excinfo.value)
     assert "recipe" in message
     assert "homework.pdf" in message
+
+
+@pytest.mark.parametrize(
+    "materials, expected",
+    [
+        ("{exams: [1]}", "materials.exams must be a mapping"),
+        (
+            "{exams: {shema: {}, publications: {}}}",
+            'materials.exams has unknown key "shema"',
+        ),
+        (
+            "{exams: {publications: [1]}}",
+            "materials.exams.publications must be a mapping",
+        ),
+        (
+            "{exams: {publications: {midterm: [1]}}}",
+            "materials.exams.publications.midterm must be a mapping",
+        ),
+    ],
+)
+def test_malformed_inline_materials_are_reported(tmp_path, materials, expected):
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "automata.yaml").write_text(
+        f"materials: {materials}\n"
+        + dedent("""\
+            website:
+              theme:
+                use: "default"
+                config: {short_title: "T", long_title: "Test"}
+              content_directory: "content"
+              build_directory: "_build"
+        """)
+    )
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).discover()
+
+    assert expected in str(excinfo.value)

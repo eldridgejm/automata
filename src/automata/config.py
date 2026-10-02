@@ -127,6 +127,8 @@ def read_config(path: Path) -> Config:
     """
     yaml_content = path.read_text()
     config_dict = parse_yaml(yaml_content, source=path)
+    if config_dict is None:
+        raise Error(f"{path} is empty.")
 
     try:
         return resolve(config_dict, Config, base_path=path.parent)
@@ -134,7 +136,7 @@ def read_config(path: Path) -> Config:
         raise Error(f"Invalid configuration: {e}") from e
 
 
-def _load_extension_spec(spec: Any, cwd: Path, group: str) -> Extension:
+def _load_extension_spec(spec: Any, cwd: Path, group: str, where: str) -> Extension:
     """Load a single extension from a spec (string or dict).
 
     Parameters
@@ -152,10 +154,25 @@ def _load_extension_spec(spec: Any, cwd: Path, group: str) -> Extension:
         name = spec
         ext_config = None
     elif isinstance(spec, dict):
+        for key in spec:
+            if key not in ("use", "config"):
+                raise Error(
+                    f'{where} has unknown key "{key}" (expected "use" and "config").'
+                )
+        if "use" not in spec:
+            raise Error(
+                f'{where} must have a "use" key, naming the extension or giving '
+                f"its path."
+            )
         name = spec["use"]
+        if not isinstance(name, str):
+            raise Error(f'"use" in {where} must be a string, not {name!r}.')
         ext_config = spec.get("config")
     else:
-        raise Error(f"Invalid extension spec: {spec!r}")
+        raise Error(
+            f"Invalid extension spec in {where}: {spec!r}. Give a name, a path, or "
+            f'a mapping with "use" (and optionally "config").'
+        )
 
     if "/" in name or "\\" in name:
         # directory extensions are named after the directory itself
@@ -197,11 +214,14 @@ def load_extensions(config: Config, cwd: Path) -> tuple[Extension, list[Extensio
         ``page.html`` template, or two different extensions share a name.
 
     """
-    theme = _load_extension_spec(config.website.theme, cwd, THEMES_GROUP)
+    theme = _load_extension_spec(
+        config.website.theme, cwd, THEMES_GROUP, "website.theme"
+    )
     check_theme(theme)
 
     extensions = [
-        _load_extension_spec(spec, cwd, EXTENSIONS_GROUP) for spec in config.extensions
+        _load_extension_spec(spec, cwd, EXTENSIONS_GROUP, f"extensions.{i}")
+        for i, spec in enumerate(config.extensions)
     ]
 
     # raises if two different extensions share a name

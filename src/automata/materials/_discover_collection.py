@@ -162,6 +162,13 @@ def parse_collection(
     if vars is None:
         vars = {}
 
+    if not isinstance(raw_contents, dict):
+        found = "empty" if raw_contents is None else f"a {type(raw_contents).__name__}"
+        raise DiscoveryError(
+            f"must be a mapping with a publication_schema key, but it is {found}.",
+            source,
+        )
+
     raw_publications = raw_contents.pop("publications", None)
 
     resolved = _resolve_collection(raw_contents, vars, source)

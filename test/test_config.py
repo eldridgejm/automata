@@ -444,3 +444,44 @@ def test_read_config_reports_a_missing_included_file(tmp_path: Path) -> None:
     message = str(excinfo.value)
     assert "missing.yaml" in message
     assert "not found" in message
+
+
+# extension specs ======================================================================
+
+
+@pytest.mark.parametrize(
+    "theme, extensions, expected",
+    [
+        (
+            "{config: {short_title: T}}",
+            "[]",
+            'website.theme must have a "use" key',
+        ),
+        (_DEFAULT_THEME, "[{config: {}}]", 'extensions.0 must have a "use" key'),
+        (_DEFAULT_THEME, "[{use: 5}]", '"use" in extensions.0 must be a string'),
+        (
+            "{use: default, confg: {short_title: T}}",
+            "[]",
+            'website.theme has unknown key "confg"',
+        ),
+    ],
+)
+def test_load_extensions_reports_malformed_specs(
+    tmp_path: Path, theme: str, extensions: str, expected: str
+) -> None:
+    config = read_config(_write_config(tmp_path, theme, extensions))
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path)
+
+    assert expected in str(excinfo.value)
+
+
+def test_read_config_reports_an_empty_file(tmp_path: Path) -> None:
+    config_file = tmp_path / "automata.yaml"
+    config_file.write_text("")
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert f"{config_file} is empty" in str(excinfo.value)

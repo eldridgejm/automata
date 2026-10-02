@@ -12,6 +12,8 @@ from automata.util.resolution import string_or_template_string, unwrap_templates
 from automata.website import TemplateElement
 from automata.website.exceptions import WebsiteError
 
+from ._common import get_collection
+
 REQUIREMENTS_CONFIG_SCHEMA = {
     "type": "dict",
     "optional_keys": {
@@ -89,7 +91,7 @@ class Listing(TemplateElement):
 
         config_dict = cast(dict[str, Any], config)
         collection_name = cast(str, config_dict["collection"])
-        collection = self.context.materials.collections[collection_name]
+        collection = get_collection(self.context, collection_name, "listing")
         columns = config_dict["columns"]
 
         rows = []

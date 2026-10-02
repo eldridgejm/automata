@@ -22,6 +22,40 @@ def _last_publication(collection: Collection) -> Optional[Any]:
     return collection.publications[key_of_last]
 
 
+def _check_inline_collection(name: str, collection_def: Any) -> None:
+    """Check the shape of one inline collection, naming it in any error."""
+    where = f"materials.{name}"
+    allowed = ("schema", "publications")
+    if not isinstance(collection_def, dict):
+        raise Error(
+            f'{where} must be a mapping with "schema" and "publications" keys, '
+            f"not {_describe(collection_def)}."
+        )
+    for key in collection_def:
+        if key not in allowed:
+            raise Error(
+                f'{where} has unknown key "{key}" (expected "schema" and '
+                f'"publications").'
+            )
+    for key in allowed:
+        value = collection_def.get(key, {})
+        if not isinstance(value, dict):
+            raise Error(f"{where}.{key} must be a mapping, not {_describe(value)}.")
+    for pub_name, pub in collection_def.get("publications", {}).items():
+        if not isinstance(pub, dict):
+            raise Error(
+                f"{where}.publications.{pub_name} must be a mapping with "
+                f'"metadata" and "artifacts" keys, not {_describe(pub)}.'
+            )
+
+
+def _describe(value: Any) -> str:
+    """A short description of a value's type, for error messages."""
+    if value is None:
+        return "empty"
+    return f"a {type(value).__name__}"
+
+
 def discover_inline(
     materials_config: dict[str, Any],
     project_path: pathlib.Path,
@@ -60,6 +94,7 @@ def discover_inline(
     collections: dict[str, Collection[UnbuiltArtifact]] = {}
 
     for collection_name, collection_def in materials_config.items():
+        _check_inline_collection(collection_name, collection_def)
         schema_def = collection_def.get("schema", {})
         raw_publications = collection_def.get("publications", {})
 

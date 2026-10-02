@@ -824,3 +824,23 @@ def test_extra_activities_cannot_use_publication_resources(schedule_element):
         schedule_element.template_vars(config)
 
     assert "artifact_links" in str(excinfo.value)
+
+
+def test_unknown_collection_in_schedule_is_reported(schedule_element):
+    config = _weekly_config(
+        primary_activity_collections=[
+            {
+                "collection": "lectures",
+                "for_each_publication": {
+                    "start_displaying_on": "2024-01-08",
+                    "title": "Lecture",
+                    "resources": [],
+                },
+            }
+        ]
+    )
+
+    with pytest.raises(automata.website.exceptions.WebsiteError) as excinfo:
+        schedule_element.template_vars(config)
+
+    assert 'unknown collection "lectures"' in str(excinfo.value)
