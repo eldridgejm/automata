@@ -230,7 +230,7 @@ def test_python_collect_runs_after_files_are_collected(tmp_path):
     assert templates["seen.html"] == "python saw: from file"
 
 
-def test_script_hook_and_python_hook_for_same_point_both_run(tmp_path, monkeypatch):
+def test_script_hook_and_python_hook_for_same_point_both_run(tmp_path):
     # given
     project = _write_project(tmp_path / "project", "  - extensions/both")
     _write_extension(
@@ -244,7 +244,7 @@ def test_script_hook_and_python_hook_for_same_point_both_run(tmp_path, monkeypat
 
                 def make_extension(config):
                     def post(args):
-                        Path("python-ran").touch()
+                        (Path(args.build_directory).parent / "python-ran").touch()
 
                     return Extension(name="both", hooks={"on_render_post": post})
             """,
@@ -254,8 +254,7 @@ def test_script_hook_and_python_hook_for_same_point_both_run(tmp_path, monkeypat
     hooks = Hooks()
     apply_extension(ext, hooks)
 
-    # when: the python hook writes relative to the process cwd, so run there
-    monkeypatch.chdir(project)
+    # when
     hooks.on_render_post(RenderPostHookArgs(build_directory=project / "_build"))
 
     # then

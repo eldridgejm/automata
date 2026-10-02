@@ -1,5 +1,6 @@
 """Tests for the command-line interface."""
 
+import contextlib
 from textwrap import dedent
 
 import pytest
@@ -123,10 +124,9 @@ def test_old_command_names_are_gone(project, old_name):
 # finding the project ==================================================================
 
 
-def test_build_from_a_subdirectory_uses_the_enclosing_project(project, monkeypatch):
-    monkeypatch.chdir(project / "content")
-
-    result = _invoke("build")
+def test_build_from_a_subdirectory_uses_the_enclosing_project(project):
+    with contextlib.chdir(project / "content"):
+        result = _invoke("build")
 
     assert (project / "_build" / "index.html").exists()
     assert f"Using project at {project}" in result.output
@@ -138,12 +138,12 @@ def test_build_from_the_project_root_does_not_announce_the_project(project):
     assert "Using project at" not in result.output
 
 
-def test_outside_any_project_prints_an_error_without_a_traceback(tmp_path, monkeypatch):
+def test_outside_any_project_prints_an_error_without_a_traceback(tmp_path):
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
-    monkeypatch.chdir(elsewhere)
 
-    result = runner.invoke(app, ["build"])
+    with contextlib.chdir(elsewhere):
+        result = runner.invoke(app, ["build"])
 
     assert result.exit_code == 1
     assert isinstance(result.exception, SystemExit)
@@ -151,10 +151,9 @@ def test_outside_any_project_prints_an_error_without_a_traceback(tmp_path, monke
     assert "Traceback" not in result.output
 
 
-def test_resolve_outside_any_project_prints_one_clear_error(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-
-    result = runner.invoke(app, ["resolve", "publication.yaml"])
+def test_resolve_outside_any_project_prints_one_clear_error(tmp_path):
+    with contextlib.chdir(tmp_path):
+        result = runner.invoke(app, ["resolve", "publication.yaml"])
 
     assert result.exit_code == 1
     assert "automata.yaml" in result.output

@@ -1,5 +1,6 @@
 """Tests for the publish system."""
 
+import contextlib
 import subprocess
 from pathlib import Path
 
@@ -146,17 +147,15 @@ def test_gh_pages_honors_branch_remote_and_message(git_project):
 
 
 @pytest.mark.integration
-def test_gh_pages_resolves_the_remote_in_the_project_not_the_cwd(
-    git_project, tmp_path, monkeypatch
-):
+def test_gh_pages_resolves_the_remote_in_the_project_not_the_cwd(git_project, tmp_path):
     # given: the process runs outside the project's repository
     project, build_dir, remote = git_project
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
-    monkeypatch.chdir(elsewhere)
 
     # when
-    gh_pages_publish(build_dir, {}, project)
+    with contextlib.chdir(elsewhere):
+        gh_pages_publish(build_dir, {}, project)
 
     # then
     assert _branch_files(remote, "gh-pages") == ["index.html", "materials/hw01.pdf"]

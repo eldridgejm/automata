@@ -1,5 +1,6 @@
 """Tests for the Automata public API."""
 
+import contextlib
 import json
 from datetime import datetime
 from textwrap import dedent, indent
@@ -418,7 +419,7 @@ def test_clean_build_directory_refuses_directory_with_automata_yaml(tmp_path):
 # script hooks =========================================================================
 
 
-def test_build_runs_script_hooks_from_project_root(project_dir, tmp_path, monkeypatch):
+def test_build_runs_script_hooks_from_project_root(project_dir, tmp_path):
     # given: an extension whose script hook writes a page using a path relative
     # to the project root, and a process running somewhere else
     ext_dir = project_dir / "extensions" / "pages"
@@ -430,10 +431,10 @@ def test_build_runs_script_hooks_from_project_root(project_dir, tmp_path, monkey
     config.write_text("extensions:\n  - extensions/pages\n" + config.read_text())
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
-    monkeypatch.chdir(elsewhere)
 
     # when
-    Automata(project_dir).build()
+    with contextlib.chdir(elsewhere):
+        Automata(project_dir).build()
 
     # then
     assert "Generated" in (project_dir / "_build" / "generated.html").read_text()
@@ -451,10 +452,8 @@ def test_init_raises_helpful_error_without_automata_yaml(tmp_path):
     assert str(tmp_path) in message
 
 
-def test_init_does_not_search_parent_directories(project_dir, monkeypatch):
-    monkeypatch.chdir(project_dir / "content")
-
-    with pytest.raises(Error):
+def test_init_does_not_search_parent_directories(project_dir):
+    with contextlib.chdir(project_dir / "content"), pytest.raises(Error):
         Automata()
 
 

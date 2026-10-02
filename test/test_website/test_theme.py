@@ -1,3 +1,4 @@
+import contextlib
 import importlib.metadata as metadata
 from pathlib import Path
 
@@ -318,7 +319,7 @@ def _run_render_post(ext, build_directory):
     hooks.on_render_post(RenderPostHookArgs(build_directory=build_directory))
 
 
-def test_script_hooks_run_in_project_directory(tmp_path: Path, monkeypatch) -> None:
+def test_script_hooks_run_in_project_directory(tmp_path: Path) -> None:
     # given: the process is running somewhere other than the project
     project = tmp_path / "project"
     ext_dir = project / "extensions" / "tools"
@@ -326,14 +327,14 @@ def test_script_hooks_run_in_project_directory(tmp_path: Path, monkeypatch) -> N
     (ext_dir / "hooks" / "on_render_post").write_text("cat > /dev/null && touch ran")
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
-    monkeypatch.chdir(elsewhere)
 
     ext = extension_from_directory(
         "tools", ext_dir, require_templates=False, project_directory=project
     )
 
     # when
-    _run_render_post(ext, project / "_build")
+    with contextlib.chdir(elsewhere):
+        _run_render_post(ext, project / "_build")
 
     # then
     assert (project / "ran").exists()
