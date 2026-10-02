@@ -225,7 +225,7 @@ def test_from_directory_raises_on_invalid_schema_in_schema_json(tmp_path: Path) 
         extension_from_directory("test", theme_dir)
 
 
-# hooks.py loading =============================================================
+# script hooks (hooks/ directory) =====================================================
 
 
 def test_from_directory_loads_script_hooks(tmp_path: Path) -> None:

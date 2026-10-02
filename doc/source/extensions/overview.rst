@@ -71,6 +71,13 @@ The referenced module must export one of:
    is called with the extension's validated configuration (see below), and
    each call builds a fresh ``Extension``, so its hooks can safely close over
    ``config``.
+
+   automata always calls it with the config as its only argument. It may take
+   further parameters, as long as they are optional; automata never passes
+   them. This is useful for testing: a parameter whose default is the real
+   dependency lets a test pass a fake instead. For example, the default theme
+   is ``make_extension(config, *, run=subprocess.run)``, where ``run`` runs the
+   Tailwind CLI.
 2. ``extension`` --- an ``Extension`` object that takes no configuration.
    Passing ``config`` to it is an error.
 

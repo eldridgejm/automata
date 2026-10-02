@@ -103,15 +103,40 @@ Utility for creating temporary website projects:
 Integration tests
 -----------------
 
-Integration tests (marked with ``@pytest.mark.integration``) run the full
-pipeline against the example project. They verify that:
-
-1. The example project builds end-to-end.
-2. Materials are discovered, built, and exported correctly.
-3. The website is generated with the correct content.
+Integration tests (marked with ``@pytest.mark.integration``) run real
+programs or the full pipeline: the example project built end-to-end, and the
+gh-pages publish strategy run with real ``git`` against a local bare
+repository. A test that needs a tool that may not be installed (such as the
+Tailwind rebuild, which needs ``npx`` and the theme's Node packages) is also
+skipped when the tool is missing.
 
 These tests are slower and are excluded from the default test run. Run them
-explicitly with ``-m integration``.
+explicitly with ``-m integration`` (``make checks`` runs both).
+
+
+Fakes, not patching
+-------------------
+
+Tests do not patch code with ``mock.patch`` or ``monkeypatch.setattr``. Code
+that calls an external program or service takes the dependency as a parameter
+whose default is the real thing, and tests pass a fake:
+
+.. code-block:: python
+
+    def publish(build_directory, config, project_directory, *, run=subprocess.run):
+        ...
+
+    def test_rsync_mirrors_the_build(tmp_path):
+        commands = []
+        publish(..., run=lambda cmd, **kw: commands.append(cmd))
+        assert commands == [["rsync", ...]]
+
+Examples: ``materials.build(run=..., exists=...)``, the rsync strategy's
+``run``, and the default theme's ``make_extension(config, *, run=...)``.
+
+Using the real filesystem is fine (``tmp_path``), as is setting up the process
+environment with ``monkeypatch.chdir`` or ``monkeypatch.setenv``. Check log
+messages with pytest's ``caplog`` rather than by replacing a logger.
 
 
 Writing tests for extensions

@@ -2,12 +2,15 @@
 
 import importlib.resources
 import json
+import subprocess
+from collections.abc import Callable
+from typing import Any
 
 from automata.builtin.elements import listing_extension, schedule_extension
 from automata.extensions import Extension
 from automata.hooks import RenderPostHookArgs, WebsiteInputs
 
-from . import hooks as _hooks_module
+from . import _tailwind
 from .elements import elements
 
 
@@ -37,8 +40,14 @@ _static_files = _collect_files(_root / "static")
 schema = json.loads((_root / "schema.json").read_text())
 
 
-def make_extension(config: dict) -> Extension:
-    """Build the default theme Extension for the given (validated) config."""
+def make_extension(
+    config: dict, *, run: Callable[..., Any] = subprocess.run
+) -> Extension:
+    """Build the default theme Extension for the given (validated) config.
+
+    automata calls this with *config* only. *run* runs the Tailwind CLI after
+    rendering (default :func:`subprocess.run`); tests pass a fake.
+    """
 
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
         inputs.templates.update(_templates)
@@ -47,7 +56,7 @@ def make_extension(config: dict) -> Extension:
         return inputs
 
     def post_render(args: RenderPostHookArgs) -> None:
-        _hooks_module.post_render(args.build_directory, config)
+        _tailwind.rebuild_css(args.build_directory, config, run=run)
 
     return Extension(
         name="default",

@@ -1237,7 +1237,7 @@ def test_render_executes_script_hook_from_theme(tmpsite, tmp_path):
 
 def test_render_continues_without_hooks(tmpsite, tmp_path):
     """Test that render() works normally when theme has no hooks."""
-    # given: a theme without hooks.py
+    # given: a theme without a hooks/ directory
     theme_dir = tmp_path / "theme"
     templates_dir = theme_dir / "templates"
     templates_dir.mkdir(parents=True)
@@ -1287,74 +1287,58 @@ def test_render_handles_materials_already_in_build_directory(tmpsite, theme):
 # default theme tailwind rebuild ================================================
 
 
-def test_default_theme_tailwind_rebuild_with_npx_available(tmpsite, monkeypatch):
-    """Test that default theme rebuilds Tailwind CSS when npx is available."""
-    # Mock subprocess to simulate successful Tailwind rebuild
-    mock_run_calls = []
+def _default_theme_with_runner(run):
+    """The default theme, built with an injected command runner for Tailwind."""
+    from automata.builtin.themes.default import make_extension
 
-    def mock_run(*args, **kwargs):
-        mock_run_calls.append((args, kwargs))
-        # Return success for npx --version
-        if args[0][0] == "npx" and args[0][1] == "--version":
-            return fixture.Mock(returncode=0)
-        # Return success for Tailwind CLI
-        return fixture.Mock(returncode=0, stderr="")
+    config = {
+        "short_title": "Test",
+        "long_title": "Test Site",
+        "navigation": [],
+        "rebuild_tailwind": True,
+    }
+    return make_extension(config, run=run)
 
+
+def test_default_theme_rebuilds_tailwind_after_pages_are_rendered(tmpsite):
+    # given: a runner that records the command, and what was built at that time
     import subprocess
-    from unittest import mock as fixture
 
-    monkeypatch.setattr(subprocess, "run", mock_run)
+    calls = []
 
-    tmpsite.make_page(
-        "index.md", "# Test\n\nThis uses <div class='bg-fuchsia-500'>custom</div>"
-    )
+    def run(cmd, **kwargs):
+        index_written = (tmpsite.build_directory / "index.html").exists()
+        calls.append((cmd, kwargs["cwd"], index_written))
+        return subprocess.CompletedProcess(cmd, 0)
 
-    theme = _make_theme(
-        config={
-            "short_title": "Test",
-            "long_title": "Test Site",
-            "rebuild_tailwind": True,
-        }
-    )
+    tmpsite.make_page("index.md", "<div class='bg-fuchsia-500'>custom</div>")
 
     # when
-    _render(tmpsite, theme=theme)
+    _render(tmpsite, theme=_default_theme_with_runner(run))
 
-    # then - Tailwind CLI should have been called
-    tailwind_calls = [c for c in mock_run_calls if "@tailwindcss/cli" in str(c)]
-    assert len(tailwind_calls) > 0, "Tailwind CLI should have been called"
+    # then
+    ((cmd, cwd, index_written),) = calls
+    assert cmd[:2] == ["npx", "@tailwindcss/cli"]
+    assert cwd == str(tmpsite.build_directory.resolve())
+    assert index_written
 
 
-def test_default_theme_fallback_when_npx_not_available(tmpsite, monkeypatch, caplog):
-    """Test that default theme falls back gracefully when npx is not available."""
-    import subprocess
+def test_default_theme_renders_without_npx(tmpsite, caplog):
+    # given: a runner for a machine without npx
+    import logging
 
-    def mock_run(*args, **kwargs):
-        # Simulate npx not being available
-        raise FileNotFoundError("npx not found")
-
-    monkeypatch.setattr(subprocess, "run", mock_run)
+    def run(cmd, **kwargs):
+        raise FileNotFoundError(2, "No such file or directory", "npx")
 
     tmpsite.make_page("index.md", "# Test Page")
 
-    theme = _make_theme(
-        config={
-            "short_title": "Test",
-            "long_title": "Test Site",
-            "rebuild_tailwind": True,
-        }
-    )
-
     # when
-    import logging
-
     with caplog.at_level(logging.WARNING):
-        _render(tmpsite, theme=theme)
+        _render(tmpsite, theme=_default_theme_with_runner(run))
 
-    # then - should have warned about npx not being available
-    assert any("npx not found" in record.message for record in caplog.records)
-    # Build should still succeed
+    # then
     assert "Test Page" in tmpsite.get_output("index.html")
+    assert any("npx not found" in record.getMessage() for record in caplog.records)
 
 
 # extra_content =======================================================================
