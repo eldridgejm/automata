@@ -4,6 +4,7 @@ import copy
 import dataclasses
 import datetime
 import pathlib
+import posixpath
 import shutil
 from importlib.resources.abc import Traversable
 from typing import Any, Callable, Container, Mapping, Sequence, cast
@@ -181,6 +182,19 @@ def _write_static_files(
         else:
             # Traversable - read and write bytes
             output_path.write_bytes(static_content.read_bytes())
+
+
+def _page_base_path(base_path: str, page_path: str) -> str:
+    """The base path to use in the page at *page_path* (relative to the site).
+
+    An absolute base path (``/`` or ``/course/``) or a URL is the same on every
+    page. A relative one (e.g. ``.``) is relative to the site's root, so a page
+    in a subdirectory reaches it through ``..``.
+    """
+    if base_path.startswith("/") or "://" in base_path:
+        return base_path
+    depth = page_path.count("/")
+    return posixpath.normpath(posixpath.join(*([".."] * depth), base_path))
 
 
 def _create_url_for(base_path: str) -> Callable[[str], str]:
@@ -401,13 +415,14 @@ def _process_pages(
     pages: dict[str, str | Page],
     build_directory: pathlib.Path,
     jinja_environment: jinja2.Environment,
-    context: RenderContext,
+    context_for: Callable[[str], RenderContext],
     render_markdown: Callable[[str], str],
 ) -> None:
     """Process page content and write rendered HTML to the build directory.
 
     All pages are rendered as Markdown, interpolated, and wrapped in a
     template.  Keys are output paths (should end in ``.html``).
+    *context_for* gives the render context for a page's output path.
 
     """
     for relative_path, page in pages.items():
@@ -424,7 +439,7 @@ def _process_pages(
                 page,
                 path,
                 jinja_environment,
-                context,
+                context_for(relative_path),
                 markdown_renderer=render_markdown,
             )
         except PageError:
@@ -548,7 +563,6 @@ def render(
         )
 
     # run on_render_extra_pages hooks
-    url_for = _create_url_for(base_path)
     pre_args = hooks.on_render_extra_pages(
         RenderExtraPagesHookArgs(build_directory=build_directory, extra_content=None)
     )
@@ -567,33 +581,42 @@ def render(
     jinja_environment = _create_jinja_environment(inputs.templates)
     _write_static_files(inputs.static_files, build_directory)
 
-    # load materials (or copy the given ones, since their paths are rewritten
-    # below) and create render context
+    # load materials. Their artifact paths are rewritten for each page's base
+    # path, so the given materials are copied rather than modified
     if materials is None:
         materials = _load_materials(materials_directory)
-    else:
-        materials = copy.deepcopy(materials)
-    _fix_artifact_paths(materials, url_for)
-    context = _create_render_context(
-        materials,
-        url_for,
-        current_time,
-        vars,
-        base_path,
-        inputs.elements,
-        jinja_environment,
-        element_configs,
-        theme,
-        all_extensions(loaded),
-        config_source_map,
-    )
+
+    # a render context for each base path (one, unless the base path is
+    # relative, in which case it depends on the depth of the page)
+    contexts: dict[str, RenderContext] = {}
+
+    def context_for(page_path: str) -> RenderContext:
+        page_base_path = _page_base_path(base_path, page_path)
+        if page_base_path not in contexts:
+            url_for = _create_url_for(page_base_path)
+            page_materials = copy.deepcopy(materials)
+            _fix_artifact_paths(page_materials, url_for)
+            contexts[page_base_path] = _create_render_context(
+                page_materials,
+                url_for,
+                current_time,
+                vars,
+                page_base_path,
+                inputs.elements,
+                jinja_environment,
+                element_configs,
+                theme,
+                all_extensions(loaded),
+                config_source_map,
+            )
+        return contexts[page_base_path]
 
     # process pages and static content
     _process_pages(
         all_pages,
         build_directory,
         jinja_environment,
-        context,
+        context_for,
         render_markdown,
     )
     _write_static_content(static_content, build_directory)

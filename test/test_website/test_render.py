@@ -1,6 +1,7 @@
 import shutil
 
 import jinja2
+import pytest
 import smartconfig
 from pytest import fixture, raises
 
@@ -322,6 +323,72 @@ def test_render_does_not_modify_given_materials(tmpsite, default_example_course,
 
     # then
     assert automata.materials.serialize(universe) == before
+
+
+# relative base paths =================================================================
+
+
+def _universe_with_one_artifact():
+    import automata.materials
+
+    return automata.materials.Universe(
+        collections={
+            "hw": automata.materials.Collection(
+                publication_schema=None,
+                publications={
+                    "hw01": automata.materials.Publication(
+                        metadata={},
+                        artifacts={
+                            "hw.pdf": automata.materials.ExportedArtifact(
+                                path="materials/hw/hw01/hw.pdf"
+                            )
+                        },
+                    )
+                },
+            )
+        }
+    )
+
+
+_LINKS = (
+    "[css](${ url_for('static/style.css') }) "
+    "[hw](${ materials.collections.hw.publications.hw01.artifacts['hw.pdf'].path })"
+)
+
+
+@pytest.mark.parametrize(
+    "page, css, hw",
+    [
+        ("index.md", "./static/style.css", "./materials/hw/hw01/hw.pdf"),
+        ("notes/week1.md", "../static/style.css", "../materials/hw/hw01/hw.pdf"),
+        ("a/b/c.md", "../../static/style.css", "../../materials/hw/hw01/hw.pdf"),
+    ],
+)
+def test_a_relative_base_path_is_relative_to_each_page(tmpsite, theme, page, css, hw):
+    tmpsite.make_page(page, _LINKS)
+
+    _render(
+        tmpsite, theme=theme, materials=_universe_with_one_artifact(), base_path="."
+    )
+
+    output = tmpsite.get_output(page.replace(".md", ".html"))
+    assert f'href="{css}"' in output
+    assert f'href="{hw}"' in output
+
+
+def test_an_absolute_base_path_is_the_same_on_every_page(tmpsite, theme):
+    tmpsite.make_page("notes/week1.md", _LINKS)
+
+    _render(
+        tmpsite,
+        theme=theme,
+        materials=_universe_with_one_artifact(),
+        base_path="/course/",
+    )
+
+    output = tmpsite.get_output("notes/week1.html")
+    assert 'href="/course/static/style.css"' in output
+    assert 'href="/course/materials/hw/hw01/hw.pdf"' in output
 
 
 # error handling =======================================================================
