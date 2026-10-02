@@ -138,8 +138,10 @@ Fields:
 - ``is_ordered``: If ``true``, publications are processed in directory-name
   order and each has access to a ``previous`` variable. Default: ``false``.
 
-Collections may also define **templates** that are available to publications
-during resolution:
+Collections may also define **templates**: values shared by their
+publications, filled in for each publication that uses them. Write each one
+with ``!template``, so that it isn't filled in when ``collection.yaml`` is
+read; in it, ``this`` is the publication using the template:
 
 .. code-block:: yaml
 
@@ -147,9 +149,33 @@ during resolution:
       ...
 
     templates:
-      standard_recipe: "latexmk -pdf ${ publication.metadata.topic }.tex"
+      title: !template "Homework ${ this.metadata.number }"
+      recipe: !template "latexmk -pdf hw${ this.metadata.number }.tex"
 
-Publications reference templates with ``${ templates.standard_recipe }``.
+A publication uses a template with ``!use``, in place of the value:
+
+.. code-block:: yaml
+
+    metadata:
+      number: 3
+      title: !use templates.title       # "Homework 3"
+    artifacts:
+      homework.pdf:
+        recipe: !use templates.recipe   # "latexmk -pdf hw3.tex"
+
+A template can also be a mapping (for instance, a publication's whole
+``artifacts``), used with overrides:
+
+.. code-block:: yaml
+
+    artifacts: !use
+      template: templates.artifacts
+      overrides:
+        homework.pdf:
+          ready: true
+
+Use templates with ``!use``, not by interpolating them, as in
+``${ templates.title }``: interpolating a template inserts it unfilled.
 
 
 ``publication.yaml``

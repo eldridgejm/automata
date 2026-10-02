@@ -2273,3 +2273,37 @@ def test_a_collection_directory_named_default_is_an_error(temporary_course):
         f'{collection_file}: The collection name "default" is reserved for '
         "publications that aren't in a collection. Rename the directory."
     )
+
+
+def test_the_documented_templates_example_works(temporary_course):
+    # the example in doc/source/guide/materials.rst
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts: [homework.pdf]
+
+        templates:
+            title: !template "Homework ${ this.metadata.number }"
+            recipe: !template "latexmk -pdf hw${ this.metadata.number }.tex"
+        """,
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "03",
+        """
+        metadata:
+            number: 3
+            title: !use templates.title
+        artifacts:
+            homework.pdf:
+                recipe: !use templates.recipe
+        """,
+    )
+
+    publication = (
+        discover(temporary_course.path).collections["homeworks"].publications["03"]
+    )
+
+    assert publication.metadata["title"] == "Homework 3"
+    assert publication.artifacts["homework.pdf"].recipe == "latexmk -pdf hw3.tex"
