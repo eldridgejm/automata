@@ -56,7 +56,7 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [ ] Thorough documentation of default theme, including elements
 - [ ] Better error messages
 - [ ] Flesh out the CLI with more commands
-- [ ] Rewrite DESIGN.md around hooks and extensions (it still describes the old "Resources" design)
+- [x] Rewrite DESIGN.md around hooks and extensions (deleted instead: it was a working note, and the design is implemented)
 - [x] Raise automata.exceptions.Error (not ValueError) when website.render() finds no page.html
 - [x] Allow directory extensions to declare dependencies (via extension.py)
 - [x] Document the on_website_generate_pre hook in hooks.rst (now on_render_pre)
@@ -67,3 +67,5 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [x] Fix smartconfig key order (smartconfig 0.5.4: extra dict keys keep their input order)
 - [x] gh-pages: commit identity from the strategy config or the project's git identity, with a clear error if none (instead of an invented default)
 - [x] Element template errors raise a bare Exception (website/_elements.py _resolve); raise a specific automata error
+- [ ] Let a directory extension contribute pages from files (e.g. a content/ folder, as DESIGN.md proposed); today only extension.py can add pages
+- [ ] Consider treating the project's website directory as an implicit directory extension applied last (templates/, static/, hooks/, extension.py next to content/), as DESIGN.md proposed; today the same works by listing a directory extension. At least document that recipe for overriding theme templates
