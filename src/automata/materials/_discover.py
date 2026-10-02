@@ -8,7 +8,7 @@ from typing import Any, Callable, Optional
 from automata import constants
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
 
-from ..util.yaml import parse_yaml
+from ..util.yaml import SourceMap, parse_yaml_with_source_map
 from ._discover_collection import parse_collection
 from ._discover_publication import parse_publication
 from ._types import (
@@ -156,14 +156,30 @@ class _RawPublication:
     contents: dict
     workdir: pathlib.Path
     source: pathlib.Path
+    # the source map of the file, and the keypath of the publication within it
+    # (for publications written in collection.yaml)
+    source_map: SourceMap
+    keypath: tuple[str, ...] = ()
 
 
-def _read_yaml(path: pathlib.Path) -> Any:
+def _read_yaml(path: pathlib.Path) -> tuple[Any, SourceMap]:
     """Read and parse a YAML file, wrapping errors in DiscoveryError."""
     try:
-        return parse_yaml(path.read_text())
+        return parse_yaml_with_source_map(path.read_text())
     except Exception as exc:
         raise DiscoveryError(str(exc), path)
+
+
+def _with_line(
+    exc: DiscoveryError, source_map: SourceMap, prefix: tuple[str, ...] = ()
+) -> DiscoveryError:
+    """*exc*, with the line of its keypath, which is relative to *prefix*."""
+    if exc.reason is None or exc.keypath is None:
+        return exc
+    keypath = (*prefix, *exc.keypath)
+    return DiscoveryError.at(
+        exc.reason, keypath, exc.path, line=source_map.line_of(keypath)
+    )
 
 
 def _last_publication(collection: Collection) -> Optional[Publication]:
@@ -202,10 +218,13 @@ def _read_publication_files(
     result: dict[str, _RawPublication] = {}
     for pub_path in publication_paths:
         pub_file_path = pub_path / constants.PUBLICATION_FILE
-        raw_contents = _read_yaml(pub_file_path)
+        raw_contents, source_map = _read_yaml(pub_file_path)
         key = str(pub_path.relative_to(base_dir))
         result[key] = _RawPublication(
-            contents=raw_contents, workdir=pub_path, source=pub_file_path
+            contents=raw_contents,
+            workdir=pub_path,
+            source=pub_file_path,
+            source_map=source_map,
         )
     return result
 
@@ -256,10 +275,13 @@ def _init_collection_from_file(
 
     """
     file_path = collection_path / constants.COLLECTION_FILE
-    raw_contents = _read_yaml(file_path)
-    collection, inline_publications = parse_collection(
-        raw_contents, vars=vars, source=file_path
-    )
+    raw_contents, source_map = _read_yaml(file_path)
+    try:
+        collection, inline_publications = parse_collection(
+            raw_contents, vars=vars, source=file_path
+        )
+    except DiscoveryError as exc:
+        raise _with_line(exc, source_map) from None
     key = str(collection_path.relative_to(root_directory))
     hooks.on_discover_collection(DiscoverHookArgs(path=file_path, key=key))
 
@@ -277,6 +299,8 @@ def _init_collection_from_file(
                 contents=raw_pub,
                 workdir=collection_path,
                 source=file_path,
+                source_map=source_map,
+                keypath=("publications", pub_key),
             )
             for pub_key, raw_pub in inline_publications.items()
         }
@@ -329,15 +353,18 @@ def _make_collection(
     # with the publications
     for pub_key, entry in raw_publications.items():
         previous = _last_publication(collection)
-        publication = parse_publication(
-            entry.contents,
-            workdir=entry.workdir,
-            publication_schema=collection.publication_schema,
-            vars=vars,
-            previous=previous,
-            templates=collection.templates,
-            source=entry.source,
-        )
+        try:
+            publication = parse_publication(
+                entry.contents,
+                workdir=entry.workdir,
+                publication_schema=collection.publication_schema,
+                vars=vars,
+                previous=previous,
+                templates=collection.templates,
+                source=entry.source,
+            )
+        except DiscoveryError as exc:
+            raise _with_line(exc, entry.source_map, entry.keypath) from None
         collection.publications[pub_key] = publication
         hooks.on_discover_publication(DiscoverHookArgs(path=entry.source, key=pub_key))
 

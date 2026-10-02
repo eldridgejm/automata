@@ -805,7 +805,7 @@ def test_publication_errors_name_the_file_and_the_keypath_as_written(
         discover(temporary_course.path)
 
     assert str(excinfo.value) == (
-        f"{pub_file}: metadata.number: Cannot convert to integer: 'one'."
+        f"{pub_file}:1: metadata.number: Cannot convert to integer: 'one'."
     )
 
 
@@ -828,7 +828,7 @@ def test_artifact_names_with_dots_are_quoted_in_keypaths(temporary_course):
         discover(temporary_course.path)
 
     assert str(excinfo.value).startswith(
-        f'{pub_file}: artifacts."homework.txt".ready: '
+        f'{pub_file}:3: artifacts."homework.txt".ready: '
     )
 
 
@@ -837,14 +837,14 @@ def test_artifact_names_with_dots_are_quoted_in_keypaths(temporary_course):
     [
         (
             "publication_schema:\n    required_artifacts: []\n    is_orderd: true",
-            ": publication_schema.is_orderd: Dictionary contains unexpected extra "
+            ":3: publication_schema.is_orderd: Dictionary contains unexpected extra "
             'key "is_orderd".',
         ),
         (
             "publication_schema:\n    required_artifacts: []\n"
             "    metadata_schema:\n        required_keys:\n"
             "            number: {type: 5}",
-            ": publication_schema.metadata_schema.required_keys.number.type: ",
+            ":5: publication_schema.metadata_schema.required_keys.number.type: ",
         ),
     ],
 )
@@ -858,6 +858,35 @@ def test_collection_errors_name_the_file_and_the_keypath_as_written(
         discover(temporary_course.path)
 
     assert str(excinfo.value).startswith(f"{collection_file}{expected}")
+
+
+def test_errors_in_publications_written_in_collection_yaml_give_keypath_and_line(
+    temporary_course,
+):
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts: []
+            metadata_schema:
+                required_keys:
+                    number: {type: integer}
+        publications:
+            hw01:
+                metadata:
+                    number: one
+                artifacts: {}
+        """,
+    )
+    collection_file = temporary_course.path / "homeworks" / "collection.yaml"
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    assert str(excinfo.value) == (
+        f"{collection_file}:9: publications.hw01.metadata.number: Cannot convert to "
+        "integer: 'one'."
+    )
 
 
 # date phrases

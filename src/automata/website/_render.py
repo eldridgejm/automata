@@ -24,8 +24,9 @@ from ..hooks import (
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util import markdown as markdown_util
 from ..util.resolution import describe_config_error, format_keypath
+from ..util.yaml import SourceMap
 from ._content import Page
-from ._frontmatter import Frontmatter, read_frontmatter
+from ._frontmatter import Frontmatter, FrontmatterError, read_frontmatter
 from .exceptions import PageError, WebsiteError
 
 
@@ -207,10 +208,12 @@ class _BoundElement:
         name: str,
         element: Callable[[smartconfig.types.Configuration], str],
         configured: smartconfig.types.Configuration | None,
+        config_source_map: SourceMap | None = None,
     ):
         self.name = name
         self.element = element
         self.configured = configured
+        self.config_source_map = config_source_map
 
     def __call__(self, *args: smartconfig.types.Configuration) -> str:
         if len(args) > 1:
@@ -223,6 +226,7 @@ class _BoundElement:
 
         # where the configuration came from, as a prefix for error messages
         note = ""
+        source_map = None
         if config is not None:
             where = f"the configuration passed to elements.{self.name}"
             prefix: tuple = ()
@@ -234,6 +238,8 @@ class _BoundElement:
         else:
             where = None
             prefix = key
+            # the configuration is in automata.yaml (or a file it includes)
+            source_map = self.config_source_map
             if self.configured is not None:
                 config = self.configured
             else:
@@ -246,7 +252,9 @@ class _BoundElement:
         try:
             return self.element(config)
         except smartconfig.exceptions.ResolutionError as e:
-            message = describe_config_error(e.reason, (*prefix, *e.keypath))
+            message = describe_config_error(
+                e.reason, (*prefix, *e.keypath), source_map=source_map
+            )
             if where is not None:
                 message = f"{where}: {message}"
             raise WebsiteError(message + note) from None
@@ -267,6 +275,7 @@ def _create_render_context(
     element_configs: dict[str, smartconfig.types.Configuration],
     theme: Extension | None,
     extensions: dict[str, Extension],
+    config_source_map: SourceMap | None = None,
 ) -> RenderContext:
     """Create the render context with elements bound."""
     context = RenderContext(
@@ -281,7 +290,10 @@ def _create_render_context(
 
     context.elements = {
         name: _BoundElement(
-            name, element(jinja_environment, context), element_configs.get(name)
+            name,
+            element(jinja_environment, context),
+            element_configs.get(name),
+            config_source_map,
         )
         for name, element in elements.items()
     }
@@ -322,6 +334,8 @@ def _render_page(
     base_path = page.source.parent if page.source is not None else None
     try:
         frontmatter, content = read_frontmatter(page.content, base_path=base_path)
+    except FrontmatterError as e:
+        raise PageError(e.message, path, e.line) from e
     except Exception as e:
         raise PageError(str(e), path) from e
 
@@ -448,6 +462,7 @@ def render(
     base_path: str = "/",
     materials_directory_name: str = "materials",
     element_configs: dict[str, smartconfig.types.Configuration] | None = None,
+    config_source_map: SourceMap | None = None,
     theme: Extension | None = None,
     extensions: Sequence[Extension] = (),
     materials: Universe[ExportedArtifact] | None = None,
@@ -493,6 +508,10 @@ def render(
         Configurations for elements, keyed by element name. An element called
         without a configuration uses its entry here (or an empty configuration
         if it has none).
+    config_source_map : SourceMap, optional
+        The source map of the file the element configurations were read from
+        (``automata.yaml``, keyed from its root), used to give the file and line
+        of element configuration errors.
     theme : Extension, optional
         The site's theme, available in templates as ``theme``.
     extensions : Sequence[Extension], optional
@@ -566,6 +585,7 @@ def render(
         element_configs,
         theme,
         all_extensions(loaded),
+        config_source_map,
     )
 
     # process pages and static content

@@ -25,6 +25,8 @@ class DiscoveryError(MaterialsError):
         For an invalid value, the problem, without its location.
     keypath : tuple | None
         For an invalid value, its keypath within the file, as the user wrote it.
+    line : int | None
+        The line of the file with the problem, if known.
 
     """
 
@@ -35,23 +37,32 @@ class DiscoveryError(MaterialsError):
         *,
         reason: str | None = None,
         keypath: tuple | None = None,
+        line: int | None = None,
     ):
         self.path = path
         self.msg = msg
         self.reason = reason
         self.keypath = keypath
+        self.line = line
 
     @classmethod
-    def at(cls, reason: str, keypath: tuple, path: pathlib.Path) -> "DiscoveryError":
-        """An error about the value at *keypath* in the file at *path*."""
+    def at(
+        cls, reason: str, keypath: tuple, path: pathlib.Path, line: int | None = None
+    ) -> "DiscoveryError":
+        """An error about the value at *keypath* (on *line*) in the file at *path*."""
         from ..util.resolution import describe_config_error
 
         return cls(
-            describe_config_error(reason, keypath), path, reason=reason, keypath=keypath
+            describe_config_error(reason, keypath),
+            path,
+            reason=reason,
+            keypath=keypath,
+            line=line,
         )
 
     def __str__(self):
-        return f"{self.path}: {self.msg}"
+        location = self.path if self.line is None else f"{self.path}:{self.line}"
+        return f"{location}: {self.msg}"
 
 
 class BuildError(MaterialsError):

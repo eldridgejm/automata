@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Any, cast
 
 from . import materials
-from .config import CONFIGURATION_FILENAME, Config, load_extensions, read_config
+from .config import (
+    CONFIGURATION_FILENAME,
+    Config,
+    load_extensions,
+    read_config_with_source_map,
+)
 from .exceptions import Error
 from .extensions import Extension, apply_extensions
 from .hooks import (
@@ -25,6 +30,7 @@ from .materials import (
     find_parent_collection,
 )
 from .materials._filter import ArtifactType, Predicate
+from .util.yaml import SourceMap
 from .website import load_content_directory
 from .website import render as _website_render
 
@@ -71,10 +77,16 @@ class Automata:
                 f"directory must contain {CONFIGURATION_FILENAME}."
             )
         self.path: Path = path
-        self.config: Config = read_config(config_path)
+        self.config: Config
+        # the line of each keypath in automata.yaml (and the files it includes),
+        # for errors found after the configuration is read
+        self.source_map: SourceMap
+        self.config, self.source_map = read_config_with_source_map(config_path)
         self.theme: Extension
         self.extensions: list[Extension]
-        self.theme, self.extensions = load_extensions(self.config, cwd=path)
+        self.theme, self.extensions = load_extensions(
+            self.config, cwd=path, source_map=self.source_map
+        )
         self.hooks: Hooks = Hooks()
         apply_extensions([self.theme, *self.extensions], self.hooks)
 
@@ -270,6 +282,7 @@ class Automata:
                 self.path,
                 vars=self.config.vars,
                 hooks=self.hooks,
+                source_map=self.source_map,
             )
             for key in sorted(inline.collections.keys() & universe.collections.keys()):
                 raise Error(
@@ -476,6 +489,7 @@ class Automata:
             base_path=self.config.website.base_path,
             materials_directory_name=self.config.website.materials_directory_name,
             element_configs=self.config.website.elements,
+            config_source_map=self.source_map,
             theme=self.theme,
             extensions=self.extensions,
             materials=materials,

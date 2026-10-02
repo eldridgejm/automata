@@ -7,6 +7,7 @@ from automata.exceptions import Error
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
 
 from ..util.resolution import describe_config_error
+from ..util.yaml import SourceMap
 from ._discover_collection import parse_collection
 from ._discover_publication import parse_publication
 from ._types import Collection, UnbuiltArtifact, Universe
@@ -52,13 +53,19 @@ def _check_inline_collection(name: str, collection_def: Any) -> None:
 
 
 def _in_automata_yaml(
-    exc: DiscoveryError, source: pathlib.Path, prefix: tuple, drop: int = 0
+    exc: DiscoveryError,
+    source: pathlib.Path,
+    prefix: tuple,
+    source_map: Optional[SourceMap],
+    drop: int = 0,
 ) -> Error:
     """An error from inline materials, with its keypath as written in the file."""
     if exc.reason is None or exc.keypath is None:
         return Error(str(exc))
     keypath = (*prefix, *exc.keypath[drop:])
-    return Error(describe_config_error(exc.reason, keypath, file=source))
+    return Error(
+        describe_config_error(exc.reason, keypath, file=source, source_map=source_map)
+    )
 
 
 def _describe(value: Any) -> str:
@@ -73,6 +80,7 @@ def discover_inline(
     project_path: pathlib.Path,
     vars: Optional[Mapping[str, Any]] = None,
     hooks: Optional[DiscoverHooks] = None,
+    source_map: Optional[SourceMap] = None,
 ) -> Universe[UnbuiltArtifact]:
     """Create a Universe from inline materials defined in config.
 
@@ -90,6 +98,8 @@ def discover_inline(
         Hooks to invoke during discovery. ``on_discover_collection`` and
         ``on_discover_publication`` fire with ``path`` set to ``automata.yaml``
         and ``key`` set to the collection or publication name.
+    source_map : SourceMap | None
+        The source map of ``automata.yaml``, used to give the line of errors.
 
     Returns
     -------
@@ -126,7 +136,11 @@ def discover_inline(
         except DiscoveryError as exc:
             # keypaths start with the synthetic "publication_schema" key
             raise _in_automata_yaml(
-                exc, source, ("materials", collection_name, "schema"), drop=1
+                exc,
+                source,
+                ("materials", collection_name, "schema"),
+                source_map,
+                drop=1,
             ) from None
         hooks.on_discover_collection(DiscoverHookArgs(path=source, key=collection_name))
 
@@ -159,7 +173,10 @@ def discover_inline(
                 )
             except DiscoveryError as exc:
                 raise _in_automata_yaml(
-                    exc, source, ("materials", collection_name, "publications", pub_key)
+                    exc,
+                    source,
+                    ("materials", collection_name, "publications", pub_key),
+                    source_map,
                 ) from None
             collection.publications[pub_key] = publication
             hooks.on_discover_publication(DiscoverHookArgs(path=source, key=pub_key))

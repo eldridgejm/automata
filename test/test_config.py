@@ -6,7 +6,12 @@ from textwrap import dedent
 import pytest
 
 from automata import exceptions
-from automata.config import Config, load_extensions, read_config
+from automata.config import (
+    Config,
+    load_extensions,
+    read_config,
+    read_config_with_source_map,
+)
 
 
 def test_read_config_reads_valid_config(tmp_path: Path) -> None:
@@ -498,7 +503,7 @@ def test_automata_yaml_errors_name_the_file_and_keypath(tmp_path: Path) -> None:
         read_config(config_file)
 
     assert str(excinfo.value) == (
-        f"{config_file}: website.contnt: Dictionary contains unexpected extra key "
+        f"{config_file}:7: website.contnt: Dictionary contains unexpected extra key "
         f'"contnt".'
     )
 
@@ -509,14 +514,14 @@ def test_theme_config_errors_give_the_full_keypath(tmp_path: Path) -> None:
         "{use: default, config: {short_title: T, long_title: T, "
         "navigation: [{text: Home}]}}",
     )
-    config = read_config(config_file)
+    config, source_map = read_config_with_source_map(config_file)
 
     with pytest.raises(exceptions.Error) as excinfo:
-        load_extensions(config, cwd=tmp_path)
+        load_extensions(config, cwd=tmp_path, source_map=source_map)
 
     assert str(excinfo.value) == (
-        f"{config_file}: website.theme.config.navigation.0.url: Dictionary is missing "
-        f'required key "url".'
+        f"{config_file}:4: website.theme.config.navigation.0.url: Dictionary is "
+        f'missing required key "url".'
     )
 
 
@@ -529,13 +534,53 @@ def test_extension_config_errors_give_the_full_keypath(tmp_path: Path) -> None:
     config_file = _write_config(
         tmp_path, _DEFAULT_THEME, "[{use: extensions/sized, config: {size: big}}]"
     )
-    config = read_config(config_file)
+    config, source_map = read_config_with_source_map(config_file)
 
     with pytest.raises(exceptions.Error) as excinfo:
-        load_extensions(config, cwd=tmp_path)
+        load_extensions(config, cwd=tmp_path, source_map=source_map)
 
     assert str(excinfo.value) == (
-        f"{config_file}: extensions.0.config.size: Cannot convert to integer: 'big'."
+        f"{config_file}:2: extensions.0.config.size: Cannot convert to integer: 'big'."
+    )
+
+
+def test_errors_in_included_files_give_that_file_and_line(tmp_path: Path) -> None:
+    (tmp_path / "theme.yaml").write_text(
+        "short_title: T\nlong_title: T\nnavigation:\n  - text: Home\n"
+    )
+    config_file = _write_config(
+        tmp_path, "{use: default, config: {__include__: theme.yaml}}"
+    )
+    config, source_map = read_config_with_source_map(config_file)
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path, source_map=source_map)
+
+    assert str(excinfo.value) == (
+        f"{tmp_path / 'theme.yaml'}:4: website.theme.config.navigation.0.url: "
+        f'Dictionary is missing required key "url".'
+    )
+
+
+def test_nested_includes_are_relative_to_the_including_file(tmp_path: Path) -> None:
+    (tmp_path / "site").mkdir()
+    (tmp_path / "site" / "theme.yaml").write_text(
+        "short_title: T\nlong_title: T\nnavigation:\n  __include__: nav.yaml\n"
+    )
+    (tmp_path / "site" / "nav.yaml").write_text(
+        "- text: Home\n  url: /\n- text: Notes\n"
+    )
+    config_file = _write_config(
+        tmp_path, "{use: default, config: {__include__: site/theme.yaml}}"
+    )
+    config, source_map = read_config_with_source_map(config_file)
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path, source_map=source_map)
+
+    assert str(excinfo.value) == (
+        f"{tmp_path / 'site' / 'nav.yaml'}:3: website.theme.config.navigation.1.url: "
+        f'Dictionary is missing required key "url".'
     )
 
 
@@ -544,9 +589,13 @@ def test_extension_config_errors_give_the_full_keypath(tmp_path: Path) -> None:
     [
         (
             '{"type": "dict", "required_keys": {"a": {"type": 5}}}',
-            ": required_keys.a.type:",
+            ":1: required_keys.a.type:",
         ),
         ('{"type": "dict",}', ": Invalid JSON:"),
+        (
+            '{\n  "type": "dict",\n  "required_keys": {\n    "a": {"type": 5}\n  }\n}',
+            ":4: required_keys.a.type:",
+        ),
     ],
 )
 def test_schema_json_errors_name_the_file(

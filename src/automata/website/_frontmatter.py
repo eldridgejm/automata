@@ -6,7 +6,25 @@ from smartconfig import Prototype
 
 from automata.exceptions import Error
 from automata.util.resolution import describe_config_error, resolve
-from automata.util.yaml import parse_yaml
+from automata.util.yaml import parse_yaml_with_source_map
+
+
+class FrontmatterError(Error):
+    """The frontmatter of a page is invalid.
+
+    Attributes
+    ----------
+    message : str
+        The problem, without the page's path.
+    line : int | None
+        The line of the page with the problem, if known.
+
+    """
+
+    def __init__(self, message: str, line: int | None = None):
+        self.message = message
+        self.line = line
+        super().__init__(message)
 
 
 class Frontmatter(Prototype):
@@ -40,11 +58,19 @@ def _parse_yaml_frontmatter(
         The parsed frontmatter.
 
     """
-    data = parse_yaml(yaml_content, first_line=2)
+    data, source_map = parse_yaml_with_source_map(yaml_content, first_line=2)
     try:
-        return resolve(data, Frontmatter, base_path=base_path)
+        return resolve(data, Frontmatter, base_path=base_path, source_map=source_map)
     except smartconfig.exceptions.ResolutionError as e:
-        raise Error(describe_config_error(e.reason, e.keypath)) from None
+        file, line = source_map.locate(e.keypath)
+        if file is None:
+            # the line is in the page itself
+            raise FrontmatterError(
+                describe_config_error(e.reason, e.keypath), line
+            ) from None
+        raise FrontmatterError(
+            describe_config_error(e.reason, e.keypath, file=file, line=line)
+        ) from None
 
 
 def _find_and_extract_frontmatter_yaml(content: str) -> tuple[str | None, str]:

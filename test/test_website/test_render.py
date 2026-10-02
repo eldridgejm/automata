@@ -19,6 +19,7 @@ from automata.hooks import (
     RenderPostHookArgs,
     WebsiteInputs,
 )
+from automata.util.yaml import parse_yaml_with_source_map
 
 
 def _make_theme(theme_dir=None, entry_point="default", config=None):
@@ -503,12 +504,24 @@ def test_page_syntax_errors_give_the_line(tmpsite, theme):
 
 
 def test_frontmatter_errors_name_the_file_and_keypath(tmpsite, theme):
-    tmpsite.make_page("index.md", "---\nvars: [1, 2]\n---\nok\n")
+    tmpsite.make_page("index.md", "---\ntemplate: page.html\nvars: [1, 2]\n---\nok\n")
     source = tmpsite.content_directory / "index.md"
 
     message = _page_error(tmpsite, theme=theme)
 
-    assert message == f"{source}: vars: Expected a dict, but got a list."
+    assert message == f"{source}:3: vars: Expected a dict, but got a list."
+
+
+def test_frontmatter_errors_at_an_include_give_the_line_of_the_include(tmpsite, theme):
+    (tmpsite.content_directory / "data.yaml").write_text("a: 1\nb: [1, 2]\n")
+    tmpsite.make_page(
+        "index.md", "---\nvars: {}\ntemplate:\n  __include__: data.yaml\n---\nok\n"
+    )
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message.startswith(f"{source}:3: template: Expected a string, ")
 
 
 def test_frontmatter_yaml_errors_name_the_file(tmpsite, theme):
@@ -1217,6 +1230,31 @@ def test_configured_element_errors_give_the_website_elements_keypath(tmpsite):
 
     assert str(excinfo.value).endswith(
         "website.elements.badge.label: Expected a string, but got a list."
+    )
+
+
+def test_configured_element_errors_give_the_file_and_line_of_the_config(
+    tmpsite, tmp_path
+):
+    config_file = tmp_path / "automata.yaml"
+    _, source_map = parse_yaml_with_source_map(
+        "website:\n  elements:\n    badge:\n      label: [a, list]\n",
+        source=config_file,
+    )
+    tmpsite.make_page("index.md", "${ elements.badge() }")
+    source = tmpsite.content_directory / "index.md"
+
+    with raises(automata.website.exceptions.PageError) as excinfo:
+        _render(
+            tmpsite,
+            hooks=_badge_hooks(),
+            element_configs={"badge": {"label": ["a", "list"]}},
+            config_source_map=source_map,
+        )
+
+    assert str(excinfo.value) == (
+        f"{source}:1: {config_file}:4: website.elements.badge.label: Expected a "
+        "string, but got a list."
     )
 
 

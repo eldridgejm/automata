@@ -4,7 +4,11 @@ import smartconfig
 
 from automata import materials
 from automata.materials import resolve_for_each_publication
-from automata.util.resolution import resolve_for_each, unwrap_templates
+from automata.util.resolution import (
+    describe_config_error,
+    resolve_for_each,
+    unwrap_templates,
+)
 
 # unwrap_templates() tests
 # ============================================================================
@@ -501,3 +505,22 @@ def test_unreadable_date_phrase_gives_a_clear_error():
 
 def test_phrases_in_untyped_fields_stay_strings():
     assert _resolve_field("7 days after 2026-01-01", "any") == "7 days after 2026-01-01"
+
+
+# describe_config_error ================================================================
+
+
+def test_config_errors_give_file_line_keypath_and_reason(tmp_path):
+    message = describe_config_error(
+        "Expected a dict.", ("website", "theme"), file=tmp_path / "a.yaml", line=2
+    )
+
+    assert message == f"{tmp_path / 'a.yaml'}:2: website.theme: Expected a dict."
+
+
+def test_config_errors_without_a_line_give_file_keypath_and_reason(tmp_path):
+    message = describe_config_error(
+        "Expected a dict.", ("website",), file=tmp_path / "a.yaml"
+    )
+
+    assert message == f"{tmp_path / 'a.yaml'}: website: Expected a dict."

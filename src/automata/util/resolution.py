@@ -12,7 +12,7 @@ import smartconfig.exceptions
 import smartconfig.stdlib.datetime
 
 from ..exceptions import Error
-from .yaml import parse_yaml
+from .yaml import SourceMap, parse_yaml_with_source_map
 
 T = typing.TypeVar("T")
 P = typing.TypeVar("P", bound=smartconfig.Prototype)
@@ -167,12 +167,21 @@ def describe_config_error(
     reason: str,
     keypath: typing.Sequence[typing.Any] = (),
     file: Path | Traversable | None = None,
+    line: int | None = None,
+    source_map: SourceMap | None = None,
 ) -> str:
-    """A configuration error as ``FILE: KEYPATH: REASON``.
+    """A configuration error as ``FILE:LINE: KEYPATH: REASON``.
 
-    The file and keypath are left out when not known (or empty).
+    The file, line, and keypath are left out when not known (or empty). The
+    line is given only with a file. If *source_map* is given, the file and line
+    are looked up in it (following includes), falling back to *file*.
     """
-    parts = [] if file is None else [str(file)]
+    if source_map is not None:
+        located_file, line = source_map.locate(keypath)
+        file = located_file or file
+    parts = []
+    if file is not None:
+        parts.append(str(file) if line is None else f"{file}:{line}")
     if keypath:
         parts.append(format_keypath(keypath))
     parts.append(reason)
@@ -229,11 +238,28 @@ CONVERTERS: dict[str, typing.Callable] = {
 }
 
 
+def _relative_includes(data: typing.Any, directory: Path) -> typing.Any:
+    """*data* with each ``__include__`` path made relative to *directory*."""
+    if isinstance(data, dict):
+        return {
+            key: (
+                str(directory / value)
+                if key == "__include__" and isinstance(value, str)
+                else _relative_includes(value, directory)
+            )
+            for key, value in data.items()
+        }
+    if isinstance(data, list):
+        return [_relative_includes(item, directory) for item in data]
+    return data
+
+
 @typing.overload
 def resolve(
     config: smartconfig.types.Configuration,
     schema: type[P],
     base_path: Path | None = None,
+    source_map: SourceMap | None = None,
     **kwargs: typing.Any,
 ) -> P: ...
 
@@ -243,6 +269,7 @@ def resolve(
     config: smartconfig.types.ConfigurationDict,
     schema: smartconfig.types.Schema,
     base_path: Path | None = None,
+    source_map: SourceMap | None = None,
     **kwargs: typing.Any,
 ) -> dict: ...
 
@@ -252,6 +279,7 @@ def resolve(
     config: smartconfig.types.ConfigurationList,
     schema: smartconfig.types.Schema,
     base_path: Path | None = None,
+    source_map: SourceMap | None = None,
     **kwargs: typing.Any,
 ) -> list: ...
 
@@ -261,6 +289,7 @@ def resolve(
     config: smartconfig.types.ConfigurationValue,
     schema: smartconfig.types.Schema,
     base_path: Path | None = None,
+    source_map: SourceMap | None = None,
     **kwargs: typing.Any,
 ) -> typing.Any: ...
 
@@ -269,6 +298,7 @@ def resolve(
     config: smartconfig.types.Configuration,
     schema: smartconfig.types.Schema | type[P],
     base_path: Path | None = None,
+    source_map: SourceMap | None = None,
     **kwargs: typing.Any,
 ) -> typing.Any:
     """Resolve a configuration using smartconfig with built-in functions.
@@ -292,6 +322,10 @@ def resolve(
     base_path : Path | None
         The base directory for resolving relative paths in __include__ directives.
         If None, the include function will not be available. Default: None.
+        Includes within an included file are relative to that file.
+    source_map : SourceMap | None
+        The source map of the configuration. If given, the source map of each
+        included file is added to it, so that errors can be located in them.
     **kwargs : Any
         Additional keyword arguments to pass to the underlying resolver
         (e.g., global_variables, etc.). Note that if 'functions' is provided,
@@ -324,7 +358,12 @@ def resolve(
                 yaml_content = include_path.read_text()
             except FileNotFoundError:
                 raise Error(f'Included file "{include_path}" not found.') from None
-            return parse_yaml(yaml_content, source=include_path)
+            data, included_map = parse_yaml_with_source_map(
+                yaml_content, source=include_path
+            )
+            if source_map is not None:
+                source_map.add_include(args.keypath, included_map)
+            return _relative_includes(data, include_path.parent)
 
         functions["include"] = include
 

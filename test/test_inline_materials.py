@@ -280,11 +280,11 @@ def test_malformed_inline_materials_are_reported(tmp_path, materials, expected):
             "{exams: {schema: {required_artifacts: [], metadata_schema: "
             "{required_keys: {date: {type: date}}}}, "
             "publications: {midterm: {metadata: {date: someday}, artifacts: {}}}}}",
-            ": materials.exams.publications.midterm.metadata.date: ",
+            ":1: materials.exams.publications.midterm.metadata.date: ",
         ),
         (
             "{exams: {schema: {required_artifact: []}, publications: {}}}",
-            ": materials.exams.schema.required_artifact: Dictionary contains "
+            ":1: materials.exams.schema.required_artifact: Dictionary contains "
             'unexpected extra key "required_artifact".',
         ),
     ],

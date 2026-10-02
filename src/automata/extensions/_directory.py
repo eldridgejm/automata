@@ -20,6 +20,7 @@ import smartconfig.types
 from ..exceptions import Error
 from ..hooks import WebsiteInputs
 from ..util.resolution import describe_config_error
+from ..util.yaml import parse_yaml_with_source_map
 from ._common import extension_from_module, resolve_config
 from ._types import Extension
 
@@ -221,8 +222,15 @@ def _extension_from_files(
         except json.JSONDecodeError as e:
             raise Error(f"{schema_file}: Invalid JSON: {e}") from e
         except smartconfig.exceptions.InvalidSchemaError as e:
+            # JSON is YAML, so the YAML source map gives the line
+            _, source_map = parse_yaml_with_source_map(schema_content)
             raise Error(
-                describe_config_error(e.reason, e.keypath, file=schema_file)
+                describe_config_error(
+                    e.reason,
+                    e.keypath,
+                    file=schema_file,
+                    line=source_map.line_of(e.keypath),
+                )
             ) from e
 
     resolved_config = resolve_config(name, config, schema)

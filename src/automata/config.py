@@ -14,7 +14,7 @@ from .extensions import (
 from .extensions._apply import all_extensions, check_theme
 from .extensions._common import ExtensionConfigError
 from .util.resolution import describe_config_error, resolve
-from .util.yaml import parse_yaml
+from .util.yaml import SourceMap, parse_yaml_with_source_map
 
 CONFIGURATION_FILENAME = "automata.yaml"
 
@@ -126,21 +126,59 @@ def read_config(path: Path) -> Config:
         If the configuration is invalid or does not match the schema.
 
     """
+    config, _ = read_config_with_source_map(path)
+    return config
+
+
+def read_config_with_source_map(path: Path) -> tuple[Config, SourceMap]:
+    """Read the configuration, also returning the line of each of its keypaths.
+
+    The source map includes the files included with ``__include__``, so that
+    errors found later (e.g., in extension or element configuration) can give
+    the file and line.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the YAML configuration file.
+
+    Returns
+    -------
+    tuple[Config, SourceMap]
+        The resolved configuration, and its source map.
+
+    Raises
+    ------
+    automata.exceptions.Error
+        If the configuration is invalid or does not match the schema.
+
+    """
     yaml_content = path.read_text()
-    config_dict = parse_yaml(yaml_content, source=path)
+    config_dict, source_map = parse_yaml_with_source_map(yaml_content, source=path)
     if config_dict is None:
         raise Error(f"{path} is empty.")
 
     try:
-        return resolve(config_dict, Config, base_path=path.parent)
+        config = resolve(
+            config_dict, Config, base_path=path.parent, source_map=source_map
+        )
     except (
         smartconfig.exceptions.ResolutionError,
         smartconfig.exceptions.InvalidSchemaError,
     ) as e:
-        raise Error(describe_config_error(e.reason, e.keypath, file=path)) from None
+        raise Error(
+            describe_config_error(e.reason, e.keypath, file=path, source_map=source_map)
+        ) from None
+    return config, source_map
 
 
-def _load_extension_spec(spec: Any, cwd: Path, group: str, where: str) -> Extension:
+def _load_extension_spec(
+    spec: Any,
+    cwd: Path,
+    group: str,
+    where: str,
+    source_map: SourceMap | None = None,
+) -> Extension:
     """Load a single extension from a spec (string or dict).
 
     Parameters
@@ -195,12 +233,17 @@ def _load_extension_spec(spec: Any, cwd: Path, group: str, where: str) -> Extens
         keypath = (*where.split("."), "config", *e.cause.keypath)
         raise Error(
             describe_config_error(
-                e.cause.reason, keypath, file=cwd / CONFIGURATION_FILENAME
+                e.cause.reason,
+                keypath,
+                file=cwd / CONFIGURATION_FILENAME,
+                source_map=source_map,
             )
         ) from None
 
 
-def load_extensions(config: Config, cwd: Path) -> tuple[Extension, list[Extension]]:
+def load_extensions(
+    config: Config, cwd: Path, source_map: SourceMap | None = None
+) -> tuple[Extension, list[Extension]]:
     """Load the theme and extensions from the configuration.
 
     The theme is looked up in the ``automata.themes`` entry point group, and
@@ -213,6 +256,9 @@ def load_extensions(config: Config, cwd: Path) -> tuple[Extension, list[Extensio
         The resolved configuration.
     cwd : Path
         Working directory for resolving relative paths.
+    source_map : SourceMap | None
+        The source map of ``automata.yaml``, used to give the line of
+        configuration errors.
 
     Returns
     -------
@@ -227,12 +273,12 @@ def load_extensions(config: Config, cwd: Path) -> tuple[Extension, list[Extensio
 
     """
     theme = _load_extension_spec(
-        config.website.theme, cwd, THEMES_GROUP, "website.theme"
+        config.website.theme, cwd, THEMES_GROUP, "website.theme", source_map
     )
     check_theme(theme)
 
     extensions = [
-        _load_extension_spec(spec, cwd, EXTENSIONS_GROUP, f"extensions.{i}")
+        _load_extension_spec(spec, cwd, EXTENSIONS_GROUP, f"extensions.{i}", source_map)
         for i, spec in enumerate(config.extensions)
     ]
 
