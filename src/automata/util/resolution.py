@@ -436,7 +436,10 @@ def resolve(
             include_path = resolve(args.input, schema)
             include_path = typing.cast(str, include_path)
 
-            include_path = base_path / include_path
+            # absolute, since includes within the included file are made
+            # relative to its directory (and a relative base_path would be
+            # prefixed again)
+            include_path = (base_path / include_path).absolute()
             try:
                 yaml_content = include_path.read_text()
             except FileNotFoundError:

@@ -1,5 +1,6 @@
 """Tests for automata.config module."""
 
+import contextlib
 from pathlib import Path
 from textwrap import dedent
 
@@ -787,3 +788,27 @@ def test_errors_in_a_file_included_at_the_root_give_that_file(tmp_path: Path) ->
     assert str(excinfo.value).startswith(
         f"{tmp_path / 'real.yaml'}:1: website.content_directory: "
     )
+
+
+def test_nested_includes_work_with_a_relative_project_path(tmp_path: Path) -> None:
+    project = tmp_path / "course"
+    (project / "site").mkdir(parents=True)
+    (project / "site" / "website.yaml").write_text(
+        dedent(
+            """\
+            theme:
+              __include__: theme.yaml
+            content_directory: content
+            build_directory: _build
+            """
+        )
+    )
+    (project / "site" / "theme.yaml").write_text("default\n")
+    (project / "automata.yaml").write_text(
+        "website:\n  __include__: site/website.yaml\n"
+    )
+
+    with contextlib.chdir(tmp_path):
+        config = read_config(Path("course") / "automata.yaml")
+
+    assert config.website.theme == "default"
