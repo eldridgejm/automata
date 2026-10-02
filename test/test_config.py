@@ -765,3 +765,25 @@ def test_numeric_keys_are_read_as_strings(tmp_path: Path) -> None:
     config = read_config(config_file)
 
     assert config.vars == {"topics": {"1": "Intro", "2": "Sorting"}}
+
+
+def test_errors_in_a_file_included_at_the_root_give_that_file(tmp_path: Path) -> None:
+    (tmp_path / "real.yaml").write_text(
+        dedent(
+            """\
+            website:
+              theme: default
+              contnt_directory: "./content"
+              build_directory: "./build"
+            """
+        )
+    )
+    config_file = tmp_path / "automata.yaml"
+    config_file.write_text("__include__: real.yaml\n")
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert str(excinfo.value).startswith(
+        f"{tmp_path / 'real.yaml'}:1: website.content_directory: "
+    )

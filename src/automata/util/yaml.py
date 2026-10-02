@@ -43,7 +43,7 @@ class SourceMap:
     def value_at(self, keypath: Sequence[Any]) -> "Located":
         """The value at *keypath* as written, following includes."""
         parts = tuple(str(key) for key in keypath)
-        prefixes = [p for p in self.includes if parts[: len(p)] == p and p]
+        prefixes = [p for p in self.includes if parts[: len(p)] == p]
         for prefix in sorted(prefixes, key=len, reverse=True):
             located = value_at(self.includes[prefix].data, parts[len(prefix) :])
             if located.found:
@@ -65,7 +65,7 @@ class SourceMap:
         parts = tuple(str(key) for key in keypath)
         # try the deepest include containing the keypath first, then shallower
         # ones, then this file
-        prefixes = [p for p in self.includes if parts[: len(p)] == p and p]
+        prefixes = [p for p in self.includes if parts[: len(p)] == p]
         for prefix in sorted(prefixes, key=len, reverse=True):
             included = self.includes[prefix]
             line = included.line_of(parts[len(prefix) :])
