@@ -325,12 +325,15 @@ def make_activity_from_config(
 
 
 def fixup_metadata_links_resource_config(
-    config: dict, publication: automata.materials.Publication
+    config: dict,
+    publication: automata.materials.Publication,
+    variables: dict[str, Any] | None = None,
 ):
     """Resolves each item in the metadata links resource configuration, resulting in a
     simple links resource configuration.
 
-    This provides "publication" and "item" variables to the template at resolution time.
+    This provides "publication" and "link" variables to the templates (the title and
+    each link), along with *variables* (e.g. the render context, including "vars").
 
     Any markdown-to-html conversion is handled in the schedule.html template.
 
@@ -340,6 +343,8 @@ def fixup_metadata_links_resource_config(
         The items resource configuration.
     publication : automata.materials.Publication
         The publication from which to source the items.
+    variables : dict[str, Any] | None
+        Further variables available to the templates.
 
     Returns
     -------
@@ -347,10 +352,24 @@ def fixup_metadata_links_resource_config(
         The resolved links resource configuration.
 
     """
+    variables = {**(variables or {}), "publication": publication}
+
+    # the title may be a template (written with !template), resolved per publication
+    title = automata.util.resolution.unwrap_templates(config.get("title"))
+    if title is not None:
+        try:
+            title = automata.util.resolution.resolve(
+                title, {"type": "string"}, global_variables=variables
+            )
+        except smartconfig.exceptions.ResolutionError as e:
+            raise smartconfig.exceptions.ResolutionError(
+                e.reason, ("title", *e.keypath)
+            ) from None
+
     # a new LinksResourceConfig
     new_config: dict[str, Any] = {
         "type": "links",
-        "title": config.get("title"),
+        "title": title,
         "icon": config.get("icon"),
         "style": config.get("style"),
     }
@@ -364,13 +383,18 @@ def fixup_metadata_links_resource_config(
     link_config = config["for_each_link"]
     link_config = automata.util.resolution.unwrap_templates(link_config)
 
-    new_config["links"] = automata.util.resolution.resolve_for_each(
-        links,
-        link_config,
-        LinkConfig._schema(),
-        loop_variable="link",
-        vars={"publication": publication},
-    )
+    try:
+        new_config["links"] = automata.util.resolution.resolve_for_each(
+            links,
+            link_config,
+            LinkConfig._schema(),
+            loop_variable="link",
+            vars=variables,
+        )
+    except smartconfig.exceptions.ResolutionError as e:
+        raise smartconfig.exceptions.ResolutionError(
+            e.reason, ("for_each_link", *e.keypath)
+        ) from None
 
     return new_config
 
@@ -508,14 +532,19 @@ def make_activities_from_collection_config(
         config_dict = cast(dict[str, dict], config)
         for i, resource in enumerate(config_dict["resources"]):
             assert isinstance(resource, dict)
-            if resource["type"] == "artifact_links":
-                config_dict["resources"][i] = fixup_artifact_links_resource_config(
-                    resource, publication
-                )
-            elif resource["type"] == "metadata_links":
-                config_dict["resources"][i] = fixup_metadata_links_resource_config(
-                    resource, publication
-                )
+            try:
+                if resource["type"] == "artifact_links":
+                    config_dict["resources"][i] = fixup_artifact_links_resource_config(
+                        resource, publication
+                    )
+                elif resource["type"] == "metadata_links":
+                    config_dict["resources"][i] = fixup_metadata_links_resource_config(
+                        resource, publication, context.to_dict()
+                    )
+            except smartconfig.exceptions.ResolutionError as e:
+                raise smartconfig.exceptions.ResolutionError(
+                    e.reason, ("resources", str(i), *e.keypath)
+                ) from None
         return config
 
     # resolve one publication at a time, so that errors can name it

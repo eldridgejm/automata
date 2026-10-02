@@ -1014,3 +1014,108 @@ def test_start_displaying_on_for_announcements_reads_dates_and_phrases():
 
     starts = [a["start_displaying_on"] for a in resolved["announcements"]]
     assert starts == [datetime.date(2024, 1, 10), datetime.date(2024, 1, 12), None]
+
+
+# metadata_links resources =============================================================
+
+
+def _videos_schedule(schedule_element, resource):
+    """A schedule of one lecture (topic Sorting, with one video) and *resource*."""
+    schedule_element.context.materials = automata.materials.Universe(
+        collections={
+            "lectures": automata.materials.Collection(
+                publication_schema=None,
+                publications={
+                    "01": automata.materials.Publication(
+                        metadata={
+                            "topic": "Sorting",
+                            "videos": [{"title": "Part 1", "url": "v1.mp4"}],
+                        },
+                        artifacts={},
+                    ),
+                },
+            )
+        }
+    )
+    schedule_element.context.vars = {"course": "DSC 40B"}
+    return _weekly_config(
+        primary_activity_collections=[
+            {
+                "collection": "lectures",
+                "for_each_publication": {
+                    "start_displaying_on": datetime.date(2024, 1, 8),
+                    "title": "Lecture",
+                    "resources": [resource],
+                },
+            }
+        ]
+    )
+
+
+def _metadata_links(**overrides):
+    resource = {
+        "type": "metadata_links",
+        "metadata_key_for_links": "videos",
+        "for_each_link": {
+            "text": {"__template__": "${ link.title }"},
+            "url": {"__template__": "${ link.url }"},
+        },
+        "icon": None,
+        "style": "numbered",
+        "title": None,
+    }
+    resource.update(overrides)
+    return resource
+
+
+def _first_resource(tvars):
+    return tvars["primary_activities"][1][0].resources[0]
+
+
+def test_a_metadata_links_title_can_be_a_template(schedule_element):
+    config = _videos_schedule(
+        schedule_element,
+        _metadata_links(
+            title={"__template__": "Videos for ${ publication.metadata.topic }"}
+        ),
+    )
+
+    tvars = schedule_element.template_vars(config)
+
+    assert _first_resource(tvars)["title"] == "Videos for Sorting"
+
+
+def test_vars_are_available_in_for_each_link(schedule_element):
+    config = _videos_schedule(
+        schedule_element,
+        _metadata_links(
+            for_each_link={
+                "text": {"__template__": "${ vars.course }: ${ link.title }"},
+                "url": {"__template__": "${ link.url }"},
+            }
+        ),
+    )
+
+    tvars = schedule_element.template_vars(config)
+
+    assert _first_resource(tvars)["links"][0]["text"] == "DSC 40B: Part 1"
+
+
+def test_for_each_link_errors_give_its_keypath(schedule_element):
+    config = _videos_schedule(
+        schedule_element,
+        _metadata_links(
+            for_each_link={
+                "text": {"__template__": "${ link.nope }"},
+                "url": {"__template__": "${ link.url }"},
+            }
+        ),
+    )
+
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
+        schedule_element.template_vars(config)
+
+    assert format_keypath(excinfo.value.keypath) == (
+        "primary_activity_collections.0.for_each_publication.resources.0."
+        "for_each_link.text"
+    )
