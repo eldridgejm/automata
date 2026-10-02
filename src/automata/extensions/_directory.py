@@ -19,6 +19,7 @@ import smartconfig.types
 
 from ..exceptions import Error
 from ..hooks import WebsiteInputs
+from ..util.resolution import describe_config_error
 from ._common import extension_from_module, resolve_config
 from ._types import Extension
 
@@ -218,9 +219,11 @@ def _extension_from_files(
             schema = json.loads(schema_content)
             smartconfig.validate_schema(schema)
         except json.JSONDecodeError as e:
-            raise Error(f"Invalid JSON in schema.json: {e}") from e
+            raise Error(f"{schema_file}: Invalid JSON: {e}") from e
         except smartconfig.exceptions.InvalidSchemaError as e:
-            raise Error(f"Theme configuration schema is invalid: {e}") from e
+            raise Error(
+                describe_config_error(e.reason, e.keypath, file=schema_file)
+            ) from e
 
     resolved_config = resolve_config(name, config, schema)
 

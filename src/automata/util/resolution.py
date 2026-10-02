@@ -3,6 +3,7 @@
 import datetime
 import types
 import typing
+from importlib.resources.abc import Traversable
 from pathlib import Path
 
 import smartconfig
@@ -147,6 +148,35 @@ def resolve_for_each(
         resolved_configs.append(resolved_config)
 
     return resolved_configs
+
+
+def format_keypath(keypath: typing.Sequence[typing.Any]) -> str:
+    """A keypath as dotted text, quoting keys that contain dots.
+
+    ``("artifacts", "homework.pdf", "ready")`` becomes
+    ``artifacts."homework.pdf".ready``.
+    """
+    parts = []
+    for key in keypath:
+        text = str(key)
+        parts.append(f'"{text}"' if "." in text else text)
+    return ".".join(parts)
+
+
+def describe_config_error(
+    reason: str,
+    keypath: typing.Sequence[typing.Any] = (),
+    file: Path | Traversable | None = None,
+) -> str:
+    """A configuration error as ``FILE: KEYPATH: REASON``.
+
+    The file and keypath are left out when not known (or empty).
+    """
+    parts = [] if file is None else [str(file)]
+    if keypath:
+        parts.append(format_keypath(keypath))
+    parts.append(reason)
+    return ": ".join(parts)
 
 
 def _parse_date_phrase(value: str) -> datetime.date | datetime.datetime:

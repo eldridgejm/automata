@@ -151,7 +151,11 @@ def _resolve_publication(
     try:
         resolved = resolve(combined, combined_schema, global_variables=global_variables)
     except smartconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), source)
+        # the publication was resolved as "this"; report keypaths as written
+        keypath = tuple(exc.keypath)
+        if keypath[:1] == ("this",):
+            keypath = keypath[1:]
+        raise DiscoveryError.at(exc.reason, keypath, source) from None
 
     return cast(Dict[str, Any], resolved["this"])
 

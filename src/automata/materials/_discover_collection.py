@@ -88,7 +88,7 @@ def _resolve_collection(
             global_variables={"vars": vars if vars is not None else {}},
         )
     except smartconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError(str(exc), source)
+        raise DiscoveryError.at(exc.reason, tuple(exc.keypath), source) from None
 
     _validate_metadata_schema(resolved["publication_schema"]["metadata_schema"], source)
 
@@ -124,7 +124,8 @@ def _validate_metadata_schema(
     try:
         smartconfig.validate_schema({"type": "dict", **metadata_schema})
     except smartconfig.exceptions.InvalidSchemaError as exc:
-        raise DiscoveryError(str(exc), source)
+        keypath = ("publication_schema", "metadata_schema", *exc.keypath)
+        raise DiscoveryError.at(exc.reason, keypath, source) from None
 
 
 def parse_collection(

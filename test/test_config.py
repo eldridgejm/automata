@@ -485,3 +485,80 @@ def test_read_config_reports_an_empty_file(tmp_path: Path) -> None:
         read_config(config_file)
 
     assert f"{config_file} is empty" in str(excinfo.value)
+
+
+# where configuration errors are ======================================================
+
+
+def test_automata_yaml_errors_name_the_file_and_keypath(tmp_path: Path) -> None:
+    config_file = _write_config(tmp_path, _DEFAULT_THEME)
+    config_file.write_text(config_file.read_text() + "  contnt: x\n")
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert str(excinfo.value) == (
+        f"{config_file}: website.contnt: Dictionary contains unexpected extra key "
+        f'"contnt".'
+    )
+
+
+def test_theme_config_errors_give_the_full_keypath(tmp_path: Path) -> None:
+    config_file = _write_config(
+        tmp_path,
+        "{use: default, config: {short_title: T, long_title: T, "
+        "navigation: [{text: Home}]}}",
+    )
+    config = read_config(config_file)
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path)
+
+    assert str(excinfo.value) == (
+        f"{config_file}: website.theme.config.navigation.0.url: Dictionary is missing "
+        f'required key "url".'
+    )
+
+
+def test_extension_config_errors_give_the_full_keypath(tmp_path: Path) -> None:
+    ext_dir = tmp_path / "extensions" / "sized"
+    ext_dir.mkdir(parents=True)
+    (ext_dir / "schema.json").write_text(
+        '{"type": "dict", "optional_keys": {"size": {"type": "integer", "default": 1}}}'
+    )
+    config_file = _write_config(
+        tmp_path, _DEFAULT_THEME, "[{use: extensions/sized, config: {size: big}}]"
+    )
+    config = read_config(config_file)
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path)
+
+    assert str(excinfo.value) == (
+        f"{config_file}: extensions.0.config.size: Cannot convert to integer: 'big'."
+    )
+
+
+@pytest.mark.parametrize(
+    "schema_json, expected",
+    [
+        (
+            '{"type": "dict", "required_keys": {"a": {"type": 5}}}',
+            ": required_keys.a.type:",
+        ),
+        ('{"type": "dict",}', ": Invalid JSON:"),
+    ],
+)
+def test_schema_json_errors_name_the_file(
+    tmp_path: Path, schema_json: str, expected: str
+) -> None:
+    ext_dir = tmp_path / "extensions" / "broken"
+    ext_dir.mkdir(parents=True)
+    schema_file = ext_dir / "schema.json"
+    schema_file.write_text(schema_json)
+    config = read_config(_write_config(tmp_path, _DEFAULT_THEME, "[extensions/broken]"))
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        load_extensions(config, cwd=tmp_path)
+
+    assert str(excinfo.value).startswith(f"{schema_file}{expected}")

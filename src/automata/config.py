@@ -12,7 +12,8 @@ from .extensions import (
     extension_from_entry_point,
 )
 from .extensions._apply import all_extensions, check_theme
-from .util.resolution import resolve
+from .extensions._common import ExtensionConfigError
+from .util.resolution import describe_config_error, resolve
 from .util.yaml import parse_yaml
 
 CONFIGURATION_FILENAME = "automata.yaml"
@@ -132,8 +133,11 @@ def read_config(path: Path) -> Config:
 
     try:
         return resolve(config_dict, Config, base_path=path.parent)
-    except smartconfig.exceptions.Error as e:
-        raise Error(f"Invalid configuration: {e}") from e
+    except (
+        smartconfig.exceptions.ResolutionError,
+        smartconfig.exceptions.InvalidSchemaError,
+    ) as e:
+        raise Error(describe_config_error(e.reason, e.keypath, file=path)) from None
 
 
 def _load_extension_spec(spec: Any, cwd: Path, group: str, where: str) -> Extension:
@@ -174,18 +178,26 @@ def _load_extension_spec(spec: Any, cwd: Path, group: str, where: str) -> Extens
             f'a mapping with "use" (and optionally "config").'
         )
 
-    if "/" in name or "\\" in name:
-        # directory extensions are named after the directory itself
-        return extension_from_directory(
-            Path(name).name,
-            cwd / name,
-            config=ext_config,
-            require_templates=False,
-            project_directory=cwd,
-            allow_python=True,
-        )
-    else:
-        return extension_from_entry_point(name, config=ext_config, group=group)
+    try:
+        if "/" in name or "\\" in name:
+            # directory extensions are named after the directory itself
+            return extension_from_directory(
+                Path(name).name,
+                cwd / name,
+                config=ext_config,
+                require_templates=False,
+                project_directory=cwd,
+                allow_python=True,
+            )
+        else:
+            return extension_from_entry_point(name, config=ext_config, group=group)
+    except ExtensionConfigError as e:
+        keypath = (*where.split("."), "config", *e.cause.keypath)
+        raise Error(
+            describe_config_error(
+                e.cause.reason, keypath, file=cwd / CONFIGURATION_FILENAME
+            )
+        ) from None
 
 
 def load_extensions(config: Config, cwd: Path) -> tuple[Extension, list[Extension]]:

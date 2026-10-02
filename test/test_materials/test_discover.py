@@ -777,6 +777,89 @@ def test_discover_reports_a_collection_yaml_that_is_not_a_mapping(
     assert "must be a mapping" in message
 
 
+def test_publication_errors_name_the_file_and_the_keypath_as_written(
+    temporary_course,
+):
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts: [homework.txt]
+            metadata_schema:
+                required_keys:
+                    number: {type: integer}
+        """,
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+        metadata: {number: one}
+        artifacts:
+            homework.txt: {missing_ok: true}
+        """,
+    )
+    pub_file = temporary_course.path / "homeworks" / "01" / "publication.yaml"
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    assert str(excinfo.value) == (
+        f"{pub_file}: metadata.number: Cannot convert to integer: 'one'."
+    )
+
+
+def test_artifact_names_with_dots_are_quoted_in_keypaths(temporary_course):
+    temporary_course.create_collection(
+        "homeworks", "publication_schema:\n    required_artifacts: [homework.txt]"
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+        metadata: {}
+        artifacts:
+            homework.txt: {ready: perhaps}
+        """,
+    )
+    pub_file = temporary_course.path / "homeworks" / "01" / "publication.yaml"
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    assert str(excinfo.value).startswith(
+        f'{pub_file}: artifacts."homework.txt".ready: '
+    )
+
+
+@pytest.mark.parametrize(
+    "collection_yaml, expected",
+    [
+        (
+            "publication_schema:\n    required_artifacts: []\n    is_orderd: true",
+            ": publication_schema.is_orderd: Dictionary contains unexpected extra "
+            'key "is_orderd".',
+        ),
+        (
+            "publication_schema:\n    required_artifacts: []\n"
+            "    metadata_schema:\n        required_keys:\n"
+            "            number: {type: 5}",
+            ": publication_schema.metadata_schema.required_keys.number.type: ",
+        ),
+    ],
+)
+def test_collection_errors_name_the_file_and_the_keypath_as_written(
+    temporary_course, collection_yaml, expected
+):
+    temporary_course.create_collection("homeworks", collection_yaml)
+    collection_file = temporary_course.path / "homeworks" / "collection.yaml"
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    assert str(excinfo.value).startswith(f"{collection_file}{expected}")
+
+
 # date phrases
 # --------------------------------------------------------------------------------------
 

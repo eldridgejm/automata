@@ -271,3 +271,43 @@ def test_malformed_inline_materials_are_reported(tmp_path, materials, expected):
         Automata(project).discover()
 
     assert expected in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "materials, expected",
+    [
+        (
+            "{exams: {schema: {required_artifacts: [], metadata_schema: "
+            "{required_keys: {date: {type: date}}}}, "
+            "publications: {midterm: {metadata: {date: someday}, artifacts: {}}}}}",
+            ": materials.exams.publications.midterm.metadata.date: ",
+        ),
+        (
+            "{exams: {schema: {required_artifact: []}, publications: {}}}",
+            ": materials.exams.schema.required_artifact: Dictionary contains "
+            'unexpected extra key "required_artifact".',
+        ),
+    ],
+)
+def test_inline_materials_errors_give_the_keypath_in_automata_yaml(
+    tmp_path, materials, expected
+):
+    project = tmp_path / "project"
+    project.mkdir()
+    config_file = project / "automata.yaml"
+    config_file.write_text(
+        f"materials: {materials}\n"
+        + dedent("""\
+            website:
+              theme:
+                use: "default"
+                config: {short_title: "T", long_title: "Test"}
+              content_directory: "content"
+              build_directory: "_build"
+        """)
+    )
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).discover()
+
+    assert str(excinfo.value).startswith(f"{config_file}{expected}")

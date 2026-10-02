@@ -210,7 +210,7 @@ def test_from_directory_raises_on_invalid_json_in_schema_json(tmp_path: Path) ->
 
     (theme_dir / "schema.json").write_text('{"type": "dict"')
 
-    with pytest.raises(Error, match="Invalid JSON in schema.json"):
+    with pytest.raises(Error, match="schema.json: Invalid JSON: "):
         extension_from_directory("test", theme_dir)
 
 
@@ -222,7 +222,7 @@ def test_from_directory_raises_on_invalid_schema_in_schema_json(tmp_path: Path) 
 
     (theme_dir / "schema.json").write_text('{"invalid_key": "value"}')
 
-    with pytest.raises(Error, match="Theme configuration schema is invalid"):
+    with pytest.raises(Error, match="schema.json: type: Required key missing"):
         extension_from_directory("test", theme_dir)
 
 

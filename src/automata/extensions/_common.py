@@ -13,6 +13,20 @@ from ..util.resolution import resolve
 from ._types import Extension
 
 
+class ExtensionConfigError(Error):
+    """An extension's configuration does not match its schema.
+
+    The cause is kept so that the caller, which knows where the configuration
+    was written, can name the file and the full keypath.
+
+    """
+
+    def __init__(self, name: str, cause: smartconfig.exceptions.ResolutionError):
+        self.name = name
+        self.cause = cause
+        super().__init__(f'Invalid configuration for extension "{name}": {cause}')
+
+
 def resolve_config(
     name: str,
     config: dict[str, Any] | None,
@@ -29,7 +43,7 @@ def resolve_config(
         try:
             resolved = resolve(resolved, schema)
         except smartconfig.exceptions.ResolutionError as e:
-            raise Error(f'Invalid configuration for extension "{name}": {e}') from e
+            raise ExtensionConfigError(name, e) from e
     return resolved
 
 

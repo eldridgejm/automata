@@ -288,7 +288,10 @@ def test_invalid_automata_yaml_prints_an_error_without_a_traceback(project):
 
     assert result.exit_code == 1
     assert isinstance(result.exception, SystemExit)
-    assert "Invalid configuration" in result.output
+    assert result.output == (
+        f"Error: {project / 'automata.yaml'}: website: Expected a dict, but got the "
+        "number 3.\n"
+    )
 
 
 def test_clean_build_directory_refusal_prints_an_error(project):
@@ -445,14 +448,14 @@ def test_publish_verbose_flag_streams_recipe_output(publishing_project):
 @pytest.mark.parametrize(
     "bad_vars, expected",
     [
-        ("vars: [1, 2]\n", 'keypath "vars": Expected a dict, but got a list.'),
+        ("vars: [1, 2]\n", "automata.yaml: vars: Expected a dict, but got a list."),
         (
             'vars: {course: "${ vars. }"}\n',
-            'keypath "vars.course": Invalid template "${ vars. }"',
+            'automata.yaml: vars.course: Invalid template "${ vars. }"',
         ),
         (
             "vars: {course: DSC 40B, title: '${ vars.nope }'}\n",
-            'keypath "vars.title": "vars" has no key "nope".',
+            'automata.yaml: vars.title: "vars" has no key "nope".',
         ),
     ],
 )

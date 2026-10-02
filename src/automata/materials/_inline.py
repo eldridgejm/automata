@@ -6,9 +6,11 @@ from typing import Any, Mapping, Optional
 from automata.exceptions import Error
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
 
+from ..util.resolution import describe_config_error
 from ._discover_collection import parse_collection
 from ._discover_publication import parse_publication
 from ._types import Collection, UnbuiltArtifact, Universe
+from .exceptions import DiscoveryError
 
 
 def _last_publication(collection: Collection) -> Optional[Any]:
@@ -47,6 +49,16 @@ def _check_inline_collection(name: str, collection_def: Any) -> None:
                 f"{where}.publications.{pub_name} must be a mapping with "
                 f'"metadata" and "artifacts" keys, not {_describe(pub)}.'
             )
+
+
+def _in_automata_yaml(
+    exc: DiscoveryError, source: pathlib.Path, prefix: tuple, drop: int = 0
+) -> Error:
+    """An error from inline materials, with its keypath as written in the file."""
+    if exc.reason is None or exc.keypath is None:
+        return Error(str(exc))
+    keypath = (*prefix, *exc.keypath[drop:])
+    return Error(describe_config_error(exc.reason, keypath, file=source))
 
 
 def _describe(value: Any) -> str:
@@ -109,7 +121,13 @@ def discover_inline(
         # Use a synthetic source path for error messages
         source = project_path / "automata.yaml"
 
-        collection, _ = parse_collection(collection_yaml, source=source, vars=vars)
+        try:
+            collection, _ = parse_collection(collection_yaml, source=source, vars=vars)
+        except DiscoveryError as exc:
+            # keypaths start with the synthetic "publication_schema" key
+            raise _in_automata_yaml(
+                exc, source, ("materials", collection_name, "schema"), drop=1
+            ) from None
         hooks.on_discover_collection(DiscoverHookArgs(path=source, key=collection_name))
 
         # Resolve each publication
@@ -129,15 +147,20 @@ def discover_inline(
                     )
 
             previous = _last_publication(collection)
-            publication = parse_publication(
-                raw_pub,
-                workdir=project_path,
-                publication_schema=collection.publication_schema,
-                vars=vars,
-                previous=previous,
-                templates=collection.templates,
-                source=source,
-            )
+            try:
+                publication = parse_publication(
+                    raw_pub,
+                    workdir=project_path,
+                    publication_schema=collection.publication_schema,
+                    vars=vars,
+                    previous=previous,
+                    templates=collection.templates,
+                    source=source,
+                )
+            except DiscoveryError as exc:
+                raise _in_automata_yaml(
+                    exc, source, ("materials", collection_name, "publications", pub_key)
+                ) from None
             collection.publications[pub_key] = publication
             hooks.on_discover_publication(DiscoverHookArgs(path=source, key=pub_key))
 

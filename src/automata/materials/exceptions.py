@@ -21,15 +21,37 @@ class DiscoveryError(MaterialsError):
         The error message.
     path : Path
         The path to the file that caused the error.
+    reason : str | None
+        For an invalid value, the problem, without its location.
+    keypath : tuple | None
+        For an invalid value, its keypath within the file, as the user wrote it.
 
     """
 
-    def __init__(self, msg: str, path: pathlib.Path):
+    def __init__(
+        self,
+        msg: str,
+        path: pathlib.Path,
+        *,
+        reason: str | None = None,
+        keypath: tuple | None = None,
+    ):
         self.path = path
         self.msg = msg
+        self.reason = reason
+        self.keypath = keypath
+
+    @classmethod
+    def at(cls, reason: str, keypath: tuple, path: pathlib.Path) -> "DiscoveryError":
+        """An error about the value at *keypath* in the file at *path*."""
+        from ..util.resolution import describe_config_error
+
+        return cls(
+            describe_config_error(reason, keypath), path, reason=reason, keypath=keypath
+        )
 
     def __str__(self):
-        return f"Error reading {self.path}: {self.msg}"
+        return f"{self.path}: {self.msg}"
 
 
 class BuildError(MaterialsError):
