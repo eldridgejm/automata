@@ -32,10 +32,10 @@ materials:
         artifacts:
           exam.pdf:
             path: exams/midterm/exam.pdf
-            release_time: 3 days after ${ vars.midterm_date }
+            release_time: 3 days after ${ vars.midterm_date } at 00:00:00
           solution.pdf:
             path: exams/midterm/solution.pdf
-            release_time: 3 days after ${ vars.midterm_date }
+            release_time: 3 days after ${ vars.midterm_date } at 00:00:00
       final:
         metadata:
           name: "Final Exam"
@@ -43,10 +43,10 @@ materials:
         artifacts:
           exam.pdf:
             path: exams/final/exam.pdf
-            release_time: 3 days after ${ vars.final_date }
+            release_time: 3 days after ${ vars.final_date } at 00:00:00
           solution.pdf:
             path: exams/final/solution.pdf
-            release_time: 3 days after ${ vars.final_date }
+            release_time: 3 days after ${ vars.final_date } at 00:00:00
 
 website:
   theme:

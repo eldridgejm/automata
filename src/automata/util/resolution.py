@@ -1,6 +1,7 @@
 """Utilities for configuration resolution."""
 
 import datetime
+import re
 import types
 import typing
 from importlib.resources.abc import Traversable
@@ -215,17 +216,47 @@ def _date_or_phrase(value: typing.Any) -> datetime.date:
     return result.date() if isinstance(result, datetime.datetime) else result
 
 
+def _only_a_date(value: typing.Any) -> datetime.date | None:
+    """The date, if *value* is a date with no time (or an ISO string of one)."""
+    if isinstance(value, datetime.datetime):
+        return None
+    if isinstance(value, datetime.date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.date.fromisoformat(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
 def _datetime_or_phrase(value: typing.Any) -> datetime.datetime:
-    """Convert to a datetime, reading strings that are not ISO as phrases."""
+    """Convert to a datetime, reading strings that are not ISO as phrases.
+
+    A datetime must give a time: a date alone (e.g. ``2025-01-10``, or a phrase
+    without ``at``) is an error rather than midnight, since midnight is often
+    not what was meant (e.g. for a due date).
+    """
+    date = _only_a_date(value)
+    if date is not None:
+        raise smartconfig.exceptions.ConversionError(
+            f'Expected a date and time, like "{date} 23:59:00", but got the date '
+            f"{date} with no time."
+        )
     try:
         return smartconfig.converters.datetime(value)
     except smartconfig.exceptions.ConversionError:
         if not isinstance(value, str):
             raise
     result = _parse_date_phrase(value)
-    if isinstance(result, datetime.datetime):
+    # the parser gives midnight when the phrase has no time, so look for one
+    # (from "at 23:59:00", or a reference datetime like "2025-01-10 12:00:00")
+    if isinstance(result, datetime.datetime) and re.search(r"\d:\d\d", value):
         return result
-    return datetime.datetime.combine(result, datetime.time())
+    raise smartconfig.exceptions.ConversionError(
+        f'Expected a date and time, but "{value}" gives only a date. Add a time, '
+        f'like "{value} at 23:59:00".'
+    )
 
 
 # The converters automata uses for every resolution: smartconfig's defaults,

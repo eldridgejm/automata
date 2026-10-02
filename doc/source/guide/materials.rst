@@ -226,7 +226,8 @@ Date phrases
 ------------
 
 Any field whose type is ``date`` or ``datetime`` accepts, besides an ISO date
-like ``2026-10-06`` or ``2026-10-06 23:59:00``, a *date phrase*. This includes
+like ``2026-10-06`` (for a ``date``) or ``2026-10-06 23:59:00`` (for a
+``datetime``), a *date phrase*. This includes
 ``release_time`` and any metadata key declared ``type: date`` or
 ``type: datetime`` in ``collection.yaml``:
 
@@ -247,11 +248,40 @@ The forms are:
 - **A time of day:** any form may end with ``at HH:MM:SS``, e.g.
   ``2026-10-06 at 23:59:00``.
 
-A date phrase given to a ``datetime`` field without ``at`` means midnight. A
-string that is a valid ISO date is always read as that date; only other strings
-are read as phrases. If a phrase can't be read, the error names the field and
-shows the text, e.g. ``Cannot read "7 dyas before 2026-10-06" as a date or a
-date phrase``.
+A string that is a valid ISO date is always read as that date; only other
+strings are read as phrases. If a phrase can't be read, the error names the
+field and shows the text, e.g. ``Cannot read "7 dyas before 2026-10-06" as a
+date or a date phrase``.
+
+Datetimes need a time
+^^^^^^^^^^^^^^^^^^^^^
+
+A ``datetime`` field must say what time it means. A date alone is an error,
+whether quoted or not, and so is a phrase that gives only a date, since
+midnight is often not what was meant (for a due date, say):
+
+.. code-block:: yaml
+
+    due: 2026-10-06                      # error: no time
+    due: 3 days after 2026-10-06         # error: no time
+    due: 2026-10-06 23:59:00             # fine
+    due: 3 days after 2026-10-06 at 23:59:00   # fine
+
+A phrase can also take its time from the datetime it starts from, so it needs
+no ``at``. Here ``release_time`` is 3 days after the midterm, at the same time
+of day:
+
+.. code-block:: yaml
+
+    metadata:
+      midterm: 2026-06-10 13:00:00
+    artifacts:
+      solution.pdf:
+        release_time: 3 days after ${ this.metadata.midterm }   # 2026-06-13 13:00:00
+
+This works whenever the referenced value is a datetime, including one at
+midnight. If it is only a date (say, a variable ``midterm: 2026-06-10``), the
+phrase gives only a date, and needs an ``at``.
 
 Phrases are recognized only in fields typed as dates. Elsewhere, such as in
 ``vars`` or a field of type ``any``, a phrase is kept as a string; it is read

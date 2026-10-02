@@ -1,11 +1,16 @@
 """Unit tests for the automata.util.resolution module."""
 
+import datetime
+
+import pytest
 import smartconfig
+import smartconfig.exceptions
 
 from automata import materials
 from automata.materials import resolve_for_each_publication
 from automata.util.resolution import (
     describe_config_error,
+    resolve,
     resolve_for_each,
     unwrap_templates,
 )
@@ -442,14 +447,6 @@ def test_datetime_field_accepts_an_offset_phrase_with_an_at_time():
     assert result == datetime.datetime(2026, 9, 29, 0, 0)
 
 
-def test_datetime_field_given_a_date_phrase_is_midnight():
-    import datetime
-
-    result = _resolve_field("3 days after 2026-01-01", "datetime")
-
-    assert result == datetime.datetime(2026, 1, 4, 0, 0)
-
-
 def test_date_field_accepts_first_weekday_phrases():
     import datetime
 
@@ -524,3 +521,69 @@ def test_config_errors_without_a_line_give_file_keypath_and_reason(tmp_path):
     )
 
     assert message == f"{tmp_path / 'a.yaml'}: website: Expected a dict."
+
+
+# datetimes need a time ================================================================
+
+_DATETIME = {"type": "dict", "required_keys": {"due": {"type": "datetime"}}}
+_DATE = {"type": "dict", "required_keys": {"due": {"type": "date"}}}
+
+
+def _datetime_error(value) -> str:
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
+        resolve({"due": value}, _DATETIME)
+    return excinfo.value.reason
+
+
+def test_a_bare_date_is_not_a_datetime():
+    # YAML reads an unquoted 2025-01-10 as a date
+    assert _datetime_error(datetime.date(2025, 1, 10)) == (
+        'Expected a date and time, like "2025-01-10 23:59:00", but got the date '
+        "2025-01-10 with no time."
+    )
+
+
+def test_a_quoted_date_is_not_a_datetime():
+    assert _datetime_error("2025-01-10") == (
+        'Expected a date and time, like "2025-01-10 23:59:00", but got the date '
+        "2025-01-10 with no time."
+    )
+
+
+def test_a_date_phrase_without_a_time_is_not_a_datetime():
+    assert _datetime_error("3 days after 2025-01-10") == (
+        'Expected a date and time, but "3 days after 2025-01-10" gives only a '
+        'date. Add a time, like "3 days after 2025-01-10 at 23:59:00".'
+    )
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("2025-01-10 12:00:00", datetime.datetime(2025, 1, 10, 12)),
+        (datetime.datetime(2025, 1, 10, 12), datetime.datetime(2025, 1, 10, 12)),
+        ("3 days after 2025-01-10 at 23:59:00", datetime.datetime(2025, 1, 13, 23, 59)),
+    ],
+)
+def test_datetimes_with_a_time_are_accepted(value, expected):
+    assert resolve({"due": value}, _DATETIME) == {"due": expected}
+
+
+def test_a_phrase_relative_to_a_datetime_takes_its_time():
+    # e.g. release_time: 3 days after ${ this.metadata.midterm }, with no "at"
+    midterm = datetime.datetime(2025, 6, 10, 13, 0)
+
+    result = resolve(
+        {"due": "3 days after ${ midterm }"},
+        _DATETIME,
+        global_variables={"midterm": midterm},
+    )
+
+    assert result == {"due": datetime.datetime(2025, 6, 13, 13, 0)}
+
+
+@pytest.mark.parametrize(
+    "value", [datetime.date(2025, 1, 10), "2025-01-10", "7 days before 2025-01-17"]
+)
+def test_date_fields_still_accept_dates(value):
+    assert resolve({"due": value}, _DATE) == {"due": datetime.date(2025, 1, 10)}
