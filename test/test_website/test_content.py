@@ -1,5 +1,8 @@
 """Tests for loading pages and static content from a content directory."""
 
+import pytest
+
+from automata.exceptions import Error
 from automata.website import Page, load_content_directory
 
 
@@ -81,3 +84,27 @@ def test_the_materials_directory_is_skipped(tmp_path):
 
     assert pages == {"index.html": Page("# Home", content / "index.md")}
     assert static == {}
+
+
+@pytest.mark.parametrize(
+    "first, second, output",
+    [
+        ("about.md", "about.html", "about.html"),
+        ("data.csv", "data.csv.no_render", "data.csv"),
+        ("page.html.no_render", "page.md", "page.html"),
+    ],
+)
+def test_two_files_with_the_same_output_path_are_an_error(
+    tmp_path, first, second, output
+):
+    content = tmp_path / "content"
+    _write(content / first, "one")
+    _write(content / second, "two")
+
+    with pytest.raises(Error) as excinfo:
+        load_content_directory(content, content / "materials")
+
+    message = str(excinfo.value)
+    assert str(content / first) in message
+    assert str(content / second) in message
+    assert f"would both become {output}" in message
