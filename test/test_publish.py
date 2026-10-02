@@ -312,7 +312,7 @@ def test_rsync_mirrors_the_build_directory_deleting_stale_files(tmp_path):
         [
             "rsync",
             "-az",
-            "--info=progress2",
+            "--progress",
             "--delete",
             f"{tmp_path / 'build'}/",
             "deploy@example.com:/var/www/course",
@@ -365,3 +365,34 @@ def test_rsync_requires_host_and_remote_path(tmp_path, missing):
 
     with pytest.raises(Error, match=missing):
         rsync_publish(tmp_path / "build", config, tmp_path, run=_Recorder())
+
+
+def test_rsync_uses_options_that_macos_rsync_accepts(tmp_path):
+    # macOS's rsync (openrsync) rejects --info=progress2
+    run = _Recorder()
+
+    rsync_publish(
+        tmp_path, {"host": "example.com", "remote_path": "/var/www"}, tmp_path, run=run
+    )
+
+    (cmd,) = run.commands
+    assert "--progress" in cmd
+    assert not any(arg.startswith("--info") for arg in cmd)
+
+
+def test_a_failing_rsync_is_a_clear_error(tmp_path):
+    def failing(cmd, **kwargs):
+        raise subprocess.CalledProcessError(12, cmd)
+
+    with pytest.raises(Error) as excinfo:
+        rsync_publish(
+            tmp_path,
+            {"host": "example.com", "remote_path": "/var/www"},
+            tmp_path,
+            run=failing,
+        )
+
+    assert str(excinfo.value) == (
+        "rsync to example.com:/var/www failed with exit status 12 (its output is "
+        "above)."
+    )

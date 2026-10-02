@@ -57,7 +57,8 @@ def publish(
     # a trailing / makes rsync copy the directory's contents, not the directory
     source = str(build_directory).rstrip("/") + "/"
 
-    cmd = ["rsync", "-az", "--info=progress2"]
+    # --progress, not --info=progress2, which macOS's rsync (openrsync) rejects
+    cmd = ["rsync", "-az", "--progress"]
     if config.get("delete", True):
         cmd.append("--delete")
     cmd += [source, destination]
@@ -67,4 +68,9 @@ def publish(
     except FileNotFoundError:
         raise Error(
             "The rsync publish strategy needs rsync, which was not found on PATH."
+        ) from None
+    except subprocess.CalledProcessError as e:
+        raise Error(
+            f"rsync to {destination} failed with exit status {e.returncode} (its "
+            f"output is above)."
         ) from None
