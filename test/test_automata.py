@@ -529,11 +529,6 @@ def test_publish_without_a_target_publishes_every_target(project_dir):
     assert sorted(labels) == ["one", "two"]
 
 
-@pytest.mark.xfail(
-    reason="smartconfig 0.5.3 does not preserve the order of free-form dict keys "
-    "(see TODO: smartconfig key order)",
-    strict=False,
-)
 def test_publish_without_a_target_publishes_in_configured_order(project_dir):
     _add_publish_targets(project_dir, _TWO_TARGETS)
     project = Automata(project_dir)

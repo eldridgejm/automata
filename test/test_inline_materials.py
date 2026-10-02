@@ -143,20 +143,12 @@ def test_inline_materials_fire_discover_hooks(project_with_inline_materials):
 
     # then
     assert collections == [("automata.yaml", "homeworks")]
-    assert sorted(publications) == [
+    assert publications == [
         ("automata.yaml", "hw01"),
         ("automata.yaml", "hw02"),
     ]
 
 
-@pytest.mark.xfail(
-    reason=(
-        "smartconfig 0.5.3 resolves free-form dict keys through a set difference "
-        "(_internals.py: extra_keys = dct.keys() - expected_keys), so their order "
-        "depends on PYTHONHASHSEED"
-    ),
-    strict=False,
-)
 def test_inline_publications_keep_their_order(project_with_inline_materials):
     universe = Automata(project_with_inline_materials).discover()
 

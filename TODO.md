@@ -64,6 +64,6 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [ ] Decide on the unused announcement_box.html template, and whether announcements get release times
 - [x] Fix the example's practice-problems script hook failing when run from another directory
 - [x] Decide whether a failing script hook (nonzero exit) should fail the build (decided: yes); today its exit code is ignored, which hid the practice-problems path bug in a passing test
-- [ ] Fix smartconfig key order: resolve() iterates free-form dict keys through a set difference (_internals.py: extra_keys = dct.keys() - expected_keys), so their order depends on PYTHONHASHSEED; then tag, bump the dependency, and remove the xfail on test_inline_publications_keep_their_order
+- [x] Fix smartconfig key order (smartconfig 0.5.4: extra dict keys keep their input order)
 - [x] gh-pages: commit identity from the strategy config or the project's git identity, with a clear error if none (instead of an invented default)
 - [x] Element template errors raise a bare Exception (website/_elements.py _resolve); raise a specific automata error
