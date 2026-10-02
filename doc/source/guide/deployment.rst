@@ -20,6 +20,58 @@ Then visit ``http://localhost:8000``.
     For production, set it to the appropriate path (e.g., ``"/course/"``).
 
 
+Publishing with ``automata publish``
+------------------------------------
+
+``automata publish`` builds the site and deploys it to the targets configured
+under ``publish:`` in ``automata.yaml``. Each target names a *strategy* and its
+config:
+
+.. code-block:: yaml
+
+    publish:
+      github:
+        strategy: gh-pages
+        config:
+          branch: gh-pages     # default
+          remote: origin       # a remote of the project's git repository
+      server:
+        strategy: rsync
+        config:
+          host: example.ucsd.edu
+          remote_path: /var/www/dsc40b
+          user: deploy         # optional
+          delete: true         # default: remove files not in the build
+
+``automata publish`` with no argument publishes to every target, in order;
+``automata publish github`` publishes to one. A misspelled target or strategy
+is reported before anything is built.
+
+Built-in strategies:
+
+- ``gh-pages`` --- replaces the contents of a branch on a git remote with the
+  build directory, in a single commit (no commit if nothing changed). The
+  remote is looked up in the project's git repository.
+- ``rsync`` --- mirrors the build directory to ``host:remote_path`` over SSH,
+  deleting files on the server that are no longer in the build, so withdrawn
+  materials and deleted pages don't linger. Requires ``rsync`` to be installed.
+
+An extension can add a strategy from an ``on_register_publishers`` hook. A
+strategy is a function called as ``publisher(build_directory, config,
+project_directory)``:
+
+.. code-block:: python
+
+    def publish_to_s3(build_directory, config, project_directory):
+        ...
+
+    def register(args):
+        args.publishers["s3"] = publish_to_s3
+        return args
+
+    extension = Extension(name="s3", hooks={"on_register_publishers": register})
+
+
 GitHub Pages
 ------------
 

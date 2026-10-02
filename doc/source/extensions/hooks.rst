@@ -111,6 +111,19 @@ CSS minification, image optimization).
         print(f"Website built at {args.build_directory}")
 
 
+Publish hooks
+-------------
+
+Fired by ``automata publish`` (see :doc:`/guide/deployment`):
+
+- ``on_register_publishers`` (pipeline) --- receives ``PublisherRegistryArgs``,
+  whose ``publishers`` dict maps strategy names to functions called as
+  ``publisher(build_directory, config, project_directory)``. Add to it to
+  provide a strategy.
+- ``on_publish_pre`` / ``on_publish_post`` (observers) --- called around each
+  target, with ``build_directory`` and ``strategy``.
+
+
 Materials hooks
 ---------------
 

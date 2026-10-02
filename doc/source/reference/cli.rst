@@ -47,6 +47,21 @@ or contains an ``automata.yaml`` file.
     automata clean-build-directory
 
 
+``automata publish``
+--------------------
+
+Build the site, then deploy it to the targets configured under ``publish:`` in
+``automata.yaml`` (see :doc:`/guide/deployment`).
+
+::
+
+    automata publish [TARGET] [--current-time TIME]
+
+With no ``TARGET``, publishes to every configured target, in order; prints
+``Published to <target>.`` for each. An unknown target or strategy is an error,
+reported before the site is built.
+
+
 ``automata discover``
 ---------------------
 

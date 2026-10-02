@@ -62,6 +62,17 @@ The primary interface is the ``Automata`` class.
             contains the project or content directory, lies inside the content
             directory, or contains an ``automata.yaml`` file.
 
+    .. method:: publish(target=None, current_time=None)
+
+        Check the target and strategy names, run :meth:`build`, then deploy to
+        the configured targets (all of them, in order, if *target* is
+        ``None``). See :doc:`/guide/deployment`.
+
+        :returns: The names of the targets published to.
+        :rtype: list[str]
+        :raises automata.exceptions.Error: If there are no publish targets,
+            or the target or a strategy is unknown.
+
     .. method:: discover()
 
         Discover materials from the filesystem and from inline definitions

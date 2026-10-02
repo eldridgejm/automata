@@ -217,11 +217,11 @@ class Automata:
         self,
         target: str | None = None,
         current_time: datetime.datetime | None = None,
-    ) -> None:
+    ) -> list[str]:
         """Run the full pipeline and deploy the built site.
 
-        Calls :meth:`build` first, then invokes the configured publish
-        strategy (or strategies).
+        Checks the target and strategy names, calls :meth:`build`, then invokes
+        the configured publish strategy (or strategies).
 
         Parameters
         ----------
@@ -232,6 +232,11 @@ class Automata:
             The current time for release-time checks and scheduling.
             If *None*, uses the system time.
 
+        Returns
+        -------
+        list[str]
+            The names of the targets published to, in order.
+
         Raises
         ------
         automata.exceptions.Error
@@ -239,8 +244,6 @@ class Automata:
             unknown, or a strategy is unknown.
 
         """
-        self.build(current_time=current_time)
-
         if not self.config.publish:
             raise Error("No 'publish' entries found in automata.yaml.")
 
@@ -262,12 +265,10 @@ class Automata:
             PublisherRegistryArgs(publishers=initial)
         )
 
-        build_dir = self.path / self.config.website.build_directory
-
+        # check every strategy before building, so a typo fails fast
+        publishers = {}
         for name, entry in targets.items():
             strategy_name = entry["strategy"]
-            strategy_config = entry.get("config", {})
-
             publisher = registry.publishers.get(strategy_name)
             if publisher is None:
                 available = ", ".join(sorted(registry.publishers)) or "(none)"
@@ -275,16 +276,27 @@ class Automata:
                     f"Unknown publish strategy: {strategy_name!r}. "
                     f"Available: {available}"
                 )
+            publishers[name] = publisher
+
+        self.build(current_time=current_time)
+
+        build_dir = self.path / self.config.website.build_directory
+
+        for name, entry in targets.items():
+            strategy_name = entry["strategy"]
+            strategy_config = entry.get("config", {})
 
             self.hooks.on_publish_pre(
                 PublishPreHookArgs(build_directory=build_dir, strategy=strategy_name)
             )
 
-            publisher(build_dir, strategy_config)
+            publishers[name](build_dir, strategy_config, self.path)
 
             self.hooks.on_publish_post(
                 PublishPostHookArgs(build_directory=build_dir, strategy=strategy_name)
             )
+
+        return list(targets)
 
     # --- individual steps ---
 

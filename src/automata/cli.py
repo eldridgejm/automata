@@ -112,27 +112,23 @@ def _complete_publish_targets(incomplete: str) -> list[str]:
 def publish(
     target: Optional[str] = typer.Argument(
         None,
-        help="Publish target name. Defaults to the first configured target.",
+        help="Publish target name. Defaults to all configured targets.",
         autocompletion=_complete_publish_targets,
     ),
     current_time: Optional[str] = _current_time_option,
 ):
     """Run the full pipeline and deploy the built site."""
     project = _project()
-    if not project.config.publish:
-        typer.echo(
-            "Error: No 'publish' entries found in automata.yaml. "
-            "Configure a publish target first.",
-            err=True,
+    try:
+        published = project.publish(
+            target=target, current_time=_get_current_time(current_time)
         )
+    except Error as e:
+        typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(code=1)
 
-    # Default to first configured target
-    if target is None:
-        target = next(iter(project.config.publish))
-
-    project.publish(target=target, current_time=_get_current_time(current_time))
-    typer.echo(f"Published to {target}.")
+    for name in published:
+        typer.echo(f"Published to {name}.")
 
 
 @app.command()

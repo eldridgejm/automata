@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-from textwrap import dedent
+from textwrap import dedent, indent
 
 import pytest
 
@@ -456,3 +456,131 @@ def test_init_does_not_search_parent_directories(project_dir, monkeypatch):
 
     with pytest.raises(Error):
         Automata()
+
+
+# publish() ============================================================================
+
+
+def _add_publish_targets(project_dir, targets: str):
+    config = project_dir / "automata.yaml"
+    config.write_text(config.read_text() + "publish:\n" + indent(dedent(targets), "  "))
+
+
+def _record_publishes(project):
+    """Register a 'recording' strategy on the project's hooks; return its log."""
+    log = []
+
+    def recording(build_dir, config, project_dir):
+        log.append(("publish", build_dir, config, project_dir))
+
+    @project.hooks.on_register_publishers.register()
+    def add_recording(args):
+        args.publishers["recording"] = recording
+        return args
+
+    @project.hooks.on_publish_pre.register()
+    def pre(args):
+        log.append(("pre", args.strategy))
+
+    @project.hooks.on_publish_post.register()
+    def post(args):
+        log.append(("post", args.strategy))
+
+    return log
+
+
+_TWO_TARGETS = """\
+      first:
+        strategy: recording
+        config: {label: one}
+      second:
+        strategy: recording
+        config: {label: two}
+"""
+
+
+def test_publish_builds_then_publishes_the_named_target(project_dir):
+    # given
+    _add_publish_targets(project_dir, _TWO_TARGETS)
+    project = Automata(project_dir)
+    log = _record_publishes(project)
+
+    # when
+    published = project.publish("second")
+
+    # then
+    assert published == ["second"]
+    assert (project_dir / "_build" / "index.html").exists()
+    assert log == [
+        ("pre", "recording"),
+        ("publish", project_dir / "_build", {"label": "two"}, project_dir),
+        ("post", "recording"),
+    ]
+
+
+def test_publish_without_a_target_publishes_every_target(project_dir):
+    _add_publish_targets(project_dir, _TWO_TARGETS)
+    project = Automata(project_dir)
+    log = _record_publishes(project)
+
+    published = project.publish()
+
+    assert sorted(published) == ["first", "second"]
+    labels = [entry[2]["label"] for entry in log if entry[0] == "publish"]
+    assert sorted(labels) == ["one", "two"]
+
+
+@pytest.mark.xfail(
+    reason="smartconfig 0.5.3 does not preserve the order of free-form dict keys "
+    "(see TODO: smartconfig key order)",
+    strict=False,
+)
+def test_publish_without_a_target_publishes_in_configured_order(project_dir):
+    _add_publish_targets(project_dir, _TWO_TARGETS)
+    project = Automata(project_dir)
+    _record_publishes(project)
+
+    assert project.publish() == ["first", "second"]
+
+
+def test_publish_unknown_target_is_an_error(project_dir):
+    _add_publish_targets(project_dir, _TWO_TARGETS)
+    project = Automata(project_dir)
+    _record_publishes(project)
+
+    with pytest.raises(Error) as excinfo:
+        project.publish("third")
+
+    message = str(excinfo.value)
+    assert "third" in message
+    assert "first" in message and "second" in message
+
+
+def test_publish_unknown_strategy_is_an_error(project_dir):
+    _add_publish_targets(project_dir, "      site:\n        strategy: carrier-pigeon\n")
+    project = Automata(project_dir)
+
+    with pytest.raises(Error) as excinfo:
+        project.publish()
+
+    message = str(excinfo.value)
+    assert "carrier-pigeon" in message
+    assert "gh-pages" in message  # lists what is available
+
+
+def test_publish_without_publish_targets_is_an_error(project_dir):
+    with pytest.raises(Error) as excinfo:
+        Automata(project_dir).publish()
+
+    assert "publish" in str(excinfo.value)
+
+
+def test_publish_checks_the_target_before_building(project_dir):
+    _add_publish_targets(project_dir, _TWO_TARGETS)
+    project = Automata(project_dir)
+    _record_publishes(project)
+
+    with pytest.raises(Error):
+        project.publish("third")
+
+    assert not (project_dir / "_build").exists()

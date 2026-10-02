@@ -11,8 +11,14 @@ from pathlib import Path
 from typing import Any
 
 
-def publish(build_directory: Path, config: dict[str, Any]) -> None:
+def publish(
+    build_directory: Path, config: dict[str, Any], project_directory: Path
+) -> None:
     """Deploy the built site to GitHub Pages.
+
+    The site replaces the contents of the target branch, in a single commit (no
+    commit is made if nothing changed). The remote is looked up in the
+    project's git repository.
 
     Parameters
     ----------
@@ -22,8 +28,11 @@ def publish(build_directory: Path, config: dict[str, Any]) -> None:
         Strategy-specific configuration:
 
         - ``branch`` (str): Target branch name. Default ``"gh-pages"``.
-        - ``remote`` (str): Git remote name. Default ``"origin"``.
+        - ``remote`` (str): Git remote name, as configured in the project's
+          repository. Default ``"origin"``.
         - ``message`` (str): Commit message. Default ``"Deploy to GitHub Pages"``.
+    project_directory : Path
+        The project root, whose git repository defines the remote.
 
     """
     branch = config.get("branch", "gh-pages")
@@ -39,7 +48,8 @@ def publish(build_directory: Path, config: dict[str, Any]) -> None:
 
         # Initialize a fresh repo and fetch just the target branch (if it exists)
         _run("git", "init", cwd=tmp)
-        _run("git", "remote", "add", "origin", _get_remote_url(remote), cwd=tmp)
+        remote_url = _get_remote_url(remote, project_directory)
+        _run("git", "remote", "add", "origin", remote_url, cwd=tmp)
 
         # Try to fetch the existing branch; it's fine if it doesn't exist yet
         try:
@@ -70,10 +80,11 @@ def publish(build_directory: Path, config: dict[str, Any]) -> None:
         _run("git", "push", "origin", branch, "--force", cwd=tmp)
 
 
-def _get_remote_url(remote: str) -> str:
-    """Get the URL of a git remote from the current working directory."""
+def _get_remote_url(remote: str, project_directory: Path) -> str:
+    """Get the URL of a git remote configured in the project's repository."""
     result = subprocess.run(
         ["git", "remote", "get-url", remote],
+        cwd=project_directory,
         check=True,
         capture_output=True,
         text=True,

@@ -159,3 +159,91 @@ def test_resolve_outside_any_project_prints_one_clear_error(tmp_path, monkeypatc
     assert result.exit_code == 1
     assert "automata.yaml" in result.output
     assert "Error resolving" not in result.output
+
+
+# publish ==============================================================================
+
+
+_RECORDER_EXTENSION = """\
+import json
+from pathlib import Path
+
+from automata.extensions import Extension
+
+
+def _recording(build_dir, config, project_dir):
+    with open(Path(project_dir) / "published.log", "a") as log:
+        log.write(json.dumps(config) + "\\n")
+
+
+def _register(args):
+    args.publishers["recording"] = _recording
+    return args
+
+
+extension = Extension(name="recorder", hooks={"on_register_publishers": _register})
+"""
+
+
+@pytest.fixture
+def publishing_project(project):
+    """The project, with two publish targets using a recording strategy."""
+    ext_dir = project / "extensions" / "recorder"
+    ext_dir.mkdir(parents=True)
+    (ext_dir / "extension.py").write_text(_RECORDER_EXTENSION)
+    config = project / "automata.yaml"
+    config.write_text(
+        "extensions:\n  - extensions/recorder\n"
+        + config.read_text()
+        + dedent("""\
+            publish:
+              first:
+                strategy: recording
+                config: {label: one}
+              second:
+                strategy: recording
+                config: {label: two}
+        """)
+    )
+    return project
+
+
+def _published_labels(project):
+    import json
+
+    log = project / "published.log"
+    lines = log.read_text().splitlines() if log.exists() else []
+    return [json.loads(line)["label"] for line in lines]
+
+
+def test_publish_without_a_target_publishes_every_target(publishing_project):
+    result = _invoke("publish")
+
+    assert sorted(_published_labels(publishing_project)) == ["one", "two"]
+    assert "Published to first." in result.output
+    assert "Published to second." in result.output
+
+
+def test_publish_a_named_target(publishing_project):
+    result = _invoke("publish", "second")
+
+    assert _published_labels(publishing_project) == ["two"]
+    assert "Published to second." in result.output
+
+
+def test_publish_unknown_target_prints_an_error_without_a_traceback(
+    publishing_project,
+):
+    result = runner.invoke(app, ["publish", "third"])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "third" in result.output
+    assert _published_labels(publishing_project) == []
+
+
+def test_publish_without_publish_targets_prints_an_error(project):
+    result = runner.invoke(app, ["publish"])
+
+    assert result.exit_code == 1
+    assert "publish" in result.output

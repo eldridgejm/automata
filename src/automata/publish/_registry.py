@@ -3,7 +3,8 @@
 from pathlib import Path
 from typing import Any, Callable
 
-Publisher = Callable[[Path, dict[str, Any]], None]
+# A publisher is called as publisher(build_directory, config, project_directory).
+Publisher = Callable[[Path, dict[str, Any], Path], None]
 
 _registry: dict[str, Publisher] = {}
 
