@@ -100,7 +100,7 @@ Configuration fields
        their ``start_displaying_on`` date.
    * - ``week_order``
      - Display order: ``"this_week_first"`` (most recent week at top) or
-       ``"first_week_first"`` (chronological).
+       ``"chronological"`` (week 1 first).
    * - ``week_topics``
      - List of topic labels, one per week. ``week_topics[0]`` is week 1's
        label.

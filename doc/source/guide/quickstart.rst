@@ -109,7 +109,7 @@ For simple materials (no build recipes needed), define them inline:
             artifacts:
               exam.pdf:
                 path: exams/midterm/exam.pdf
-                release_time: 3 days after ${ vars.midterm_date }
+                release_time: 3 days after ${ vars.midterm_date } at 00:00:00
 
 For materials that need build recipes (e.g., compiling LaTeX), use
 :doc:`filesystem materials <materials>`.

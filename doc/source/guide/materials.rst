@@ -35,7 +35,7 @@ Each top-level key is a collection name:
                 path: exams/midterm/exam.pdf
               solution.pdf:
                 path: exams/midterm/solution.pdf
-                release_time: 3 days after ${ vars.midterm_date }
+                release_time: 3 days after ${ vars.midterm_date } at 00:00:00
 
 **Inline materials cannot have recipes.** If you need to run a build command to
 produce an artifact (e.g., compiling LaTeX), use filesystem materials instead.
