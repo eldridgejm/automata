@@ -436,3 +436,31 @@ def test_publish_verbose_flag_streams_recipe_output(publishing_project):
     result = runner.invoke(app, ["publish", "--verbose"])
 
     assert "output shown above" in result.output
+
+
+# configuration errors =================================================================
+
+
+@pytest.mark.parametrize(
+    "bad_vars, expected",
+    [
+        ("vars: [1, 2]\n", 'keypath "vars": Expected a dict, but got a list.'),
+        (
+            'vars: {course: "${ vars. }"}\n',
+            'keypath "vars.course": Invalid template "${ vars. }"',
+        ),
+        (
+            "vars: {course: DSC 40B, title: '${ vars.nope }'}\n",
+            'keypath "vars.title": "vars" has no key "nope".',
+        ),
+    ],
+)
+def test_configuration_errors_print_without_a_traceback(project, bad_vars, expected):
+    config = project / "automata.yaml"
+    config.write_text(bad_vars + config.read_text())
+
+    result = runner.invoke(app, ["build"])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert expected in result.output

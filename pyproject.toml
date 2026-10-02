@@ -16,7 +16,7 @@ dependencies = [
     "ruamel.yaml",
     "jinja2",
     "mistune",
-    "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git@0.5.4",
+    "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git@0.5.5",
     "typer",
 ]
 
