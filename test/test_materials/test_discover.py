@@ -186,22 +186,39 @@ def test_validates_publication_metadata_schema(temporary_course):
 
 def test_raises_when_nested_collections_discovered(temporary_course):
     # given a collection "bar" nested in a collection "foo"
-    BASIC_COLLECTION_YAML = """
-        publication_schema:
-            required_artifacts: []
+    collection_yaml = "publication_schema:\n    required_artifacts: []"
+    temporary_course.create_collection("foo", collection_yaml)
+    temporary_course.create_collection("foo/bar", collection_yaml)
+    outer = temporary_course.path / "foo"
+    inner = outer / "bar"
 
-            metadata_schema:
-                name:
-                    type: string
-                author:
-                    type: string
-    """
-
-    temporary_course.create_collection("foo", BASIC_COLLECTION_YAML)
-    temporary_course.create_collection("foo/bar", BASIC_COLLECTION_YAML)
-
-    with raises(DiscoveryError):
+    with raises(DiscoveryError) as excinfo:
         discover(temporary_course.path)
+
+    assert str(excinfo.value) == (
+        f"{inner / 'collection.yaml'}: This collection is inside the collection "
+        f"{outer}, and collections can't be nested. Move {inner} out of {outer}, "
+        "or delete one of the two collection.yaml files."
+    )
+
+
+def test_publications_may_be_nested_in_publications(temporary_course):
+    temporary_course.create_collection(
+        "homeworks", "publication_schema:\n    required_artifacts: []"
+    )
+    temporary_course.create_publication(
+        "homeworks", "01", "metadata: {}\nartifacts: {}"
+    )
+    temporary_course.create_publication(
+        "homeworks", "01/extra", "metadata: {}\nartifacts: {}"
+    )
+
+    universe = discover(temporary_course.path)
+
+    assert sorted(universe.collections["homeworks"].publications) == [
+        "01",
+        "01/extra",
+    ]
 
 
 def test_uses_relative_paths_as_keys(temporary_course):

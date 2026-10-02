@@ -124,7 +124,13 @@ def _scan_filesystem(
 
         if _is_collection(current_path):
             if parent_collection_path is not None:
-                raise DiscoveryError("Nested collection found.", current_path)
+                raise DiscoveryError(
+                    f"This collection is inside the collection "
+                    f"{parent_collection_path}, and collections can't be nested. "
+                    f"Move {current_path} out of {parent_collection_path}, or "
+                    f"delete one of the two {constants.COLLECTION_FILE} files.",
+                    current_path / constants.COLLECTION_FILE,
+                )
 
             result[current_path] = []
             parent_collection_path = current_path
