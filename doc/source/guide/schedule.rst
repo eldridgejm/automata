@@ -109,7 +109,9 @@ Configuration fields
        the appropriate week.
    * - ``announcements``
      - List of ``{week, content}`` objects. ``week: null`` displays in the
-       latest week. ``urgent: true`` adds emphasis.
+       latest week. ``urgent: true`` adds emphasis. ``start_displaying_on`` (a
+       date, optional) hides the announcement until that date; like a release
+       time, it takes effect when the site is next built.
 
 
 Activity collections

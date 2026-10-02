@@ -943,3 +943,74 @@ def test_unknown_collection_in_schedule_is_reported(schedule_element):
         schedule_element.template_vars(config)
 
     assert 'unknown collection "lectures"' in str(excinfo.value)
+
+
+# announcements ========================================================================
+
+
+def _announcement_contents(tvars, week_number):
+    return [a.content for a in tvars["announcements"][week_number]]
+
+
+def test_announcements_are_shown_in_their_week(schedule_element):
+    config = _weekly_config(
+        announcements=[{"week": 3, "content": "Midterm next week", "urgent": False}]
+    )
+
+    tvars = schedule_element.template_vars(config)
+
+    assert _announcement_contents(tvars, 3) == ["Midterm next week"]
+
+
+@pytest.mark.parametrize(
+    "start, shown",
+    [
+        (datetime.date(2024, 1, 14), True),
+        (datetime.date(2024, 1, 15), True),  # the current date
+        (datetime.date(2024, 1, 16), False),
+    ],
+)
+def test_announcements_are_hidden_until_start_displaying_on(
+    schedule_element, start, shown
+):
+    config = _weekly_config(
+        announcements=[
+            {
+                "week": 3,
+                "content": "Midterm next week",
+                "urgent": False,
+                "start_displaying_on": start,
+            }
+        ]
+    )
+
+    tvars = schedule_element.template_vars(config)
+
+    expected = ["Midterm next week"] if shown else []
+    assert _announcement_contents(tvars, 3) == expected
+
+
+def test_start_displaying_on_for_announcements_reads_dates_and_phrases():
+    from automata.builtin.elements._schedule import SCHEDULE_SCHEMA
+    from automata.util.resolution import resolve
+
+    config = {
+        "week_topics": ["One"],
+        "first_week_start_date": "2024-01-08",
+        "primary_activity_collections": [],
+        "secondary_activity_collections": [],
+        "announcements": [
+            {"week": 1, "content": "a", "start_displaying_on": "2024-01-10"},
+            {
+                "week": 1,
+                "content": "b",
+                "start_displaying_on": "2 days after 2024-01-10",
+            },
+            {"week": 1, "content": "c"},
+        ],
+    }
+
+    resolved = resolve(config, SCHEDULE_SCHEMA)
+
+    starts = [a["start_displaying_on"] for a in resolved["announcements"]]
+    assert starts == [datetime.date(2024, 1, 10), datetime.date(2024, 1, 12), None]

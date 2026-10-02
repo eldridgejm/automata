@@ -194,13 +194,15 @@ class AnnouncementConfig(smartconfig.Prototype):
     """Configuration for an announcement.
 
     If the week is None, the announcement is shown at the top of the most recent
-    week, every week.
+    week, every week. If start_displaying_on is set, the announcement is hidden
+    until that date.
 
     """
 
     week: int | None
     content: str
     urgent: bool = False
+    start_displaying_on: datetime.date | None = None
 
 
 class EventConfig(smartconfig.Prototype):
@@ -696,6 +698,7 @@ def make_announcements(
 
     This function determines the display week of the announcement. If the announcement's
     week attribute is None, the display week is set to the most recent week.
+    Announcements whose start_displaying_on is after the current date are left out.
 
     Parameters
     ----------
@@ -722,6 +725,10 @@ def make_announcements(
     most_recent_week = past_weeks[0] if past_weeks else None
 
     for announcement_config in element_config.get("announcements", []):
+        start = announcement_config.get("start_displaying_on")
+        if start is not None and start > current_date:
+            continue
+
         if announcement_config["week"] is None:
             # Show at the top of the most recent week
             display_week = most_recent_week.number if most_recent_week else None
