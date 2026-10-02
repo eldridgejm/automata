@@ -611,3 +611,125 @@ def test_schema_json_errors_name_the_file(
         load_extensions(config, cwd=tmp_path)
 
     assert str(excinfo.value).startswith(f"{schema_file}{expected}")
+
+
+# undefined names ======================================================================
+
+
+def _template_hint(example: str) -> str:
+    return (
+        "Either:\n"
+        "  - it's a typo; or\n"
+        "  - this value is meant to be evaluated by whatever uses it, not when "
+        "this file\n"
+        "    is read: write it as\n"
+        f"      {example}"
+    )
+
+
+def _write_yaml(path: Path, text: str) -> Path:
+    path.write_text(dedent(text))
+    return path
+
+
+_WEBSITE = """\
+    website:
+      theme: default
+      content_directory: "./content"
+      build_directory: "./build"
+"""
+
+
+def test_an_undefined_name_suggests_a_typo_or_a_template(tmp_path: Path) -> None:
+    config_file = tmp_path / "automata.yaml"
+    config_file.write_text(
+        dedent(_WEBSITE)
+        + "  elements:\n"
+        + "    listing:\n"
+        + "      collection: homeworks\n"
+        + "      columns:\n"
+        + "        - heading: Topic\n"
+        + '          cell_content: "${ publication.metadata.topic }"\n'
+    )
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert str(excinfo.value) == (
+        f"{config_file}:10: website.elements.listing.columns.0.cell_content: "
+        "'publication' is undefined. "
+        + _template_hint('cell_content: !template "${ publication.metadata.topic }"')
+    )
+
+
+def test_an_undefined_name_in_an_included_file_shows_its_value(tmp_path: Path) -> None:
+    _write_yaml(
+        tmp_path / "schedule.yaml",
+        """\
+        primary_activity_collections:
+          - collection: lectures
+            for_each_publication:
+              title: "Lecture ${ publication.metadata.number }"
+        """,
+    )
+    config_file = tmp_path / "automata.yaml"
+    config_file.write_text(
+        dedent(_WEBSITE)
+        + "  elements:\n"
+        + "    schedule:\n"
+        + "      __include__: schedule.yaml\n"
+    )
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert str(excinfo.value) == (
+        f"{tmp_path / 'schedule.yaml'}:4: website.elements.schedule."
+        "primary_activity_collections.0.for_each_publication.title: "
+        "'publication' is undefined. "
+        + _template_hint('title: !template "Lecture ${ publication.metadata.number }"')
+    )
+
+
+def test_an_undefined_name_in_a_list_shows_a_list_item(tmp_path: Path) -> None:
+    config_file = _write_yaml(
+        tmp_path / "automata.yaml",
+        'vars:\n  items: ["${ item.name }"]\n' + dedent(_WEBSITE),
+    )
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert str(excinfo.value) == (
+        f"{config_file}:2: vars.items.0: 'item' is undefined. "
+        + _template_hint('- !template "${ item.name }"')
+    )
+
+
+def test_an_undefined_name_close_to_a_defined_one_is_a_typo(tmp_path: Path) -> None:
+    config_file = _write_yaml(
+        tmp_path / "automata.yaml",
+        'vars:\n  course: DSC 40B\n  title: "${ vrs.course }"\n' + dedent(_WEBSITE),
+    )
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert str(excinfo.value) == (
+        f"{config_file}:3: vars.title: 'vrs' is undefined. Did you mean \"vars\"?"
+    )
+
+
+def test_a_missing_key_gets_no_template_hint(tmp_path: Path) -> None:
+    config_file = _write_yaml(
+        tmp_path / "automata.yaml",
+        'vars:\n  course: DSC 40B\n  title: "${ vars.cours }"\n' + dedent(_WEBSITE),
+    )
+
+    with pytest.raises(exceptions.Error) as excinfo:
+        read_config(config_file)
+
+    assert str(excinfo.value) == (
+        f'{config_file}:3: vars.title: "vars" has no key "cours". '
+        'Did you mean "course"?'
+    )

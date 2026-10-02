@@ -5,7 +5,8 @@ from typing import Any, Dict, Mapping, MutableMapping, Optional, cast
 
 import smartconfig
 
-from ..util.resolution import resolve
+from ..util.resolution import explain_undefined, resolve
+from ..util.yaml import value_at
 from ._types import Publication, PublicationSchema, UnbuiltArtifact
 from .exceptions import DiscoveryError
 
@@ -155,7 +156,13 @@ def _resolve_publication(
         keypath = tuple(exc.keypath)
         if keypath[:1] == ("this",):
             keypath = keypath[1:]
-        raise DiscoveryError.at(exc.reason, keypath, source) from None
+        reason = explain_undefined(
+            exc.reason,
+            keypath,
+            names=[*combined_dict, *global_variables],
+            located=value_at(raw_contents, keypath),
+        )
+        raise DiscoveryError.at(reason, keypath, source) from None
 
     return cast(Dict[str, Any], resolved["this"])
 

@@ -13,7 +13,7 @@ from .extensions import (
 )
 from .extensions._apply import all_extensions, check_theme
 from .extensions._common import ExtensionConfigError
-from .util.resolution import describe_config_error, resolve
+from .util.resolution import describe_config_error, explain_undefined, resolve
 from .util.yaml import SourceMap, parse_yaml_with_source_map
 
 CONFIGURATION_FILENAME = "automata.yaml"
@@ -167,7 +167,17 @@ def read_config_with_source_map(path: Path) -> tuple[Config, SourceMap]:
         smartconfig.exceptions.InvalidSchemaError,
     ) as e:
         raise Error(
-            describe_config_error(e.reason, e.keypath, file=path, source_map=source_map)
+            describe_config_error(
+                explain_undefined(
+                    e.reason,
+                    e.keypath,
+                    names=[str(key) for key in config_dict],
+                    located=source_map.value_at(e.keypath),
+                ),
+                e.keypath,
+                file=path,
+                source_map=source_map,
+            )
         ) from None
     return config, source_map
 

@@ -29,12 +29,25 @@ class SourceMap:
         The source maps of files included (with ``__include__``) at each
         keypath, relative to that keypath. Includes nested in included files are
         also listed here, at their full keypath.
+    data : Any
+        The parsed (unresolved) contents of the file, as written.
 
     """
 
     file: Path | None
     lines: dict[tuple[str, ...], int] = field(default_factory=dict)
     includes: dict[tuple[str, ...], "SourceMap"] = field(default_factory=dict)
+    data: Any = None
+
+    def value_at(self, keypath: Sequence[Any]) -> "Located":
+        """The value at *keypath* as written, following includes."""
+        parts = tuple(str(key) for key in keypath)
+        prefixes = [p for p in self.includes if parts[: len(p)] == p and p]
+        for prefix in sorted(prefixes, key=len, reverse=True):
+            located = value_at(self.includes[prefix].data, parts[len(prefix) :])
+            if located.found:
+                return located
+        return value_at(self.data, parts)
 
     def add_include(self, keypath: Sequence[Any], source_map: "SourceMap") -> None:
         """Record that the file of *source_map* is included at *keypath*."""
@@ -73,6 +86,35 @@ class SourceMap:
                 return self.lines[parts]
             parts = parts[:-1]
         return None
+
+
+@dataclass
+class Located:
+    """The result of looking up a keypath in parsed YAML."""
+
+    found: bool
+    value: Any = None
+    # whether the value is an item of a list (rather than a mapping's value)
+    in_list: bool = False
+
+
+def value_at(data: Any, keypath: Sequence[Any]) -> Located:
+    """The value at *keypath* in parsed YAML *data*, if it is there."""
+    located = Located(found=True, value=data)
+    for key in keypath:
+        container = located.value
+        if isinstance(container, dict):
+            matches = [k for k in container if str(k) == str(key)]
+            if not matches:
+                return Located(found=False)
+            located = Located(found=True, value=container[matches[0]])
+        elif isinstance(container, list) and str(key).isdigit():
+            if int(key) >= len(container):
+                return Located(found=False)
+            located = Located(found=True, value=container[int(key)], in_list=True)
+        else:
+            return Located(found=False)
+    return located
 
 
 def _record_lines(
@@ -120,7 +162,7 @@ def parse_yaml_with_source_map(
     # the content parsed, so composing it again cannot fail
     yaml = YAML(typ="safe")
     node = yaml.compose(yaml_content)
-    source_map = SourceMap(source)
+    source_map = SourceMap(source, data=data)
     _record_lines(node, (), source_map.lines, first_line - 1, yaml.constructor)
     return data, source_map
 

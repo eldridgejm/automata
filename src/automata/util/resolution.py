@@ -1,6 +1,8 @@
 """Utilities for configuration resolution."""
 
 import datetime
+import difflib
+import json
 import re
 import types
 import typing
@@ -13,7 +15,7 @@ import smartconfig.exceptions
 import smartconfig.stdlib.datetime
 
 from ..exceptions import Error
-from .yaml import SourceMap, parse_yaml_with_source_map
+from .yaml import Located, SourceMap, parse_yaml_with_source_map
 
 T = typing.TypeVar("T")
 P = typing.TypeVar("P", bound=smartconfig.Prototype)
@@ -187,6 +189,45 @@ def describe_config_error(
         parts.append(format_keypath(keypath))
     parts.append(reason)
     return ": ".join(parts)
+
+
+def explain_undefined(
+    reason: str,
+    keypath: typing.Sequence[typing.Any],
+    names: typing.Iterable[str],
+    located: Located | None = None,
+) -> str:
+    """*reason*, explained if it says that a name is undefined.
+
+    A name close to one of the defined *names* is probably a typo. Otherwise,
+    the value may be meant to be evaluated later, by whatever uses it, with
+    !template; *located* (the value as written) makes the example concrete.
+
+    """
+    match = re.fullmatch(r"'(\w+)' is undefined", reason)
+    if match is None:
+        return reason
+    name = match[1]
+
+    close = difflib.get_close_matches(name, [n for n in names if n != name], n=1)
+    if close:
+        return f'{reason}. Did you mean "{close[0]}"?'
+
+    if located is not None and located.found and isinstance(located.value, str):
+        # a JSON string is a valid YAML double-quoted string
+        quoted = json.dumps(located.value, ensure_ascii=False)
+        prefix = "- " if located.in_list or not keypath else f"{keypath[-1]}: "
+        example = f"{prefix}!template {quoted}"
+    else:
+        example = '!template "${ ... }"'
+    return (
+        f"{reason}. Either:\n"
+        f"  - it's a typo; or\n"
+        f"  - this value is meant to be evaluated by whatever uses it, not when "
+        f"this file\n"
+        f"    is read: write it as\n"
+        f"      {example}"
+    )
 
 
 def _parse_date_phrase(value: str) -> datetime.date | datetime.datetime:

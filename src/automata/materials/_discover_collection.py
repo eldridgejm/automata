@@ -5,7 +5,8 @@ from typing import Any, Dict, Mapping, Optional, cast
 
 import smartconfig
 
-from ..util.resolution import resolve
+from ..util.resolution import explain_undefined, resolve
+from ..util.yaml import value_at
 from ._types import Collection, PublicationSchema, UnbuiltArtifact
 from .exceptions import DiscoveryError
 
@@ -88,7 +89,13 @@ def _resolve_collection(
             global_variables={"vars": vars if vars is not None else {}},
         )
     except smartconfig.exceptions.ResolutionError as exc:
-        raise DiscoveryError.at(exc.reason, tuple(exc.keypath), source) from None
+        reason = explain_undefined(
+            exc.reason,
+            exc.keypath,
+            names=[*contents, "vars"],
+            located=value_at(raw_contents, exc.keypath),
+        )
+        raise DiscoveryError.at(reason, tuple(exc.keypath), source) from None
 
     _validate_metadata_schema(resolved["publication_schema"]["metadata_schema"], source)
 

@@ -906,6 +906,44 @@ def test_errors_in_publications_written_in_collection_yaml_give_keypath_and_line
     )
 
 
+@pytest.mark.parametrize(
+    "title, expected",
+    [
+        (
+            "${ pub.metadata.number }",
+            "'pub' is undefined. Either:\n"
+            "  - it's a typo; or\n"
+            "  - this value is meant to be evaluated by whatever uses it, not when "
+            "this file\n"
+            "    is read: write it as\n"
+            '      title: !template "${ pub.metadata.number }"',
+        ),
+        ("${ thsi.metadata.number }", "'thsi' is undefined. Did you mean \"this\"?"),
+    ],
+)
+def test_undefined_names_in_publication_yaml_are_explained(
+    temporary_course, title, expected
+):
+    temporary_course.create_collection(
+        "homeworks", "publication_schema:\n    required_artifacts: []"
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        f"""
+        metadata:
+            title: "{title}"
+        artifacts: {{}}
+        """,
+    )
+    pub_file = temporary_course.path / "homeworks" / "01" / "publication.yaml"
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    assert str(excinfo.value) == f"{pub_file}:2: metadata.title: {expected}"
+
+
 # date phrases
 # --------------------------------------------------------------------------------------
 
