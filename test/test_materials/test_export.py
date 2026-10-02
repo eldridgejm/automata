@@ -92,6 +92,52 @@ def test_capable_of_exporting_entire_directories(temporary_course, outdir):
     assert (outdir / "homeworks" / "01-testing" / "problems" / "b.pdf").is_file()
 
 
+def test_exporting_a_directory_again_replaces_it(temporary_course, outdir):
+    temporary_course.create_collection(
+        "homeworks", "publication_schema:\n    required_artifacts: [problems]"
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        """
+        artifacts:
+            problems:
+                recipe: rm -rf problems && mkdir problems && touch problems/a.pdf
+        metadata: {}
+        """,
+    )
+    exported = outdir / "homeworks" / "01" / "problems"
+
+    # given: an earlier export, with a file the current build no longer makes
+    built = automata.materials.build(automata.materials.discover(temporary_course.path))
+    automata.materials.export(built, outdir)
+    (exported / "stale.pdf").write_text("stale")
+
+    # when
+    built = automata.materials.build(automata.materials.discover(temporary_course.path))
+    automata.materials.export(built, outdir)
+
+    # then
+    assert sorted(p.name for p in exported.iterdir()) == ["a.pdf"]
+
+
+def test_exporting_a_file_again_replaces_it(temporary_course, outdir):
+    temporary_course.create_collection(
+        "homeworks", "publication_schema:\n    required_artifacts: [hw.txt]"
+    )
+    temporary_course.create_publication(
+        "homeworks", "01", "artifacts:\n    hw.txt:\n        recipe: echo new > hw.txt"
+    )
+    exported = outdir / "homeworks" / "01" / "hw.txt"
+    exported.parent.mkdir(parents=True)
+    exported.write_text("old")
+
+    built = automata.materials.build(automata.materials.discover(temporary_course.path))
+    automata.materials.export(built, outdir)
+
+    assert exported.read_text() == "new\n"
+
+
 def test_export_raises_when_artifact_not_built(outdir):
     """Test that export() raises ValueError when given an unbuilt artifact."""
     # given: a publication containing an unbuilt artifact

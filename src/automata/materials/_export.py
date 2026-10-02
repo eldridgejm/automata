@@ -44,6 +44,13 @@ def _export_artifact(
     full_src = built_artifact.workdir / built_artifact.path
     hooks.on_export_copy(ExportCopyHookArgs(src=full_src, dst=full_dst))
 
+    # replace an earlier export (e.g. from a build that didn't clean the build
+    # directory), so that a directory doesn't keep files the build no longer makes
+    if full_dst.is_dir() and not full_dst.is_symlink():
+        shutil.rmtree(full_dst)
+    elif full_dst.exists() or full_dst.is_symlink():
+        full_dst.unlink()
+
     if full_src.is_dir():
         shutil.copytree(full_src, full_dst)
     else:
