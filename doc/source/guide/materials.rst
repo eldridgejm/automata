@@ -174,8 +174,8 @@ A template can also be a mapping (for instance, a publication's whole
         homework.pdf:
           ready: true
 
-Use templates with ``!use``, not by interpolating them, as in
-``${ templates.title }``: interpolating a template inserts it unfilled.
+Use templates with ``!use``. Interpolating one, as in
+``${ templates.title }``, is an error.
 
 
 ``publication.yaml``

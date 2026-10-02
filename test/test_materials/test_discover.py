@@ -2307,3 +2307,39 @@ def test_the_documented_templates_example_works(temporary_course):
 
     assert publication.metadata["title"] == "Homework 3"
     assert publication.artifacts["homework.pdf"].recipe == "latexmk -pdf hw3.tex"
+
+
+def test_interpolating_a_template_is_an_error(temporary_course):
+    # a template must be used with !use; interpolated, it would insert garbage
+    # into the recipe, which the shell would run
+    temporary_course.create_collection(
+        "homeworks",
+        """
+        publication_schema:
+            required_artifacts: [homework.pdf]
+
+        templates:
+            recipe: !template "latexmk -pdf hw${ this.metadata.number }.tex"
+        """,
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "03",
+        """
+        metadata:
+            number: 3
+        artifacts:
+            homework.pdf:
+                recipe: "${ templates.recipe }"
+        """,
+    )
+    pub_file = temporary_course.path / "homeworks" / "03" / "publication.yaml"
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    assert str(excinfo.value) == (
+        f'{pub_file}:5: artifacts."homework.pdf".recipe: "templates.recipe" is a '
+        "template, which can't be inserted into a string. Use it with __use__ "
+        "instead."
+    )

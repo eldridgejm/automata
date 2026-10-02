@@ -126,6 +126,26 @@ The template syntax uses ``${ ... }`` for variable substitution and
     Office hours are on Tuesdays.
     {% endif %}
 
+In configuration files (``automata.yaml``, ``collection.yaml``,
+``publication.yaml``, and page frontmatter), a ``${ ... }`` inserts a single
+value: a string, a number, a date, and so on. **Inserting a whole mapping or
+list is an error**, since its text would be meaningless. Insert one of its keys
+or elements instead, turn it into text with a filter, or, to copy the whole
+value, write it with ``!splice``:
+
+.. code-block:: yaml
+
+    vars:
+      course: {name: DSC 40B, topics: [Sorting, Graphs]}
+      title: ${ vars.course }                      # error: a mapping
+      name: ${ vars.course.name }                  # "DSC 40B"
+      first_topic: ${ vars.course.topics[0] }      # "Sorting"
+      topics: ${ vars.course.topics | join(", ") } # "Sorting, Graphs"
+      copy: !splice vars.course                    # the whole mapping
+
+A template (see :doc:`materials`) is used with ``!use`` instead. Error
+messages call these by their function names, ``__splice__`` and ``__use__``.
+
 
 Release times
 -------------
