@@ -338,3 +338,33 @@ def test_an_inline_collection_named_default_is_an_error(tmp_path):
         f'{config_file}:2: materials.default: The collection name "default" is '
         "reserved for publications that aren't in a collection. Rename it."
     )
+
+
+@pytest.mark.parametrize("artifacts", ["null", "[hw.pdf]"])
+def test_inline_artifacts_of_the_wrong_type_are_a_config_error(tmp_path, artifacts):
+    project = tmp_path / "project"
+    project.mkdir()
+    config_file = project / "automata.yaml"
+    config_file.write_text(
+        "materials:\n"
+        "  hw:\n"
+        "    schema: {required_artifacts: []}\n"
+        "    publications:\n"
+        "      h1:\n"
+        f"        artifacts: {artifacts}\n"
+        + dedent("""\
+            website:
+              theme:
+                use: "default"
+                config: {short_title: "T", long_title: "Test"}
+              content_directory: "content"
+              build_directory: "_build"
+        """)
+    )
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).discover()
+
+    assert str(excinfo.value).startswith(
+        f"{config_file}:6: materials.hw.publications.h1.artifacts: "
+    )

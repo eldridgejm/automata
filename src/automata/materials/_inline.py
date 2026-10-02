@@ -156,8 +156,12 @@ def discover_inline(
 
         # Resolve each publication
         for pub_key, raw_pub in raw_publications.items():
-            # Ensure no recipes are specified
-            for artifact_key, artifact_def in raw_pub.get("artifacts", {}).items():
+            # Ensure no recipes are specified. (Artifacts that aren't a mapping are
+            # reported, with their location, when the publication is resolved.)
+            raw_artifacts = raw_pub.get("artifacts")
+            if not isinstance(raw_artifacts, dict):
+                raw_artifacts = {}
+            for artifact_key, artifact_def in raw_artifacts.items():
                 if (
                     isinstance(artifact_def, dict)
                     and artifact_def.get("recipe") is not None
