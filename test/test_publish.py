@@ -158,6 +158,50 @@ def test_gh_pages_resolves_the_remote_in_the_project_not_the_cwd(git_project, tm
     assert _branch_files(remote, "gh-pages") == ["index.html", "materials/hw01.pdf"]
 
 
+@pytest.mark.integration
+def test_gh_pages_ignores_a_git_repository_in_the_build_directory(
+    git_project, tmp_path
+):
+    # given: the build directory is itself a git checkout with another remote
+    project, build_dir, remote = git_project
+    other = tmp_path / "other.git"
+    _git("init", "--bare", "--quiet", str(other), cwd=tmp_path)
+    _git("init", "--quiet", cwd=build_dir)
+    _git("remote", "add", "origin", str(other), cwd=build_dir)
+
+    # when
+    gh_pages_publish(build_dir, {}, project)
+
+    # then: the site goes to the project's remote, without the build's .git
+    assert _branch_files(remote, "gh-pages") == ["index.html", "materials/hw01.pdf"]
+    assert _git("branch", "--list", cwd=other) == ""
+
+
+@pytest.mark.integration
+def test_gh_pages_accepts_a_remote_url_relative_to_the_project(git_project):
+    project, build_dir, remote = git_project
+    _git("remote", "set-url", "origin", "../remote.git", cwd=project)
+
+    gh_pages_publish(build_dir, {}, project)
+
+    assert _branch_files(remote, "gh-pages") == ["index.html", "materials/hw01.pdf"]
+
+
+@pytest.mark.integration
+def test_gh_pages_does_not_force_push_when_the_remote_cannot_be_read(git_project):
+    # if the remote can't be read, publishing must not assume the branch is new
+    # (which would force-push an orphan branch over its history)
+    project, build_dir, remote = git_project
+    _git("remote", "set-url", "origin", str(remote.parent / "missing.git"), cwd=project)
+
+    with pytest.raises(Error) as excinfo:
+        gh_pages_publish(build_dir, {}, project)
+
+    message = str(excinfo.value)
+    assert 'could not read branch "gh-pages"' in message
+    assert "push" not in message
+
+
 def _commit_author(remote: Path, branch: str) -> str:
     return _git("log", "-1", "--format=%an <%ae>", branch, cwd=remote).strip()
 

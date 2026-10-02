@@ -72,11 +72,22 @@ def publish(
         remote_url = _get_remote_url(remote, project_directory)
         _run("git", "remote", "add", "origin", remote_url, cwd=tmp)
 
-        # Fetch the existing branch; it's fine if it doesn't exist yet
-        fetched = subprocess.run(
-            ["git", "fetch", "origin", branch], cwd=tmp, capture_output=True
+        # Check whether the branch exists. Only a branch that doesn't exist may
+        # start over as an orphan: if the remote can't be read, the force-push
+        # below would replace the branch's history.
+        listed = subprocess.run(
+            ["git", "ls-remote", "--heads", "origin", f"refs/heads/{branch}"],
+            cwd=tmp,
+            capture_output=True,
+            text=True,
         )
-        if fetched.returncode == 0:
+        if listed.returncode != 0:
+            raise Error(
+                f'gh-pages publishing could not read branch "{branch}" from remote '
+                f'"{remote}" ({remote_url}): {listed.stderr.strip()}'
+            )
+        if listed.stdout.strip():
+            _run("git", "fetch", "origin", branch, cwd=tmp)
             _run("git", "checkout", branch, cwd=tmp)
             # Clean out old content
             _run("git", "rm", "-rf", ".", cwd=tmp)
@@ -84,8 +95,16 @@ def publish(
             # Branch doesn't exist yet — start with an orphan
             _run("git", "checkout", "--orphan", branch, cwd=tmp)
 
-        # Copy build contents into the temp repo
-        shutil.copytree(build_directory, tmp, dirs_exist_ok=True)
+        # Copy build contents into the temp repo. A .git in the build directory
+        # (e.g. if it is a checkout) would replace the temp repo's.
+        shutil.copytree(
+            build_directory,
+            tmp,
+            dirs_exist_ok=True,
+            ignore=lambda directory, names: (
+                [".git"] if Path(directory) == Path(build_directory) else []
+            ),
+        )
 
         # Commit and push
         _run("git", "add", "-A", cwd=tmp)
@@ -160,4 +179,9 @@ def _get_remote_url(remote: str, project_directory: Path) -> str:
             f'The gh-pages publish strategy could not find git remote "{remote}" '
             f"in {project_directory}: {result.stderr.strip()}"
         )
-    return result.stdout.strip()
+    url = result.stdout.strip()
+    # a relative local path is relative to the project's repository, but the
+    # push runs in a temporary directory
+    if "://" not in url and ":" not in url and not Path(url).is_absolute():
+        url = str((project_directory / url).resolve())
+    return url
