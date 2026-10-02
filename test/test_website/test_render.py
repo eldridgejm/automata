@@ -1,5 +1,6 @@
 import shutil
 
+import jinja2
 import smartconfig
 from pytest import fixture, raises
 
@@ -547,6 +548,80 @@ def test_theme_template_errors_name_the_template_and_line(tmpsite, tmp_path):
     message = _page_error(tmpsite, theme=theme)
 
     assert message == f"{source}: template page.html, line 3: 'nope' is undefined"
+
+
+def test_errors_in_an_element_give_the_line_of_the_page_that_calls_it(tmpsite):
+    # the element's template fails on its own line 2; the page calls it on line 3
+    class BoomElement(automata.website.TemplateElement):
+        template = "boom.html"
+        schema = None
+
+    def collect(inputs: WebsiteInputs) -> WebsiteInputs:
+        inputs.templates.update(
+            {
+                "page.html": "<html><body>${ content }</body></html>",
+                "boom.html": "<span>\n${ nope }\n</span>",
+            }
+        )
+        inputs.elements.update({"boom": BoomElement})
+        return inputs
+
+    hooks = RenderHooks()
+    apply_extension(
+        Extension(name="test-theme", hooks={"on_render_collect": collect}), hooks
+    )
+    tmpsite.make_page("index.md", "# Title\n\n${ elements.boom() }\n")
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, hooks=hooks)
+
+    assert message == f"{source}:3: 'nope' is undefined"
+
+
+def test_errors_in_an_element_s_own_jinja_template_give_the_page_line(tmpsite):
+    # an element may render a template string itself, which Jinja also reports
+    # as "<template>"; the line is still the page's (3), not the element's (4)
+    class InlineElement(automata.website.BasicElement):
+        schema = None
+
+        def render(self, config):
+            return jinja2.Template(
+                "a\nb\nc\n{{ nope }}", undefined=jinja2.StrictUndefined
+            ).render()
+
+    def collect(inputs: WebsiteInputs) -> WebsiteInputs:
+        inputs.templates["page.html"] = "<html><body>${ content }</body></html>"
+        inputs.elements["inline"] = InlineElement
+        return inputs
+
+    hooks = RenderHooks()
+    apply_extension(
+        Extension(name="test-theme", hooks={"on_render_collect": collect}), hooks
+    )
+    tmpsite.make_page("index.md", "# Title\n\n${ elements.inline() }\n")
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, hooks=hooks)
+
+    assert message == f"{source}:3: 'nope' is undefined"
+
+
+def test_errors_in_an_included_template_name_that_template(tmpsite, tmp_path):
+    tmpsite.make_page("index.md", "ok")
+    theme_dir = tmp_path / "custom_theme"
+    (theme_dir / "templates").mkdir(parents=True)
+    (theme_dir / "templates" / "page.html").write_text(
+        "<html>\n${ content }\n{% include 'footer.html' %}\n</html>\n"
+    )
+    (theme_dir / "templates" / "footer.html").write_text(
+        "<footer>\n<p>\n${ nope }\n</p>\n</footer>\n"
+    )
+    theme = _make_theme(theme_dir=theme_dir)
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme)
+
+    assert message == f"{source}: template footer.html, line 3: 'nope' is undefined"
 
 
 def test_theme_template_syntax_errors_name_the_template_and_line(tmpsite, tmp_path):
