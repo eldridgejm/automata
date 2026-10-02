@@ -10,6 +10,7 @@ from ._automata import Automata
 from .config import CONFIGURATION_FILENAME, find_config
 from .exceptions import Error
 from .materials import serialize
+from .util.resolution import local_time
 
 app = typer.Typer()
 
@@ -49,7 +50,7 @@ def _parse_current_time(value: str) -> datetime.datetime:
         pass
 
     try:
-        return datetime.datetime.fromisoformat(value)
+        return local_time(datetime.datetime.fromisoformat(value))
     except ValueError:
         raise ValueError(
             f'Invalid --current-time value: "{value}". '

@@ -779,3 +779,52 @@ def test_on_build_artifact_recipe_shell_script_receives_json(tmp_path):
     content = json.loads(output_file.read_text())
     assert content["path"] == "foo.pdf"
     assert content["recipe"] == "echo hi"
+
+
+# timezones ============================================================================
+
+
+def _release_at(temporary_course, release_time):
+    temporary_course.create_collection(
+        "homeworks", "publication_schema:\n    required_artifacts: [hw.txt]"
+    )
+    temporary_course.create_publication(
+        "homeworks",
+        "01",
+        f"""
+        artifacts:
+            hw.txt:
+                recipe: touch hw.txt
+                release_time: {release_time}
+        """,
+    )
+    return automata.materials.discover(temporary_course.path)
+
+
+def _is_built(universe):
+    return "hw.txt" in universe.collections["homeworks"].publications["01"].artifacts
+
+
+def test_release_times_with_an_offset_are_compared_correctly(temporary_course):
+    # 08:00 UTC on Jan 1 is released at 09:00 UTC, but not at 07:00 UTC
+    discovered = _release_at(temporary_course, "2025-01-01 00:00:00-08:00")
+    utc = datetime.timezone.utc
+
+    before = automata.materials.build(
+        discovered, current_time=datetime.datetime(2025, 1, 1, 7, tzinfo=utc)
+    )
+    after = automata.materials.build(
+        discovered, current_time=datetime.datetime(2025, 1, 1, 9, tzinfo=utc)
+    )
+
+    assert not _is_built(before)
+    assert _is_built(after)
+
+
+def test_a_naive_release_time_works_with_an_aware_current_time(temporary_course):
+    discovered = _release_at(temporary_course, "2025-01-01 00:00:00")
+    later = datetime.datetime(2025, 1, 2).astimezone()
+
+    built = automata.materials.build(discovered, current_time=later)
+
+    assert _is_built(built)

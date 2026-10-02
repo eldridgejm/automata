@@ -13,6 +13,7 @@ from automata.hooks import (
     BuildMaterialsNodeHookArgs,
 )
 
+from ..util.resolution import local_time
 from ._types import (
     BuiltArtifact,
     Collection,
@@ -102,13 +103,15 @@ def _build_artifact(
     """
     if current_time is None:
         current_time = datetime.datetime.now()
+    # naive and aware times can't be compared; compare both as local times
+    current_time = local_time(current_time)
 
     output = BuiltArtifact(workdir=artifact.workdir, path=artifact.path)
 
     if (
         not ignore_release_time
         and artifact.release_time is not None
-        and artifact.release_time > current_time
+        and local_time(artifact.release_time) > current_time
     ):
         hooks.on_build_artifact_too_soon(_artifact_to_hook_args(artifact))
         return None

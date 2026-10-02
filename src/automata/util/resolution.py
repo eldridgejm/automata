@@ -257,6 +257,17 @@ def _date_or_phrase(value: typing.Any) -> datetime.date:
     return result.date() if isinstance(result, datetime.datetime) else result
 
 
+def local_time(value: datetime.datetime) -> datetime.datetime:
+    """*value* as a naive local time.
+
+    automata compares times as naive local times; a time with an offset (or
+    a time zone) names an instant, which is converted to local time.
+    """
+    if value.tzinfo is None:
+        return value
+    return value.astimezone().replace(tzinfo=None)
+
+
 def _only_a_date(value: typing.Any) -> datetime.date | None:
     """The date, if *value* is a date with no time (or an ISO string of one)."""
     if isinstance(value, datetime.datetime):
@@ -285,7 +296,7 @@ def _datetime_or_phrase(value: typing.Any) -> datetime.datetime:
             f"{date} with no time."
         )
     try:
-        return smartconfig.converters.datetime(value)
+        return local_time(smartconfig.converters.datetime(value))
     except smartconfig.exceptions.ConversionError:
         if not isinstance(value, str):
             raise
@@ -293,7 +304,7 @@ def _datetime_or_phrase(value: typing.Any) -> datetime.datetime:
     # the parser gives midnight when the phrase has no time, so look for one
     # (from "at 23:59:00", or a reference datetime like "2025-01-10 12:00:00")
     if isinstance(result, datetime.datetime) and re.search(r"\d:\d\d", value):
-        return result
+        return local_time(result)
     raise smartconfig.exceptions.ConversionError(
         f'Expected a date and time, but "{value}" gives only a date. Add a time, '
         f'like "{value} at 23:59:00".'

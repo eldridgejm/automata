@@ -1,6 +1,7 @@
 """Tests for the command-line interface."""
 
 import contextlib
+import datetime
 from textwrap import dedent
 
 import pytest
@@ -69,6 +70,14 @@ def test_build_accepts_current_time(project):
     result = _invoke("build", "--current-time", "2025-01-01T00:00:00")
 
     assert "2025-01-01 00:00:00" in result.output
+    assert (project / "_build" / "index.html").exists()
+
+
+def test_current_time_with_an_offset_is_converted_to_local_time(project):
+    result = _invoke("build", "--current-time", "2025-01-01T00:00:00+00:00")
+
+    local = datetime.datetime(2025, 1, 1, tzinfo=datetime.timezone.utc).astimezone()
+    assert local.strftime("%Y-%m-%d %H:%M:%S") in result.output
     assert (project / "_build" / "index.html").exists()
 
 

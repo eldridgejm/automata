@@ -587,3 +587,26 @@ def test_a_phrase_relative_to_a_datetime_takes_its_time():
 )
 def test_date_fields_still_accept_dates(value):
     assert resolve({"due": value}, _DATE) == {"due": datetime.date(2025, 1, 10)}
+
+
+# timezones ============================================================================
+
+
+def _local(instant: datetime.datetime) -> datetime.datetime:
+    """*instant* (aware) as a naive local time."""
+    return instant.astimezone().replace(tzinfo=None)
+
+
+def test_a_datetime_with_an_offset_becomes_local_time():
+    result = resolve({"due": "2025-01-01 00:00:00-08:00"}, _DATETIME)
+
+    pacific = datetime.timezone(datetime.timedelta(hours=-8))
+    assert result == {"due": _local(datetime.datetime(2025, 1, 1, tzinfo=pacific))}
+    assert result["due"].tzinfo is None
+
+
+def test_a_datetime_phrase_with_an_offset_becomes_local_time():
+    result = resolve({"due": "1 day after 2025-01-01 00:00:00+00:00"}, _DATETIME)
+
+    utc = datetime.timezone.utc
+    assert result == {"due": _local(datetime.datetime(2025, 1, 2, tzinfo=utc))}
