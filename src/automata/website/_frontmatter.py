@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +60,9 @@ def _parse_yaml_frontmatter(
 
     """
     data, source_map = parse_yaml_with_source_map(yaml_content, first_line=2)
+    if data is None:
+        # empty, or only comments
+        data = {}
     try:
         return resolve(data, Frontmatter, base_path=base_path, source_map=source_map)
     except smartconfig.exceptions.ResolutionError as e:
@@ -71,6 +75,9 @@ def _parse_yaml_frontmatter(
         raise FrontmatterError(
             describe_config_error(e.reason, e.keypath, file=file, line=line)
         ) from None
+
+
+_FRONTMATTER = re.compile(r"---\n(?P<yaml>(?:.*?\n)??)---(?:\n|\Z)", re.DOTALL)
 
 
 def _find_and_extract_frontmatter_yaml(content: str) -> tuple[str | None, str]:
@@ -89,28 +96,12 @@ def _find_and_extract_frontmatter_yaml(content: str) -> tuple[str | None, str]:
         The remaining content after removing frontmatter.
 
     """
-    # Check if content starts with frontmatter delimiter
-    if not content.startswith("---\n"):
+    # the frontmatter is between a first line "---" and the next line "---", which
+    # may come right after the first (empty frontmatter) or end the file
+    match = _FRONTMATTER.match(content)
+    if match is None:
         return None, content
-
-    # Find the closing delimiter
-    # Start searching after the opening "---\n" (4 characters)
-    closing_delimiter = "\n---\n"
-    closing_index = content.find(closing_delimiter, 4)
-
-    if closing_index == -1:
-        # No closing delimiter found - treat as no frontmatter
-        return None, content
-
-    # Extract YAML content between delimiters
-    # Start at position 4 (after "---\n") and end at closing_index
-    yaml_content = content[4:closing_index]
-
-    # Remove the frontmatter from the content
-    # Skip past the closing delimiter (closing_index + len("\n---\n"))
-    remaining_content = content[closing_index + 5 :]
-
-    return yaml_content, remaining_content
+    return match["yaml"], content[match.end() :]
 
 
 def read_frontmatter(
