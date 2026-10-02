@@ -35,6 +35,9 @@ config:
         config:
           branch: gh-pages     # default
           remote: origin       # a remote of the project's git repository
+          # optional; by default, the project's git identity
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
       server:
         strategy: rsync
         config:
@@ -51,7 +54,13 @@ Built-in strategies:
 
 - ``gh-pages`` --- replaces the contents of a branch on a git remote with the
   build directory, in a single commit (no commit if nothing changed). The
-  remote is looked up in the project's git repository.
+  remote is looked up in the project's git repository. The commit's author is
+  ``user_name``/``user_email`` from the config if given, otherwise the
+  project's git identity (``git config user.name`` and ``user.email``), or
+  the ``GIT_COMMITTER_NAME``/``GIT_COMMITTER_EMAIL`` environment variables.
+  If none is set --- typical on a fresh CI machine --- publishing stops with an
+  error saying how to set one; on GitHub Actions, setting ``user_name`` and
+  ``user_email`` as above is the simplest fix.
 - ``rsync`` --- mirrors the build directory to ``host:remote_path`` over SSH,
   deleting files on the server that are no longer in the build, so withdrawn
   materials and deleted pages don't linger. Requires ``rsync`` to be installed.

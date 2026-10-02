@@ -56,17 +56,12 @@ def _git(*args, cwd: Path) -> str:
 
 
 @pytest.fixture
-def git_project(tmp_path, monkeypatch):
+def git_project(tmp_path):
     """A git project whose `origin` is a local bare repository.
 
-    Returns (project, build_dir, remote). The build directory holds a small site.
+    The project's own git config holds the committer identity. Returns
+    (project, build_dir, remote). The build directory holds a small site.
     """
-    # commits need an identity; don't depend on the machine's git config
-    for var in ["GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME"]:
-        monkeypatch.setenv(var, "Automata Tests")
-    for var in ["GIT_AUTHOR_EMAIL", "GIT_COMMITTER_EMAIL"]:
-        monkeypatch.setenv(var, "tests@example.com")
-
     remote = tmp_path / "remote.git"
     _git("init", "--bare", "--quiet", str(remote), cwd=tmp_path)
 
@@ -74,6 +69,8 @@ def git_project(tmp_path, monkeypatch):
     project.mkdir()
     _git("init", "--quiet", cwd=project)
     _git("remote", "add", "origin", str(remote), cwd=project)
+    _git("config", "user.name", "Project Author", cwd=project)
+    _git("config", "user.email", "author@example.com", cwd=project)
 
     build_dir = project / "_build"
     build_dir.mkdir()
@@ -159,6 +156,58 @@ def test_gh_pages_resolves_the_remote_in_the_project_not_the_cwd(git_project, tm
 
     # then
     assert _branch_files(remote, "gh-pages") == ["index.html", "materials/hw01.pdf"]
+
+
+def _commit_author(remote: Path, branch: str) -> str:
+    return _git("log", "-1", "--format=%an <%ae>", branch, cwd=remote).strip()
+
+
+@pytest.mark.integration
+def test_gh_pages_commits_with_the_projects_git_identity(git_project):
+    project, build_dir, remote = git_project
+
+    gh_pages_publish(build_dir, {}, project)
+
+    assert _commit_author(remote, "gh-pages") == "Project Author <author@example.com>"
+
+
+@pytest.mark.integration
+def test_gh_pages_identity_can_be_set_in_the_strategy_config(git_project):
+    project, build_dir, remote = git_project
+
+    gh_pages_publish(
+        build_dir,
+        {"user_name": "github-actions[bot]", "user_email": "bot@example.com"},
+        project,
+    )
+
+    assert _commit_author(remote, "gh-pages") == "github-actions[bot] <bot@example.com>"
+
+
+@pytest.mark.integration
+def test_gh_pages_without_any_identity_is_a_clear_error(
+    git_project, tmp_path, monkeypatch
+):
+    # given: no identity in the project, and none from this machine's git
+    # config or environment
+    project, build_dir, remote = git_project
+    _git("config", "--unset", "user.name", cwd=project)
+    _git("config", "--unset", "user.email", cwd=project)
+    empty = tmp_path / "empty-gitconfig"
+    empty.write_text("")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    for var in ["NAME", "EMAIL"]:
+        monkeypatch.delenv(f"GIT_AUTHOR_{var}", raising=False)
+        monkeypatch.delenv(f"GIT_COMMITTER_{var}", raising=False)
+
+    # when / then
+    with pytest.raises(Error) as excinfo:
+        gh_pages_publish(build_dir, {}, project)
+
+    message = str(excinfo.value)
+    assert "user_name" in message
+    assert "user_email" in message
 
 
 # rsync strategy =======================================================================

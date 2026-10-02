@@ -4,11 +4,14 @@ Pushes the contents of the build directory to a branch (default
 ``gh-pages``) on a Git remote (default ``origin``).
 """
 
+import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
+
+from ..exceptions import Error
 
 
 def publish(
@@ -31,13 +34,25 @@ def publish(
         - ``remote`` (str): Git remote name, as configured in the project's
           repository. Default ``"origin"``.
         - ``message`` (str): Commit message. Default ``"Deploy to GitHub Pages"``.
+        - ``user_name``, ``user_email`` (str): The commit's author. By default,
+          the project's git identity (``git config user.name`` and
+          ``user.email``, local or global), or else the
+          ``GIT_COMMITTER_NAME`` and ``GIT_COMMITTER_EMAIL`` environment
+          variables.
     project_directory : Path
-        The project root, whose git repository defines the remote.
+        The project root, whose git repository defines the remote and the
+        default identity.
+
+    Raises
+    ------
+    automata.exceptions.Error
+        If no commit identity can be found.
 
     """
     branch = config.get("branch", "gh-pages")
     remote = config.get("remote", "origin")
     message = config.get("message", "Deploy to GitHub Pages")
+    user_name, user_email = _identity(config, project_directory)
 
     def _run(*args, **kw):
         return subprocess.run(args, check=True, capture_output=True, text=True, **kw)
@@ -76,8 +91,52 @@ def publish(
         if result.returncode == 0:
             return  # nothing changed
 
-        _run("git", "commit", "-m", message, cwd=tmp)
+        _run(
+            "git",
+            "-c",
+            f"user.name={user_name}",
+            "-c",
+            f"user.email={user_email}",
+            "commit",
+            "-m",
+            message,
+            cwd=tmp,
+        )
         _run("git", "push", "origin", branch, "--force", cwd=tmp)
+
+
+def _identity(config: dict[str, Any], project_directory: Path) -> tuple[str, str]:
+    """The name and email to commit with (see :func:`publish`)."""
+    identity = []
+    for key, git_key, env_var in [
+        ("user_name", "user.name", "GIT_COMMITTER_NAME"),
+        ("user_email", "user.email", "GIT_COMMITTER_EMAIL"),
+    ]:
+        value = (
+            config.get(key)
+            or _git_config(git_key, project_directory)
+            or os.environ.get(env_var)
+        )
+        if not value:
+            raise Error(
+                "The gh-pages publish strategy needs a git identity to commit with, "
+                "but none is set. Set user_name and user_email in the strategy's "
+                "config in automata.yaml, or set git's user.name and user.email "
+                "(git config user.name ...)."
+            )
+        identity.append(value)
+    return identity[0], identity[1]
+
+
+def _git_config(key: str, project_directory: Path) -> str | None:
+    """A git config value as seen from the project's repository, or None."""
+    result = subprocess.run(
+        ["git", "config", "--get", key],
+        cwd=project_directory,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() or None
 
 
 def _get_remote_url(remote: str, project_directory: Path) -> str:
