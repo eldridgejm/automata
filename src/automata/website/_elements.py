@@ -100,7 +100,7 @@ def _resolve(
     try:
         template = jinja2.Template(
             template_str,
-            undefined=jinja2.StrictUndefined,
+            undefined=smartconfig.StrictUndefined,
             variable_start_string="${",
             variable_end_string="}",
             block_start_string="{%",

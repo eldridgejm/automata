@@ -55,6 +55,13 @@ In this branch, we will implement the website feature "from scratch". We have al
 - [ ] Thorough documentation of website abstraction
 - [ ] Thorough documentation of default theme, including elements
 - [ ] Better error messages
+  - [x] Tracebacks only for unexpected errors; build failures name the artifact and show its output
+  - [x] Configuration errors give FILE: KEYPATH: REASON (automata.yaml, extensions, publication.yaml, collection.yaml, inline materials, schema.json)
+  - [x] Element configuration errors give the full keypath (website.elements.<name>..., schedule entry index and publication)
+  - [x] Page errors give the source file and line; theme template errors give the template and line
+  - [x] Undefined keys suggest a close key ("Did you mean ...?") or list the keys (smartconfig StrictUndefined)
+  - [ ] Line numbers for YAML configuration errors (ruamel round-trip loader and a keypath-to-line map)
+  - [ ] A missing required key's keypath ends at the missing key (smartconfig convention); consider ending at the dict that lacks it
 - [ ] Flesh out the CLI with more commands
 - [x] Rewrite DESIGN.md around hooks and extensions (deleted instead: it was a working note, and the design is implemented)
 - [x] Raise automata.exceptions.Error (not ValueError) when website.render() finds no page.html

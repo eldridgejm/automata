@@ -461,6 +461,27 @@ def test_page_errors_name_the_source_file_and_line(tmpsite, theme):
     assert message == f"{source}:3: 'nope' is undefined"
 
 
+def test_page_undefined_key_errors_suggest_a_close_key(tmpsite, theme):
+    tmpsite.make_page("index.md", "${ vars.cours }")
+    source = tmpsite.content_directory / "index.md"
+
+    message = _page_error(tmpsite, theme=theme, vars={"course": "DSC 40B"})
+
+    assert message == f'{source}:1: The dict has no key "cours". Did you mean "course"?'
+
+
+def test_theme_template_undefined_key_errors_suggest_a_close_key(tmpsite, tmp_path):
+    tmpsite.make_page("index.md", "ok")
+    theme = _theme_with_page_template(tmp_path, "<title>${ vars.cours }</title>")
+
+    message = _page_error(tmpsite, theme=theme, vars={"course": "DSC 40B"})
+
+    assert message.endswith(
+        'template page.html, line 1: The dict has no key "cours". '
+        'Did you mean "course"?'
+    )
+
+
 def test_page_error_lines_count_the_frontmatter(tmpsite, theme):
     # the frontmatter is lines 1-4, so the bad line is line 7 of the file
     tmpsite.make_page("index.md", "---\nvars:\n  a: 1\n---\nok\n\n${ nope }\n")

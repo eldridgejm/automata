@@ -84,7 +84,7 @@ def _interpolate(
 
     return jinja2.Template(
         content,
-        undefined=jinja2.StrictUndefined,
+        undefined=smartconfig.StrictUndefined,
         variable_start_string="${",
         variable_end_string="}",
         block_start_string="{%",
@@ -130,7 +130,7 @@ def _create_jinja_environment(templates: dict[str, str]) -> jinja2.Environment:
     """Create a Jinja2 environment from a dictionary of templates."""
     return jinja2.Environment(
         loader=_NamedDictLoader(templates),
-        undefined=jinja2.StrictUndefined,
+        undefined=smartconfig.StrictUndefined,
         variable_start_string="${",
         variable_end_string="}",
         block_start_string="{%",

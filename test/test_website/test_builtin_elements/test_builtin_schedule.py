@@ -890,6 +890,41 @@ def test_publication_errors_give_the_keypath_and_the_publication(schedule_elemen
     assert excinfo.value.reason.endswith('(for publication "lecture02")')
 
 
+def test_publication_metadata_typos_suggest_the_key(schedule_element):
+    schedule_element.context.materials = automata.materials.Universe(
+        collections={
+            "lectures": automata.materials.Collection(
+                publication_schema=None,
+                publications={
+                    "lecture01": automata.materials.Publication(
+                        metadata={"topic": "Sorting"}, artifacts={}
+                    ),
+                },
+            )
+        }
+    )
+    config = _weekly_config(
+        primary_activity_collections=[
+            {
+                "collection": "lectures",
+                "for_each_publication": {
+                    "start_displaying_on": "2024-01-08",
+                    "title": "${ publication.metadata.topc }",
+                    "resources": [],
+                },
+            }
+        ]
+    )
+
+    with pytest.raises(smartconfig.exceptions.ResolutionError) as excinfo:
+        schedule_element.template_vars(config)
+
+    assert excinfo.value.reason == (
+        'The dict has no key "topc". Did you mean "topic"? (for publication '
+        '"lecture01")'
+    )
+
+
 def test_unknown_collection_in_schedule_is_reported(schedule_element):
     config = _weekly_config(
         primary_activity_collections=[
