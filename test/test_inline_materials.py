@@ -6,6 +6,7 @@ from textwrap import dedent
 import pytest
 
 from automata import Automata
+from automata.exceptions import Error
 
 
 @pytest.fixture
@@ -233,7 +234,7 @@ def test_inline_materials_cannot_have_recipes(tmp_path):
         """)
     )
 
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(Error) as excinfo:
         Automata(project).discover()
 
     message = str(excinfo.value)

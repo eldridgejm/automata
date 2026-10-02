@@ -3,6 +3,7 @@
 import pathlib
 from typing import Any, Mapping, Optional
 
+from automata.exceptions import Error
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
 
 from ._discover_collection import parse_collection
@@ -84,7 +85,7 @@ def discover_inline(
                     isinstance(artifact_def, dict)
                     and artifact_def.get("recipe") is not None
                 ):
-                    raise ValueError(
+                    raise Error(
                         f"Inline materials cannot have recipes "
                         f"(collection={collection_name!r}, "
                         f"publication={pub_key!r}, "

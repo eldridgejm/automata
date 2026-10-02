@@ -1,6 +1,8 @@
 import datetime
+import functools
 import pathlib
-from typing import Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 import typer
 
@@ -10,6 +12,27 @@ from .exceptions import Error
 from .materials import serialize
 
 app = typer.Typer()
+
+
+def _command(*args: Any, **kwargs: Any) -> Callable:
+    """Like ``app.command``, but reports automata errors without a traceback.
+
+    An :class:`automata.exceptions.Error` raised by the command is printed as
+    one ``Error: ...`` line, and the command exits with status 1.
+    """
+
+    def decorator(fn: Callable) -> Callable:
+        @functools.wraps(fn)
+        def wrapper(*fn_args: Any, **fn_kwargs: Any) -> Any:
+            try:
+                return fn(*fn_args, **fn_kwargs)
+            except Error as e:
+                typer.echo(f"Error: {e}", err=True)
+                raise typer.Exit(code=1)
+
+        return app.command(*args, **kwargs)(wrapper)
+
+    return decorator
 
 
 def _parse_current_time(value: str) -> datetime.datetime:
@@ -90,7 +113,7 @@ def _project() -> Automata:
         raise typer.Exit(code=1)
 
 
-@app.command()
+@_command()
 def build(current_time: Optional[str] = _current_time_option):
     """Run the full pipeline and produce the site in the build directory."""
     _project().build(current_time=_get_current_time(current_time))
@@ -108,7 +131,7 @@ def _complete_publish_targets(incomplete: str) -> list[str]:
         return []
 
 
-@app.command()
+@_command()
 def publish(
     target: Optional[str] = typer.Argument(
         None,
@@ -119,19 +142,15 @@ def publish(
 ):
     """Run the full pipeline and deploy the built site."""
     project = _project()
-    try:
-        published = project.publish(
-            target=target, current_time=_get_current_time(current_time)
-        )
-    except Error as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1)
+    published = project.publish(
+        target=target, current_time=_get_current_time(current_time)
+    )
 
     for name in published:
         typer.echo(f"Published to {name}.")
 
 
-@app.command()
+@_command()
 def discover():
     """Discover materials and print a summary."""
     project = _project()
@@ -141,18 +160,14 @@ def discover():
         typer.echo(f"{name}: {n} publication(s)")
 
 
-@app.command(name="clean-build-directory")
+@_command(name="clean-build-directory")
 def clean_build_directory():
     """Empty the build directory, keeping top-level dot-entries."""
-    try:
-        _project().clean_build_directory()
-    except Error as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1)
+    _project().clean_build_directory()
     typer.echo("Build directory cleaned.")
 
 
-@app.command(name="build-materials")
+@_command(name="build-materials")
 def build_materials(current_time: Optional[str] = _current_time_option):
     """Discover and build materials (run recipes, check release times)."""
     project = _project()
@@ -161,7 +176,7 @@ def build_materials(current_time: Optional[str] = _current_time_option):
     typer.echo("Materials built.")
 
 
-@app.command()
+@_command()
 def export(current_time: Optional[str] = _current_time_option):
     """Discover, build, and export materials to the build directory."""
     project = _project()
@@ -173,20 +188,16 @@ def export(current_time: Optional[str] = _current_time_option):
     typer.echo("Materials exported.")
 
 
-@app.command(name="render-website")
+@_command(name="render-website")
 def render_website(current_time: Optional[str] = _current_time_option):
     """Render the website from previously exported materials."""
     project = _project()
-    try:
-        materials = project.load_exported_materials()
-    except Error as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1)
+    materials = project.load_exported_materials()
     project.render_website(materials, current_time=_get_current_time(current_time))
     typer.echo("Website rendered.")
 
 
-@app.command()
+@_command()
 def resolve(
     path: pathlib.Path = typer.Argument(
         ...,
@@ -211,7 +222,7 @@ def resolve(
         raise typer.Exit(code=1)
 
 
-@app.command()
+@_command()
 def status():
     """Check status of course materials."""
     print("All good.")

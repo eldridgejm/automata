@@ -345,3 +345,20 @@ def test_publish_target_completion_outside_a_project_is_empty(tmp_path):
 
     with contextlib.chdir(tmp_path):
         assert _complete_publish_targets("") == []
+
+
+def test_errors_during_the_build_print_without_a_traceback(project):
+    # given: an inline artifact with a recipe, which is not allowed
+    config = project / "automata.yaml"
+    lines = config.read_text().splitlines()
+    i = next(n for n, line in enumerate(lines) if "path: homeworks" in line)
+    indent = lines[i][: len(lines[i]) - len(lines[i].lstrip())]
+    lines.insert(i + 1, f"{indent}recipe: make")
+    config.write_text("\n".join(lines) + "\n")
+
+    result = runner.invoke(app, ["build"])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "Error:" in result.output
+    assert "recipe" in result.output
