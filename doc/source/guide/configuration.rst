@@ -142,9 +142,9 @@ Website generation settings:
        placed.
    * - ``no_render_suffix``
      - ``".no_render"``
-     - Files with this suffix after another one (e.g. ``data.csv.no_render``)
-       are copied without rendering, with this suffix removed. Set to ``null``
-       to disable.
+     - Files ending in this suffix (e.g. ``template.html.no_render``) are
+       copied without rendering, with the suffix removed. Set to ``null`` to
+       disable.
    * - ``base_path``
      - ``"/"``
      - URL base path for the site. Set to ``"."`` for relative URLs, or

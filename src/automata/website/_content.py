@@ -1,7 +1,7 @@
 """Loading pages and static content from a content directory."""
 
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from ..exceptions import Error
 
@@ -54,8 +54,9 @@ def load_content_directory(
     """
     pages: dict[str, Page] = {}
     static_content: dict[str, str | bytes] = {}
-    # the file each output path comes from, to find two with the same one
-    sources: dict[str, Path] = {}
+    # the file each output path comes from, and a file in each directory of the
+    # output, to find two files that would have the same path in the built site
+    sources = _Sources()
 
     for dirpath, dirnames, filenames in content_directory.walk(top_down=True):
         dirpath = Path(dirpath)
@@ -69,14 +70,14 @@ def load_content_directory(
             file_path = dirpath / filename
             relative = file_path.relative_to(content_directory)
 
-            # handle no_render_suffix: treat as static, strip suffix. Only a file
-            # with another suffix before it (data.csv.no_render) is a no-render file
+            # handle no_render_suffix: treat as static, strip suffix (unless that
+            # would leave no name, as for a file named ".no_render")
             if (
                 no_render_suffix
-                and file_path.suffix.lower() == no_render_suffix
-                and len(file_path.suffixes) > 1
+                and filename.lower().endswith(no_render_suffix.lower())
+                and len(filename) > len(no_render_suffix)
             ):
-                output_key = str(relative.with_suffix(""))
+                output_key = str(relative)[: -len(no_render_suffix)]
                 _claim(output_key, file_path, sources)
                 static_content[output_key] = file_path.read_bytes()
             elif file_path.suffix.lower() in (".md", ".html"):
@@ -91,11 +92,42 @@ def load_content_directory(
     return pages, static_content
 
 
-def _claim(output_key: str, file_path: Path, sources: dict[str, Path]) -> None:
-    """Record that *file_path* becomes *output_key*, unless another file does."""
-    if output_key in sources:
-        raise Error(
-            f"{sources[output_key]} and {file_path} would both become {output_key} "
-            f"in the built site. Rename or remove one of them."
+class _Sources:
+    """The content files that become each path of the built site."""
+
+    def __init__(self):
+        # the file each output path comes from
+        self.files: dict[str, Path] = {}
+        # for each directory of the output, a file that becomes a path inside it
+        self.directories: dict[str, Path] = {}
+
+
+def _claim(output_key: str, file_path: Path, sources: _Sources) -> None:
+    """Record that *file_path* becomes *output_key*, unless that conflicts.
+
+    Two files can't become the same path, and a file can't become a path where
+    another file's output needs a directory.
+    """
+
+    def conflict(file: Path, inside: Path, key: str) -> Error:
+        return Error(
+            f"{file} would become {key} in the built site, but {inside} would be "
+            f"inside a directory with that name. Rename or remove one of them."
         )
-    sources[output_key] = file_path
+
+    if output_key in sources.files:
+        raise Error(
+            f"{sources.files[output_key]} and {file_path} would both become "
+            f"{output_key} in the built site. Rename or remove one of them."
+        )
+    if output_key in sources.directories:
+        raise conflict(file_path, sources.directories[output_key], output_key)
+
+    parents = [str(parent) for parent in PurePosixPath(output_key).parents][:-1]
+    for parent in parents:
+        if parent in sources.files:
+            raise conflict(sources.files[parent], file_path, parent)
+
+    sources.files[output_key] = file_path
+    for parent in parents:
+        sources.directories.setdefault(parent, file_path)

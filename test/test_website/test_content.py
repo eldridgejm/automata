@@ -51,15 +51,23 @@ def test_no_render_files_are_static_with_the_suffix_removed(tmp_path):
     assert static == {"raw.html": b"<p>${ not interpolated }</p>"}
 
 
-def test_a_file_named_only_with_the_no_render_suffix_is_static_as_is(tmp_path):
+def test_the_no_render_suffix_is_removed_even_without_another_suffix(tmp_path):
     content = tmp_path / "content"
-    _write(content / ".no_render", "x")
-    _write(content / "notes.no_render", "x")
+    _write(content / "notes.no_render", "${ not interpolated }")
 
     _, static = load_content_directory(content, content / "materials")
 
-    # "notes.no_render" has only one suffix, so it is not a no-render file
-    assert "notes.no_render" in static
+    assert static == {"notes": b"${ not interpolated }"}
+
+
+def test_a_file_named_only_with_the_no_render_suffix_is_static_as_is(tmp_path):
+    content = tmp_path / "content"
+    _write(content / ".no_render", "x")
+
+    _, static = load_content_directory(content, content / "materials")
+
+    # removing the suffix would leave no name
+    assert static == {".no_render": b"x"}
 
 
 def test_no_render_suffix_of_none_renders_everything_by_extension(tmp_path):
@@ -108,3 +116,19 @@ def test_two_files_with_the_same_output_path_are_an_error(
     assert str(content / first) in message
     assert str(content / second) in message
     assert f"would both become {output}" in message
+
+
+def test_a_file_where_a_directory_would_be_is_an_error(tmp_path):
+    # notes.no_render becomes notes, where the notes directory's pages go
+    content = tmp_path / "content"
+    _write(content / "notes.no_render", "one")
+    _write(content / "notes" / "week1.md", "two")
+
+    with pytest.raises(Error) as excinfo:
+        load_content_directory(content, content / "materials")
+
+    assert str(excinfo.value) == (
+        f"{content / 'notes.no_render'} would become notes in the built site, but "
+        f"{content / 'notes' / 'week1.md'} would be inside a directory with that "
+        "name. Rename or remove one of them."
+    )

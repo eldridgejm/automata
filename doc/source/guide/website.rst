@@ -185,13 +185,18 @@ With the default ``base_path`` of ``"/"``, ``url_for('about.html')`` produces
 Raw files (no rendering)
 ------------------------
 
-Files with the ``no_render_suffix`` (default: ``.no_render``) after another
-suffix are copied without rendering, with the suffix stripped. (A file with
-only that suffix, such as ``notes.no_render``, is copied as it is.) This is useful for including files
-that contain template syntax that should not be interpreted:
+Files ending in the ``no_render_suffix`` (default: ``.no_render``) are copied
+without rendering, with the suffix stripped. Only pages (``.md`` and ``.html``)
+are rendered, so this is useful for a page that should be published as it is,
+for instance because it contains template syntax that should not be
+interpreted:
 
 .. code-block:: text
 
     content/
-        data.csv.no_render    -->    _build/data.csv
         template.html.no_render    -->    _build/template.html
+        notes.md.no_render         -->    _build/notes.md
+
+Keep the file's own extension before the suffix: ``notes.no_render`` becomes
+``notes``, with no extension, which web servers usually send as a download
+rather than show. (A file named just ``.no_render`` is copied as it is.)
