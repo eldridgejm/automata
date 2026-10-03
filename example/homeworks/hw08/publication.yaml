@@ -1,15 +1,17 @@
 metadata:
   number: 8
-  released: 2025-11-10 12:00:00
-  due: 2025-11-17 23:59:00
+  released: 2026-11-09 12:00:00
+  due: 2026-11-16 23:59:00
   topic: Shortest Paths
 
 artifacts:
   homework.txt:
     recipe: echo "Problems for Homework 8" > homework.txt
     path: homework.txt
+    release_time: ${ this.metadata.released }
 
   solution.txt:
     recipe: echo "Solutions for Homework 8" > solution.txt
     path: solution.txt
+    release_time: 1 day after ${ this.metadata.due }
     ready: false

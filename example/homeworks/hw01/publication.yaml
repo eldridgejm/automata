@@ -1,15 +1,22 @@
 metadata:
   number: 1
-  released: 2025-09-22 12:00:00
-  due: 2025-09-29 23:59:00
+  released: 2026-09-21 12:00:00
+  due: 2026-09-28 23:59:00
   topic: Time Complexity
 
 artifacts:
   homework.txt:
     recipe: echo "Problems for Homework 1" > homework.txt
     path: homework.txt
+    release_time: ${ this.metadata.released }
 
   solution.txt:
     recipe: echo "Solutions for Homework 1" > solution.txt
     path: solution.txt
+    release_time: 1 day after ${ this.metadata.due }
     ready: true
+
+  homework.pdf:
+    recipe: sleep 2 && pdflatex -interaction=nonstopmode -halt-on-error homework.tex
+    path: homework.pdf
+    release_time: ${ this.metadata.released }

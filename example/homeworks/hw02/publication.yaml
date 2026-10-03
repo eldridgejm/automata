@@ -1,15 +1,22 @@
 metadata:
   number: 2
-  released: 2025-09-29 12:00:00
-  due: 2025-10-06 23:59:00
+  released: 2026-09-28 12:00:00
+  due: 2026-10-05 23:59:00
   topic: Recurrences
 
 artifacts:
   homework.txt:
     recipe: echo "Problems for Homework 2" > homework.txt
     path: homework.txt
+    release_time: ${ this.metadata.released }
 
   solution.txt:
     recipe: echo "Solutions for Homework 2" > solution.txt
     path: solution.txt
+    release_time: 1 day after ${ this.metadata.due }
     ready: true
+
+  homework.pdf:
+    recipe: sleep 2 && pdflatex -interaction=nonstopmode -halt-on-error homework.tex
+    path: homework.pdf
+    release_time: ${ this.metadata.released }

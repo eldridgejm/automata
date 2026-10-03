@@ -1,15 +1,22 @@
 metadata:
   number: 4
-  released: 2025-10-13 12:00:00
-  due: 2025-10-20 23:59:00
+  released: 2026-10-12 12:00:00
+  due: 2026-10-19 23:59:00
   topic: Selection
 
 artifacts:
   homework.txt:
     recipe: echo "Problems for Homework 4" > homework.txt
     path: homework.txt
+    release_time: ${ this.metadata.released }
 
   solution.txt:
     recipe: echo "Solutions for Homework 4" > solution.txt
     path: solution.txt
+    release_time: 1 day after ${ this.metadata.due }
     ready: false
+
+  homework.pdf:
+    recipe: pdflatex -interaction=nonstopmode -halt-on-error homework.tex
+    path: homework.pdf
+    release_time: ${ this.metadata.released }

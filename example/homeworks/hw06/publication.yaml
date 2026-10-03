@@ -1,15 +1,17 @@
 metadata:
   number: 6
-  released: 2025-10-27 12:00:00
-  due: 2025-11-03 23:59:00
+  released: 2026-10-26 12:00:00
+  due: 2026-11-02 23:59:00
   topic: Graph Theory
 
 artifacts:
   homework.txt:
     recipe: echo "Problems for Homework 6" > homework.txt
     path: homework.txt
+    release_time: ${ this.metadata.released }
 
   solution.txt:
     recipe: echo "Solutions for Homework 6" > solution.txt
     path: solution.txt
+    release_time: 1 day after ${ this.metadata.due }
     ready: false

@@ -15,9 +15,9 @@ week_topics:
 
 events:
   - name: Midterm 01 Review Session
-    date: "2025-10-18"
+    date: "2026-10-17"
   - name: Midterm 01
-    date: "2025-10-20"
+    date: "2026-10-19"
 
 announcements:
   - week: Null
@@ -113,14 +113,16 @@ secondary_activity_collections:
       due_datetime: !template "${ publication.metadata.due }"
       title: Lab
       resources:
-        - type: markdown
-          markdown: !template |
-            [Instructions](${ publication.artifacts["lab.txt"].path }) and
-            [Starter Code](${ publication.artifacts["starter.txt"].path })
+        - type: artifact_links
+          links:
+            - text: Instructions
+              artifact: lab.txt
+            - text: Starter Code
+              artifact: starter.txt
 
 extra_primary_activities:
   - title: Exam Review Session
-    start_displaying_on: "2025-10-18"
+    start_displaying_on: "2026-10-17"
     resources:
       - type: markdown
         markdown: |
@@ -137,8 +139,8 @@ extra_primary_activities:
 
 extra_secondary_activities:
   - title: Extra Credit
-    start_displaying_on: "2025-10-22"
-    due_datetime: "2025-10-31 23:59:00"
+    start_displaying_on: "2026-10-21"
+    due_datetime: "2026-10-30 23:59:00"
     resources:
       - type: markdown
         markdown: |

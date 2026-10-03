@@ -1,15 +1,15 @@
 course:
   name: "DSC 40B"
   title: "Theoretical Foundations of Data Science II"
-  term: "Fall 2025"
+  term: "Fall 2026"
   # weeks are numbered from here (in the schedule and the calendar)
-  first_week_start: 2025-09-22
+  first_week_start: 2026-09-21
 
 vars:
-  date_of_first_lecture: 2025-09-23
+  date_of_first_lecture: 2026-09-22
 
-  midterm_date: 2025-10-27
-  final_date: 2025-12-10
+  midterm_date: 2026-10-26
+  final_date: 2026-12-09
 
 extensions:
   - extensions/practice-problems

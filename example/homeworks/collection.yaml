@@ -10,4 +10,7 @@ publication_schema:
     - homework.txt
     - solution.txt
 
+  optional_artifacts:
+    - homework.pdf
+
   is_ordered: true
