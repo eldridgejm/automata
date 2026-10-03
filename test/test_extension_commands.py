@@ -326,3 +326,26 @@ def test_bad_command_groups_are_errors(tmp_path, commands, message):
 
     assert problem is not None
     assert message in str(problem)
+
+
+# loading the project once =============================================================
+
+
+def test_commands_reuse_the_project_loaded_at_startup(tmp_path):
+    from automata.cli import main
+
+    # importing extension.py (which loading the project does) leaves a mark
+    counting = (
+        "import pathlib\n"
+        "from automata.extensions import Extension\n\n"
+        'marks = pathlib.Path(__file__).parent / "marks"\n'
+        'marks.write_text(marks.read_text() + "x" if marks.exists() else "x")\n'
+        'extension = Extension(name="counting", hooks={})\n'
+    )
+    project = _project(tmp_path, {"counting": {"extension.py": counting}})
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(["check"], cwd=project)
+
+    assert excinfo.value.code == 0
+    assert (project / "extensions" / "counting" / "marks").read_text() == "x"

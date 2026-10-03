@@ -126,12 +126,23 @@ def _find_project_root() -> pathlib.Path | None:
     return None if config_path is None else config_path.parent
 
 
+# the project main() loaded (to find its extensions' commands), which the
+# commands reuse rather than loading it again
+_startup_project: Automata | None = None
+
+
 def _load_project() -> Automata:
     """Load the project enclosing the current directory, raising Error if it can't.
 
-    Searches upward from the current directory for automata.yaml, and says
-    (on stderr) which project is used when it is not the current directory.
+    Searches upward from the current directory for automata.yaml (unless
+    main() already loaded the project), and says (on stderr) which project is
+    used when it is not the current directory.
     """
+    if _startup_project is not None:
+        if _startup_project.path != pathlib.Path.cwd():
+            typer.echo(f"Using project at {_startup_project.path}", err=True)
+        return _startup_project
+
     root = _find_project_root()
     if root is None:
         raise Error(
@@ -695,22 +706,34 @@ def app_for_directory(directory: pathlib.Path) -> tuple[typer.Typer, Error | Non
     """The CLI for the project at or above *directory*: automata's commands,
     and its extensions' commands. If the project or its extensions' commands
     can't be loaded, only automata's commands, and the problem."""
+    full, _, problem = _load_app(directory)
+    return full, problem
+
+
+def _load_app(
+    directory: pathlib.Path,
+) -> tuple[typer.Typer, Automata | None, Error | None]:
+    """As :func:`app_for_directory`, and also the project, if it loaded."""
     full = typer.Typer()
     full.registered_commands = list(app.registered_commands)
     full.registered_groups = list(app.registered_groups)
     config_path = find_config(directory)
     if config_path is None:
-        return full, Error(
+        problem = Error(
             f"No {CONFIGURATION_FILENAME} found in {directory} or any parent directory."
         )
+        return full, None, problem
     try:
         project = Automata(config_path.parent)
+    except Error as e:
+        return full, None, e
+    try:
         commands = _extension_commands(project)
     except Error as e:
-        return full, e
+        return full, project, e
     for name, (extension, command) in commands.items():
         _add_extension_command(full, name, extension, command, project)
-    return full, None
+    return full, project, None
 
 
 def requested_command(argv: list[str]) -> str | None:
@@ -720,8 +743,9 @@ def requested_command(argv: list[str]) -> str | None:
 
 
 def main(argv: list[str] | None = None, cwd: pathlib.Path | None = None):
+    global _startup_project
     argv = sys.argv[1:] if argv is None else argv
-    full, problem = app_for_directory(cwd or pathlib.Path.cwd())
+    full, project, problem = _load_app(cwd or pathlib.Path.cwd())
     command = requested_command(argv)
     if (
         problem is not None
@@ -731,7 +755,11 @@ def main(argv: list[str] | None = None, cwd: pathlib.Path | None = None):
         # it may be an extension's command, which couldn't be loaded
         typer.echo(f"Error: {problem}", err=True)
         raise SystemExit(1)
-    full(argv)
+    _startup_project = project
+    try:
+        full(argv)
+    finally:
+        _startup_project = None
 
 
 if __name__ == "__main__":
