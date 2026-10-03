@@ -17,11 +17,12 @@ import os
 import threading
 import time
 import urllib.parse
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from .config import is_ignored
 from .exceptions import Error
 
 if TYPE_CHECKING:
@@ -72,9 +73,11 @@ class LiveReload:
 Snapshot = dict[Path, tuple[int, int]]
 
 
-def snapshot(root: Path, exclude: list[Path]) -> Snapshot:
+def snapshot(root: Path, exclude: list[Path], ignore: Sequence[str] = ()) -> Snapshot:
     """Each file under *root*'s modification time and size, skipping the
-    directories in *exclude*, and hidden files and directories (like .git)."""
+    directories in *exclude*, those matching *ignore* (paths relative to
+    *root*, which may be globs), and hidden files and directories (like
+    .git)."""
     excluded = {path.resolve() for path in exclude}
     files: Snapshot = {}
     for directory, subdirectories, names in os.walk(root):
@@ -84,6 +87,7 @@ def snapshot(root: Path, exclude: list[Path]) -> Snapshot:
             if not name.startswith(".")
             and name != "__pycache__"
             and (Path(directory) / name).resolve() not in excluded
+            and not is_ignored(Path(directory) / name, root, list(ignore))
         ]
         for name in names:
             if not name.startswith("."):
@@ -114,6 +118,8 @@ class Rebuilder:
         Whether recipes' output goes to the terminal.
     echo : Callable[[str], None]
         Reports each build.
+    ignore : Sequence[str]
+        Directories not to watch: paths relative to *root*, which may be globs.
 
     """
 
@@ -127,8 +133,10 @@ class Rebuilder:
         current_time: datetime.datetime | None = None,
         verbose: bool = False,
         echo: Callable[[str], None] = print,
+        ignore: Sequence[str] = (),
     ):
         self.load, self.root, self.live, self.echo = load, root, live, echo
+        self.ignore = ignore
         self.content_dir, self.build_dir = content_dir.resolve(), build_dir
         self.current_time, self.verbose = current_time, verbose
         self._project: Automata | None = None
@@ -159,12 +167,12 @@ class Rebuilder:
             self.echo(f"{what} at {datetime.datetime.now():%H:%M:%S}.")
         # after the build, so that the files it writes (like recipes' outputs)
         # aren't taken for changes
-        self._files = snapshot(self.root, exclude=[self.build_dir])
+        self._files = snapshot(self.root, exclude=[self.build_dir], ignore=self.ignore)
 
     def poll(self) -> bool:
         """Rebuild, if any file has changed since the last build; returns
         whether it did."""
-        files = snapshot(self.root, exclude=[self.build_dir])
+        files = snapshot(self.root, exclude=[self.build_dir], ignore=self.ignore)
         changed = {
             path
             for path in files.keys() | self._files.keys()
@@ -359,6 +367,7 @@ def serve(
         current_time=current_time,
         verbose=verbose,
         echo=echo,
+        ignore=project.config.ignore,
     )
     rebuilder.build()
     threading.Thread(target=server.serve_forever, daemon=True).start()

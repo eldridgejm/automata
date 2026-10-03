@@ -80,6 +80,9 @@ def test_read_config_applies_defaults(tmp_path: Path) -> None:
     # extensions should default to []
     assert config.extensions == []
 
+    # no directories are ignored
+    assert config.ignore == []
+
     # Other website defaults
     assert config.website.materials_directory_name == "materials"
     assert config.website.no_render_suffix == ".no_render"

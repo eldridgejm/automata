@@ -83,6 +83,24 @@ the files a build writes itself (such as recipes' outputs). With
 time it runs.
 
 
+``automata archive``
+--------------------
+
+Build the materials, and zip them up, with ``materials.json`` describing
+them. The website, and the build directory, are untouched.
+
+::
+
+    automata archive [FILE] [--all] [--current-time TIME] [--verbose]
+
+The zip is ``FILE``, or by default one named after the course in the project
+directory (e.g. ``dsc-40b-fall-2026-materials.zip``). Its contents are in a
+folder named like it: each artifact as ``<collection>/<publication>/<artifact>``.
+``--all`` includes the artifacts that are not released yet, or not ready, for
+an archive of everything (at the end of a term, say). It reports the build's
+progress, as ``automata build`` does.
+
+
 ``automata publish``
 --------------------
 

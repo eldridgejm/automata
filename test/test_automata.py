@@ -133,6 +133,16 @@ def test_export_writes_to_another_directory(project_dir, tmp_path):
     assert not (project_dir / "_build" / "materials").exists()
 
 
+def test_archive_zips_the_materials_and_returns_its_path(project_dir, tmp_path):
+    import zipfile
+
+    path = Automata(project_dir).archive(tmp_path / "out.zip", all_artifacts=True)
+
+    assert path == tmp_path / "out.zip"
+    with zipfile.ZipFile(path) as archive:
+        assert "out/materials.json" in archive.namelist()
+
+
 def test_export_returns_exported_universe(project_dir):
     a = Automata(project_dir)
     discovered = a.discover()
@@ -765,6 +775,37 @@ def test_a_missing_content_directory_is_reported(project_dir):
 
 
 # discovery ============================================================================
+
+
+def _ignoring(tmp_path, patterns):
+    """A project that ignores *patterns*, with publications in directories
+    that match them, and in one that doesn't (notes/final)."""
+    project = _write_release_project(tmp_path / "project")
+    config = project / "automata.yaml"
+    listed = "".join(f"  - {pattern!r}\n" for pattern in patterns)
+    config.write_text(config.read_text() + f"ignore:\n{listed}")
+    for directory in ["_previous/labs", "past-2024", "notes/drafts", "notes/final"]:
+        (project / directory).mkdir(parents=True)
+        (project / directory / "publication.yaml").write_text("artifacts: {}")
+    # an old collection whose configuration no longer resolves
+    (project / "_previous" / "labs" / "collection.yaml").write_text(
+        "publication_schema: ${ vars.gone }\n"
+    )
+    return project
+
+
+def test_discover_skips_the_directories_listed_under_ignore(tmp_path):
+    project = _ignoring(tmp_path, ["_previous", "past-*", "notes/drafts"])
+
+    universe = Automata(project).discover()
+
+    assert set(universe.collections["default"].publications) == {"notes/final"}
+
+
+def test_check_skips_the_directories_listed_under_ignore(tmp_path):
+    project = _ignoring(tmp_path, ["_previous", "past-*", "notes/drafts"])
+
+    assert Automata(project).check() == []
 
 
 def test_discover_skips_the_build_directory_and_hidden_directories(tmp_path):

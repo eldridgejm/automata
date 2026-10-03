@@ -134,6 +134,21 @@ The primary interface is the ``Automata`` class.
         :returns: The exported materials universe.
         :rtype: Universe[ExportedArtifact]
 
+    .. method:: archive(path=None, all_artifacts=False, current_time=None, verbose=False)
+
+        Build the materials, and zip them (with ``materials.json``) into
+        *path*, in a folder named like it (see ``automata archive``). The build
+        directory is untouched.
+
+        :param path: The zip file to write. By default, one named after the
+            course in the project directory.
+        :type path: Path or None
+        :param all_artifacts: Include the artifacts not released yet, or not
+            ready.
+        :type all_artifacts: bool
+        :returns: The zip file written.
+        :rtype: Path
+
     .. method:: load_exported_materials()
 
         Load the materials written by a previous :meth:`export_materials` from

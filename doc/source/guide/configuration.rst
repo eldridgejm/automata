@@ -29,6 +29,10 @@ Top-level structure
       exams:
         ...
 
+    # Directories not searched for materials (optional)
+    ignore:
+      - _previous
+
     # The dates `automata calendar` shows (optional)
     calendar:
       homeworks:
@@ -149,6 +153,26 @@ Templates can read an extension's config through ``extensions``, keyed by name
 
 Inline materials definitions. See :doc:`materials` for the full format. This is
 optional --- materials can also (or instead) be defined on the filesystem.
+
+
+``ignore``
+----------
+
+Directories that aren't searched for materials (collections and publications),
+for example an archive of a past term's materials whose configuration no
+longer resolves. Each is a path relative to the project directory, and may be
+a glob; everything inside a matching directory is skipped too. ``automata
+serve`` doesn't watch them either. Optional; by default, nothing is ignored.
+
+.. code-block:: yaml
+
+    ignore:
+      - _previous          # the directory _previous
+      - past-*             # past-2024, past-2025, ...
+      - notes/drafts       # only notes/drafts, not drafts elsewhere
+
+Directories whose names start with a dot (such as ``.git``) and the build
+directory are always skipped, without being listed.
 
 
 ``website``

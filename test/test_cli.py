@@ -256,6 +256,54 @@ def test_export_materials_all_includes_what_isnt_released(project, tmp_path, hol
     assert (every / "homeworks" / "hw01" / "homework.pdf").exists()
 
 
+# archive ==============================================================================
+
+
+def _zip_names(path):
+    import zipfile
+
+    with zipfile.ZipFile(path) as archive:
+        return set(archive.namelist())
+
+
+def test_archive_zips_the_materials(project, tmp_path):
+    zip_path = tmp_path / "materials.zip"
+
+    result = _invoke("archive", str(zip_path))
+
+    names = _zip_names(zip_path)
+    # everything in one folder, named after the zip
+    assert "materials/materials.json" in names
+    assert "materials/homeworks/hw01/homework.pdf" in names
+    assert "Archived 1 artifact to" in result.output
+    assert not (project / "_build").exists()
+
+
+def test_archive_is_named_after_the_course_by_default(project):
+    _invoke("archive")
+
+    zip_path = project / "test-fall-2025-materials.zip"
+    assert "test-fall-2025-materials/materials.json" in _zip_names(zip_path)
+
+
+@pytest.mark.parametrize(
+    "hold_back",
+    [
+        lambda project: _schedule_homework(project, "2099-01-01 00:00:00"),
+        lambda project: _mark_homework_not_ready(project),
+    ],
+    ids=["not released yet", "not ready"],
+)
+def test_archive_all_includes_what_isnt_released(project, tmp_path, hold_back):
+    hold_back(project)
+
+    _invoke("archive", str(tmp_path / "some.zip"))
+    _invoke("archive", "--all", str(tmp_path / "all.zip"))
+
+    assert "some/homeworks/hw01/homework.pdf" not in _zip_names(tmp_path / "some.zip")
+    assert "all/homeworks/hw01/homework.pdf" in _zip_names(tmp_path / "all.zip")
+
+
 def test_render_website_renders_previously_exported_materials(project):
     _invoke("pipeline", "export-materials")
 

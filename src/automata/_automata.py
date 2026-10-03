@@ -1,7 +1,10 @@
 """Public API for working with an automata project."""
 
 import datetime
+import re
 import shutil
+import tempfile
+import zipfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, cast
@@ -14,6 +17,7 @@ from .config import (
     CONFIGURATION_FILENAME,
     Config,
     course_variables,
+    is_ignored,
     load_extensions,
     read_config_with_source_map,
 )
@@ -323,9 +327,9 @@ class Automata:
         """Discover materials from the project directory.
 
         Discovers materials from the filesystem and merges any inline
-        materials defined in ``automata.yaml``. The build directory and
-        directories whose names start with a dot (``.git``, ``.venv``) are
-        skipped.
+        materials defined in ``automata.yaml``. The build directory,
+        directories whose names start with a dot (``.git``, ``.venv``), and
+        those listed under ``ignore`` are skipped.
 
         Returns
         -------
@@ -349,7 +353,11 @@ class Automata:
         build_dir = (self.path / self.config.website.build_directory).resolve()
 
         def skip(directory: Path) -> bool:
-            return directory.name.startswith(".") or directory.resolve() == build_dir
+            return (
+                directory.name.startswith(".")
+                or directory.resolve() == build_dir
+                or is_ignored(directory, self.path, self.config.ignore)
+            )
 
         universe = materials.discover(
             self.path,
@@ -620,6 +628,57 @@ class Automata:
         materials_json.write_text(materials.serialize(exported))
 
         return exported
+
+    def archive(
+        self,
+        path: Path | None = None,
+        all_artifacts: bool = False,
+        current_time: datetime.datetime | None = None,
+        verbose: bool = False,
+    ) -> Path:
+        """Build the materials, and zip them (with ``materials.json``) into
+        *path*, in a folder named like it. The build directory is untouched.
+
+        Parameters
+        ----------
+        path : Path | None
+            The zip file to write. By default, one named after the course in
+            the project directory (e.g. ``dsc-40b-fall-2026-materials.zip``).
+        all_artifacts : bool
+            If true, include the artifacts not released yet, or not ready.
+        current_time : datetime.datetime | None
+            The current time for release-time checks. If *None*, the system
+            time.
+        verbose : bool
+            If true, recipes' output goes to the terminal as they run.
+
+        Returns
+        -------
+        Path
+            The zip file written.
+
+        """
+        if path is None:
+            course = self.config.course
+            name = f"{course.name} {course.term} materials".lower()
+            path = self.path / (re.sub(r"[^a-z0-9]+", "-", name).strip("-") + ".zip")
+
+        built = self.build_materials(
+            self.discover(),
+            current_time=current_time,
+            verbose=verbose,
+            ignore_release_time=all_artifacts,
+            ignore_ready=all_artifacts,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            exported = Path(temporary) / path.stem
+            self.export_materials(built, to=exported)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+                for file in sorted(exported.rglob("*")):
+                    if file.is_file():
+                        archive.write(file, file.relative_to(temporary))
+        return path
 
     def load_exported_materials(self) -> Universe[ExportedArtifact]:
         """Load the materials written by a previous :meth:`export_materials`.

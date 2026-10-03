@@ -85,6 +85,18 @@ def test_a_snapshot_skips_the_build_directory_and_hidden_files(tmp_path):
     assert set(files) == {project / "automata.yaml", project / "content" / "index.md"}
 
 
+def test_a_snapshot_skips_ignored_directories(tmp_path):
+    project = _project(tmp_path)
+    (project / "_previous").mkdir()
+    (project / "_previous" / "old.md").write_text("x")
+    (project / "past-2024").mkdir()
+    (project / "past-2024" / "old.md").write_text("x")
+
+    files = snapshot(project, exclude=[], ignore=["_previous", "past-*"])
+
+    assert set(files) == {project / "automata.yaml", project / "content" / "index.md"}
+
+
 # rebuilding ===========================================================================
 
 

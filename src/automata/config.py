@@ -1,4 +1,5 @@
 import datetime
+import fnmatch
 from pathlib import Path
 from typing import Any
 
@@ -121,6 +122,21 @@ class Config(smartconfig.Prototype):
     # the calendar (automata calendar): for each collection, the metadata dates
     # to show and, optionally, a color
     calendar: dict[str, Any] = {}
+    # directories not searched for materials (nor watched by automata serve):
+    # paths relative to the project, which may be globs (e.g. "past-*")
+    ignore: list[str] = []
+
+
+def is_ignored(directory: Path, root: Path, patterns: list[str]) -> bool:
+    """Whether *directory* matches one of *patterns*: paths relative to
+    *root*, which may be globs."""
+    try:
+        relative = directory.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return False
+    return any(
+        fnmatch.fnmatchcase(relative, pattern.strip("/")) for pattern in patterns
+    )
 
 
 def find_config(start_path: Path) -> Path | None:

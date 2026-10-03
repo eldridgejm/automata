@@ -382,21 +382,21 @@ class _TerminalStatus:
 @contextlib.contextmanager
 def _build_progress(
     project: Automata, verbose: bool, current_time: datetime.datetime | None
-) -> Iterator[None]:
+) -> Iterator["_BuildProgress"]:
     """Report the progress of the build within: with a spinner showing what is
     happening now, on a terminal (unless *verbose*, as recipes' output then
     goes to it)."""
     if sys.stdout.isatty() and not verbose:
         status = _TerminalStatus()
         # (through the spinner's console, so that the lines go above it)
-        _BuildProgress(
+        progress = _BuildProgress(
             project, echo=status.print, status=status, current_time=current_time
         )
     else:
         status = None
-        _BuildProgress(project, verbose=verbose, current_time=current_time)
+        progress = _BuildProgress(project, verbose=verbose, current_time=current_time)
     try:
-        yield
+        yield progress
     finally:
         if status is not None:
             status(None)
@@ -463,6 +463,49 @@ def serve(
         echo=typer.echo,
         open_browser=open_browser,
     )
+
+
+@_command()
+def archive(
+    path: Optional[pathlib.Path] = typer.Argument(
+        None,
+        help=(
+            "The zip file to write. By default, one named after the course "
+            "(e.g. dsc-40b-fall-2026-materials.zip) in the project directory."
+        ),
+    ),
+    all_artifacts: bool = typer.Option(
+        False,
+        "--all",
+        help="Include the artifacts that are not released yet, or not ready.",
+    ),
+    current_time: Optional[str] = _current_time_option,
+    verbose: bool = _verbose_option,
+):
+    """Build the materials, and zip them up. The website is untouched."""
+    project = _project()
+    now = _get_current_time(current_time)
+    with _build_progress(project, verbose, now) as progress:
+        written = project.archive(
+            path,
+            all_artifacts=all_artifacts,
+            current_time=now,
+            verbose=verbose,
+        )
+    size = written.stat().st_size
+    _say(
+        f"[bold green]✓[/] Archived {_counted(progress.built, 'artifact')} to "
+        f"[bold cyan]{escape(_relative_path(written))}[/] [dim]({_size(size)})[/]."
+    )
+
+
+def _size(n: float) -> str:
+    """*n* bytes, for people: e.g. "1.2 MB"."""
+    for unit in ["bytes", "KB", "MB"]:
+        if n < 1000:
+            return f"{n:.0f} {unit}" if unit == "bytes" else f"{n:.1f} {unit}"
+        n /= 1000
+    return f"{n:.1f} GB"
 
 
 @_command(name="clean", group=pipeline)
