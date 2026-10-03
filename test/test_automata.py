@@ -21,6 +21,11 @@ def project_dir(tmp_path):
     # automata.yaml
     (project / "automata.yaml").write_text(
         dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             website:
               theme:
                 use: "default"
@@ -274,6 +279,11 @@ def _write_release_project(
                         path: homeworks/hw01/homework.pdf
                         release_time: 2025-01-10 12:00:00
 
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             website:
               theme:
                 use: "default"

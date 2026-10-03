@@ -95,6 +95,7 @@ def _resolve_publication(
     previous: Optional[Mapping[str, Any]],
     source: pathlib.Path,
     templates: Optional[Mapping[str, Any]] = None,
+    course: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Resolves (interpolates and parses) raw publication contents.
 
@@ -137,6 +138,7 @@ def _resolve_publication(
 
     global_variables: dict[str, Any] = {
         "vars": vars if vars is not None else {},
+        "course": course if course is not None else {},
     }
 
     if previous is not None:
@@ -174,6 +176,7 @@ def parse_publication(
     source: pathlib.Path,
     publication_schema: Optional[PublicationSchema] = None,
     vars: Optional[Mapping[str, Any]] = None,
+    course: Optional[Mapping[str, Any]] = None,
     previous: Optional[Publication] = None,
     templates: Optional[Mapping[str, Any]] = None,
 ) -> Publication[UnbuiltArtifact]:
@@ -214,6 +217,7 @@ def parse_publication(
         previous_dict,
         source,
         templates=templates,
+        course=course,
     )
 
     artifacts: MutableMapping[str, UnbuiltArtifact] = {}

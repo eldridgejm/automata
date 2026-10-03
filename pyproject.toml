@@ -18,6 +18,8 @@ dependencies = [
     "mistune",
     "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git@0.5.7",
     "typer",
+    "fpdf2>=2.8.9",
+    "rich>=14.2.0",
 ]
 
 [project.scripts]

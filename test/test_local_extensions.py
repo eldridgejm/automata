@@ -17,6 +17,11 @@ def _write_project(project: Path, extensions: str) -> Path:
     project.mkdir(parents=True, exist_ok=True)
     (project / "automata.yaml").write_text(
         dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             extensions:
             {extensions}
             website:

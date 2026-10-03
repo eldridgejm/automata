@@ -9,10 +9,16 @@ Top-level structure
 
 .. code-block:: yaml
 
+    # The course (required)
+    course:
+      name: "DSC 80"
+      title: "The Practice and Application of Data Science"
+      term: "Spring 2026"
+      first_week_start: 2026-03-30
+
     # Variables available throughout the project
     vars:
-      course_name: "DSC 80"
-      term: "Spring 2026"
+      office_hours: "Wednesdays, 2-4 PM"
 
     # Extensions to load (optional)
     extensions:
@@ -23,11 +29,57 @@ Top-level structure
       exams:
         ...
 
+    # The dates `automata calendar` shows (optional)
+    calendar:
+      homeworks:
+        ...
+
     # Website generation settings
     website:
       theme: default
       content_directory: content
       build_directory: _build
+
+
+``course``
+----------
+
+The course (required). It is available everywhere ``vars`` is, as ``course``
+(e.g. ``${ course.name }``), and automata uses it: the default theme's titles
+are the course's name and title (unless set in the theme's config), and weeks
+are numbered from ``first_week_start``, in the schedule and in
+``automata calendar``.
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+
+   * - Key
+     - Default
+     - Description
+   * - ``name``
+     - (required)
+     - The course's name, e.g. ``"DSC 80"``.
+   * - ``title``
+     - (required)
+     - The course's title, e.g. ``"The Practice and Application of Data
+       Science"``.
+   * - ``term``
+     - (required)
+     - The term, e.g. ``"Spring 2026"``.
+   * - ``first_week_start``
+     - (required)
+     - The first day of the first week, e.g. ``2026-03-30``. Weeks are numbered
+       from it.
+   * - ``first_week_number``
+     - ``1``
+     - The first week's number (``0`` for a course with a week 0).
+   * - ``instructors``
+     - ``[]``
+     - The instructors' names.
+   * - ``url``
+     - ``null``
+     - The course's website.
 
 
 ``vars``
@@ -40,21 +92,20 @@ files, and in website pages.
 .. code-block:: yaml
 
     vars:
-      course_name: "DSC 80"
-      term: "Spring 2026"
-      start_date: "2026-03-30"
-      instructor: "Jane Doe"
+      office_hours: "Wednesdays, 2-4 PM"
+      midterm_date: 2026-04-30
 
 Variables can be nested:
 
 .. code-block:: yaml
 
     vars:
-      course:
-        name: "DSC 80"
-        title: "The Practice and Application of Data Science"
+      gradescope:
+        url: https://www.gradescope.com/courses/123456
+        code: "ABC123"
 
-Referenced as ``${ vars.course.name }``.
+Referenced as ``${ vars.gradescope.url }``. (The course's name, title, and
+term belong in ``course``.)
 
 
 ``extensions``
@@ -154,6 +205,35 @@ Website generation settings:
      - Element configurations, keyed by element name. An element called in a
        page without a configuration (e.g., ``${ elements.schedule() }``) uses
        its entry here. See :ref:`configuring-elements`.
+
+
+``calendar``
+------------
+
+The dates that ``automata calendar`` shows (it is an error to run it without
+this section). For each collection, ``dates`` maps metadata keys to labels: each
+publication with a date (or date and time) under the key gets an entry on that
+day. A label is written with ``!template``, and can use ``publication`` and
+``vars``; without one, the entry is labeled like ``hw01 due``. ``color``
+(optional) is the collection's color; otherwise one is chosen from a palette:
+
+.. code-block:: yaml
+
+    calendar:
+      lectures:
+        dates:
+          date: !template "Lecture ${ publication.metadata.number }: ${ publication.metadata.topic }"
+      homeworks:
+        dates:
+          released: !template "HW ${ publication.metadata.number } released"
+          due:
+      exams:
+        color: "#e15759"
+        dates:
+          date: !template "${ publication.metadata.name }"
+
+Publications without the key are left out. A key that no publication in the
+collection has, or a value that isn't a date, is an error.
 
 
 Including external files

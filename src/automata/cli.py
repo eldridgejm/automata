@@ -8,6 +8,7 @@ from typing import Any, Optional
 import typer
 
 from ._automata import Automata
+from ._calendar import Calendar
 from ._check import Problem
 from ._status import ArtifactStatus, Status
 from .config import CONFIGURATION_FILENAME, find_config
@@ -354,6 +355,146 @@ def status(
     else:
         result = _project().status(current_time=_get_current_time(current_time))
         _print_status(result, verbose)
+
+
+# calendar =============================================================================
+
+
+def _parse_date(value: str | None, option: str) -> datetime.date | None:
+    if value is None:
+        return None
+    try:
+        return datetime.date.fromisoformat(value)
+    except ValueError:
+        raise Error(
+            f'Invalid {option} value: "{value}". Expected a date like 2025-01-06.'
+        ) from None
+
+
+@_command()
+def calendar(
+    collection: Optional[list[str]] = typer.Option(
+        None,
+        "--collection",
+        "-c",
+        help="Show only this collection (may be given more than once).",
+    ),
+    key: Optional[list[str]] = typer.Option(
+        None,
+        "--key",
+        "-k",
+        help=(
+            "Show only dates under this metadata key, e.g. 'due'; a glob pattern "
+            "(may be given more than once)."
+        ),
+    ),
+    start: Optional[str] = typer.Option(
+        None, "--from", help="Show only dates on or after this one (YYYY-MM-DD)."
+    ),
+    end: Optional[str] = typer.Option(
+        None, "--to", help="Show only dates on or before this one (YYYY-MM-DD)."
+    ),
+    week_start: str = typer.Option(
+        "sunday", "--week-start", help="The day weeks start on: sunday or monday."
+    ),
+    all_weeks: bool = typer.Option(
+        False,
+        "--all",
+        help="Show every week. By default, the calendar starts with the current week.",
+    ),
+    highlight_today: bool = typer.Option(
+        True,
+        "--highlight-today/--no-highlight-today",
+        help="Highlight today (the default).",
+    ),
+    html_path: Optional[pathlib.Path] = typer.Option(
+        None, "--html", help="Write the calendar as an HTML page to this file."
+    ),
+    pdf_path: Optional[pathlib.Path] = typer.Option(
+        None, "--pdf", help="Write the calendar as a PDF to this file."
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help='Print the calendar as JSON. Errors are printed as JSON: {"error": ...}.',
+    ),
+    current_time: Optional[str] = _current_time_option,
+):
+    """Show week by week the dates in the materials' metadata.
+
+    Which dates (e.g. each homework's released and due dates) is configured in
+    the calendar section of automata.yaml. Collections have their own colors.
+    Prints a table, or writes the calendar as HTML or PDF. Builds nothing.
+    """
+
+    def make() -> Calendar:
+        return _load_project().calendar(
+            collections=collection or None,
+            keys=key or None,
+            start=_parse_date(start, "--from"),
+            end=_parse_date(end, "--to"),
+            week_start=week_start,
+            all_weeks=all_weeks,
+            highlight_today=highlight_today,
+            current_time=_current_time_or_error(current_time),
+        )
+
+    if json_output:
+        try:
+            result = make()
+        except Error as e:
+            typer.echo(json.dumps({"error": str(e)}, indent=2))
+            raise typer.Exit(code=1)
+        typer.echo(json.dumps(result.to_dict(), indent=2))
+        return
+
+    result = make()
+    if html_path is not None:
+        html_path.write_text(result.to_html())
+        typer.echo(f"Wrote {html_path}")
+    if pdf_path is not None:
+        pages = result.write_pdf(pdf_path)
+        typer.echo(f"Wrote {pdf_path} ({_plural(pages, 'page')})")
+    if html_path is None and pdf_path is None:
+        if not result.weeks:
+            typer.echo(
+                _nothing_to_show(
+                    result, collection, key, from_this_week=not all_weeks and not start
+                )
+            )
+        else:
+            from rich.console import Console
+
+            Console().print(result.rich_table())
+
+
+def _nothing_to_show(
+    calendar: Calendar,
+    collections: list[str] | None,
+    keys: list[str] | None,
+    from_this_week: bool,
+) -> str:
+    """Why the calendar is empty: the dates it looked for, and where."""
+
+    def day(d: datetime.date) -> str:
+        return f"{d:%a %b} {d.day}, {d.year}"
+
+    what = f"{' or '.join(keys)} dates" if keys else "dates"
+    where = f" in {' or '.join(collections)}" if collections else ""
+    start, end = calendar.start, calendar.end
+    if from_this_week and start is not None:
+        when = f" from this week (starting {day(start)}) on"
+    # (given both, the calendar shows their weeks, even if empty)
+    elif start is not None:
+        when = f" on or after {day(start)}"
+    elif end is not None:
+        when = f" on or before {day(end)}"
+    else:
+        when = ""
+    message = f"Nothing to show: there are no {what}{where}{when}."
+    if from_this_week:
+        message += " Use --all to include earlier weeks."
+    return message
 
 
 # check ================================================================================

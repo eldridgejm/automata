@@ -54,6 +54,9 @@ class RenderContext:
     # variables available for interpolation in the content
     vars: dict[str, Any] = dataclasses.field(default_factory=dict)
 
+    # the course (name, title, term, first week), from automata.yaml
+    course: dict[str, Any] = dataclasses.field(default_factory=dict)
+
     # base URL path for the site
     base_path: str = "/"
 
@@ -290,6 +293,7 @@ def _create_render_context(
     theme: Extension | None,
     extensions: dict[str, Extension],
     config_source_map: SourceMap | None = None,
+    course: dict[str, Any] | None = None,
 ) -> RenderContext:
     """Create the render context with elements bound."""
     context = RenderContext(
@@ -297,6 +301,7 @@ def _create_render_context(
         url_for=url_for,
         current_time=current_time,
         vars=vars,
+        course=course if course is not None else {},
         base_path=base_path,
         theme=theme,
         extensions=extensions,
@@ -348,7 +353,7 @@ def _render_page(
     base_path = page.source.parent if page.source is not None else None
     try:
         frontmatter, content = read_frontmatter(
-            page.content, base_path=base_path, vars=context.vars
+            page.content, base_path=base_path, vars=context.vars, course=context.course
         )
     except FrontmatterError as e:
         raise PageError(e.message, path, e.line) from e
@@ -473,6 +478,7 @@ def render(
     pages: Mapping[str, str | Page] | None = None,
     static_content: dict[str, str | bytes] | None = None,
     vars: dict[str, Any] | None = None,
+    course: dict[str, Any] | None = None,
     current_time: datetime.datetime | None = None,
     render_markdown: Callable[[str], str] = markdown_util.render,
     hooks: RenderHooks | None = None,
@@ -610,6 +616,7 @@ def render(
                 theme,
                 all_extensions(loaded),
                 config_source_map,
+                course=course,
             )
         return contexts[page_base_path]
 

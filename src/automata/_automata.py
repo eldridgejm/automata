@@ -2,15 +2,18 @@
 
 import datetime
 import shutil
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
 
 from . import constants, materials
+from ._calendar import Calendar, make_calendar
 from ._check import Problem, run_checks
 from ._status import Status, make_status
 from .config import (
     CONFIGURATION_FILENAME,
     Config,
+    course_variables,
     load_extensions,
     read_config_with_source_map,
 )
@@ -302,7 +305,12 @@ class Automata:
             return directory.name.startswith(".") or directory.resolve() == build_dir
 
         universe = materials.discover(
-            self.path, skip=skip, vars=self.config.vars, hooks=hooks, errors=errors
+            self.path,
+            skip=skip,
+            vars=self.config.vars,
+            course=course_variables(self.config.course),
+            hooks=hooks,
+            errors=errors,
         )
 
         if self.config.materials:
@@ -310,6 +318,7 @@ class Automata:
                 self.config.materials,
                 self.path,
                 vars=self.config.vars,
+                course=course_variables(self.config.course),
                 hooks=hooks,
                 source_map=self.source_map,
                 errors=errors,
@@ -354,6 +363,74 @@ class Automata:
         """
         return make_status(
             self._discover(hooks=None), current_time or datetime.datetime.now()
+        )
+
+    def calendar(
+        self,
+        collections: Sequence[str] | None = None,
+        keys: Sequence[str] | None = None,
+        start: datetime.date | None = None,
+        end: datetime.date | None = None,
+        week_start: str = "sunday",
+        all_weeks: bool = False,
+        highlight_today: bool = True,
+        current_time: datetime.datetime | None = None,
+    ) -> Calendar:
+        """A week-by-week calendar of the dates in the materials' metadata.
+
+        The ``calendar`` section of ``automata.yaml`` says, for each collection,
+        which metadata keys' dates to show (e.g. ``released`` and ``due``), with
+        optional labels and colors. Builds nothing and runs no recipes or hooks.
+
+        Parameters
+        ----------
+        collections : Sequence[str] | None
+            Show only these collections (from the configuration). If None, all
+            are shown.
+        keys : Sequence[str] | None
+            Show only dates under metadata keys matching one of these glob
+            patterns (e.g. ``"due"``). If None, all configured keys are shown.
+        start, end : datetime.date | None
+            Show only dates on or after *start* and on or before *end*. By
+            default, *start* is the first day of the current week.
+        week_start : str
+            The day weeks start on: ``"sunday"`` (the default) or ``"monday"``.
+        all_weeks : bool
+            Show every week, not just the current one and later ones.
+        highlight_today : bool
+            Whether the renderings highlight today.
+        current_time : datetime.datetime | None
+            The time that decides which dates are past. If *None*, uses the
+            system time.
+
+        Returns
+        -------
+        Calendar
+            The weeks, with each day's entries. It renders with
+            ``rich_table()``, ``to_html()``, and ``write_pdf(path)``.
+
+        Raises
+        ------
+        automata.exceptions.Error
+            If the ``calendar`` section is missing or invalid, or the materials
+            can't be discovered.
+
+        """
+        return make_calendar(
+            self._discover(hooks=None),
+            self.config.calendar,
+            current_time or datetime.datetime.now(),
+            vars=self.config.vars,
+            collections=collections,
+            keys=keys,
+            start=start,
+            end=end,
+            week_start=week_start,
+            all_weeks=all_weeks,
+            highlight_today=highlight_today,
+            course=course_variables(self.config.course),
+            config_path=self.path / CONFIGURATION_FILENAME,
+            source_map=self.source_map,
         )
 
     def check(self, current_time: datetime.datetime | None = None) -> list[Problem]:
@@ -593,6 +670,7 @@ class Automata:
             pages=pages,
             static_content=static_content,
             vars=self.config.vars,
+            course=course_variables(self.config.course),
             current_time=current_time,
             hooks=self.hooks,
             base_path=self.config.website.base_path,
@@ -627,12 +705,20 @@ class Automata:
         collection_dir = find_parent_collection(pub_dir)
 
         if collection_dir is not None:
-            universe = materials.discover(collection_dir, vars=self.config.vars)
+            universe = materials.discover(
+                collection_dir,
+                vars=self.config.vars,
+                course=course_variables(self.config.course),
+            )
             collection = universe.collections["."]
             pub_key = str(pub_dir.relative_to(collection_dir))
             return collection.publications[pub_key]
         else:
-            universe = materials.discover(pub_dir, vars=self.config.vars)
+            universe = materials.discover(
+                pub_dir,
+                vars=self.config.vars,
+                course=course_variables(self.config.course),
+            )
             return universe.collections["default"].publications["."]
 
 

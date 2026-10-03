@@ -30,10 +30,20 @@ The configuration file:
 
 .. code-block:: yaml
 
+    course:
+      name: "DSC 80"
+      title: "The Practice and Application of Data Science"
+      term: "Spring 2026"
+      first_week_start: 2026-03-30
+
     website:
       theme: default
       content_directory: content
       build_directory: _build
+
+The ``course`` section is required: the site's titles come from it, and weeks
+(in the schedule and ``automata calendar``) are numbered from
+``first_week_start``.
 
 And ``content/index.md``:
 
@@ -56,34 +66,27 @@ This discovers materials, builds them (running any recipes), exports them, and
 renders the website in ``_build/``. Open ``_build/index.html`` in a browser to see the result.
 
 
-Adding variables
-----------------
+Using the course and variables
+------------------------------
 
-Variables let you define values once and reference them throughout the site:
+The course's details are available everywhere as ``course``, and you can
+define other values once in ``vars`` and use them throughout the site:
 
 .. code-block:: yaml
 
     vars:
-      course_name: "DSC 80"
-      course_title: "The Practice and Application of Data Science"
-      term: "Spring 2026"
-
-    website:
-      theme:
-        use: default
-        config:
-          short_title: ${ vars.course_name }
-          long_title: ${ vars.course_title }
-      content_directory: content
-      build_directory: _build
+      office_hours: "Wednesdays, 2-4 PM"
+      campuswire: https://campuswire.com/c/G123/feed
 
 Then in your pages:
 
 .. code-block:: markdown
 
-    # ${ vars.course_name }
+    # ${ course.name }
 
-    Welcome to **${ vars.course_title }**, ${ vars.term }.
+    Welcome to **${ course.title }**, ${ course.term }.
+
+    Office hours are ${ vars.office_hours }.
 
 
 Adding materials

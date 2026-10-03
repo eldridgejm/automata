@@ -1,9 +1,11 @@
-vars:
-  course_name: "DSC 40B"
-  course_title: "Theoretical Foundations of Data Science II"
+course:
+  name: "DSC 40B"
+  title: "Theoretical Foundations of Data Science II"
   term: "Fall 2025"
-  start_date: "2025-09-22"
+  # weeks are numbered from here (in the schedule and the calendar)
+  first_week_start: 2025-09-22
 
+vars:
   date_of_first_lecture: 2025-09-23
 
   midterm_date: 2025-10-27
@@ -48,13 +50,28 @@ materials:
             path: exams/final/solution.pdf
             release_time: 3 days after ${ vars.final_date } at 00:00:00
 
+calendar:
+  lectures:
+    dates:
+      date: !template "Lecture ${ publication.metadata.number }: ${ publication.metadata.topic }"
+  homeworks:
+    dates:
+      released: !template "HW ${ publication.metadata.number } released"
+      due: !template "HW ${ publication.metadata.number } due"
+  labs:
+    dates:
+      released: !template "Lab ${ publication.metadata.number } released"
+      due: !template "Lab ${ publication.metadata.number } due"
+  exams:
+    color: "#e15759"
+    dates:
+      date: !template "${ publication.metadata.name }"
+
 website:
   theme:
     use: "default"
     config:
-      short_title: ${ vars.course_name }
-      long_title: ${ vars.course_title }
-
+      # the site's titles are the course's name and title, unless set here
       navigation:
           - text: |
               <i data-lucide="home" class="mr-2 text-slate-400"></i>

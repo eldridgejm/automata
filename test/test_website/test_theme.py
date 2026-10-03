@@ -121,11 +121,12 @@ def test_default_theme_is_registered_as_a_theme() -> None:
     assert "page.html" in inputs.templates
 
 
-def test_default_theme_requires_titles() -> None:
-    with pytest.raises(Error) as excinfo:
-        extension_from_entry_point("default", group=THEMES_GROUP)
+def test_default_theme_titles_are_optional() -> None:
+    # without them, the theme shows the course's name and title
+    theme = extension_from_entry_point("default", group=THEMES_GROUP)
 
-    assert "short_title" in str(excinfo.value)
+    assert theme.config["short_title"] is None
+    assert theme.config["long_title"] is None
 
 
 def test_default_theme_builds_independent_extensions_per_config() -> None:

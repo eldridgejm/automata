@@ -11,9 +11,9 @@
         lg:border-b border-gray-200 dark:border-gray-700
         ">
         <span class="hidden lg:inline">
-            ${ theme.config.short_title }
+            ${ theme.config.short_title or course.name }
             &ndash;
-            ${ theme.config.long_title }
+            ${ theme.config.long_title or course.title }
         </span>
     </div>
 </div>

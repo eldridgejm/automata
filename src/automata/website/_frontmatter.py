@@ -43,6 +43,7 @@ def _parse_yaml_frontmatter(
     yaml_content: str,
     base_path: Path | None = None,
     vars: dict[str, Any] | None = None,
+    course: dict[str, Any] | None = None,
 ) -> Frontmatter:
     """Parses the given YAML content into a Frontmatter object.
 
@@ -80,7 +81,10 @@ def _parse_yaml_frontmatter(
             {"type": "dict", "required_keys": {"this": Frontmatter._schema()}},
             base_path=base_path,
             source_map=source_map,
-            global_variables={"vars": vars if vars is not None else {}},
+            global_variables={
+                "vars": vars if vars is not None else {},
+                "course": course if course is not None else {},
+            },
         )
     except smartconfig.exceptions.ResolutionError as e:
         file, line = source_map.locate(e.keypath)
@@ -130,6 +134,7 @@ def read_frontmatter(
     content: str,
     base_path: Path | None = None,
     vars: dict[str, Any] | None = None,
+    course: dict[str, Any] | None = None,
 ) -> tuple[Frontmatter, str]:
     """Reads the frontmatter from the given content.
 
@@ -161,6 +166,8 @@ def read_frontmatter(
         return Frontmatter(vars={}), remaining_content
 
     # Parse the YAML into a Frontmatter object
-    frontmatter = _parse_yaml_frontmatter(yaml_content, base_path=base_path, vars=vars)
+    frontmatter = _parse_yaml_frontmatter(
+        yaml_content, base_path=base_path, vars=vars, course=course
+    )
 
     return frontmatter, remaining_content

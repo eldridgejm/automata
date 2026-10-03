@@ -17,6 +17,11 @@ def project_with_inline_materials(tmp_path):
 
     (project / "automata.yaml").write_text(
         dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             materials:
               homeworks:
                 schema:
@@ -181,6 +186,11 @@ def test_inline_materials_can_use_vars(tmp_path):
         "          due: ${ vars.base_due }\n"
         "        artifacts: {}\n"
         "\n"
+        "course:\n"
+        "  name: Test\n"
+        "  title: Test Course\n"
+        "  term: Fall 2025\n"
+        "  first_week_start: 2025-01-06\n"
         "website:\n"
         "  theme:\n"
         '    use: "default"\n'
@@ -207,6 +217,11 @@ def test_inline_materials_cannot_have_recipes(tmp_path):
     project.mkdir()
     (project / "automata.yaml").write_text(
         dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             materials:
               homeworks:
                 schema:
@@ -258,6 +273,11 @@ def test_malformed_inline_materials_are_reported(tmp_path, materials, expected):
     (project / "automata.yaml").write_text(
         f"materials: {materials}\n"
         + dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             website:
               theme:
                 use: "default"
@@ -298,6 +318,11 @@ def test_inline_materials_errors_give_the_keypath_in_automata_yaml(
     config_file.write_text(
         f"materials: {materials}\n"
         + dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             website:
               theme:
                 use: "default"
@@ -322,6 +347,11 @@ def test_an_inline_collection_named_default_is_an_error(tmp_path):
         "  default:\n"
         "    schema: {required_artifacts: []}\n"
         + dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             website:
               theme:
                 use: "default"
@@ -353,6 +383,11 @@ def test_inline_artifacts_of_the_wrong_type_are_a_config_error(tmp_path, artifac
         "      h1:\n"
         f"        artifacts: {artifacts}\n"
         + dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             website:
               theme:
                 use: "default"

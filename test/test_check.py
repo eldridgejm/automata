@@ -15,6 +15,11 @@ def _write_project(project: Path, website_extra: str = "", top_extra: str = "") 
     (project / "automata.yaml").write_text(
         top_extra
         + dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             website:
               theme:
                 use: default
@@ -129,7 +134,7 @@ def test_invalid_element_config_is_a_problem_even_if_no_page_uses_it(tmp_path):
     problems = Automata(project).check(current_time=_JAN_15)
 
     assert _messages(problems, "elements") == [
-        f"{project / 'automata.yaml'}:8: website.elements.button.url: "
+        f"{project / 'automata.yaml'}:13: website.elements.button.url: "
         'Dictionary is missing required key "url".'
     ]
 

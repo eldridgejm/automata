@@ -56,6 +56,7 @@ def _resolve_collection(
     raw_contents: smartconfig.types.ConfigurationDict,
     vars: Optional[Mapping[str, Any]],
     source: pathlib.Path,
+    course: Optional[Mapping[str, Any]] = None,
 ) -> dict:
     """Resolves (interpolates and parses) raw collection contents.
 
@@ -86,13 +87,16 @@ def _resolve_collection(
         resolved: Dict[str, Any] = resolve(
             contents,
             COLLECTION_SCHEMA,
-            global_variables={"vars": vars if vars is not None else {}},
+            global_variables={
+                "vars": vars if vars is not None else {},
+                "course": course if course is not None else {},
+            },
         )
     except smartconfig.exceptions.ResolutionError as exc:
         reason = explain_undefined(
             exc.reason,
             exc.keypath,
-            names=[*contents, "vars"],
+            names=[*contents, "vars", "course"],
             located=value_at(raw_contents, exc.keypath),
         )
         raise DiscoveryError.at(reason, tuple(exc.keypath), source) from None
@@ -140,6 +144,7 @@ def parse_collection(
     *,
     source: pathlib.Path,
     vars: Optional[Mapping[str, Any]] = None,
+    course: Optional[Mapping[str, Any]] = None,
 ) -> tuple[Collection[UnbuiltArtifact], Optional[dict]]:
     """Build a :class:`Collection` from a "raw" dictionary of collection contents.
 
@@ -179,7 +184,7 @@ def parse_collection(
 
     raw_publications = raw_contents.pop("publications", None)
 
-    resolved = _resolve_collection(raw_contents, vars, source)
+    resolved = _resolve_collection(raw_contents, vars, source, course=course)
 
     publication_schema = PublicationSchema(**resolved["publication_schema"])
     templates = resolved.get("templates")

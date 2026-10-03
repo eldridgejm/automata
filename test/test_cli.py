@@ -39,6 +39,12 @@ def project(tmp_path, monkeypatch):
                   rebuild_tailwind: false
               content_directory: "content"
               build_directory: "_build"
+
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
         """)
     )
     (project / "homeworks" / "hw01").mkdir(parents=True)
@@ -591,3 +597,138 @@ def test_check_reports_broken_config_as_a_problem(project):
     (problem,) = json.loads(result.stdout)["problems"]
     assert problem["area"] == "configuration"
     assert problem["message"].startswith(f"{project / 'automata.yaml'}:1: website: ")
+
+
+# calendar =============================================================================
+
+
+def _add_calendar(project):
+    """Give the homework a due date, and show due dates on the calendar."""
+    config = project / "automata.yaml"
+    text = config.read_text()
+    text = text.replace(
+        "                  required_artifacts:\n",
+        "                  metadata_schema:\n"
+        "                    required_keys:\n"
+        "                      due: {type: datetime}\n"
+        "                  required_artifacts:\n",
+    )
+    lines = []
+    for line in text.splitlines():
+        lines.append(line)
+        if line.strip() == "hw01:":
+            indent = line[: len(line) - len(line.lstrip())]
+            lines.append(f"{indent}  metadata: {{due: 2025-01-06 09:00:00}}")
+    config.write_text(
+        "calendar:\n  homeworks:\n    dates:\n      due:\n" + "\n".join(lines) + "\n"
+    )
+
+
+def test_calendar_prints_a_table(project):
+    _add_calendar(project)
+
+    # wide enough that labels don't wrap
+    result = runner.invoke(app, ["calendar", "--all"], env={"COLUMNS": "200"})
+
+    assert "hw01 due 09:00" in result.output
+
+
+def test_calendar_filters_by_collection_and_key(project):
+    _add_calendar(project)
+
+    result = _invoke(
+        "calendar", "--all", "--collection", "homeworks", "--key", "released"
+    )
+
+    assert "hw01 due" not in result.output
+    assert "Nothing to show: there are no released dates in homeworks." in result.output
+
+
+def test_calendar_says_when_there_is_nothing_from_this_week_on(project):
+    _add_calendar(project)
+
+    # Feb 1, 2025 is a Saturday; the only date is Jan 6
+    result = _invoke("calendar", "--current-time", "2025-02-01T12:00:00")
+
+    assert (
+        "Nothing to show: there are no dates from this week (starting Sun Jan 26, "
+        "2025) on. Use --all to include earlier weeks." in result.output
+    )
+
+
+def test_calendar_says_when_there_is_nothing_in_the_requested_dates(project):
+    _add_calendar(project)
+
+    result = _invoke("calendar", "--from", "2025-03-01")
+
+    assert "Nothing to show: there are no dates on or after Sat Mar 1, 2025." in (
+        result.output
+    )
+
+
+def test_calendar_writes_html_and_pdf(project, tmp_path):
+    _add_calendar(project)
+    html, pdf = tmp_path / "calendar.html", tmp_path / "calendar.pdf"
+
+    result = _invoke("calendar", "--all", "--html", str(html), "--pdf", str(pdf))
+
+    assert "hw01 due" in html.read_text()
+    assert pdf.read_bytes().startswith(b"%PDF")
+    assert f"Wrote {html}" in result.output
+    assert f"Wrote {pdf}" in result.output
+
+
+def test_calendar_json(project):
+    import json
+
+    _add_calendar(project)
+
+    result = _invoke("calendar", "--all", "--json")
+
+    data = json.loads(result.stdout)
+    assert data["weeks"][0]["start"] == "2025-01-05"  # a Sunday
+
+
+def test_calendar_weeks_can_start_on_monday(project):
+    import json
+
+    _add_calendar(project)
+
+    result = _invoke("calendar", "--all", "--json", "--week-start", "monday")
+
+    assert json.loads(result.stdout)["weeks"][0]["start"] == "2025-01-06"
+
+
+def test_calendar_without_configuration_is_an_error(project):
+    result = runner.invoke(app, ["calendar"])
+
+    assert result.exit_code == 1
+    assert 'has no "calendar" section' in result.output
+
+
+def test_calendar_shows_from_the_current_week_by_default(project):
+    import json
+
+    _add_calendar(project)  # due 2025-01-06
+
+    before = _invoke("calendar", "--json", "--current-time", "2025-01-01T00:00:00")
+    after = _invoke("calendar", "--json", "--current-time", "2025-02-01T00:00:00")
+
+    assert json.loads(before.stdout)["weeks"] != []
+    assert json.loads(after.stdout)["weeks"] == []
+
+
+def test_calendar_can_leave_today_unhighlighted(project, tmp_path):
+    _add_calendar(project)
+    html = tmp_path / "calendar.html"
+
+    _invoke(
+        "calendar",
+        "--current-time",
+        "2025-01-06T08:00:00",
+        "--no-highlight-today",
+        "--html",
+        str(html),
+    )
+
+    assert 'class="today"' not in html.read_text()

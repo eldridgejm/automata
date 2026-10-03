@@ -3,7 +3,7 @@
 import dataclasses
 import pathlib
 from collections import deque
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Mapping, Optional
 
 from automata import constants
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
@@ -264,6 +264,7 @@ def _init_collection_from_file(
     *,
     hooks: DiscoverHooks,
     vars: dict[str, Any],
+    course: Optional[Mapping[str, Any]] = None,
 ) -> tuple[str, Collection, dict[str, _RawPublication]]:
     """Set up a collection from a ``collection.yaml`` file.
 
@@ -285,7 +286,7 @@ def _init_collection_from_file(
     raw_contents, source_map = _read_yaml(file_path)
     try:
         collection, inline_publications = parse_collection(
-            raw_contents, vars=vars, source=file_path
+            raw_contents, vars=vars, course=course, source=file_path
         )
     except DiscoveryError as exc:
         raise _with_line(exc, source_map) from None
@@ -328,6 +329,7 @@ def _make_collection(
     *,
     hooks: DiscoverHooks,
     vars: Optional[dict[str, Any]] = None,
+    course: Optional[Mapping[str, Any]] = None,
 ) -> tuple[str, Collection]:
     """Create a Collection with its Publications.
 
@@ -358,6 +360,7 @@ def _make_collection(
             root_directory,
             hooks=hooks,
             vars=vars,
+            course=course,
         )
 
     # Step 2: resolve each publication against the schema and populate the collection
@@ -370,6 +373,7 @@ def _make_collection(
                 workdir=entry.workdir,
                 publication_schema=collection.publication_schema,
                 vars=vars,
+                course=course,
                 previous=previous,
                 templates=collection.templates,
                 source=entry.source,
@@ -390,6 +394,7 @@ def discover(
     skip: Optional[Callable[[pathlib.Path], bool]] = None,
     hooks: Optional[DiscoverHooks] = None,
     vars: Optional[dict[str, Any]] = None,
+    course: Optional[Mapping[str, Any]] = None,
     errors: Optional[list[Error]] = None,
 ) -> Universe[UnbuiltArtifact]:
     """Discover the course materials in the filesystem.
@@ -467,6 +472,7 @@ def discover(
                 root_directory,
                 hooks=hooks,
                 vars=vars,
+                course=course,
             )
         except DiscoveryError as exc:
             if errors is None:

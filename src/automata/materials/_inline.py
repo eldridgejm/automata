@@ -80,6 +80,7 @@ def discover_inline(
     materials_config: dict[str, Any],
     project_path: pathlib.Path,
     vars: Optional[Mapping[str, Any]] = None,
+    course: Optional[Mapping[str, Any]] = None,
     hooks: Optional[DiscoverHooks] = None,
     source_map: Optional[SourceMap] = None,
     errors: Optional[list[Error]] = None,
@@ -150,7 +151,7 @@ def discover_inline(
 
             try:
                 collection, _ = parse_collection(
-                    collection_yaml, source=source, vars=vars
+                    collection_yaml, source=source, vars=vars, course=course
                 )
             except DiscoveryError as exc:
                 # keypaths start with the synthetic "publication_schema" key
@@ -192,6 +193,7 @@ def discover_inline(
                         workdir=project_path,
                         publication_schema=collection.publication_schema,
                         vars=vars,
+                        course=course,
                         previous=previous,
                         templates=collection.templates,
                         source=source,

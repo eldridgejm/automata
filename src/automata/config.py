@@ -1,3 +1,4 @@
+import datetime
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +53,48 @@ class WebsiteConfig(smartconfig.Prototype):
     elements: dict[str, Any] = {}
 
 
+class CourseConfig(smartconfig.Prototype):
+    """The course: its name, term, and when its first week starts."""
+
+    # e.g. "DSC 40B"
+    name: str
+    # e.g. "Theoretical Foundations of Data Science II"
+    title: str
+    # e.g. "Fall 2026"
+    term: str
+    # the first day of the course's first week; weeks are numbered from it
+    first_week_start: datetime.date
+    # the number of the first week (e.g. 0, for a course with a week 0)
+    first_week_number: int = 1
+    instructors: list[str] = []
+    # the course's website, e.g. "https://dsc40b.com"
+    url: str | None = None
+
+
+def course_variables(course: CourseConfig) -> dict[str, Any]:
+    """The course as templates see it (e.g. ``${ course.name }``)."""
+    return {
+        "name": course.name,
+        "title": course.title,
+        "term": course.term,
+        "first_week_start": course.first_week_start,
+        "first_week_number": course.first_week_number,
+        "instructors": list(course.instructors),
+        "url": course.url,
+    }
+
+
+def course_week_number(
+    first_week_start: datetime.date, first_week_number: int, day: datetime.date
+) -> int | None:
+    """The number of the course week containing *day*, or None if *day* is
+    before the first week."""
+    weeks = (day - first_week_start).days // 7
+    if weeks < 0:
+        return None
+    return first_week_number + weeks
+
+
 class Config(smartconfig.Prototype):
     """Top-level configuration for automata."""
 
@@ -71,8 +114,13 @@ class Config(smartconfig.Prototype):
     # configuration for the website
     website: WebsiteConfig
 
+    # the course: its name, title, term, and first week
+    course: CourseConfig
     # publish/deployment configurations, keyed by name
     publish: dict[str, Any] = {}
+    # the calendar (automata calendar): for each collection, the metadata dates
+    # to show and, optionally, a color
+    calendar: dict[str, Any] = {}
 
 
 def find_config(start_path: Path) -> Path | None:

@@ -155,6 +155,39 @@ status as JSON, for programs; an error is printed as JSON too
 (``{"error": "..."}``).
 
 
+``automata calendar``
+---------------------
+
+Show week by week the dates in the materials' metadata (for example, each
+homework's release and due dates, and each lecture's date), as a table in the
+terminal, or written as an HTML page or a PDF. Which dates, how they are
+labeled, and each collection's color are set in the ``calendar`` section of
+``automata.yaml`` (see :doc:`/guide/configuration`); without it, this is an
+error. Builds nothing.
+
+::
+
+    automata calendar [--collection NAME]... [--key KEY]... [--all]
+                      [--from DATE] [--to DATE] [--week-start sunday|monday]
+                      [--no-highlight-today] [--html FILE] [--pdf FILE]
+                      [--json] [--current-time TIME]
+
+``--collection`` shows only the named collections, and ``--key`` only dates
+under the named metadata keys (glob patterns), e.g. ``--key due`` for just the
+due dates; both may be given more than once. The calendar starts with the
+current week; ``--all`` shows every week, and ``--from`` and ``--to``
+(``YYYY-MM-DD``) set the dates shown. Weeks start on Sunday, unless
+``--week-start monday``, and are numbered from the course's
+``first_week_start``; the calendar is titled with the course's name and term.
+``--html`` and ``--pdf`` write the calendar to files instead of printing it; ``--json`` prints it as JSON, for programs. Dates
+before the current time are shown dimmed, and today is highlighted (unless
+``--no-highlight-today``). In the HTML, clicking a collection in the legend
+hides its dates, or shows them again, and a button switches between light and
+dark themes (by default, the system's). In the terminal, upcoming dates are
+drawn as rounded pills, whose ends need a `Nerd Font <https://www.nerdfonts.com>`_.
+If nothing matches, the message says what was looked for, and over which dates.
+
+
 ``automata check``
 ------------------
 

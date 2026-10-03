@@ -20,6 +20,11 @@ def write_status_project(project: Path) -> Path:
     project.mkdir(parents=True)
     (project / "automata.yaml").write_text(
         dedent("""\
+            course:
+              name: Test
+              title: Test Course
+              term: Fall 2025
+              first_week_start: 2025-01-06
             website:
               theme:
                 use: default

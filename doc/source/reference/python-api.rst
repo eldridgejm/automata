@@ -169,6 +169,32 @@ The primary interface is the ``Automata`` class.
             JSON-ready data.
         :rtype: Status
 
+    .. method:: calendar(collections=None, keys=None, start=None, end=None, week_start="sunday", all_weeks=False, highlight_today=True, current_time=None)
+
+        A week-by-week calendar of the dates in the materials' metadata, as
+        configured in the ``calendar`` section of ``automata.yaml`` (see
+        ``automata calendar``). Builds nothing.
+
+        :param collections: Show only these collections.
+        :param keys: Show only dates under metadata keys matching one of these
+            glob patterns (e.g. ``"due"``).
+        :param start: Show only dates on or after this one. By default, the
+            first day of the current week.
+        :param end: Show only dates on or before this one.
+        :param week_start: The day weeks start on: ``"sunday"`` or
+            ``"monday"``.
+        :param all_weeks: Show every week, not just the current one and later
+            ones.
+        :param highlight_today: Whether the renderings highlight today.
+        :param current_time: Override the current time.
+        :returns: The weeks, each day with its entries.
+            ``calendar.rich_table()`` renders it for the terminal,
+            ``calendar.to_html()`` as an HTML page (or, with
+            ``standalone=False``, a fragment to embed), and
+            ``calendar.write_pdf(path)`` as a PDF; ``calendar.to_dict()`` gives
+            it as JSON-ready data.
+        :rtype: Calendar
+
     .. method:: check(current_time=None)
 
         Check the project for problems without building anything (see
@@ -181,7 +207,8 @@ The primary interface is the ``Automata`` class.
         :rtype: list[Problem]
 
     ``Status``, ``ArtifactStatus`` (an artifact's status, in
-    ``status.artifacts``) and ``Problem`` can be imported from ``automata``,
+    ``status.artifacts``), ``Calendar`` and ``Problem`` can be imported from
+    ``automata``,
     e.g. for type annotations.
 
 

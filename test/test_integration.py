@@ -104,6 +104,12 @@ vars:
   schedule_config:
     __include__: "schedule.yaml"
 
+course:
+  name: "DSC 40B"
+  title: "Test Course"
+  term: "Fall 2025"
+  first_week_start: 2025-09-22
+
 website:
   theme:
     use: "default"
