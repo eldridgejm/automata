@@ -30,8 +30,11 @@ autodoc_typehints = "none"
 
 html_permalinks_icon = "<span>#</span>"
 html_theme = "sphinxawesome_theme"
-html_title = "smartconfig"
+html_title = "automata"
 html_static_path = ["_static"]
+# the favicon (and, in theme_options below, the logo), from branding/ at the
+# root of the repository
+html_favicon = "../../branding/favicon.svg"
 
 pygments_style = "friendly"  # 'friendly' is also OK...
 pygments_style_dark = "paraiso-dark"
@@ -39,9 +42,13 @@ pygments_style_dark = "paraiso-dark"
 theme_options = ThemeOptions(
     show_prev_next=True,
     awesome_external_links=True,
+    # the theme shows the logo in a 24px square: the favicon (the mark's
+    # first four steps, on ink) is made for that size
+    logo_light="../../branding/favicon.svg",
+    logo_dark="../../branding/favicon.svg",
     extra_header_link_icons={
         "repository on GitHub": {
-            "link": "https://github.com/eldridgejm/smartconfig",
+            "link": "https://github.com/eldridgejm/automata",
             "icon": (
                 '<svg height="26px" style="margin-top:-2px;display:inline" '
                 'viewBox="0 0 45 44" '

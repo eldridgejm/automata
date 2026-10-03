@@ -1,4 +1,7 @@
-# automata
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="branding/automata-lockup-dark.svg">
+  <img alt="automata" src="branding/automata-lockup.svg" width="320">
+</picture>
 
 Automatically generate course webpages from annotated materials.
 
