@@ -1656,8 +1656,9 @@ def test_render_handles_materials_already_in_build_directory(tmpsite, theme):
 # default theme tailwind rebuild ================================================
 
 
-def _default_theme_with_runner(run):
-    """The default theme, built with an injected command runner for Tailwind."""
+def _default_theme_with_runner(run, cache_directory):
+    """The default theme, built with an injected command runner for Tailwind,
+    which installs its packages in *cache_directory*."""
     from automata.builtin.themes.default import make_extension
 
     config = {
@@ -1666,10 +1667,10 @@ def _default_theme_with_runner(run):
         "navigation": [],
         "rebuild_tailwind": True,
     }
-    return make_extension(config, run=run)
+    return make_extension(config, run=run, cache_directory=cache_directory)
 
 
-def test_default_theme_rebuilds_tailwind_after_pages_are_rendered(tmpsite):
+def test_default_theme_rebuilds_tailwind_after_pages_are_rendered(tmpsite, tmp_path):
     # given: a runner that records the command, and what was built at that time
     import subprocess
 
@@ -1683,31 +1684,32 @@ def test_default_theme_rebuilds_tailwind_after_pages_are_rendered(tmpsite):
     tmpsite.make_page("index.md", "<div class='bg-fuchsia-500'>custom</div>")
 
     # when
-    _render(tmpsite, theme=_default_theme_with_runner(run))
+    _render(tmpsite, theme=_default_theme_with_runner(run, tmp_path / "cache"))
 
-    # then
-    ((cmd, cwd, index_written),) = calls
-    assert cmd[:2] == ["npx", "@tailwindcss/cli"]
+    # then: the packages are installed, then Tailwind runs over the built site
+    (install, _, _), (cmd, cwd, index_written) = calls
+    assert install[:2] == ["npm", "install"]
+    assert cmd[0].endswith("tailwindcss")
     assert cwd == str(tmpsite.build_directory.resolve())
     assert index_written
 
 
-def test_default_theme_renders_without_npx(tmpsite, caplog):
-    # given: a runner for a machine without npx
+def test_default_theme_renders_without_npm(tmpsite, caplog, tmp_path):
+    # given: a runner for a machine without npm
     import logging
 
     def run(cmd, **kwargs):
-        raise FileNotFoundError(2, "No such file or directory", "npx")
+        raise FileNotFoundError(2, "No such file or directory", "npm")
 
     tmpsite.make_page("index.md", "# Test Page")
 
     # when
     with caplog.at_level(logging.WARNING):
-        _render(tmpsite, theme=_default_theme_with_runner(run))
+        _render(tmpsite, theme=_default_theme_with_runner(run, tmp_path / "cache"))
 
     # then
     assert "Test Page" in tmpsite.get_output("index.html")
-    assert any("npx not found" in record.getMessage() for record in caplog.records)
+    assert any("npm not found" in record.getMessage() for record in caplog.records)
 
 
 # url_for and extra pages from hooks ==================================================

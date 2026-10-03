@@ -1,16 +1,10 @@
 {
   "name": "automata-default-theme",
-  "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "private": true,
+  "description": "The Node packages that rebuild the default theme's Tailwind CSS.",
   "dependencies": {
-    "@tailwindcss/typography": "github:tailwindcss/typography",
+    "@tailwindcss/cli": "^4.1.18",
+    "@tailwindcss/typography": "^0.5.16",
     "tailwindcss": "^4.1.18"
   }
 }

@@ -6,18 +6,24 @@ The default theme automatically rebuilds Tailwind CSS after website generation t
 
 ### Requirements
 
-- **Node.js and npx** must be installed for automatic rebuilds to work
-- If Node.js is not available, the theme will fall back to using the pre-built CSS (checked into the repository)
-- A warning will be logged if npx is not found
+- **Node.js and npm** must be installed for automatic rebuilds to work.
+- The first build installs Tailwind and its plugins (this directory's
+  `package.json` and `package-lock.json`) with npm into
+  `~/.cache/automata/tailwind/default-theme` (or under `$XDG_CACHE_HOME`), and
+  again whenever they change. Later builds reuse them.
+- If npm is not available, or installing or running Tailwind fails, the theme
+  falls back to the pre-built CSS (checked into the repository), and logs a
+  warning.
 
 ### How It Works
 
 When you build your site:
 1. The site is generated with the pre-built CSS
 2. After generation completes, the post-build hook runs
-3. The hook scans all HTML files in the build directory for Tailwind classes
-4. Tailwind CLI rebuilds the CSS to include all discovered classes
-5. The rebuilt CSS replaces the pre-built version in the output directory
+3. The theme's `style.input.css` is copied next to the installed packages (so
+   that its imports resolve), and the Tailwind CLI runs in the build directory,
+   scanning the generated files for Tailwind classes
+4. The rebuilt CSS replaces the pre-built version in the output directory
 
 ### Using Custom Tailwind Classes
 
@@ -33,8 +39,8 @@ The automatic rebuild ensures these classes are included in the final CSS, even 
 
 ### Fallback Behavior
 
-If Node.js/npx is not available:
-- A warning is logged: `npx not found - using pre-built Tailwind CSS`
+If Node.js/npm is not available:
+- A warning is logged: `npm not found - using pre-built Tailwind CSS`
 - The pre-built CSS (checked into the repository) is used
 - Site generation continues normally
 - Your site will work, but custom Tailwind classes may not be styled
@@ -52,7 +58,7 @@ npm install
 ```
 
 This installs:
-- `tailwindcss` (v4.1.18)
+- `tailwindcss` and `@tailwindcss/cli` (v4)
 - `@tailwindcss/typography` (typography plugin)
 
 ### Building

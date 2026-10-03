@@ -107,8 +107,8 @@ Integration tests (marked with ``@pytest.mark.integration``) run real
 programs or the full pipeline: the example project built end-to-end, and the
 gh-pages publish strategy run with real ``git`` against a local bare
 repository. A test that needs a tool that may not be installed (such as the
-Tailwind rebuild, which needs ``npx`` and the theme's Node packages) is also
-skipped when the tool is missing.
+Tailwind rebuild, which needs ``npm``, and installs Tailwind from the npm
+registry) is also skipped when the tool is missing.
 
 These tests are slower and are excluded from the default test run. Run them
 explicitly with ``-m integration`` (``make checks`` runs both).

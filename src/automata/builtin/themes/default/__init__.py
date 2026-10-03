@@ -2,6 +2,7 @@
 
 import importlib.resources
 import json
+import pathlib
 import subprocess
 from collections.abc import Callable
 from typing import Any
@@ -41,12 +42,16 @@ schema = json.loads((_root / "schema.json").read_text())
 
 
 def make_extension(
-    config: dict, *, run: Callable[..., Any] = subprocess.run
+    config: dict,
+    *,
+    run: Callable[..., Any] = subprocess.run,
+    cache_directory: pathlib.Path = _tailwind.CACHE_DIRECTORY,
 ) -> Extension:
     """Build the default theme Extension for the given (validated) config.
 
-    automata calls this with *config* only. *run* runs the Tailwind CLI after
-    rendering (default :func:`subprocess.run`); tests pass a fake.
+    automata calls this with *config* only. *run* runs npm and the Tailwind CLI
+    after rendering (default :func:`subprocess.run`), and *cache_directory* is
+    where Tailwind is installed; tests pass a fake and a temporary directory.
     """
 
     def collect(inputs: WebsiteInputs) -> WebsiteInputs:
@@ -56,7 +61,9 @@ def make_extension(
         return inputs
 
     def post_render(args: RenderPostHookArgs) -> None:
-        _tailwind.rebuild_css(args.build_directory, config, run=run)
+        _tailwind.rebuild_css(
+            args.build_directory, config, run=run, cache_directory=cache_directory
+        )
 
     return Extension(
         name="default",
