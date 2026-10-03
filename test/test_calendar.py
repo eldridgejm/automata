@@ -715,4 +715,4 @@ def test_icalendar_text_is_escaped_and_long_lines_are_folded(tmp_path):
     lines = ics.split("\r\n")
     assert all(len(line.encode()) <= 75 for line in lines)
     unfolded = ics.replace("\r\n ", "")
-    assert f"SUMMARY:{label.replace(',', '\\,').replace(';', '\;')}\r\n" in unfolded
+    assert f"SUMMARY:{label.replace(',', '\\,').replace(';', '\\;')}\r\n" in unfolded

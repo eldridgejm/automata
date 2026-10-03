@@ -11,14 +11,14 @@ authors = [
 ]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "ruamel.yaml",
     "jinja2",
     "mistune",
-    "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git@0.5.7",
+    "smartconfig @ git+https://github.com/eldridgejm/smartconfig.git@0.5.8",
     "typer",
-    "fpdf2>=2.8.9",
+    "fpdf2>=2.8.5",
     "rich>=14.2.0",
 ]
 
@@ -53,7 +53,7 @@ src = ["src"]
 select = ["E", "F", "I"]
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 mypy_path = "src"
