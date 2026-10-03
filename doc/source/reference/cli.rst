@@ -39,6 +39,30 @@ Options:
   together). ``publish``, ``build-materials``, and ``export`` accept it too.
 
 
+``automata serve``
+------------------
+
+Build the site and serve it locally, then rebuild it whenever a file in the
+project changes, until stopped with Ctrl-C.
+
+::
+
+    automata serve [--port PORT] [--no-open] [--current-time TIME] [--verbose]
+
+The site is served at ``http://127.0.0.1:8000`` (or ``--port``), under
+``website.base_path`` if that is an absolute path such as ``/course/``, and
+opened in the default browser once it is built (unless ``--no-open``). Pages
+reload themselves after each rebuild. A new or changed page only re-renders the
+website, which is quick; any other change (to ``automata.yaml``, the materials,
+an extension, or a deleted page) reloads the project and builds it all. If a
+build fails, the error is printed, and shown at the bottom of the open pages,
+while the last good build is still served. Files whose names start with a dot
+(such as ``.git``) are not watched, and neither is the build directory, nor
+the files a build writes itself (such as recipes' outputs). With
+``--current-time``, every build is for that time; otherwise, each is for the
+time it runs.
+
+
 ``automata publish``
 --------------------
 

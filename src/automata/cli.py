@@ -190,6 +190,25 @@ def publish(
         typer.echo(f"Published to {name}.")
 
 
+@_command()
+def serve(
+    port: int = typer.Option(8000, "--port", "-p", help="The port to serve on."),
+    open_browser: bool = typer.Option(
+        True, "--open/--no-open", help="Open the site in a browser (the default)."
+    ),
+    current_time: Optional[str] = _current_time_option,
+    verbose: bool = _verbose_option,
+):
+    """Build and serve the site locally, rebuilding it when files change."""
+    _project().serve(
+        port=port,
+        current_time=_get_current_time(current_time),
+        verbose=verbose,
+        echo=typer.echo,
+        open_browser=open_browser,
+    )
+
+
 @_command(name="clean", group=pipeline)
 def clean():
     """Empty the build directory, keeping top-level dot-entries."""

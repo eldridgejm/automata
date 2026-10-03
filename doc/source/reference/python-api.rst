@@ -62,6 +62,15 @@ The primary interface is the ``Automata`` class.
             contains the project or content directory, lies inside the content
             directory, or contains an ``automata.yaml`` file.
 
+    .. method:: serve(port=8000, current_time=None, verbose=False, echo=print, open_browser=True)
+
+        Build the site, serve it at ``http://127.0.0.1:PORT`` (opening it in
+        the default browser, if *open_browser*), and rebuild it
+        when files change, until interrupted (with Ctrl-C). See
+        ``automata serve`` in :doc:`cli`.
+
+        :raises automata.exceptions.Error: If the port is in use.
+
     .. method:: publish(target=None, current_time=None)
 
         Check the target and strategy names, run :meth:`build`, then deploy to

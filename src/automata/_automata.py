@@ -2,7 +2,7 @@
 
 import datetime
 import shutil
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, cast
 
@@ -104,7 +104,7 @@ class Automata:
 
         Cleans the build directory (if ``website.clean_build_directory`` is
         true), then runs :meth:`discover`, :meth:`build_materials`,
-        :meth:`export`, and :meth:`render_website`.
+        :meth:`export_materials`, and :meth:`render_website`.
 
         Parameters
         ----------
@@ -187,6 +187,55 @@ class Automata:
                 shutil.rmtree(entry)
             else:
                 entry.unlink()
+
+    def serve(
+        self,
+        port: int = 8000,
+        current_time: datetime.datetime | None = None,
+        verbose: bool = False,
+        echo: Callable[[str], None] = print,
+        open_browser: bool = True,
+    ) -> None:
+        """Build the site, serve it locally (opening it in a browser), and
+        rebuild it when files change, until interrupted (with Ctrl-C).
+
+        Served pages reload themselves after each rebuild, and show the error
+        if one fails (the last good build is still served). A changed page only
+        re-renders the website; any other change (to ``automata.yaml``, the
+        materials, or a deleted page) reloads the project and builds it all.
+        The site is served under ``website.base_path``, if it is absolute.
+
+        Parameters
+        ----------
+        port : int
+            The port to serve on, at 127.0.0.1.
+        current_time : datetime.datetime | None
+            The time to build for. If *None*, the time of each build.
+        verbose : bool
+            If true, recipes' output goes to the terminal as they run.
+        echo : Callable[[str], None]
+            Reports each build, and where the site is served.
+        open_browser : bool
+            Whether to open the site in the default browser, once it's built.
+
+        Raises
+        ------
+        automata.exceptions.Error
+            If the port is in use.
+
+        """
+        import webbrowser
+
+        from ._serve import serve
+
+        serve(
+            self.path,
+            port,
+            current_time,
+            verbose,
+            echo,
+            open_url=webbrowser.open if open_browser else None,
+        )
 
     def publish(
         self,
@@ -566,7 +615,7 @@ class Automata:
         return exported
 
     def load_exported_materials(self) -> Universe[ExportedArtifact]:
-        """Load the materials written by a previous :meth:`export`.
+        """Load the materials written by a previous :meth:`export_materials`.
 
         Reads ``materials.json`` from the build directory. Useful for calling
         :meth:`render_website` without re-running the earlier steps::
@@ -631,13 +680,13 @@ class Automata:
 
         Loads pages and static content from the content directory and passes
         them to the generation pipeline, along with *materials*. The materials'
-        files must already be in the build directory (see :meth:`export`).
+        files must already be in the build directory (see :meth:`export_materials`).
 
         Parameters
         ----------
         materials : Universe[ExportedArtifact]
             The exported materials to render with, as returned by
-            :meth:`export` (possibly filtered with :meth:`filter`).
+            :meth:`export_materials` (possibly filtered with :meth:`filter`).
         current_time : datetime.datetime | None
             The current time for date-based rendering logic. If *None*,
             uses the system time.
