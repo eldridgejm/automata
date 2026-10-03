@@ -39,7 +39,24 @@ Options:
   it is captured: if a recipe fails, the error names the artifact (e.g.
   ``homeworks/01-intro/homework.pdf``), the recipe, its directory, and its exit
   status, followed by the last 30 lines of its output (stdout and stderr
-  together). ``publish``, ``build-materials``, and ``export`` accept it too.
+  together). ``publish``, ``pipeline build-materials``, and
+  ``pipeline export-materials`` accept it too.
+
+It reports its progress: how many collections and publications were
+discovered, how many artifacts were built (and how many by their recipes), how
+many were skipped and why (not released yet, not ready, or missing), and how
+long the build took::
+
+    → Discovered 4 collections, 40 publications.
+    ✓ Built 69 artifacts (69 by their recipes).
+    ○ Skipped 11 artifacts: 4 not released yet, 7 not ready.
+    ✓ Built the site in _build (1.6 s).
+
+On a terminal, this is in color, and a spinner shows what is happening at the
+moment (discovering, building materials, with the count so far and the recipe
+running, exporting, or rendering), on a line that each of these replaces when
+done. With ``--verbose``, there is no spinner: each recipe is named before its
+output instead. ``automata publish`` reports the same.
 
 
 ``automata serve``

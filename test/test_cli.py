@@ -72,6 +72,82 @@ def test_build_builds_the_site(project):
     assert (project / "_build" / "materials" / "materials.json").exists()
 
 
+def test_build_reports_its_progress(project):
+    import re
+
+    result = _invoke("build")
+
+    assert "Discovered 1 collection, 1 publication." in result.output
+    assert "Built 1 artifact." in result.output
+    assert re.search(r"Built the site in _build \(\d+\.\d s\)\.", result.output)
+    assert "Skipped" not in result.output
+
+
+def _recipes_project(project):
+    """Add a publication with a recipe, and one not released yet."""
+    pub = project / "notes" / "01-intro"
+    pub.mkdir(parents=True)
+    (project / "notes" / "collection.yaml").write_text(
+        "publication_schema:\n  required_artifacts: [notes.pdf, later.pdf]\n"
+    )
+    (pub / "publication.yaml").write_text(
+        "metadata: {}\nartifacts:\n"
+        "  notes.pdf:\n    recipe: touch notes.pdf\n"
+        "  later.pdf:\n    recipe: touch later.pdf\n"
+        "    release_time: 2099-01-01 00:00:00\n"
+    )
+
+
+def test_build_summarizes_the_artifacts(project):
+    _recipes_project(project)
+
+    result = _invoke("build")
+
+    # (and the homework, which has no recipe)
+    assert "Built 2 artifacts (1 by its recipe)." in result.output
+    assert "Skipped 1 artifact: 1 not released yet." in result.output
+    # each recipe is shown only as it runs, on a terminal
+    assert "Running the recipe" not in result.output
+
+
+def test_verbose_build_says_which_recipe_each_output_is_from(project):
+    _recipes_project(project)
+
+    result = _invoke("build", "--verbose")
+
+    assert "Running the recipe for notes/01-intro/notes.pdf" in result.output
+
+
+def test_build_progress_shows_the_running_recipe_as_a_status(project):
+    from automata import Automata
+    from automata.cli import _BuildProgress
+
+    _recipes_project(project)
+    automata = Automata(project)
+    lines, statuses = [], []
+    _BuildProgress(automata, echo=lines.append, status=statuses.append)
+
+    automata.build()
+
+    from rich.text import Text
+
+    shown = [Text.from_markup(s).plain if s else s for s in statuses]
+    assert shown[0] == "Discovering materials…"
+    assert any(
+        "running the recipe for notes/01-intro/notes.pdf" in s for s in shown[:-1]
+    )
+    assert "Rendering the website…" in shown
+    assert shown[-1] is None
+    assert not any("running the recipe" in line.lower() for line in lines)
+
+
+def test_publish_reports_the_builds_progress(publishing_project):
+    result = _invoke("publish")
+
+    assert "Discovered" in result.output
+    assert "Built the site in" in result.output
+
+
 def test_build_accepts_current_time(project):
     result = _invoke("build", "--current-time", "2025-01-01T00:00:00")
 
@@ -746,3 +822,53 @@ def test_calendar_can_leave_today_unhighlighted(project, tmp_path):
     )
 
     assert 'class="today"' not in html.read_text()
+
+
+def test_build_progress_is_colorful_on_a_terminal(project):
+    import io
+
+    from rich.console import Console
+
+    from automata import Automata
+    from automata.cli import _BuildProgress
+
+    _recipes_project(project)
+    automata = Automata(project)
+    console = Console(file=io.StringIO(), force_terminal=True, width=200)
+    _BuildProgress(automata, echo=console.print, verbose=True)
+
+    automata.build()
+
+    output = console.file.getvalue()
+    assert "\x1b[" in output  # styled
+    assert "✓ Built 2 artifacts (1 by its recipe)." in _strip_ansi(output)
+    assert "▶ Running the recipe for notes/01-intro/notes.pdf" in _strip_ansi(output)
+
+
+def _strip_ansi(text):
+    import re
+
+    return re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", text)
+
+
+def test_lines_printed_while_the_spinner_shows_are_on_lines_of_their_own():
+    import io
+
+    from rich.console import Console
+
+    from automata.cli import _TerminalStatus
+
+    console = Console(file=io.StringIO(), force_terminal=True, width=80)
+    status = _TerminalStatus(console)
+
+    status("Building materials…")
+    status.print("[green]✓[/] Built 3 artifacts.")
+    status(None)
+
+    # what's left on each line of the screen, after carriage returns
+    lines = [
+        line.split("\r")[-1]
+        for line in _strip_ansi(console.file.getvalue()).split("\n")
+    ]
+    assert "✓ Built 3 artifacts." in lines
+    assert not any("Building materials…" in line and "✓" in line for line in lines)

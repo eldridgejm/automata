@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import functools
 import inspect
@@ -5,10 +6,12 @@ import json
 import pathlib
 import re
 import sys
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Iterator
 from typing import Any, Optional
 
 import typer
+from rich.markup import escape
 
 from ._automata import Automata
 from ._calendar import Calendar
@@ -42,7 +45,7 @@ def _command(*args: Any, group: typer.Typer = app, **kwargs: Any) -> Callable:
             try:
                 return fn(*fn_args, **fn_kwargs)
             except Error as e:
-                typer.echo(f"Error: {e}", err=True)
+                _error(str(e))
                 raise typer.Exit(code=1)
 
         return group.command(*args, **kwargs)(wrapper)
@@ -85,7 +88,7 @@ def _current_time_or_error(current_time: str | None) -> datetime.datetime | None
         parsed = _parse_current_time(current_time)
     except ValueError as e:
         raise Error(str(e)) from None
-    typer.echo(f"Running as if it is currently {parsed}", err=True)
+    _say(f"[yellow]Running as if it is currently[/] [bold]{parsed}[/]", err=True)
     return parsed
 
 
@@ -94,7 +97,7 @@ def _get_current_time(current_time: str | None) -> datetime.datetime | None:
     try:
         return _current_time_or_error(current_time)
     except Error as e:
-        typer.echo(f"Error: {e}", err=True)
+        _error(str(e))
         raise typer.Exit(code=1)
 
 
@@ -161,8 +164,214 @@ def _project() -> Automata:
     try:
         return _load_project()
     except Error as e:
-        typer.echo(f"Error: {e}", err=True)
+        _error(str(e))
         raise typer.Exit(code=1)
+
+
+def _error(message: str) -> None:
+    """Print an error *message* on stderr, after a red "Error:"."""
+    _say(f"[bold red]Error:[/] {escape(message)}", err=True)
+
+
+def _say(markup: str, err: bool = False) -> None:
+    """Print *markup* (rich's), styled on a terminal, and plain otherwise."""
+    from rich.console import Console
+
+    Console(stderr=err, highlight=False).print(markup, soft_wrap=True)
+
+
+def _counted(n: int, noun: str) -> str:
+    """*n* (in bold) *noun*, pluralized: as markup."""
+    return f"[bold]{n}[/] {noun}" + ("" if n == 1 else "s")
+
+
+class _BuildProgress:
+    """Reports a build's progress, as its hooks fire: what was discovered,
+    each recipe as it runs, what was built (and skipped), and when the site is
+    done.
+
+    Lines are printed (as rich markup) with *echo*. If given, *status* shows
+    what is happening now: a transient line on the terminal (with a spinner),
+    cleared with None. If *verbose*, each recipe is named with *echo* instead,
+    before its output.
+    """
+
+    def __init__(
+        self,
+        project: Automata,
+        echo: Callable[[str], None] = _say,
+        status: Callable[[str | None], None] | None = None,
+        verbose: bool = False,
+    ):
+        self.echo, self.status, self.verbose = echo, status, verbose
+        self.build_directory = project.config.website.build_directory
+        self.start = time.monotonic()
+        self.collections = self.publications = 0
+        self.built = self.by_recipe = 0
+        self.skipped = {"not released yet": 0, "not ready": 0, "missing": 0}
+        self.recipe: str | None = None
+        self._reported: set[str] = set()
+
+        hooks = project.hooks
+        hooks.on_discover_collection.register()(lambda args: self._count("collections"))
+        hooks.on_discover_publication.register()(
+            lambda args: self._count("publications")
+        )
+        hooks.on_build_materials_node.register()(lambda args: self._discovered())
+        hooks.on_build_artifact_recipe.register()(self._recipe)
+        hooks.on_build_artifact_success.register()(lambda args: self._built())
+        for hook, reason in [
+            (hooks.on_build_artifact_too_soon, "not released yet"),
+            (hooks.on_build_artifact_not_ready, "not ready"),
+            (hooks.on_build_artifact_missing, "missing"),
+        ]:
+            hook.register()(self._skipper(reason))
+        hooks.on_export_node.register()(lambda args: self._exporting())
+        hooks.on_render_pre.register()(lambda args: self._rendering())
+        hooks.on_render_post.register()(lambda args: self._done())
+        self._show("Discovering materials…")
+
+    def _show(self, markup: str | None) -> None:
+        if self.status is not None:
+            self.status(markup)
+
+    def _count(self, name: str) -> None:
+        setattr(self, name, getattr(self, name) + 1)
+
+    def _skipper(self, reason: str) -> Callable[[Any], None]:
+        """Counts an artifact skipped for *reason*."""
+
+        def skip(args: Any) -> None:
+            self.skipped[reason] += 1
+
+        return skip
+
+    def _once(self, what: str) -> bool:
+        """Whether *what* hasn't been reported yet (and now is)."""
+        if what in self._reported:
+            return False
+        self._reported.add(what)
+        return True
+
+    def _discovered(self) -> None:
+        if self._once("discovered"):
+            self.echo(
+                f"[bold cyan]→[/] Discovered {_counted(self.collections, 'collection')}"
+                f", {_counted(self.publications, 'publication')}."
+            )
+            self._show("Building materials…")
+
+    def _recipe(self, args: Any) -> None:
+        self._discovered()
+        self.by_recipe += 1
+        path = (args.workdir / args.path).resolve()
+        try:
+            path = path.relative_to(pathlib.Path.cwd().resolve())
+        except ValueError:
+            pass
+        self.recipe = escape(str(path))
+        if self.verbose:
+            self.echo(f"[bold blue]▶[/] Running the recipe for [cyan]{self.recipe}[/]")
+        self._building()
+
+    def _built(self) -> None:
+        self.built += 1
+        self._building()
+
+    def _building(self) -> None:
+        running = ""
+        if self.recipe is not None:
+            running = f" · running the recipe for [cyan]{self.recipe}[/]"
+        self._show(f"Building materials… [dim]{self.built} built[/]{running}")
+
+    def _materials(self) -> None:
+        self._discovered()
+        if not self._once("materials"):
+            return
+        recipes = ""
+        if self.by_recipe:
+            noun = "its recipe" if self.by_recipe == 1 else "their recipes"
+            recipes = f" [dim]({self.by_recipe} by {noun})[/]"
+        self.echo(
+            f"[bold green]✓[/] Built {_counted(self.built, 'artifact')}{recipes}."
+        )
+        skipped = {reason: n for reason, n in self.skipped.items() if n}
+        if skipped:
+            reasons = ", ".join(f"{n} {reason}" for reason, n in skipped.items())
+            total = _counted(sum(skipped.values()), "artifact")
+            self.echo(f"[bold yellow]○[/] Skipped {total}: [dim]{reasons}[/].")
+
+    def _exporting(self) -> None:
+        self._materials()
+        if self._once("exporting"):
+            self._show("Exporting materials…")
+
+    def _rendering(self) -> None:
+        self._materials()
+        self._show("Rendering the website…")
+
+    def _done(self) -> None:
+        self._materials()
+        self._show(None)
+        seconds = time.monotonic() - self.start
+        self.echo(
+            f"[bold green]✓[/] Built the site in "
+            f"[bold cyan]{escape(self.build_directory)}[/] [dim]({seconds:.1f} s)[/]."
+        )
+
+
+class _TerminalStatus:
+    """A transient status line on the terminal, with a spinner: shown (or
+    changed) with a message (rich markup), and cleared with None. Lines must
+    be printed with :meth:`print` while it shows, so that they go above it,
+    rather than over it."""
+
+    def __init__(self, console: Any = None) -> None:
+        from rich.console import Console
+
+        self._console = console or Console(highlight=False)
+        self._status: Any = None
+
+    def print(self, markup: str) -> None:
+        self._console.print(markup, soft_wrap=True)
+
+    def __call__(self, message: str | None) -> None:
+        from rich.text import Text
+
+        if message is None:
+            if self._status is not None:
+                self._status.stop()
+                self._status = None
+            return
+        # one line, however narrow the terminal (the spinner takes two columns)
+        text = Text.from_markup(message)
+        text.truncate(self._console.width - 2, overflow="ellipsis")
+        if self._status is None:
+            self._status = self._console.status(
+                text, spinner="dots", spinner_style="bold green"
+            )
+            self._status.start()
+        else:
+            self._status.update(text)
+
+
+@contextlib.contextmanager
+def _build_progress(project: Automata, verbose: bool) -> Iterator[None]:
+    """Report the progress of the build within: with a spinner showing what is
+    happening now, on a terminal (unless *verbose*, as recipes' output then
+    goes to it)."""
+    if sys.stdout.isatty() and not verbose:
+        status = _TerminalStatus()
+        # (through the spinner's console, so that the lines go above it)
+        _BuildProgress(project, echo=status.print, status=status)
+    else:
+        status = None
+        _BuildProgress(project, verbose=verbose)
+    try:
+        yield
+    finally:
+        if status is not None:
+            status(None)
 
 
 @_command()
@@ -171,7 +380,9 @@ def build(
     verbose: bool = _verbose_option,
 ):
     """Run the full pipeline and produce the site in the build directory."""
-    _project().build(current_time=_get_current_time(current_time), verbose=verbose)
+    project = _project()
+    with _build_progress(project, verbose):
+        project.build(current_time=_get_current_time(current_time), verbose=verbose)
 
 
 def _complete_publish_targets(incomplete: str) -> list[str]:
@@ -198,12 +409,13 @@ def publish(
 ):
     """Run the full pipeline and deploy the built site."""
     project = _project()
-    published = project.publish(
-        target=target, current_time=_get_current_time(current_time), verbose=verbose
-    )
+    with _build_progress(project, verbose):
+        published = project.publish(
+            target=target, current_time=_get_current_time(current_time), verbose=verbose
+        )
 
     for name in published:
-        typer.echo(f"Published to {name}.")
+        _say(f"[bold green]✓[/] Published to [bold]{escape(name)}[/].")
 
 
 @_command()
@@ -229,7 +441,7 @@ def serve(
 def clean():
     """Empty the build directory, keeping top-level dot-entries."""
     _project().clean()
-    typer.echo("Build directory cleaned.")
+    _say("[bold green]✓[/] Build directory cleaned.")
 
 
 @_command(name="build-materials", group=pipeline)
@@ -243,7 +455,7 @@ def build_materials(
     project.build_materials(
         discovered, current_time=_get_current_time(current_time), verbose=verbose
     )
-    typer.echo("Materials built.")
+    _say("[bold green]✓[/] Materials built.")
 
 
 @_command(name="export-materials", group=pipeline)
@@ -258,7 +470,7 @@ def export_materials(
         discovered, current_time=_get_current_time(current_time), verbose=verbose
     )
     project.export_materials(built)
-    typer.echo("Materials exported.")
+    _say("[bold green]✓[/] Materials exported.")
 
 
 @_command(name="render-website", group=pipeline)
@@ -267,7 +479,7 @@ def render_website(current_time: Optional[str] = _current_time_option):
     project = _project()
     materials = project.load_exported_materials()
     project.render_website(materials, current_time=_get_current_time(current_time))
-    typer.echo("Website rendered.")
+    _say("[bold green]✓[/] Website rendered.")
 
 
 @_command()
@@ -282,7 +494,7 @@ def resolve(
     try:
         publication = project.resolve(path)
     except FileNotFoundError as e:
-        typer.echo(f"Error: {e}", err=True)
+        _error(str(e))
         raise typer.Exit(code=1)
     except Exception as e:
         typer.echo(f"Error resolving publication file: {e}", err=True)
@@ -687,7 +899,7 @@ def _add_extension_command(
         try:
             return command(*args, **kwargs)
         except Error as e:
-            typer.echo(f"Error: {e}", err=True)
+            _error(str(e))
             raise typer.Exit(code=1)
 
     if takes_project:
@@ -753,7 +965,7 @@ def main(argv: list[str] | None = None, cwd: pathlib.Path | None = None):
         and command not in _builtin_command_names()
     ):
         # it may be an extension's command, which couldn't be loaded
-        typer.echo(f"Error: {problem}", err=True)
+        _error(str(problem))
         raise SystemExit(1)
     _startup_project = project
     try:
