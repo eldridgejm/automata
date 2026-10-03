@@ -239,7 +239,16 @@ Discover, build, and export materials to the build directory.
 
 ::
 
-    automata pipeline export-materials [--current-time TIME] [--verbose]
+    automata pipeline export-materials [--all] [--to DIR] [--current-time TIME]
+                                       [--verbose]
+
+``--all`` includes the artifacts that are not released yet, or not ready (so
+their recipes run too). ``--to DIR`` exports to ``DIR`` instead of the build
+directory: each artifact goes to ``DIR/<collection>/<publication>/<artifact>``,
+with ``DIR/materials.json`` describing them. Together, they export every
+material, for instance to preview them::
+
+    automata pipeline export-materials --all --to _materials
 
 ``automata pipeline render-website``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

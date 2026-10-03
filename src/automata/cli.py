@@ -488,6 +488,19 @@ def build_materials(
 
 @_command(name="export-materials", group=pipeline)
 def export_materials(
+    all_artifacts: bool = typer.Option(
+        False,
+        "--all",
+        help="Include the artifacts that are not released yet, or not ready.",
+    ),
+    to: Optional[pathlib.Path] = typer.Option(
+        None,
+        "--to",
+        help=(
+            "Export to this directory, rather than to the build directory "
+            "(where render-website finds them)."
+        ),
+    ),
     current_time: Optional[str] = _current_time_option,
     verbose: bool = _verbose_option,
 ):
@@ -495,10 +508,15 @@ def export_materials(
     project = _project()
     discovered = project.discover()
     built = project.build_materials(
-        discovered, current_time=_get_current_time(current_time), verbose=verbose
+        discovered,
+        current_time=_get_current_time(current_time),
+        verbose=verbose,
+        ignore_release_time=all_artifacts,
+        ignore_ready=all_artifacts,
     )
-    project.export_materials(built)
-    _say("[bold green]✓[/] Materials exported.")
+    project.export_materials(built, to=to)
+    where = f" to [bold cyan]{escape(str(to))}[/]" if to is not None else ""
+    _say(f"[bold green]✓[/] Materials exported{where}.")
 
 
 @_command(name="render-website", group=pipeline)

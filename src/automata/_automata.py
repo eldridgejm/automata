@@ -582,16 +582,21 @@ class Automata:
         )
 
     def export_materials(
-        self, universe: Universe[BuiltArtifact]
+        self, universe: Universe[BuiltArtifact], to: Path | None = None
     ) -> Universe[ExportedArtifact]:
-        """Export built materials to the build directory.
+        """Export built materials to the build directory, or to *to*.
 
-        Writes artifact files and ``materials.json`` to the build directory.
+        Writes the artifacts' files (as
+        ``<collection>/<publication>/<artifact>``) and ``materials.json``.
 
         Parameters
         ----------
         universe : Universe[BuiltArtifact]
             The built materials to export.
+        to : Path | None
+            The directory to write them to. By default, the build directory's
+            materials directory (``website.materials_directory_name``), where
+            :meth:`render_website` finds them.
 
         Returns
         -------
@@ -599,14 +604,18 @@ class Automata:
             The exported materials universe.
 
         """
-        build_dir = self.path / self.config.website.build_directory
-        prefix = self.config.website.materials_directory_name
-
-        exported = materials.export(
-            universe, outdir=build_dir, prefix=prefix, hooks=self.hooks
-        )
-
-        materials_json = self._materials_json_path()
+        if to is None:
+            # paths relative to the build directory, as the website links to
+            # them
+            build_dir = self.path / self.config.website.build_directory
+            prefix = self.config.website.materials_directory_name
+            exported = materials.export(
+                universe, outdir=build_dir, prefix=prefix, hooks=self.hooks
+            )
+            materials_json = self._materials_json_path()
+        else:
+            exported = materials.export(universe, outdir=to, hooks=self.hooks)
+            materials_json = to / "materials.json"
         materials_json.parent.mkdir(parents=True, exist_ok=True)
         materials_json.write_text(materials.serialize(exported))
 

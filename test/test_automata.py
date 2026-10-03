@@ -123,6 +123,16 @@ def test_export_writes_materials_json(project_dir):
     assert "homeworks" in data["collections"]
 
 
+def test_export_writes_to_another_directory(project_dir, tmp_path):
+    a = Automata(project_dir)
+    built = a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True)
+
+    a.export_materials(built, to=tmp_path / "out")
+
+    assert (tmp_path / "out" / "materials.json").exists()
+    assert not (project_dir / "_build" / "materials").exists()
+
+
 def test_export_returns_exported_universe(project_dir):
     a = Automata(project_dir)
     discovered = a.discover()

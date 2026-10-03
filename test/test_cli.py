@@ -215,9 +215,45 @@ def test_build_materials_runs(project):
 
 
 def test_export_writes_materials(project):
+    import json
+
     _invoke("pipeline", "export-materials")
 
-    assert (project / "_build" / "materials" / "materials.json").exists()
+    materials_json = project / "_build" / "materials" / "materials.json"
+    artifacts = json.loads(materials_json.read_text())["collections"]["homeworks"][
+        "publications"
+    ]["hw01"]["artifacts"]
+    # relative to the build directory, as the website links to them
+    assert artifacts["homework.pdf"]["path"] == "materials/homeworks/hw01/homework.pdf"
+
+
+def test_export_materials_writes_to_another_directory(project, tmp_path):
+    out = tmp_path / "materials"
+
+    _invoke("pipeline", "export-materials", "--to", str(out))
+
+    assert (out / "materials.json").exists()
+    assert (out / "homeworks" / "hw01" / "homework.pdf").exists()
+    assert not (project / "_build" / "materials").exists()
+
+
+@pytest.mark.parametrize(
+    "hold_back",
+    [
+        lambda project: _schedule_homework(project, "2099-01-01 00:00:00"),
+        lambda project: _mark_homework_not_ready(project),
+    ],
+    ids=["not released yet", "not ready"],
+)
+def test_export_materials_all_includes_what_isnt_released(project, tmp_path, hold_back):
+    hold_back(project)
+    some, every = tmp_path / "some", tmp_path / "all"
+
+    _invoke("pipeline", "export-materials", "--to", str(some))
+    _invoke("pipeline", "export-materials", "--all", "--to", str(every))
+
+    assert not (some / "homeworks" / "hw01" / "homework.pdf").exists()
+    assert (every / "homeworks" / "hw01" / "homework.pdf").exists()
 
 
 def test_render_website_renders_previously_exported_materials(project):

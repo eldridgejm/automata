@@ -118,7 +118,7 @@ The primary interface is the ``Automata`` class.
             children.
         :returns: A new universe with the rejected nodes removed.
 
-    .. method:: export_materials(universe)
+    .. method:: export_materials(universe, to=None)
 
         Export built materials to the build directory and write
         ``materials.json``, which is published with the site. (The library
@@ -127,6 +127,10 @@ The primary interface is the ``Automata`` class.
 
         :param universe: The built materials to export.
         :type universe: Universe[BuiltArtifact]
+        :param to: Export to this directory instead (the artifacts as
+            ``<collection>/<publication>/<artifact>``, and
+            ``materials.json``).
+        :type to: Path or None
         :returns: The exported materials universe.
         :rtype: Universe[ExportedArtifact]
 
