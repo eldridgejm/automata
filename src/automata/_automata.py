@@ -29,10 +29,8 @@ from .hooks import (
 from .materials import (
     BuiltArtifact,
     ExportedArtifact,
-    Publication,
     UnbuiltArtifact,
     Universe,
-    find_parent_collection,
 )
 from .materials._filter import ArtifactType, Predicate
 from .util.yaml import SourceMap
@@ -733,45 +731,6 @@ class Automata:
             extensions=self.extensions,
             materials=materials,
         )
-
-    def resolve(self, path: Path) -> Publication[UnbuiltArtifact]:
-        """Resolve a publication.yaml file.
-
-        Finds the parent collection by searching upward for
-        ``collection.yaml``, discovers from there, and extracts the
-        specific publication.
-
-        Parameters
-        ----------
-        path : Path
-            Path to the ``publication.yaml`` file.
-
-        Returns
-        -------
-        Publication[UnbuiltArtifact]
-            The resolved publication.
-
-        """
-        path = path.resolve()
-        pub_dir = path.parent
-        collection_dir = find_parent_collection(pub_dir)
-
-        if collection_dir is not None:
-            universe = materials.discover(
-                collection_dir,
-                vars=self.config.vars,
-                course=course_variables(self.config.course),
-            )
-            collection = universe.collections["."]
-            pub_key = str(pub_dir.relative_to(collection_dir))
-            return collection.publications[pub_key]
-        else:
-            universe = materials.discover(
-                pub_dir,
-                vars=self.config.vars,
-                course=course_variables(self.config.course),
-            )
-            return universe.collections["default"].publications["."]
 
 
 def _holds_materials(directory: Path) -> bool:

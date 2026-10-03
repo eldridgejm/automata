@@ -132,7 +132,7 @@ The primary interface is the ``Automata`` class.
 
     .. method:: load_exported_materials()
 
-        Load the materials written by a previous :meth:`export` from
+        Load the materials written by a previous :meth:`export_materials` from
         ``materials.json`` in the build directory. Useful for regenerating the
         website without re-running the earlier steps::
 
@@ -147,23 +147,13 @@ The primary interface is the ``Automata`` class.
     .. method:: render_website(materials, current_time=None)
 
         Render the website from exported materials. The materials' files
-        must already be in the build directory (see :meth:`export`).
+        must already be in the build directory (see :meth:`export_materials`).
 
         :param materials: The exported materials to render with, as returned
-            by :meth:`export` (possibly filtered with :meth:`filter`).
+            by :meth:`export_materials` (possibly filtered with :meth:`filter`).
         :type materials: Universe[ExportedArtifact]
         :param current_time: Override the current time.
         :type current_time: datetime or None
-
-    .. method:: resolve(path)
-
-        Resolve a ``publication.yaml`` file, returning the fully-resolved
-        publication with all variables interpolated.
-
-        :param path: Path to the ``publication.yaml`` file.
-        :type path: Path
-        :returns: The resolved publication.
-        :rtype: Publication[UnbuiltArtifact]
 
     .. method:: status(current_time=None)
 

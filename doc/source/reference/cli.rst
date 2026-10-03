@@ -101,18 +101,20 @@ reported before the site is built.
 ``automata resolve``
 --------------------
 
-Resolve a ``publication.yaml`` file and output as JSON.
+Print the materials, resolved, as JSON: every collection and publication,
+with their metadata, and every artifact, with its recipe, release time, and
+whether it is ready. Builds nothing.
 
 ::
 
-    automata resolve PATH
+    automata resolve [TARGET]
 
-Arguments:
-
-- ``PATH`` --- Path to the ``publication.yaml`` file to resolve.
-
-This is useful for debugging: it shows the fully-resolved publication with all
-variables interpolated and defaults applied.
+``TARGET`` limits it to one collection or publication: its key (such as
+``homeworks`` or ``homeworks/hw01``), or the path of its directory or YAML file
+(such as ``homeworks/hw01/publication.yaml``). This is useful for debugging:
+it shows each publication fully resolved, with its variables interpolated and
+its defaults applied. A key that names nothing is an error. (In Python,
+:meth:`Automata.discover` gives all the materials, resolved.)
 
 
 ``automata status``

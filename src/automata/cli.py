@@ -510,29 +510,57 @@ def render_website(current_time: Optional[str] = _current_time_option):
     _say("[bold green]✓[/] Website rendered.")
 
 
+def _target_key(target: str, root: pathlib.Path) -> str:
+    """*target*'s key: itself (e.g. ``homeworks/hw01``), or, if it is an
+    existing path, the path of its directory, relative to the project."""
+    path = pathlib.Path(target)
+    if not path.exists():
+        return target.strip("/")
+    path = path.resolve()
+    if path.is_file():
+        path = path.parent
+    try:
+        return path.relative_to(root.resolve()).as_posix()
+    except ValueError:
+        raise Error(f'"{target}" is not inside the project ({root}).') from None
+
+
+def _find_target(universe: Any, key: str) -> Any:
+    """The collection or publication with *key* in *universe*."""
+    collections = universe.collections
+    if key in collections and key != "default":
+        return collections[key]
+    for collection_key, collection in collections.items():
+        if collection_key == "default":
+            # publications outside any collection: keyed by their paths
+            if key in collection.publications:
+                return collection.publications[key]
+        elif key.startswith(collection_key + "/"):
+            publication_key = key[len(collection_key) + 1 :]
+            if publication_key in collection.publications:
+                return collection.publications[publication_key]
+    raise Error(f'Nothing discovered is named "{key}".')
+
+
 @_command()
 def resolve(
-    path: pathlib.Path = typer.Argument(
-        ...,
-        help="Path to the publication.yaml file to resolve.",
+    target: Optional[str] = typer.Argument(
+        None,
+        help=(
+            "Print only this collection or publication: its key (e.g. "
+            "homeworks/hw01), or the path of its directory or YAML file."
+        ),
     ),
 ):
-    """Resolve a publication.yaml file and output as JSON."""
-    project = _project()
-    try:
-        publication = project.resolve(path)
-    except FileNotFoundError as e:
-        _error(str(e))
-        raise typer.Exit(code=1)
-    except Exception as e:
-        typer.echo(f"Error resolving publication file: {e}", err=True)
-        raise typer.Exit(code=1)
+    """Print the materials, resolved, with their metadata, as JSON.
 
-    try:
-        typer.echo(serialize(publication))
-    except Exception as e:
-        typer.echo(f"Error serializing publication: {e}", err=True)
-        raise typer.Exit(code=1)
+    Builds nothing.
+    """
+    project = _project()
+    resolved = project.discover()
+    if target is not None:
+        resolved = _find_target(resolved, _target_key(target, project.path))
+    typer.echo(serialize(resolved))
 
 
 # status ===============================================================================

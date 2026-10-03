@@ -278,11 +278,11 @@ def test_outside_any_project_prints_an_error_without_a_traceback(tmp_path):
 
 def test_resolve_outside_any_project_prints_one_clear_error(tmp_path):
     with contextlib.chdir(tmp_path):
-        result = runner.invoke(app, ["resolve", "publication.yaml"])
+        result = runner.invoke(app, ["resolve"])
 
     assert result.exit_code == 1
     assert "automata.yaml" in result.output
-    assert "Error resolving" not in result.output
+    assert "Traceback" not in result.output
 
 
 # publish ==============================================================================
@@ -425,28 +425,64 @@ def test_clean_build_directory_refusal_prints_an_error(project):
 # resolve ==============================================================================
 
 
-def test_resolve_prints_the_publication_as_json(project, tmp_path):
-    import json
-
+def _notes(project):
+    """A publication outside any collection, at notes/."""
     pub = project / "notes" / "publication.yaml"
     pub.parent.mkdir()
     pub.write_text(
         "metadata:\n  title: Notes\n  due: 3 days after 2026-01-01\n"
         "artifacts:\n  notes.pdf:\n    missing_ok: true\n"
     )
-
-    result = _invoke("resolve", str(pub))
-
-    resolved = json.loads(result.output)
-    assert resolved["metadata"]["title"] == "Notes"
-    assert "notes.pdf" in resolved["artifacts"]
+    return pub
 
 
-def test_resolve_missing_file_prints_an_error(project):
-    result = runner.invoke(app, ["resolve", "nowhere/publication.yaml"])
+def test_resolve_prints_everything_discovered_as_json(project):
+    import json
+
+    result = _invoke("resolve")
+
+    universe = json.loads(result.output)
+    hw01 = universe["collections"]["homeworks"]["publications"]["hw01"]
+    assert "homework.pdf" in hw01["artifacts"]
+
+
+def test_resolve_prints_a_collection_by_its_key(project):
+    import json
+
+    result = _invoke("resolve", "homeworks")
+
+    assert "hw01" in json.loads(result.output)["publications"]
+
+
+def test_resolve_prints_a_publication_by_its_key(project):
+    import json
+
+    result = _invoke("resolve", "homeworks/hw01")
+
+    publication = json.loads(result.output)
+    assert "homework.pdf" in publication["artifacts"]
+    assert "metadata" in publication
+
+
+@pytest.mark.parametrize("which", ["file", "directory"])
+def test_resolve_prints_a_publication_by_its_path(project, which):
+    import json
+
+    pub = _notes(project)
+    path = pub if which == "file" else pub.parent
+
+    result = _invoke("resolve", str(path))
+
+    publication = json.loads(result.output)
+    assert publication["metadata"]["title"] == "Notes"
+    assert "notes.pdf" in publication["artifacts"]
+
+
+def test_resolve_says_when_nothing_has_the_key(project):
+    result = runner.invoke(app, ["resolve", "homeworks/hw99"])
 
     assert result.exit_code == 1
-    assert "Error" in result.output
+    assert 'Error: Nothing discovered is named "homeworks/hw99".' in result.output
 
 
 # tab completion =======================================================================
