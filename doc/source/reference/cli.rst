@@ -13,6 +13,9 @@ finds. When that is not the current directory, it says so::
 If no ``automata.yaml`` is found in the current directory or any parent, the
 command prints an error and exits with status 1.
 
+Extensions can add commands of their own, which ``automata --help`` lists under
+"Extensions" (see :ref:`extension-commands`).
+
 
 ``automata build``
 ------------------

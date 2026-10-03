@@ -5,7 +5,8 @@ What is an extension?
 ---------------------
 
 An extension is a Python object with a ``name``, a ``hooks`` dictionary, and
-optional ``config``, ``schema``, and ``dependencies``:
+optional ``config``, ``schema``, ``dependencies``, and ``commands`` (see
+:ref:`extension-commands`):
 
 .. code-block:: python
 
@@ -225,3 +226,77 @@ code with no third-party dependencies: it lives in the course repository and
 needs no installation. Anything reusable across courses, or anything that
 imports third-party libraries, should be a package extension, so that its
 dependencies are declared in ``pyproject.toml``.
+
+
+.. _extension-commands:
+
+Commands
+--------
+
+An extension can add commands to the CLI: ``automata NAME``. They are listed
+under "Extensions" in ``automata --help``, and are available when automata is
+run in the project (or a directory inside it).
+
+In Python, ``commands`` maps each command's name to a function. Its parameters
+are the command's options and arguments, as with `Typer
+<https://typer.tiangolo.com>`_, and its docstring is the command's help. A
+parameter named ``project`` is not an option: it is given the
+:class:`~automata.Automata` project, with its configuration and materials:
+
+.. code-block:: python
+
+    # extensions/tools/extension.py
+    import datetime
+
+    from automata.extensions import Extension
+
+    def weeks(project, count: int = 2):
+        """Print the first weeks' start dates."""
+        start = project.config.course.first_week_start
+        for i in range(count):
+            print(f"Week {i + 1}: {start + datetime.timedelta(weeks=i)}")
+
+    extension = Extension(name="tools", hooks={}, commands={"weeks": weeks})
+
+::
+
+    $ automata weeks --count 3
+    Week 1: 2025-09-22
+    Week 2: 2025-09-29
+    Week 3: 2025-10-06
+
+An :class:`~automata.exceptions.Error` raised by a command is printed as one
+``Error: ...`` line, and the command exits with status 1.
+
+A command can also be a group of commands (``automata NAME SUBNAME``): a dict
+of them, in the same form (so groups can nest), with the group's help under
+``"__doc__"`` (by default, it names the extension):
+
+.. code-block:: python
+
+    commands = {
+        "grades": {
+            "__doc__": "Work with grades.",
+            "upload": upload,         # automata grades upload
+            "sync": {"all": sync_all},  # automata grades sync all
+        },
+    }
+
+A directory extension can also add commands without Python: each file in its
+``commands/`` subdirectory adds a command named after the file. The file's
+content is a shell command, run (as script hooks are) in the project directory,
+with ``AUTOMATA_PROJECT_DIR`` and ``AUTOMATA_EXTENSION_DIR`` set; the command
+line's arguments are appended to it, quoted, and its exit status is the
+command's. A first line starting with ``#`` is the command's help::
+
+    # extensions/tools/commands/word-count
+    # Count the words in the pages.
+    wc -w website/content/*.md
+
+Each subdirectory of ``commands/`` is a group of commands: for example,
+``commands/grades/upload`` adds ``automata grades upload``.
+
+Command names are lowercase letters, digits, and hyphens. A command (or group)
+named like one of automata's own (``build``, ``serve``, ...) or another
+extension's is an error, as is an empty group; until it is fixed, automata's own commands still work, and running any
+other command reports the error.

@@ -1,7 +1,10 @@
 import datetime
 import functools
+import inspect
 import json
 import pathlib
+import re
+import sys
 from collections.abc import Callable
 from typing import Any, Optional
 
@@ -13,6 +16,8 @@ from ._check import Problem
 from ._status import ArtifactStatus, Status
 from .config import CONFIGURATION_FILENAME, find_config
 from .exceptions import Error
+from .extensions import ScriptCommand
+from .extensions._apply import all_extensions
 from .materials import serialize
 from .util.resolution import local_time
 
@@ -566,8 +571,167 @@ def check(
         raise typer.Exit(code=1)
 
 
-def main():
-    app()
+# commands from extensions ============================================================
+
+_EXTENSIONS_PANEL = "Extensions"
+
+
+def _builtin_command_names() -> set[str]:
+    names = {
+        command.name or command.callback.__name__.replace("_", "-")
+        for command in app.registered_commands
+        if command.callback is not None
+    }
+    return names | {group.name for group in app.registered_groups if group.name}
+
+
+def _check_command_names(extension: str, path: list[str], command: Any) -> None:
+    """Check the name at the end of *path* (a command's, or a group's), and
+    those of the group's commands, if *command* is a group."""
+    name = " ".join(path)
+    if not re.fullmatch(r"[a-z][a-z0-9-]*", path[-1]):
+        raise Error(
+            f'Extension "{extension}" adds a command named "{name}": command '
+            f"names must be lowercase letters, digits and hyphens, starting with "
+            f"a letter."
+        )
+    if isinstance(command, dict):
+        subcommands = {key: value for key, value in command.items() if key != "__doc__"}
+        if not subcommands:
+            raise Error(
+                f'Extension "{extension}" adds an empty command group "{name}".'
+            )
+        for subname, subcommand in subcommands.items():
+            _check_command_names(extension, [*path, subname], subcommand)
+
+
+def _extension_commands(project: Automata) -> dict[str, tuple[str, Any]]:
+    """The commands (and groups of them) the project's extensions add, by
+    name, with the name of the extension adding each."""
+    builtins = _builtin_command_names()
+    commands: dict[str, tuple[str, Any]] = {}
+    extensions = all_extensions([project.theme, *project.extensions])
+    for extension in extensions.values():
+        for name, command in extension.commands.items():
+            _check_command_names(extension.name, [name], command)
+            if name in builtins:
+                raise Error(
+                    f'Extension "{extension.name}" adds a command named "{name}", '
+                    f"but automata has a command of that name. Rename it."
+                )
+            if name in commands:
+                raise Error(
+                    f'Extensions "{commands[name][0]}" and "{extension.name}" both '
+                    f'add a command named "{name}". Rename one.'
+                )
+            commands[name] = (extension.name, command)
+    return commands
+
+
+def _add_extension_command(
+    target: typer.Typer,
+    name: str,
+    extension: str,
+    command: Any,
+    project: Automata,
+    panel: str | None = _EXTENSIONS_PANEL,
+) -> None:
+    """Add an extension's command to *target*: a function, a script, or a
+    group of commands (a dict of them, with its help under "__doc__")."""
+    if isinstance(command, dict):
+        group = typer.Typer(
+            help=command.get("__doc__") or f'Commands from extension "{extension}".'
+        )
+        for subname, subcommand in command.items():
+            if subname != "__doc__":
+                _add_extension_command(
+                    group, subname, extension, subcommand, project, panel=None
+                )
+        target.add_typer(group, name=name, rich_help_panel=panel)
+        return
+
+    if isinstance(command, ScriptCommand):
+        # the command line's arguments (and options, and --help) all go to it
+        def run_script(ctx: typer.Context) -> None:
+            raise typer.Exit(command(ctx.args))
+
+        target.command(
+            name,
+            help=command.help or f'Run extension "{extension}"\'s {name} command.',
+            context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+            add_help_option=False,
+            rich_help_panel=panel,
+        )(run_script)
+        return
+
+    # a parameter named "project" is given the project, rather than being an
+    # option
+    signature = inspect.signature(command)
+    takes_project = "project" in signature.parameters
+
+    @functools.wraps(command)
+    def run(*args: Any, **kwargs: Any) -> Any:
+        if takes_project:
+            kwargs["project"] = project
+        try:
+            return command(*args, **kwargs)
+        except Error as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    if takes_project:
+        run.__signature__ = signature.replace(  # type: ignore[attr-defined]
+            parameters=[p for p in signature.parameters.values() if p.name != "project"]
+        )
+        run.__annotations__ = {
+            key: value
+            for key, value in getattr(command, "__annotations__", {}).items()
+            if key != "project"
+        }
+    target.command(name, rich_help_panel=panel)(run)
+
+
+def app_for_directory(directory: pathlib.Path) -> tuple[typer.Typer, Error | None]:
+    """The CLI for the project at or above *directory*: automata's commands,
+    and its extensions' commands. If the project or its extensions' commands
+    can't be loaded, only automata's commands, and the problem."""
+    full = typer.Typer()
+    full.registered_commands = list(app.registered_commands)
+    full.registered_groups = list(app.registered_groups)
+    config_path = find_config(directory)
+    if config_path is None:
+        return full, Error(
+            f"No {CONFIGURATION_FILENAME} found in {directory} or any parent directory."
+        )
+    try:
+        project = Automata(config_path.parent)
+        commands = _extension_commands(project)
+    except Error as e:
+        return full, e
+    for name, (extension, command) in commands.items():
+        _add_extension_command(full, name, extension, command, project)
+    return full, None
+
+
+def requested_command(argv: list[str]) -> str | None:
+    """The command named on the command line *argv*: its first argument that
+    isn't an option."""
+    return next((arg for arg in argv if not arg.startswith("-")), None)
+
+
+def main(argv: list[str] | None = None, cwd: pathlib.Path | None = None):
+    argv = sys.argv[1:] if argv is None else argv
+    full, problem = app_for_directory(cwd or pathlib.Path.cwd())
+    command = requested_command(argv)
+    if (
+        problem is not None
+        and command is not None
+        and command not in _builtin_command_names()
+    ):
+        # it may be an extension's command, which couldn't be loaded
+        typer.echo(f"Error: {problem}", err=True)
+        raise SystemExit(1)
+    full(argv)
 
 
 if __name__ == "__main__":

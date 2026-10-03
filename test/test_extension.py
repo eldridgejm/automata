@@ -424,6 +424,7 @@ def test_extensions_package_exports_the_public_api():
         "EXTENSIONS_GROUP",
         "THEMES_GROUP",
         "Extension",
+        "ScriptCommand",
         "apply_extension",
         "apply_extensions",
         "extension_from_directory",

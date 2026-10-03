@@ -22,7 +22,7 @@ from ..hooks import WebsiteInputs
 from ..util.resolution import describe_config_error
 from ..util.yaml import parse_yaml_with_source_map
 from ._common import extension_from_module, resolve_config
-from ._types import Extension
+from ._types import Extension, ScriptCommand
 
 
 def extension_from_directory(
@@ -46,6 +46,11 @@ def extension_from_directory(
       is the shell command; hook args are piped as JSON on stdin. The
       command runs in *project_directory* (if given), with the environment
       variables ``AUTOMATA_PROJECT_DIR`` and ``AUTOMATA_EXTENSION_DIR`` set.
+    - ``commands/`` --- commands for the CLI. Each file adds ``automata
+      NAME``, named after the file; its content is a shell command, run as
+      script hooks are, with the command line's arguments appended. A first
+      line starting with ``#`` is the command's help. Each subdirectory is a
+      group of commands (``automata NAME SUBNAME``).
     - ``extension.py`` --- Python code, imported only if *allow_python* is
       true. It must export ``make_extension(config)`` or ``extension``, as an
       entry point module would. Its hooks are combined with those of the
@@ -132,12 +137,20 @@ def extension_from_directory(
             _chain_hooks(hook_name, hooks[hook_name], fn) if hook_name in hooks else fn
         )
 
+    both = sorted(files.commands.keys() & python.commands.keys())
+    if both:
+        raise Error(
+            f'Extension "{name}" adds the command "{both[0]}" both in commands/ '
+            f"and in extension.py. Remove one."
+        )
+
     return Extension(
         name=name,
         hooks=hooks,
         config=python.config,
         schema=schema,
         dependencies=[*files.dependencies, *python.dependencies],
+        commands={**files.commands, **python.commands},
     )
 
 
@@ -161,6 +174,11 @@ def _extension_from_files(
       is the shell command; hook args are piped as JSON on stdin. The
       command runs in *project_directory* (if given), with the environment
       variables ``AUTOMATA_PROJECT_DIR`` and ``AUTOMATA_EXTENSION_DIR`` set.
+    - ``commands/`` --- commands for the CLI. Each file adds ``automata
+      NAME``, named after the file; its content is a shell command, run as
+      script hooks are, with the command line's arguments appended. A first
+      line starting with ``#`` is the command's help. Each subdirectory is a
+      group of commands (``automata NAME SUBNAME``).
 
     Parameters
     ----------
@@ -253,12 +271,20 @@ def _extension_from_files(
             _load_script_hooks(name, hooks_dir, directory, project_directory)
         )
 
+    commands_dir = directory / "commands"
+    commands = (
+        _load_script_commands(commands_dir, directory, project_directory)
+        if commands_dir.is_dir()
+        else {}
+    )
+
     return Extension(
         name=name,
         hooks=ext_hooks,
         config=resolved_config,
         schema=schema,
         dependencies=dependencies or [],
+        commands=commands,
     )
 
 
@@ -320,6 +346,45 @@ def _walk(
             on_file(key, entry)
 
 
+def _script_environment(
+    extension_directory: Traversable, project_directory: pathlib.Path | None
+) -> tuple[pathlib.Path | None, dict[str, str]]:
+    """Where scripts (hooks and commands) run, and their environment."""
+    cwd = None if project_directory is None else project_directory.absolute()
+    env = {**os.environ, "AUTOMATA_EXTENSION_DIR": str(extension_directory)}
+    if cwd is not None:
+        env["AUTOMATA_PROJECT_DIR"] = str(cwd)
+    return cwd, env
+
+
+def _load_script_commands(
+    commands_dir: Traversable,
+    extension_directory: Traversable,
+    project_directory: pathlib.Path | None,
+) -> dict[str, Any]:
+    """The commands in a commands/ directory: each file's content is a shell
+    command, and a first line starting with ``#`` is its help. Each
+    subdirectory is a group of commands, in the same form."""
+    cwd, env = _script_environment(extension_directory, project_directory)
+    commands: dict[str, Any] = {}
+    for entry in commands_dir.iterdir():
+        if entry.name.startswith("."):
+            continue
+        if entry.is_dir():
+            group = _load_script_commands(entry, extension_directory, project_directory)
+            if group:
+                commands[entry.name] = group
+            continue
+        command = entry.read_text().strip()
+        if not command:
+            continue
+        first = command.splitlines()[0]
+        is_comment = first.startswith("#") and not first.startswith("#!")
+        help = first.lstrip("#").strip() if is_comment else None
+        commands[entry.name] = ScriptCommand(command, help=help, cwd=cwd, env=env)
+    return commands
+
+
 def _load_script_hooks(
     extension_name: str,
     hooks_dir: Traversable,
@@ -348,10 +413,7 @@ def _load_script_hooks(
         if get_origin(hint) is ObserverHook
     )
 
-    cwd = None if project_directory is None else project_directory.absolute()
-    env = {**os.environ, "AUTOMATA_EXTENSION_DIR": str(extension_directory)}
-    if cwd is not None:
-        env["AUTOMATA_PROJECT_DIR"] = str(cwd)
+    cwd, env = _script_environment(extension_directory, project_directory)
 
     script_hooks: dict[str, Callable] = {}
 
