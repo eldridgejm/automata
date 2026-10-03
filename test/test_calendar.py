@@ -660,3 +660,59 @@ def test_terminal_entries_are_shortened_at_word_boundaries(calendar):
     text = _segment(calendar, "Homework", width=130).text.strip()
 
     assert re.fullmatch(r"Homework( \d)?…", text)
+
+
+# iCalendar ============================================================================
+
+
+def _events(ics):
+    return [block for block in ics.split("BEGIN:VEVENT\r\n")[1:]]
+
+
+def test_the_calendar_renders_as_icalendar(calendar):
+    ics = calendar.to_ics()
+
+    assert ics.startswith("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:")
+    assert ics.endswith("END:VCALENDAR\r\n")
+    assert "X-WR-CALNAME:Test\\, Winter 2025\r\n" in ics
+    entries = [e for w in calendar.weeks for d in w.days for e in d.entries]
+    assert len(_events(ics)) == len(entries)
+
+
+def test_icalendar_timed_dates_are_in_utc(calendar):
+    from datetime import timezone
+
+    utc = datetime(2025, 1, 6, 9, 0).astimezone(timezone.utc)
+    event = next(e for e in _events(calendar.to_ics()) if "hw01/released" in e)
+
+    assert f"DTSTART:{utc:%Y%m%dT%H%M%SZ}\r\n" in event
+    assert "SUMMARY:Homework 1 released\r\n" in event
+
+
+def test_icalendar_dates_without_times_are_all_day(calendar):
+    event = next(e for e in _events(calendar.to_ics()) if "lab01/date" in e)
+
+    assert "DTSTART;VALUE=DATE:20250108\r\n" in event
+    assert "DTEND;VALUE=DATE:20250109\r\n" in event
+
+
+def test_icalendar_events_have_stable_ids(calendar, tmp_path):
+    # so that a calendar app subscribed to the file updates events when dates
+    # change, rather than duplicating them
+    event = next(e for e in _events(calendar.to_ics()) if "lab01" in e)
+
+    assert "UID:labs/lab01/date@automata\r\n" in event
+    assert "CATEGORIES:labs\r\n" in event
+
+
+def test_icalendar_text_is_escaped_and_long_lines_are_folded(tmp_path):
+    label = "Lab: setup, tools; and a label long enough that its line must be folded"
+    config = _CALENDAR_CONFIG.replace("      date:\n", f'      date: "{label}"\n')
+    project = write_calendar_project(tmp_path / "project", config)
+
+    ics = Automata(project).calendar(all_weeks=True, current_time=JAN_15).to_ics()
+
+    lines = ics.split("\r\n")
+    assert all(len(line.encode()) <= 75 for line in lines)
+    unfolded = ics.replace("\r\n ", "")
+    assert f"SUMMARY:{label.replace(',', '\\,').replace(';', '\;')}\r\n" in unfolded

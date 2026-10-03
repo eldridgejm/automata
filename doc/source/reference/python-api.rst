@@ -53,7 +53,7 @@ The primary interface is the ``Automata`` class.
             ``datetime.now()``.
         :type current_time: datetime or None
 
-    .. method:: clean_build_directory()
+    .. method:: clean()
 
         Empty the build directory, keeping top-level entries whose names start
         with a dot. Does nothing if the build directory does not exist.
@@ -109,7 +109,7 @@ The primary interface is the ``Automata`` class.
             children.
         :returns: A new universe with the rejected nodes removed.
 
-    .. method:: export(universe)
+    .. method:: export_materials(universe)
 
         Export built materials to the build directory and write
         ``materials.json``, which is published with the site. (The library
@@ -223,7 +223,7 @@ Example: step-by-step pipeline
     project = Automata("path/to/course")
 
     # Start from an empty build directory
-    project.clean_build_directory()
+    project.clean()
 
     # Discover all materials
     materials = project.discover()
@@ -232,7 +232,7 @@ Example: step-by-step pipeline
     materials = project.build_materials(materials)
 
     # Export to build directory
-    materials = project.export(materials)
+    materials = project.export_materials(materials)
 
     # Optionally, select materials in Python before generating
     materials = project.filter(materials, lambda key, node: key != "drafts")

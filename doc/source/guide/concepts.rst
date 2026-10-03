@@ -60,19 +60,18 @@ When you run ``automata build``, these steps happen in sequence:
 You can run each step individually via the CLI or the Python API::
 
     # CLI
-    automata clean-build-directory
-    automata discover
-    automata build-materials
-    automata export
-    automata render-website
+    automata pipeline clean
+    automata pipeline build-materials  # discovers the materials, then builds them
+    automata pipeline export-materials
+    automata pipeline render-website
     automata build        # runs them all
 
     # Python
     project = Automata()
-    project.clean_build_directory()
+    project.clean()
     materials = project.discover()
     materials = project.build_materials(materials)
-    materials = project.export(materials)
+    materials = project.export_materials(materials)
     project.render_website(materials)
 
 

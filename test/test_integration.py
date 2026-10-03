@@ -108,7 +108,7 @@ course:
   name: "DSC 40B"
   title: "Test Course"
   term: "Fall 2025"
-  first_week_start: 2025-09-22
+  first_week_start: 2025-01-13  # Week 1: Jan 13-19
 
 website:
   theme:
@@ -127,7 +127,6 @@ website:
     schedule_path = temporary_course.path / "schedule.yaml"
     schedule_path.write_text(
         """
-first_week_start_date: "2025-01-13"  # Week 1: Jan 13-19
 week_order: this_week_first
 
 week_topics:

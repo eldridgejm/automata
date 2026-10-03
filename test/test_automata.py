@@ -108,14 +108,14 @@ def test_build_materials_returns_built_universe(project_dir):
     assert "homeworks" in built.collections
 
 
-# export() =============================================================================
+# export_materials() ===================================================================
 
 
 def test_export_writes_materials_json(project_dir):
     a = Automata(project_dir)
     discovered = a.discover()
     built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
-    a.export(built)
+    a.export_materials(built)
 
     materials_json = project_dir / "_build" / "materials" / "materials.json"
     assert materials_json.exists()
@@ -127,7 +127,7 @@ def test_export_returns_exported_universe(project_dir):
     a = Automata(project_dir)
     discovered = a.discover()
     built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
-    exported = a.export(built)
+    exported = a.export_materials(built)
     assert isinstance(exported, Universe)
 
 
@@ -138,7 +138,7 @@ def test_load_exported_materials_returns_what_export_wrote(project_dir):
     # given
     a = Automata(project_dir)
     built = a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True)
-    exported = a.export(built)
+    exported = a.export_materials(built)
 
     # when
     loaded = Automata(project_dir).load_exported_materials()
@@ -151,7 +151,7 @@ def test_load_exported_materials_can_feed_render_website(project_dir):
     # given
     a = Automata(project_dir)
     built = a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True)
-    a.export(built)
+    a.export_materials(built)
 
     # when
     a.render_website(a.load_exported_materials())
@@ -191,7 +191,7 @@ def test_render_website_generates_html(project_dir):
     a = Automata(project_dir)
     discovered = a.discover()
     built = a.build_materials(discovered, ignore_release_time=True, ignore_ready=True)
-    exported = a.export(built)
+    exported = a.export_materials(built)
     a.render_website(exported)
 
     index = project_dir / "_build" / "index.html"
@@ -206,7 +206,7 @@ def test_render_website_uses_the_materials_it_is_given(project_dir):
     )
     a = Automata(project_dir)
     built = a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True)
-    exported = a.export(built)
+    exported = a.export_materials(built)
     without_homeworks = a.filter(exported, lambda key, node: key != "homeworks")
 
     # when
@@ -378,7 +378,7 @@ def test_clean_build_directory_defaults_to_true(project_dir):
 
 
 def test_clean_build_directory_does_nothing_if_build_directory_missing(project_dir):
-    Automata(project_dir).clean_build_directory()
+    Automata(project_dir).clean()
 
     assert not (project_dir / "_build").exists()
 
@@ -408,7 +408,7 @@ def test_clean_build_directory_refuses_unsafe_build_directory(
 
     # when / then
     with pytest.raises(Error) as excinfo:
-        Automata(project).clean_build_directory()
+        Automata(project).clean()
 
     assert "build_directory" in str(excinfo.value)
     assert sentinel.exists()
@@ -421,7 +421,7 @@ def test_clean_build_directory_refuses_directory_with_automata_yaml(tmp_path):
 
     # when / then
     with pytest.raises(Error):
-        Automata(project).clean_build_directory()
+        Automata(project).clean()
 
     assert (other / "automata.yaml").exists()
 
@@ -436,7 +436,7 @@ def test_clean_build_directory_refuses_a_directory_holding_materials(tmp_path):
 
     # when / then
     with pytest.raises(Error) as excinfo:
-        Automata(project).clean_build_directory()
+        Automata(project).clean()
 
     assert "contains course materials" in str(excinfo.value)
     assert (collection / "hw01" / "publication.yaml").exists()
@@ -458,7 +458,7 @@ def test_clean_build_directory_refuses_an_extension_directory(
 
     # when / then
     with pytest.raises(Error) as excinfo:
-        Automata(project).clean_build_directory()
+        Automata(project).clean()
 
     assert "extension" in str(excinfo.value)
     assert (extension / "templates" / "partial.html").exists()
@@ -473,7 +473,7 @@ def test_clean_build_directory_refuses_a_directory_outside_the_project(tmp_path)
 
     # when / then
     with pytest.raises(Error) as excinfo:
-        Automata(project).clean_build_directory()
+        Automata(project).clean()
 
     assert "outside the project" in str(excinfo.value)
     assert (sibling / "notes.txt").exists()

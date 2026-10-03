@@ -228,8 +228,6 @@ SCHEDULE_SCHEMA = {
         },
     },
     "optional_keys": {
-        # by default, the course's first week (course.first_week_start)
-        "first_week_start_date": {"type": "date", "nullable": True, "default": None},
         "week_order": {"type": "string", "default": "this_week_first"},
         "events": {
             "type": "list",
@@ -240,8 +238,6 @@ SCHEDULE_SCHEMA = {
             "type": "list",
             "element_schema": AnnouncementConfig._schema(),
         },
-        # by default, the course's (course.first_week_number)
-        "first_week_number": {"type": "integer", "nullable": True, "default": None},
         "extra_primary_activities": {
             "type": "list",
             "element_schema": ACTIVITY_CONFIG_SCHEMA_WITH_DATES,
@@ -838,25 +834,20 @@ class Schedule(TemplateElement):
     template = "elements/schedule.html"
     schema = SCHEDULE_SCHEMA
 
-    def _first_week_start(self, config: dict[str, Any]) -> datetime.date:
-        """The first week's start: configured here, or the course's."""
-        start = config.get("first_week_start_date")
-        if start is None:
-            start = self.context.course.get("first_week_start")
+    def _first_week_start(self) -> datetime.date:
+        """The first week's start: the course's."""
+        start = self.context.course.get("first_week_start")
         if start is None:
             raise smartconfig.exceptions.ResolutionError(
                 "The schedule needs the start of the first week: set "
-                "course.first_week_start in automata.yaml (or this key).",
-                ("first_week_start_date",),
+                "course.first_week_start in automata.yaml.",
+                (),
             )
         return cast(datetime.date, start)
 
-    def _first_week_number(self, config: dict[str, Any]) -> int:
-        """The first week's number: configured here, the course's, or 1."""
-        number = config.get("first_week_number")
-        if number is None:
-            number = self.context.course.get("first_week_number", 1)
-        return int(number)
+    def _first_week_number(self) -> int:
+        """The first week's number: the course's, or 1."""
+        return int(self.context.course.get("first_week_number", 1))
 
     def template_vars(
         self,
@@ -900,9 +891,9 @@ class Schedule(TemplateElement):
         config_dict = cast(dict[str, Any], config)
 
         weeks = automata.util.weeks.make_n_weeks(
-            start_date=self._first_week_start(config_dict),
+            start_date=self._first_week_start(),
             n=len(config_dict["week_topics"]),
-            first_week_number=self._first_week_number(config_dict),
+            first_week_number=self._first_week_number(),
         )
 
         topics = {

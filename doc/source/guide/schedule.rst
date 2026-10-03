@@ -88,19 +88,17 @@ The schedule configuration is typically in a separate YAML file included via
 Configuration fields
 --------------------
 
+The weeks are numbered from the course's ``first_week_start`` and
+``first_week_number``, in the ``course`` section of ``automata.yaml`` (see
+:doc:`configuration`); the schedule has no settings of its own for them.
+Activities are placed into weeks by their ``start_displaying_on`` dates.
+
 .. list-table::
    :header-rows: 1
    :widths: 30 70
 
    * - Field
      - Description
-   * - ``first_week_start_date``
-     - The start date of the first week (by default, the course's
-       ``first_week_start``). Activities are placed into weeks based on their
-       ``start_displaying_on`` date.
-   * - ``first_week_number``
-     - The first week's number (by default, the course's
-       ``first_week_number``).
    * - ``week_order``
      - Display order: ``"this_week_first"`` (most recent week at top) or
        ``"chronological"`` (week 1 first).

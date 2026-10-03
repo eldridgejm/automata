@@ -1,5 +1,7 @@
 """Shared fixtures for default theme tests."""
 
+import datetime
+
 from pytest import fixture
 
 import automata.website
@@ -21,8 +23,10 @@ def theme():
 
 
 def render(tmpsite, **kwargs):
-    """Helper that loads content and calls render with pages/static_content."""
+    """Helper that loads content and calls render with pages/static_content.
+    The course's first week starts on Monday, Jan 8, 2024."""
     pages, static_content = tmpsite.load_content()
+    kwargs.setdefault("course", {"first_week_start": datetime.date(2024, 1, 8)})
     automata.website.render(
         tmpsite.build_directory,
         tmpsite.materials_directory,

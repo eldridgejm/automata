@@ -90,40 +90,50 @@ def test_current_time_with_an_offset_is_converted_to_local_time(project):
 # pipeline steps =======================================================================
 
 
+@pytest.mark.parametrize(
+    "command", ["clean-build-directory", "build-materials", "export", "render-website"]
+)
+def test_the_pipeline_stages_are_only_under_pipeline(project, command):
+    result = runner.invoke(app, [command])
+
+    assert result.exit_code != 0
+    assert "No such command" in result.output
+
+
 def test_clean_build_directory_empties_the_build_directory(project):
     (project / "_build").mkdir()
     (project / "_build" / "stale.html").write_text("stale")
 
-    _invoke("clean-build-directory")
+    _invoke("pipeline", "clean")
 
     assert not (project / "_build" / "stale.html").exists()
 
 
 def test_build_materials_runs(project):
-    result = _invoke("build-materials")
+    result = _invoke("pipeline", "build-materials")
 
     assert "Materials built." in result.output
 
 
 def test_export_writes_materials(project):
-    _invoke("export")
+    _invoke("pipeline", "export-materials")
 
     assert (project / "_build" / "materials" / "materials.json").exists()
 
 
 def test_render_website_renders_previously_exported_materials(project):
-    _invoke("export")
+    _invoke("pipeline", "export-materials")
 
-    _invoke("render-website")
+    _invoke("pipeline", "render-website")
 
     assert (project / "_build" / "index.html").exists()
 
 
 def test_render_website_fails_helpfully_without_exported_materials(project):
-    result = runner.invoke(app, ["render-website"])
+    result = runner.invoke(app, ["pipeline", "render-website"])
 
     assert result.exit_code == 1
-    assert "automata export" in result.output
+    assert "automata pipeline export-materials" in result.output
     assert "export()" not in result.output
 
 
@@ -264,22 +274,13 @@ def test_publish_without_publish_targets_prints_an_error(project):
     assert "publish" in result.output
 
 
-# discover =============================================================================
-
-
-def test_discover_prints_each_collection_and_its_publication_count(project):
-    result = _invoke("discover")
-
-    assert "homeworks: 1 publication(s)" in result.output
-
-
 # --current-time =======================================================================
 
 
 def test_current_time_accepts_days_relative_to_now(project):
     import datetime
 
-    result = _invoke("build-materials", "--current-time", "+5")
+    result = _invoke("pipeline", "build-materials", "--current-time", "+5")
 
     expected = (datetime.datetime.now() + datetime.timedelta(days=5)).date()
     assert f"Running as if it is currently {expected}" in result.output
@@ -315,7 +316,7 @@ def test_clean_build_directory_refusal_prints_an_error(project):
         config.read_text().replace('build_directory: "_build"', 'build_directory: "."')
     )
 
-    result = runner.invoke(app, ["clean-build-directory"])
+    result = runner.invoke(app, ["pipeline", "clean"])
 
     assert result.exit_code == 1
     assert "Refusing to clean" in result.output
@@ -439,11 +440,14 @@ def test_failing_recipe_shows_the_artifact_and_its_output(project):
     assert "! LaTeX Error: File not found." in result.output
 
 
-@pytest.mark.parametrize("command", ["build", "build-materials", "export"])
+@pytest.mark.parametrize(
+    "command",
+    ["build", "pipeline build-materials", "pipeline export-materials"],
+)
 def test_verbose_flag_streams_recipe_output(project, command):
     _failing_recipe_project(project)
 
-    result = runner.invoke(app, [command, "--verbose"])
+    result = runner.invoke(app, [*command.split(), "--verbose"])
 
     # the recipe's output streams to the terminal, so the error points to it
     assert "output shown above" in result.output
@@ -664,6 +668,16 @@ def test_calendar_says_when_there_is_nothing_in_the_requested_dates(project):
     assert "Nothing to show: there are no dates on or after Sat Mar 1, 2025." in (
         result.output
     )
+
+
+def test_calendar_writes_icalendar(project, tmp_path):
+    _add_calendar(project)
+    ics = tmp_path / "calendar.ics"
+
+    result = _invoke("calendar", "--all", "--ics", str(ics))
+
+    assert f"Wrote {ics} (1 event)" in result.output
+    assert "SUMMARY:hw01 due" in ics.read_text()
 
 
 def test_calendar_writes_html_and_pdf(project, tmp_path):

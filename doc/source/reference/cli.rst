@@ -39,20 +39,6 @@ Options:
   together). ``publish``, ``build-materials``, and ``export`` accept it too.
 
 
-``automata clean-build-directory``
-----------------------------------
-
-Empty the build directory, keeping top-level entries whose names start with a
-dot (such as ``.git``). Refuses, with an error, if the build directory is or
-contains the project or content directory; lies outside the project or inside
-the content directory; contains an ``automata.yaml`` file or course materials;
-or is, contains, or lies inside a directory extension.
-
-::
-
-    automata clean-build-directory
-
-
 ``automata publish``
 --------------------
 
@@ -66,50 +52,6 @@ Build the site, then deploy it to the targets configured under ``publish:`` in
 With no ``TARGET``, publishes to every configured target, in order; prints
 ``Published to <target>.`` for each. An unknown target or strategy is an error,
 reported before the site is built.
-
-
-``automata discover``
----------------------
-
-Discover materials and print a summary.
-
-::
-
-    automata discover
-
-Prints the number of publications in each collection.
-
-
-``automata build-materials``
-----------------------------
-
-Discover and build materials (run recipes, check release times).
-
-::
-
-    automata build-materials [--current-time TIME] [--verbose]
-
-
-``automata export``
--------------------
-
-Discover, build, and export materials to the build directory.
-
-::
-
-    automata export [--current-time TIME] [--verbose]
-
-
-``automata render-website``
----------------------------
-
-Render the website from the materials written by a previous
-``automata export``. Fails if there are no exported materials (for example,
-after ``automata clean-build-directory``).
-
-::
-
-    automata render-website [--current-time TIME]
 
 
 ``automata resolve``
@@ -170,7 +112,7 @@ error. Builds nothing.
     automata calendar [--collection NAME]... [--key KEY]... [--all]
                       [--from DATE] [--to DATE] [--week-start sunday|monday]
                       [--no-highlight-today] [--html FILE] [--pdf FILE]
-                      [--json] [--current-time TIME]
+                      [--ics FILE] [--json] [--current-time TIME]
 
 ``--collection`` shows only the named collections, and ``--key`` only dates
 under the named metadata keys (glob patterns), e.g. ``--key due`` for just the
@@ -179,7 +121,10 @@ current week; ``--all`` shows every week, and ``--from`` and ``--to``
 (``YYYY-MM-DD``) set the dates shown. Weeks start on Sunday, unless
 ``--week-start monday``, and are numbered from the course's
 ``first_week_start``; the calendar is titled with the course's name and term.
-``--html`` and ``--pdf`` write the calendar to files instead of printing it; ``--json`` prints it as JSON, for programs. Dates
+``--html``, ``--pdf`` and ``--ics`` write the calendar to files instead of
+printing it (``--ics`` as an iCalendar file, which calendar apps can import or
+subscribe to; its events keep their identities when dates change, so that a
+subscribed calendar updates them, and use ``--all`` to include past weeks); ``--json`` prints it as JSON, for programs. Dates
 before the current time are shown dimmed, and today is highlighted (unless
 ``--no-highlight-today``). In the HTML, clicking a collection in the legend
 hides its dates, or shows them again, and a button switches between light and
@@ -211,3 +156,52 @@ It checks, each on its own:
 
 Some problems can only be found by building (a failing recipe, for example).
 ``--json`` prints ``{"problems": [{"area": ..., "message": ...}, ...]}``.
+
+
+``automata pipeline``
+---------------------
+
+Run the stages of the pipeline one at a time, in this order; ``automata
+build`` runs them all. Useful for debugging a build.
+
+``automata pipeline clean``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Empty the build directory, keeping top-level entries whose names start with a
+dot (such as ``.git``). Refuses, with an error, if the build directory is or
+contains the project or content directory; lies outside the project or inside
+the content directory; contains an ``automata.yaml`` file or course materials;
+or is, contains, or lies inside a directory extension.
+
+::
+
+    automata pipeline clean
+
+``automata pipeline build-materials``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Discover and build materials (run recipes, check release times).
+
+::
+
+    automata pipeline build-materials [--current-time TIME] [--verbose]
+
+``automata pipeline export-materials``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Discover, build, and export materials to the build directory.
+
+::
+
+    automata pipeline export-materials [--current-time TIME] [--verbose]
+
+``automata pipeline render-website``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Render the website from the materials written by a previous ``automata
+pipeline export-materials``. Fails if there are no exported materials (for
+example, after ``automata pipeline clean``).
+
+::
+
+    automata pipeline render-website [--current-time TIME]

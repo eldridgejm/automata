@@ -224,3 +224,25 @@ def test_the_schedule_takes_its_first_week_from_the_course(tmp_path):
 
     html = (project / "_build" / "index.html").read_text()
     assert "Intro" in html and "Sorting" in html
+
+
+@pytest.mark.parametrize(
+    "key", ["first_week_start_date: 2025-01-06", "first_week_number: 1"]
+)
+def test_the_schedule_no_longer_configures_its_first_week(tmp_path, key):
+    # the course's first_week_start and first_week_number are the only source
+    website = _WEBSITE + (
+        "  elements:\n"
+        "    schedule:\n"
+        f"      {key}\n"
+        "      week_topics: [Intro, Sorting]\n"
+        "      primary_activity_collections: []\n"
+        "      secondary_activity_collections: []\n"
+    )
+    project = _project(tmp_path, _COURSE + website)
+    (project / "content" / "index.md").write_text("${ elements.schedule() }")
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).build(current_time=datetime.datetime(2025, 1, 8))
+
+    assert key.split(":")[0] in str(excinfo.value)

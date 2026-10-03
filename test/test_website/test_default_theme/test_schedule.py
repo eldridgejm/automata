@@ -43,7 +43,6 @@ def test_schedule_element_renders_basic_week(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -95,7 +94,6 @@ def test_schedule_element_renders_multiple_weeks(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Intro", "Python", "Data"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -153,7 +151,6 @@ def test_schedule_element_renders_html_resource(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -217,7 +214,6 @@ def test_schedule_element_renders_markdown_resource(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -291,7 +287,6 @@ def test_schedule_element_renders_metadata_links_resource(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -370,7 +365,6 @@ def test_schedule_element_renders_artifact_links_resource(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -449,7 +443,6 @@ def test_schedule_element_artifact_links_only_shows_existing_artifacts(tmpsite, 
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -527,7 +520,6 @@ def test_schedule_element_html_resource_does_not_render_when_whitespace_only(
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -591,7 +583,6 @@ def test_schedule_element_markdown_resource_does_not_render_when_whitespace_only
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -659,7 +650,6 @@ def test_schedule_element_metadata_links_resource_does_not_render_when_no_links(
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -735,7 +725,6 @@ def test_schedule_element_metadata_links_resource_no_render_when_missing_key(
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -805,7 +794,6 @@ def test_schedule_element_artifact_links_does_not_render_when_no_artifacts(
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -872,7 +860,6 @@ def test_schedule_element_resource_with_icon(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [
                 {
                     "collection": "lectures",
@@ -931,7 +918,6 @@ def test_schedule_element_renders_extra_primary_listings(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [],
             "secondary_activity_collections": [],
             "extra_primary_activities": [
@@ -989,7 +975,6 @@ def test_schedule_element_renders_extra_secondary_listings(tmpsite, theme):
         """
         ${ elements.schedule({
             "week_topics": ["Introduction"],
-            "first_week_start_date": "2024-01-08",
             "primary_activity_collections": [],
             "secondary_activity_collections": [],
             "extra_secondary_activities": [

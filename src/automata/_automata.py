@@ -64,10 +64,10 @@ class Automata:
     Step by step::
 
         project = Automata()
-        project.clean_build_directory()
+        project.clean()
         materials = project.discover()
         materials = project.build_materials(materials)
-        materials = project.export(materials)
+        materials = project.export_materials(materials)
         project.render_website(materials)
 
     """
@@ -118,15 +118,15 @@ class Automata:
         """
         current_time = current_time or datetime.datetime.now()
         if self.config.website.clean_build_directory:
-            self.clean_build_directory()
+            self.clean()
         discovered = self.discover()
         built = self.build_materials(
             discovered, current_time=current_time, verbose=verbose
         )
-        exported = self.export(built)
+        exported = self.export_materials(built)
         self.render_website(exported, current_time=current_time)
 
-    def clean_build_directory(self) -> None:
+    def clean(self) -> None:
         """Empty the build directory, keeping top-level dot-entries.
 
         Called by :meth:`build` when ``website.clean_build_directory`` is
@@ -534,7 +534,9 @@ class Automata:
             universe, predicate, remove_empty_nodes=remove_empty_nodes, hooks=self.hooks
         )
 
-    def export(self, universe: Universe[BuiltArtifact]) -> Universe[ExportedArtifact]:
+    def export_materials(
+        self, universe: Universe[BuiltArtifact]
+    ) -> Universe[ExportedArtifact]:
         """Export built materials to the build directory.
 
         Writes artifact files and ``materials.json`` to the build directory.
@@ -588,7 +590,8 @@ class Automata:
         if not materials_json.is_file():
             raise Error(
                 f'No exported materials found: "{materials_json}" does not exist. '
-                f"Export the materials first (automata export, or Automata.export in "
+                f"Export the materials first (automata pipeline export-materials, or "
+                f"Automata.export_materials in "
                 f"Python); cleaning the build directory removes them."
             )
 
@@ -611,7 +614,7 @@ class Automata:
         ]
 
     def _materials_json_path(self) -> Path:
-        """Path to the materials.json written by export()."""
+        """Path to the materials.json written by export_materials()."""
         return (
             self.path
             / self.config.website.build_directory

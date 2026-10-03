@@ -17,10 +17,15 @@ from .materials import serialize
 from .util.resolution import local_time
 
 app = typer.Typer()
+pipeline = typer.Typer(
+    help="Run the pipeline's stages one by one (build runs them all)."
+)
+app.add_typer(pipeline, name="pipeline")
 
 
-def _command(*args: Any, **kwargs: Any) -> Callable:
-    """Like ``app.command``, but reports automata errors without a traceback.
+def _command(*args: Any, group: typer.Typer = app, **kwargs: Any) -> Callable:
+    """Like ``app.command`` (or *group*'s), but reports automata errors without
+    a traceback.
 
     An :class:`automata.exceptions.Error` raised by the command is printed as
     one ``Error: ...`` line, and the command exits with status 1.
@@ -35,7 +40,7 @@ def _command(*args: Any, **kwargs: Any) -> Callable:
                 typer.echo(f"Error: {e}", err=True)
                 raise typer.Exit(code=1)
 
-        return app.command(*args, **kwargs)(wrapper)
+        return group.command(*args, **kwargs)(wrapper)
 
     return decorator
 
@@ -185,24 +190,14 @@ def publish(
         typer.echo(f"Published to {name}.")
 
 
-@_command()
-def discover():
-    """Discover materials and print a summary."""
-    project = _project()
-    universe = project.discover()
-    for name, collection in universe.collections.items():
-        n = len(collection.publications)
-        typer.echo(f"{name}: {n} publication(s)")
-
-
-@_command(name="clean-build-directory")
-def clean_build_directory():
+@_command(name="clean", group=pipeline)
+def clean():
     """Empty the build directory, keeping top-level dot-entries."""
-    _project().clean_build_directory()
+    _project().clean()
     typer.echo("Build directory cleaned.")
 
 
-@_command(name="build-materials")
+@_command(name="build-materials", group=pipeline)
 def build_materials(
     current_time: Optional[str] = _current_time_option,
     verbose: bool = _verbose_option,
@@ -216,8 +211,8 @@ def build_materials(
     typer.echo("Materials built.")
 
 
-@_command()
-def export(
+@_command(name="export-materials", group=pipeline)
+def export_materials(
     current_time: Optional[str] = _current_time_option,
     verbose: bool = _verbose_option,
 ):
@@ -227,11 +222,11 @@ def export(
     built = project.build_materials(
         discovered, current_time=_get_current_time(current_time), verbose=verbose
     )
-    project.export(built)
+    project.export_materials(built)
     typer.echo("Materials exported.")
 
 
-@_command(name="render-website")
+@_command(name="render-website", group=pipeline)
 def render_website(current_time: Optional[str] = _current_time_option):
     """Render the website from previously exported materials."""
     project = _project()
@@ -413,6 +408,11 @@ def calendar(
     pdf_path: Optional[pathlib.Path] = typer.Option(
         None, "--pdf", help="Write the calendar as a PDF to this file."
     ),
+    ics_path: Optional[pathlib.Path] = typer.Option(
+        None,
+        "--ics",
+        help="Write the calendar as an iCalendar file, for calendar apps.",
+    ),
     json_output: bool = typer.Option(
         False,
         "--json",
@@ -455,7 +455,11 @@ def calendar(
     if pdf_path is not None:
         pages = result.write_pdf(pdf_path)
         typer.echo(f"Wrote {pdf_path} ({_plural(pages, 'page')})")
-    if html_path is None and pdf_path is None:
+    if ics_path is not None:
+        ics_path.write_text(result.to_ics(), newline="")
+        events = sum(len(d.entries) for w in result.weeks for d in w.days)
+        typer.echo(f"Wrote {ics_path} ({_plural(events, 'event')})")
+    if html_path is None and pdf_path is None and ics_path is None:
         if not result.weeks:
             typer.echo(
                 _nothing_to_show(

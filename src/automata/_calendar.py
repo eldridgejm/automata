@@ -234,6 +234,11 @@ class Calendar:
         fragment to embed in a page that styles it."""
         return _html(self, standalone)
 
+    def to_ics(self) -> str:
+        """The calendar as an iCalendar file, which calendar apps can import or
+        subscribe to: an event for each entry."""
+        return _ics(self)
+
     def write_pdf(self, path: Path) -> int:
         """Write the calendar to a PDF at *path*. Returns the number of pages."""
         return _write_pdf(self, path)
@@ -960,6 +965,68 @@ def _html(calendar: Calendar, standalone: bool) -> str:
         "</button>\n</header>\n"
         f"{fragment}{_THEME_TOGGLE}</main>\n</body>\n</html>\n"
     )
+
+
+# iCalendar ===========================================================================
+
+
+def _ics_text(text: str) -> str:
+    """*text*, escaped for an iCalendar property's value."""
+    for char in "\\;,":
+        text = text.replace(char, "\\" + char)
+    return text.replace("\n", "\\n")
+
+
+def _ics_fold(line: str) -> str:
+    """*line*, folded so that no line is longer than 75 octets: continued on
+    lines starting with a space."""
+    lines, current, limit = [], "", 75
+    for char in line:
+        if len((current + char).encode()) > limit:
+            lines.append(current)
+            current, limit = "", 74  # the continuation's space is the 75th
+        current += char
+    return "\r\n ".join([*lines, current])
+
+
+def _ics_utc(when: datetime.datetime) -> str:
+    return f"{when.astimezone(datetime.UTC):%Y%m%dT%H%M%SZ}"
+
+
+def _ics(calendar: Calendar) -> str:
+    stamp = _ics_utc(calendar.current_time)
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//automata//calendar//EN",
+        "CALSCALE:GREGORIAN",
+        f"X-WR-CALNAME:{_ics_text(calendar.title)}",
+    ]
+    for week in calendar.weeks:
+        for day in week.days:
+            for entry in day.entries:
+                if entry.all_day:
+                    end = entry.when.date() + datetime.timedelta(days=1)
+                    when = [
+                        f"DTSTART;VALUE=DATE:{entry.when:%Y%m%d}",
+                        f"DTEND;VALUE=DATE:{end:%Y%m%d}",
+                    ]
+                else:
+                    # an instant (a due date, say): no duration
+                    when = [f"DTSTART:{_ics_utc(entry.when)}"]
+                lines += [
+                    "BEGIN:VEVENT",
+                    # the same for the same date, so that calendar apps
+                    # update events rather than duplicating them
+                    f"UID:{entry.collection}/{entry.publication}/{entry.key}@automata",
+                    f"DTSTAMP:{stamp}",
+                    *when,
+                    f"SUMMARY:{_ics_text(entry.label)}",
+                    f"CATEGORIES:{_ics_text(entry.collection)}",
+                    "END:VEVENT",
+                ]
+    lines.append("END:VCALENDAR")
+    return "".join(_ics_fold(line) + "\r\n" for line in lines)
 
 
 # PDF ==================================================================================

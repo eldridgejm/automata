@@ -34,6 +34,7 @@ def render_context():
         materials=materials,
         url_for=url_for,
         current_time=datetime.datetime(2024, 1, 15, 12, 0, 0),
+        course={"first_week_start": datetime.date(2024, 1, 8)},
     )
 
 
@@ -74,7 +75,6 @@ def test_schedule_element_raises_on_missing_resource_type(
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": "2024-01-08",
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -119,7 +119,6 @@ def test_schedule_element_raises_on_invalid_resource_type(
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": "2024-01-08",
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -161,7 +160,6 @@ def test_schedule_validates_html_resource_config(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": "2024-01-08",
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -202,7 +200,6 @@ def test_schedule_validates_markdown_resource_config(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": "2024-01-08",
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -249,7 +246,6 @@ def test_schedule_validates_metadata_links_resource_config(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": "2024-01-08",
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -293,7 +289,6 @@ def test_schedule_validates_artifact_links_resource_config(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": "2024-01-08",
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -337,7 +332,6 @@ def test_schedule_validates_artifact_link_config(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": "2024-01-08",
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -403,7 +397,6 @@ def test_activities_placed_in_correct_week(schedule_element):
     # 3) create a schedule element config
     config = {
         "week_topics": ["Introduction", "Advanced Topics", "Even More Advanced Topics"],
-        "first_week_start_date": datetime.date(2024, 1, 8),
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -456,7 +449,6 @@ def test_activities_outside_week_range_placed_in_none_week(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": datetime.date(2024, 1, 8),  # Week 1: Jan 8-14
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -514,7 +506,6 @@ def test_metadata_links_resources_are_expanded(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": datetime.date(2024, 1, 8),
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -585,7 +576,6 @@ def test_metadata_links_with_missing_metadata_key(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": datetime.date(2024, 1, 8),
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -651,7 +641,6 @@ def test_artifact_links_are_converted_to_links(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": datetime.date(2024, 1, 8),
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -723,7 +712,6 @@ def test_artifact_links_filters_nonexistent_artifacts(schedule_element):
 
     config = {
         "week_topics": ["Introduction"],
-        "first_week_start_date": datetime.date(2024, 1, 8),
         "primary_activity_collections": [
             {
                 "collection": "lectures",
@@ -769,7 +757,6 @@ def test_artifact_links_filters_nonexistent_artifacts(schedule_element):
 def _weekly_config(**overrides):
     config = {
         "week_topics": ["One", "Two", "Three"],
-        "first_week_start_date": datetime.date(2024, 1, 8),
         "primary_activity_collections": [],
         "secondary_activity_collections": [],
         "extra_primary_activities": [],
@@ -996,7 +983,6 @@ def test_start_displaying_on_for_announcements_reads_dates_and_phrases():
 
     config = {
         "week_topics": ["One"],
-        "first_week_start_date": "2024-01-08",
         "primary_activity_collections": [],
         "secondary_activity_collections": [],
         "announcements": [
