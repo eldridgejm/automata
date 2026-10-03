@@ -16,7 +16,7 @@ from rich.markup import escape
 from ._automata import Automata
 from ._calendar import Calendar
 from ._check import Problem
-from ._status import ArtifactStatus, Status
+from ._status import Status
 from .config import CONFIGURATION_FILENAME, find_config
 from .exceptions import Error
 from .extensions import ScriptCommand
@@ -24,9 +24,11 @@ from .extensions._apply import all_extensions
 from .materials import serialize
 from .util.resolution import local_time
 
-app = typer.Typer()
+# without a command, each prints its help
+app = typer.Typer(no_args_is_help=True)
 pipeline = typer.Typer(
-    help="Run the pipeline's stages one by one (build runs them all)."
+    no_args_is_help=True,
+    help="Run the pipeline's stages one by one (build runs them all).",
 )
 app.add_typer(pipeline, name="pipeline")
 
@@ -180,6 +182,15 @@ def _say(markup: str, err: bool = False) -> None:
     Console(stderr=err, highlight=False).print(markup, soft_wrap=True)
 
 
+def _relative_path(path: pathlib.Path) -> str:
+    """*path*, relative to the current directory if it is inside it."""
+    path = path.resolve()
+    try:
+        return str(path.relative_to(pathlib.Path.cwd().resolve()))
+    except ValueError:
+        return str(path)
+
+
 def _counted(n: int, noun: str) -> str:
     """*n* (in bold) *noun*, pluralized: as markup."""
     return f"[bold]{n}[/] {noun}" + ("" if n == 1 else "s")
@@ -202,8 +213,11 @@ class _BuildProgress:
         echo: Callable[[str], None] = _say,
         status: Callable[[str | None], None] | None = None,
         verbose: bool = False,
+        current_time: datetime.datetime | None = None,
     ):
         self.echo, self.status, self.verbose = echo, status, verbose
+        # the time the build is for (to say how far off releases are)
+        self.now = current_time or datetime.datetime.now()
         self.build_directory = project.config.website.build_directory
         self.start = time.monotonic()
         self.collections = self.publications = 0
@@ -239,10 +253,20 @@ class _BuildProgress:
         setattr(self, name, getattr(self, name) + 1)
 
     def _skipper(self, reason: str) -> Callable[[Any], None]:
-        """Counts an artifact skipped for *reason*."""
+        """Counts an artifact skipped for *reason* (and, if verbose, says
+        which)."""
 
         def skip(args: Any) -> None:
             self.skipped[reason] += 1
+            why = reason
+            if reason == "not released yet" and args.release_time:
+                release = local_time(datetime.datetime.fromisoformat(args.release_time))
+                relative = _relative(release, self.now)
+                why += f" (releases {release:%a %Y-%m-%d %H:%M}, {relative})"
+            if self.verbose:
+                self._discovered()
+                path = escape(_relative_path(args.workdir / args.path))
+                self.echo(f"[bold yellow]○[/] Skipped [cyan]{path}[/]: [dim]{why}[/]")
 
         return skip
 
@@ -264,14 +288,14 @@ class _BuildProgress:
     def _recipe(self, args: Any) -> None:
         self._discovered()
         self.by_recipe += 1
-        path = (args.workdir / args.path).resolve()
-        try:
-            path = path.relative_to(pathlib.Path.cwd().resolve())
-        except ValueError:
-            pass
-        self.recipe = escape(str(path))
+        self.recipe = escape(_relative_path(args.workdir / args.path))
         if self.verbose:
+            # the recipe, the directory it runs in, and its command, before
+            # its output
             self.echo(f"[bold blue]▶[/] Running the recipe for [cyan]{self.recipe}[/]")
+            workdir = escape(_relative_path(args.workdir))
+            self.echo(f"  [dim]in working directory: {workdir}[/]")
+            self.echo(f"  [dim]$ {escape(args.recipe)}[/]")
         self._building()
 
     def _built(self) -> None:
@@ -356,17 +380,21 @@ class _TerminalStatus:
 
 
 @contextlib.contextmanager
-def _build_progress(project: Automata, verbose: bool) -> Iterator[None]:
+def _build_progress(
+    project: Automata, verbose: bool, current_time: datetime.datetime | None
+) -> Iterator[None]:
     """Report the progress of the build within: with a spinner showing what is
     happening now, on a terminal (unless *verbose*, as recipes' output then
     goes to it)."""
     if sys.stdout.isatty() and not verbose:
         status = _TerminalStatus()
         # (through the spinner's console, so that the lines go above it)
-        _BuildProgress(project, echo=status.print, status=status)
+        _BuildProgress(
+            project, echo=status.print, status=status, current_time=current_time
+        )
     else:
         status = None
-        _BuildProgress(project, verbose=verbose)
+        _BuildProgress(project, verbose=verbose, current_time=current_time)
     try:
         yield
     finally:
@@ -381,8 +409,9 @@ def build(
 ):
     """Run the full pipeline and produce the site in the build directory."""
     project = _project()
-    with _build_progress(project, verbose):
-        project.build(current_time=_get_current_time(current_time), verbose=verbose)
+    now = _get_current_time(current_time)
+    with _build_progress(project, verbose, now):
+        project.build(current_time=now, verbose=verbose)
 
 
 def _complete_publish_targets(incomplete: str) -> list[str]:
@@ -409,10 +438,9 @@ def publish(
 ):
     """Run the full pipeline and deploy the built site."""
     project = _project()
-    with _build_progress(project, verbose):
-        published = project.publish(
-            target=target, current_time=_get_current_time(current_time), verbose=verbose
-        )
+    now = _get_current_time(current_time)
+    with _build_progress(project, verbose, now):
+        published = project.publish(target=target, current_time=now, verbose=verbose)
 
     for name in published:
         _say(f"[bold green]✓[/] Published to [bold]{escape(name)}[/].")
@@ -514,55 +542,119 @@ def _relative(when: datetime.datetime, now: datetime.datetime) -> str:
     """*when* relative to *now*, e.g. "in 3 days" or "2 hours ago"."""
     seconds = (when - now).total_seconds()
     amount = abs(seconds)
-    for unit, size in [("day", 86400), ("hour", 3600), ("minute", 60)]:
-        if amount >= size:
+    # weeks only from two weeks on: "in 10 days" is clearer than "in a week"
+    units = [("week", 7 * 86400, 14 * 86400), ("day", 86400, 86400)]
+    units += [("hour", 3600, 3600), ("minute", 60, 60)]
+    for unit, size, least in units:
+        if amount >= least:
             n = int(amount // size)
-            text = f"{n} {unit}{'s' if n != 1 else ''}"
+            if n == 1:
+                text = f"{'an' if unit == 'hour' else 'a'} {unit}"
+            else:
+                text = f"{n} {unit}s"
             break
     else:
         text = "less than a minute"
     return f"in {text}" if seconds >= 0 else f"{text} ago"
 
 
-def _when(when: datetime.datetime, now: datetime.datetime) -> str:
-    return f"{when:%Y-%m-%d %H:%M} ({_relative(when, now)})"
+# each state's symbol and color
+_STATE_STYLES = {
+    "released": ("●", "green"),
+    "scheduled": ("◷", "cyan"),
+    "not ready": ("○", "yellow"),
+    "missing": ("✗", "red"),
+}
 
 
-def _describe_artifact(artifact: ArtifactStatus, now: datetime.datetime) -> str:
-    """An artifact's state, for people, e.g. "scheduled for 2025-02-01 00:00"."""
-    if artifact.state == "released":
-        return typer.style("released", fg="green")
-    if artifact.state == "scheduled":
-        assert artifact.release_time is not None
-        return f"scheduled for {_when(artifact.release_time, now)}"
-    if artifact.state == "not ready":
-        return typer.style("not ready", fg="yellow")
-    return typer.style("missing (no recipe, and its file doesn't exist)", fg="yellow")
+def _state(state: str) -> str:
+    """*state*, after its symbol, in its color: as markup."""
+    symbol, color = _STATE_STYLES[state]
+    return f"[{color}]{symbol} {state}[/]"
 
 
-def _print_status(status: Status, verbose: bool) -> None:
+def _key(key: str) -> str:
+    """An artifact's key, with its collection and publication dimmed: as
+    markup."""
+    *parents, name = key.split("/")
+    prefix = "".join(f"{escape(part)}/" for part in parents)
+    return f"[dim]{prefix}[/]{escape(name)}"
+
+
+def _release(when: datetime.datetime, now: datetime.datetime) -> tuple[str, str]:
+    """A release time, and how far off it is (in bold yellow, within a week):
+    as markup."""
+    soon = datetime.timedelta(0) <= when - now <= datetime.timedelta(days=7)
+    relative = _relative(when, now)
+    return f"{when:%a %Y-%m-%d %H:%M}", (
+        f"[bold yellow]{relative}[/]" if soon else f"[dim]{relative}[/]"
+    )
+
+
+def _artifacts_table() -> Any:
+    from rich.table import Table
+
+    table = Table(box=None, show_header=False, pad_edge=False, padding=(0, 0, 0, 3))
+    # each artifact on one line: on a narrow terminal, cut short
+    for _ in range(4):
+        table.add_column(no_wrap=True, overflow="ellipsis")
+    return table
+
+
+def _print_status(status: Status, verbose: bool, console: Any = None) -> None:
+    """Print *status* for people: styled, on a terminal."""
+    from rich.console import Console
+    from rich.padding import Padding
+
+    if console is None:
+        console = Console(highlight=False)
+        if not console.is_terminal:
+            # piped: never wrapped
+            console.width = 1000
     now = status.current_time
-    counts = ", ".join(f"{n} {state}" for state, n in status.counts.items())
-    typer.echo(f"Artifacts: {counts or 'none'}")
+
+    counts = "  ".join(
+        f"[{color}]{symbol}[/] [bold]{n}[/] {state}"
+        for state, n in status.counts.items()
+        if n
+        for symbol, color in [_STATE_STYLES[state]]
+    )
+    console.print(f"[bold]Artifacts[/]  {counts or '[dim]none[/]'}", soft_wrap=True)
 
     if status.next_releases:
-        typer.echo("Next releases:")
+        console.print("\n[bold]Next releases[/]")
         shown = status.next_releases[:5]
-        width = max(len(a.key) for a in shown)
+        table = _artifacts_table()
         for artifact in shown:
             assert artifact.release_time is not None
-            when = _when(artifact.release_time, now)
-            typer.echo(f"  {artifact.key:<{width}}  {when}")
+            table.add_row(_key(artifact.key), *_release(artifact.release_time, now))
+        console.print(Padding(table, (0, 0, 0, 2), expand=False))
         if len(status.next_releases) > len(shown):
             more = len(status.next_releases) - len(shown)
-            typer.echo(f"  and {more} more (see automata status --verbose)")
+            console.print(
+                f"  [dim]and {more} more (see [bold]automata status --verbose[/])[/]"
+            )
 
     if verbose and status.artifacts:
-        typer.echo("All artifacts:")
-        width = max(len(a.key) for a in status.artifacts)
+        console.print("\n[bold]All artifacts[/]")
+        table = _artifacts_table()
+        collection = None
         for artifact in status.artifacts:
-            described = _describe_artifact(artifact, now)
-            typer.echo(f"  {artifact.key:<{width}}  {described}")
+            if collection is not None and artifact.key.split("/")[0] != collection:
+                table.add_row()  # a blank line between collections
+            collection = artifact.key.split("/")[0]
+            cells = [_key(artifact.key), _state(artifact.state)]
+            if artifact.state == "scheduled":
+                assert artifact.release_time is not None
+                cells += _release(artifact.release_time, now)
+                if not artifact.ready:
+                    cells[-1] += " [dim]· also marked ready: false[/]"
+            elif artifact.state == "not ready":
+                cells.append("[dim]marked ready: false[/]")
+            elif artifact.state == "missing":
+                cells.append("[dim]no recipe, and its file doesn't exist[/]")
+            table.add_row(*cells)
+        console.print(Padding(table, (0, 0, 0, 2), expand=False))
 
 
 @_command()
@@ -863,7 +955,8 @@ def _add_extension_command(
     group of commands (a dict of them, with its help under "__doc__")."""
     if isinstance(command, dict):
         group = typer.Typer(
-            help=command.get("__doc__") or f'Commands from extension "{extension}".'
+            no_args_is_help=True,
+            help=command.get("__doc__") or f'Commands from extension "{extension}".',
         )
         for subname, subcommand in command.items():
             if subname != "__doc__":
@@ -926,7 +1019,7 @@ def _load_app(
     directory: pathlib.Path,
 ) -> tuple[typer.Typer, Automata | None, Error | None]:
     """As :func:`app_for_directory`, and also the project, if it loaded."""
-    full = typer.Typer()
+    full = typer.Typer(no_args_is_help=True)
     full.registered_commands = list(app.registered_commands)
     full.registered_groups = list(app.registered_groups)
     config_path = find_config(directory)

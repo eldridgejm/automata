@@ -343,7 +343,10 @@ def test_recipe_failure_names_the_artifact_command_directory_and_status(
         "Building homeworks/01-intro/homework.pdf failed (exit status 3)."
     )
     assert "recipe: echo compiling && exit 3" in message
-    assert f"in: {temporary_course.path / 'homeworks' / '01-intro'}" in message
+    assert (
+        f"in working directory: {temporary_course.path / 'homeworks' / '01-intro'}"
+        in message
+    )
 
 
 def test_recipe_failure_shows_stdout_and_stderr_in_order(temporary_course):

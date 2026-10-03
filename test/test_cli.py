@@ -116,6 +116,29 @@ def test_verbose_build_says_which_recipe_each_output_is_from(project):
     result = _invoke("build", "--verbose")
 
     assert "Running the recipe for notes/01-intro/notes.pdf" in result.output
+    assert (
+        "  in working directory: notes/01-intro\n  $ touch notes.pdf" in result.output
+    )
+
+
+def test_verbose_build_says_which_artifacts_were_skipped(project):
+    _recipes_project(project)
+
+    result = _invoke("build", "--verbose", "--current-time", "2098-12-25T00:00:00")
+
+    assert (
+        "○ Skipped notes/01-intro/later.pdf: not released yet (releases "
+        "Thu 2099-01-01 00:00, in 7 days)" in result.output
+    )
+
+
+def test_build_lists_skipped_artifacts_only_when_verbose(project):
+    _recipes_project(project)
+
+    result = _invoke("build")
+
+    assert "Skipped 1 artifact: 1 not released yet." in result.output
+    assert "later.pdf" not in result.output
 
 
 def test_build_progress_shows_the_running_recipe_as_a_status(project):
@@ -580,10 +603,43 @@ def _schedule_homework(project, release_time):
     config.write_text("\n".join(lines) + "\n")
 
 
+def _mark_homework_not_ready(project):
+    """Mark the homework ready: false (next to its path, at the same indent)."""
+    config = project / "automata.yaml"
+    lines = []
+    for line in config.read_text().splitlines():
+        lines.append(line)
+        if line.strip() == "path: homeworks/hw01/homework.pdf":
+            indent = line[: len(line) - len(line.lstrip())]
+            lines.append(f"{indent}ready: false")
+    config.write_text("\n".join(lines) + "\n")
+
+
+def test_status_verbose_says_why_an_artifact_is_not_ready(project):
+    _mark_homework_not_ready(project)
+
+    result = _invoke("status", "--verbose")
+
+    line = _line_with(result.output, "homework.pdf")
+    assert "○ not ready" in line and "marked ready: false" in line
+
+
+def test_status_verbose_says_a_scheduled_artifact_is_also_not_ready(project):
+    _schedule_homework(project, "2025-06-01 00:00:00")
+    _mark_homework_not_ready(project)
+
+    result = _invoke("status", "--verbose", "--current-time", "2025-05-01T00:00:00")
+
+    # (the last line with it: in all the artifacts)
+    line = [line for line in result.output.splitlines() if "homework.pdf" in line][-1]
+    assert "◷ scheduled" in line and "Sun 2025-06-01 00:00" in line
+    assert "also marked ready: false" in line
+
+
 def test_status_summarizes_the_artifacts(project):
     result = _invoke("status")
 
-    assert "Artifacts: 1 released" in result.output
+    assert "● 1 released" in result.output
     assert "build" not in result.output.lower()
 
 
@@ -592,15 +648,51 @@ def test_status_shows_the_next_releases(project):
 
     result = _invoke("status", "--current-time", "2025-05-01T00:00:00")
 
-    assert "Next releases:" in result.output
-    assert "homeworks/hw01/homework.pdf" in result.output
-    assert "2025-06-01 00:00 (in 31 days)" in result.output
+    line = _line_with(result.output, "homeworks/hw01/homework.pdf")
+    assert "Next releases" in result.output
+    assert "◷ 1 scheduled" in result.output
+    assert "Sun 2025-06-01 00:00" in line and "in 4 weeks" in line
 
 
 def test_status_verbose_lists_every_artifact(project):
     result = _invoke("status", "--verbose")
 
-    assert "homeworks/hw01/homework.pdf  released" in result.output
+    assert "All artifacts" in result.output
+    assert "● released" in _line_with(result.output, "homeworks/hw01/homework.pdf")
+
+
+def test_status_verbose_shows_when_scheduled_artifacts_release(project):
+    _schedule_homework(project, "2025-06-01 00:00:00")
+
+    result = _invoke("status", "--verbose", "--current-time", "2025-05-01T00:00:00")
+
+    lines = [line for line in result.output.splitlines() if "homework.pdf" in line]
+    # (in the next releases, and in all the artifacts)
+    assert any(
+        "◷ scheduled" in line and "Sun 2025-06-01 00:00" in line for line in lines
+    )
+
+
+def test_status_is_colorful_on_a_terminal(project):
+    import io
+
+    from rich.console import Console
+
+    from automata import Automata
+    from automata.cli import _print_status
+
+    console = Console(file=io.StringIO(), force_terminal=True, width=120)
+
+    _print_status(Automata(project).status(), verbose=True, console=console)
+
+    output = console.file.getvalue()
+    assert "\x1b[" in output
+    assert "● released" in _strip_ansi(output)
+
+
+def _line_with(output, text):
+    """The line of *output* containing *text*."""
+    return next(line for line in output.splitlines() if text in line)
 
 
 def test_status_json_gives_every_artifact(project):
@@ -872,3 +964,41 @@ def test_lines_printed_while_the_spinner_shows_are_on_lines_of_their_own():
     ]
     assert "✓ Built 3 artifacts." in lines
     assert not any("Building materials…" in line and "✓" in line for line in lines)
+
+
+@pytest.mark.parametrize("args", [[], ["pipeline"]], ids=["automata", "pipeline"])
+def test_a_command_without_a_subcommand_prints_its_help(project, args):
+    from automata.cli import app_for_directory
+
+    full, _ = app_for_directory(project)
+
+    result = runner.invoke(full, args)
+
+    assert "Usage:" in result.output
+    assert "Commands" in result.output
+    assert "Missing command" not in result.output
+
+
+@pytest.mark.parametrize(
+    "delta, expected",
+    [
+        (datetime.timedelta(seconds=30), "in less than a minute"),
+        (datetime.timedelta(minutes=1), "in a minute"),
+        (datetime.timedelta(minutes=45), "in 45 minutes"),
+        (datetime.timedelta(hours=1, minutes=20), "in an hour"),
+        (datetime.timedelta(hours=2), "in 2 hours"),
+        (datetime.timedelta(days=1, hours=3), "in a day"),
+        (datetime.timedelta(days=3), "in 3 days"),
+        (datetime.timedelta(days=13), "in 13 days"),
+        (datetime.timedelta(days=14), "in 2 weeks"),
+        (datetime.timedelta(days=72), "in 10 weeks"),
+        (datetime.timedelta(hours=-2), "2 hours ago"),
+        (datetime.timedelta(days=-7), "7 days ago"),
+    ],
+)
+def test_times_are_described_relative_to_now(delta, expected):
+    from automata.cli import _relative
+
+    now = datetime.datetime(2025, 1, 15, 12, 0)
+
+    assert _relative(now + delta, now) == expected

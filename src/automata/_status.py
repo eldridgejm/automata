@@ -31,6 +31,9 @@ class ArtifactStatus:
         - ``"missing"``: it has no recipe and its file doesn't exist.
     release_time : datetime.datetime | None
         When it is (or was) released, if it has a release time.
+    ready : bool
+        Whether it is ready (not marked ``ready: false``). A scheduled
+        artifact that isn't is not released at its release time.
 
     """
 
@@ -39,6 +42,7 @@ class ArtifactStatus:
     artifact: str
     state: str
     release_time: datetime.datetime | None
+    ready: bool = True
 
     @property
     def key(self) -> str:
@@ -54,6 +58,7 @@ class ArtifactStatus:
             "artifact": self.artifact,
             "state": self.state,
             "release_time": _iso(self.release_time),
+            "ready": self.ready,
         }
 
 
@@ -132,6 +137,7 @@ def make_status(
                 if artifact.release_time is None
                 else local_time(artifact.release_time)
             ),
+            ready=artifact.ready,
         )
         for collection_key, collection in discovered.collections.items()
         for publication_key, publication in collection.publications.items()

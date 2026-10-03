@@ -148,7 +148,8 @@ def _build_artifact(
                 f"Building {{name}} failed (exit status {proc.returncode}).",
                 fallback_name=_escape(artifact.workdir / artifact.path),
                 details=(
-                    f"\n  recipe: {artifact.recipe}\n  in: {artifact.workdir}"
+                    f"\n  recipe: {artifact.recipe}"
+                    f"\n  in working directory: {artifact.workdir}"
                     + _describe_output(captured)
                 ),
             )
@@ -168,7 +169,8 @@ def _build_artifact(
                 f"not created (expected at {_escape(path)}).",
                 fallback_name=_escape(path),
                 details=(
-                    f"\n  recipe: {artifact.recipe}\n  in: {artifact.workdir}"
+                    f"\n  recipe: {artifact.recipe}"
+                    f"\n  in working directory: {artifact.workdir}"
                     + _describe_output(stdout)
                 ),
             )

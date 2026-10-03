@@ -145,6 +145,7 @@ def test_status_as_a_dict_is_json(tmp_path):
         "artifact": "solution.txt",
         "state": "scheduled",
         "release_time": "2025-02-01T00:00:00",
+        "ready": True,
     }
 
 
