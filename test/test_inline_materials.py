@@ -403,3 +403,184 @@ def test_inline_artifacts_of_the_wrong_type_are_a_config_error(tmp_path, artifac
     assert str(excinfo.value).startswith(
         f"{config_file}:6: materials.hw.publications.h1.artifacts: "
     )
+
+
+# this and previous ====================================================================
+
+# a project's automata.yaml, apart from its materials (and vars)
+_REST_OF_CONFIG = dedent("""\
+    course:
+      name: Test
+      title: Test Course
+      term: Fall 2025
+      first_week_start: 2025-01-06
+    website:
+      theme:
+        use: "default"
+        config: {short_title: "T", long_title: "Test"}
+      content_directory: "content"
+      build_directory: "_build"
+""")
+
+_LECTURES = dedent("""\
+    lectures:
+      schema:
+        required_artifacts: [slides.pdf]
+        metadata_schema:
+          required_keys:
+            date: { type: date }
+        is_ordered: true
+      publications:
+        lec01:
+          metadata:
+            date: 2025-01-07
+          artifacts:
+            slides.pdf:
+              path: lectures/lec01.pdf
+              release_time: ${ this.metadata.date } at 08:00:00
+        lec02:
+          metadata:
+            date: first tuesday, thursday after ${ previous.metadata.date }
+          artifacts:
+            slides.pdf:
+              path: lectures/lec02.pdf
+              release_time: ${ this.metadata.date } at 08:00:00
+""")
+
+
+def _project(tmp_path, config, files=None):
+    """A project in *tmp_path* with automata.yaml *config* (and the rest of the
+    configuration), and *files*: a dict of paths to contents."""
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "automata.yaml").write_text(config + _REST_OF_CONFIG)
+    for path, contents in (files or {}).items():
+        (project / path).write_text(contents)
+    return project
+
+
+def _indented(text, spaces):
+    return "".join(
+        " " * spaces + line if line.strip() else line for line in text.splitlines(True)
+    )
+
+
+def test_inline_publications_can_refer_to_the_previous_one(tmp_path):
+    project = _project(tmp_path, "materials:\n" + _indented(_LECTURES, 2))
+
+    lectures = Automata(project).discover().collections["lectures"]
+
+    # the first tuesday or thursday after tuesday, january 7
+    assert lectures.publications["lec02"].metadata["date"] == datetime.date(2025, 1, 9)
+
+
+def test_inline_publications_can_refer_to_themselves(tmp_path):
+    project = _project(tmp_path, "materials:\n" + _indented(_LECTURES, 2))
+
+    lectures = Automata(project).discover().collections["lectures"]
+
+    slides = lectures.publications["lec02"].artifacts["slides.pdf"]
+    assert slides.release_time == datetime.datetime(2025, 1, 9, 8, 0, 0)
+
+
+def test_previous_is_undefined_in_an_unordered_inline_collection(tmp_path):
+    lectures = _LECTURES.replace("    is_ordered: true\n", "")
+    project = _project(tmp_path, "materials:\n" + _indented(lectures, 2))
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).discover()
+
+    message = str(excinfo.value)
+    assert "'previous' is undefined" in message
+    assert "is_ordered: true" in message
+    assert "!template" not in message
+
+
+def test_an_undefined_name_in_an_inline_publication_gives_its_line(tmp_path):
+    lectures = _LECTURES.replace(
+        "${ previous.metadata.date }", "${ prevous.metadata.date }"
+    )
+    project = _project(tmp_path, "materials:\n" + _indented(lectures, 2))
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).discover()
+
+    assert str(excinfo.value).startswith(
+        f"{project / 'automata.yaml'}:19: "
+        "materials.lectures.publications.lec02.metadata.date: "
+        "'prevous' is undefined"
+    )
+
+
+def test_the_configuration_cannot_refer_into_the_materials(tmp_path):
+    config = (
+        "vars:\n"
+        "  first_lecture: ${ materials.lectures.publications.lec01.metadata.date }\n"
+        "materials:\n" + _indented(_LECTURES, 2)
+    )
+    project = _project(tmp_path, config)
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project)
+
+    message = str(excinfo.value)
+    assert message.startswith(f"{project / 'automata.yaml'}:2: vars.first_lecture: ")
+    assert "the materials are read after the rest of automata.yaml" in message
+
+
+def test_inline_materials_can_be_included_from_another_file(tmp_path):
+    project = _project(
+        tmp_path,
+        'materials:\n  __include__: "materials.yaml"\n',
+        files={"materials.yaml": _LECTURES},
+    )
+
+    lectures = Automata(project).discover().collections["lectures"]
+
+    assert lectures.publications["lec02"].metadata["date"] == datetime.date(2025, 1, 9)
+
+
+def test_an_inline_collection_can_be_included_from_another_file(tmp_path):
+    project = _project(
+        tmp_path,
+        'materials:\n  lectures:\n    __include__: "lectures.yaml"\n',
+        files={"lectures.yaml": _LECTURES.split("\n", 1)[1].replace("\n  ", "\n")[2:]},
+    )
+
+    lectures = Automata(project).discover().collections["lectures"]
+
+    assert lectures.publications["lec02"].metadata["date"] == datetime.date(2025, 1, 9)
+
+
+def test_errors_in_included_inline_materials_give_the_included_file(tmp_path):
+    lectures = _LECTURES.replace(
+        "${ previous.metadata.date }", "${ prevous.metadata.date }"
+    )
+    project = _project(
+        tmp_path,
+        'materials:\n  __include__: "materials.yaml"\n',
+        files={"materials.yaml": lectures},
+    )
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).discover()
+
+    assert str(excinfo.value).startswith(
+        f"{project / 'materials.yaml'}:18: "
+        "materials.lectures.publications.lec02.metadata.date: "
+    )
+
+
+@pytest.mark.parametrize(
+    "materials, expected",
+    [
+        ("[lectures]", "materials must be a mapping"),
+        ('{__include__: "${ vars.file }"}', "__include__ must be a path"),
+        ('{__include__: "missing.yaml"}', "not found"),
+    ],
+)
+def test_malformed_materials_are_a_config_error(tmp_path, materials, expected):
+    project = _project(tmp_path, f"materials: {materials}\n")
+
+    with pytest.raises(Error, match=expected):
+        Automata(project)

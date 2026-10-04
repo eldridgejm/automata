@@ -3,8 +3,7 @@ Defining Materials
 
 Materials can be defined in two ways: **inline** in ``automata.yaml`` for
 simple cases, or on the **filesystem** using ``collection.yaml`` and
-``publication.yaml`` files for more complex needs (build recipes, relative
-references between publications, templates).
+``publication.yaml`` files for more complex needs (build recipes, templates).
 
 
 Inline materials
@@ -40,9 +39,40 @@ Each top-level key is a collection name:
 **Inline materials cannot have recipes.** If you need to run a build command to
 produce an artifact (e.g., compiling LaTeX), use filesystem materials instead.
 
-**Inline materials do not support** ``previous`` **references.** The
-``${ previous.metadata.date }`` pattern (referencing the previous publication
-in an ordered collection) is only available in filesystem materials.
+Like a ``publication.yaml``, an inline publication can refer to itself as
+``this``, and, in an ordered collection (``is_ordered: true``), to the
+publication before it as ``previous`` (see :ref:`relative-dates`):
+
+.. code-block:: yaml
+
+    publications:
+      01-introduction:
+        metadata:
+          date: ${ vars.first_lecture }
+        artifacts:
+          slides.pdf:
+            path: lectures/01-introduction.pdf
+            release_time: ${ this.metadata.date } at 08:00:00
+      02-linear-regression:
+        metadata:
+          date: first tuesday, thursday after ${ previous.metadata.date }
+        artifacts:
+          slides.pdf:
+            path: lectures/02-linear-regression.pdf
+            release_time: ${ this.metadata.date } at 08:00:00
+
+The publications of an inline collection are in the order they're written.
+
+.. note::
+
+    ``materials`` is read separately from the rest of ``automata.yaml``. The
+    rest of the file is resolved first, and each publication is resolved when
+    the materials are discovered, one by one, so that it can use ``this`` and
+    ``previous``. Inline materials can refer to ``vars`` and ``course``, but
+    nothing else in ``automata.yaml`` can refer to the materials: a value both
+    need, such as an exam's date, belongs in ``vars``. Inline materials can be
+    split into other files with ``__include__``, but its path must be written
+    out, without ``${ ... }``.
 
 Each artifact requires at least a ``path`` (relative to the project root).
 Optional fields:
@@ -224,6 +254,8 @@ Artifact fields:
      - ``false``
      - If ``true``, no error when the file doesn't exist after building.
 
+
+.. _relative-dates:
 
 Relative dates with ``previous``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

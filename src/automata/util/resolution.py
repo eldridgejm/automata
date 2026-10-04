@@ -337,6 +337,63 @@ def _relative_includes(data: typing.Any, directory: Path) -> typing.Any:
     return data
 
 
+def expand_includes(
+    data: typing.Any,
+    directory: Path,
+    file: Path,
+    source_map: SourceMap | None = None,
+    keypath: tuple[str, ...] = (),
+) -> typing.Any:
+    """*data* with each ``__include__`` replaced by the contents of the file it
+    names, and nothing else resolved.
+
+    For configuration that is resolved later, but whose includes are relative
+    to where it was read: paths are relative to *directory*, and includes
+    within an included file are relative to that file. *data* is at *keypath*
+    in *file*; the source map of each included file is added to *source_map*,
+    so that errors can be located in them. An include must be a path, since
+    nothing in it can be resolved yet.
+
+    """
+    if isinstance(data, dict):
+        if list(data) == ["__include__"]:
+            target = data["__include__"]
+            if not isinstance(target, str) or "${" in target:
+                raise Error(
+                    describe_config_error(
+                        "__include__ must be a path, without ${ ... }.",
+                        (*keypath, "__include__"),
+                        file=file,
+                        source_map=source_map,
+                    )
+                )
+            include_path = (directory / target).absolute()
+            try:
+                yaml_content = include_path.read_text()
+            except FileNotFoundError:
+                raise Error(f'Included file "{include_path}" not found.') from None
+            included, included_map = parse_yaml_with_source_map(
+                yaml_content, source=include_path
+            )
+            if source_map is not None:
+                source_map.add_include(keypath, included_map)
+            return expand_includes(
+                included, include_path.parent, file, source_map, keypath
+            )
+        return {
+            key: expand_includes(
+                value, directory, file, source_map, (*keypath, str(key))
+            )
+            for key, value in data.items()
+        }
+    if isinstance(data, list):
+        return [
+            expand_includes(item, directory, file, source_map, (*keypath, str(i)))
+            for i, item in enumerate(data)
+        ]
+    return data
+
+
 @typing.overload
 def resolve(
     config: smartconfig.types.Configuration,

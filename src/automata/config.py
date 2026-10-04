@@ -1,5 +1,6 @@
 import datetime
 import fnmatch
+import re
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,12 @@ from .extensions import (
 )
 from .extensions._apply import all_extensions, check_theme
 from .extensions._common import ExtensionConfigError
-from .util.resolution import describe_config_error, explain_undefined, resolve
+from .util.resolution import (
+    describe_config_error,
+    expand_includes,
+    explain_undefined,
+    resolve,
+)
 from .util.yaml import SourceMap, parse_yaml_with_source_map
 
 CONFIGURATION_FILENAME = "automata.yaml"
@@ -222,6 +228,11 @@ def read_config_with_source_map(path: Path) -> tuple[Config, SourceMap]:
     if config_dict is None:
         raise Error(f"{path} is empty.")
 
+    # the materials are resolved when they are discovered, publication by
+    # publication (so that each can refer to itself, as "this", and to the one
+    # before it, as "previous"), not with the rest of the configuration
+    materials = config_dict.pop("materials", {})
+
     try:
         config = resolve(
             config_dict, Config, base_path=path.parent, source_map=source_map
@@ -230,20 +241,41 @@ def read_config_with_source_map(path: Path) -> tuple[Config, SourceMap]:
         smartconfig.exceptions.ResolutionError,
         smartconfig.exceptions.InvalidSchemaError,
     ) as e:
+        # "materials" is the (empty) default, while the rest is resolved
+        if re.match(r"""'materials' is undefined|"materials" has no key""", e.reason):
+            reason = _REFERENCE_TO_MATERIALS
+        else:
+            reason = explain_undefined(
+                e.reason,
+                e.keypath,
+                names=[str(key) for key in config_dict],
+                located=source_map.value_at(e.keypath),
+            )
+        raise Error(
+            describe_config_error(reason, e.keypath, file=path, source_map=source_map)
+        ) from None
+
+    materials = expand_includes(
+        materials, path.parent, path, source_map, keypath=("materials",)
+    )
+    if not isinstance(materials, dict):
         raise Error(
             describe_config_error(
-                explain_undefined(
-                    e.reason,
-                    e.keypath,
-                    names=[str(key) for key in config_dict],
-                    located=source_map.value_at(e.keypath),
-                ),
-                e.keypath,
+                "materials must be a mapping of collection names to collections.",
+                ("materials",),
                 file=path,
                 source_map=source_map,
             )
-        ) from None
+        )
+    config.materials = materials
     return config, source_map
+
+
+_REFERENCE_TO_MATERIALS = (
+    "'materials' is undefined: the materials are read after the rest of "
+    "automata.yaml, so nothing else in it can refer to them. Define the value "
+    "in vars instead, and refer to it from the materials as ${ vars.name }."
+)
 
 
 def _load_extension_spec(

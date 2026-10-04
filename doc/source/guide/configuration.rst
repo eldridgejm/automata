@@ -154,6 +154,14 @@ Templates can read an extension's config through ``extensions``, keyed by name
 Inline materials definitions. See :doc:`materials` for the full format. This is
 optional --- materials can also (or instead) be defined on the filesystem.
 
+Unlike the rest of ``automata.yaml``, ``materials`` isn't resolved when the
+file is read. Each publication is resolved when the materials are discovered,
+so that it can refer to itself (``this``) and to the publication before it
+(``previous``). Materials can refer to ``vars`` and ``course``, but nothing
+else in ``automata.yaml`` can refer to the materials: define a value both need
+in ``vars``. ``__include__`` works in ``materials`` as elsewhere, but its path
+must be written out, without ``${ ... }``.
+
 
 ``ignore``
 ----------

@@ -158,15 +158,25 @@ def _resolve_publication(
         keypath = tuple(exc.keypath)
         if keypath[:1] == ("this",):
             keypath = keypath[1:]
-        reason = explain_undefined(
-            exc.reason,
-            keypath,
-            names=[*combined_dict, *global_variables],
-            located=value_at(raw_contents, keypath),
-        )
+        if exc.reason == "'previous' is undefined" and previous is None:
+            reason = _NO_PREVIOUS
+        else:
+            reason = explain_undefined(
+                exc.reason,
+                keypath,
+                names=[*combined_dict, *global_variables],
+                located=value_at(raw_contents, keypath),
+            )
         raise DiscoveryError.at(reason, keypath, source) from None
 
     return cast(Dict[str, Any], resolved["this"])
+
+
+_NO_PREVIOUS = (
+    "'previous' is undefined: only publications in an ordered collection "
+    "(with is_ordered: true in its schema) have a previous one, and the first "
+    "of them has none."
+)
 
 
 def parse_publication(
