@@ -1,0 +1,28 @@
+/* the front page shows the logo in place of its title; the title stays in
+   the page for the browser tab, navigation, and screen readers */
+section#automata > h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* the theme marks dark mode with a "dark" class on <html> */
+img.only-dark { display: none; }
+html.dark img.only-light { display: none; }
+html.dark img.only-dark { display: block; }
+
+/* screenshots get rounded corners and a soft frame, so their light
+   background doesn't bleed into the page */
+img.screenshot {
+  border: 1px solid rgb(0 0 0 / 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
+  margin: 1.5rem 0;
+}
+html.dark img.screenshot {
+  border-color: rgb(255 255 255 / 0.15);
+  box-shadow: none;
+}

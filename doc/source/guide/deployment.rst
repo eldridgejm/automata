@@ -115,7 +115,7 @@ The recommended deployment method is GitHub Pages with GitHub Actions.
                with:
                  python-version: "3.14"
 
-             - run: pip install automata
+             - run: pip install git+https://github.com/eldridgejm/automata
 
              - run: automata build
 

@@ -32,6 +32,7 @@ html_permalinks_icon = "<span>#</span>"
 html_theme = "sphinxawesome_theme"
 html_title = "automata"
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 # the favicon (and, in theme_options below, the logo), from branding/ at the
 # root of the repository
 html_favicon = "../../branding/favicon.svg"

@@ -4,7 +4,7 @@ Development Setup
 Prerequisites
 -------------
 
-- Python 3.14+
+- Python 3.13+
 - `uv <https://docs.astral.sh/uv/>`_ (recommended) or pip
 - Node.js (optional, for Tailwind CSS rebuilds in the default theme)
 
