@@ -156,8 +156,7 @@ An element's configuration comes from one of two places:
 
       website:
         elements:
-          schedule:
-            __include__: "schedule.yaml"
+          schedule: !include "schedule.yaml"
 
   If the element has no entry there, it receives an empty configuration, so
   it renders with its defaults or raises an error naming its missing required

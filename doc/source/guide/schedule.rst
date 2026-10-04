@@ -15,8 +15,7 @@ In ``automata.yaml``, configure the schedule under ``website.elements``:
 
     website:
       elements:
-        schedule:
-          __include__: "schedule.yaml"
+        schedule: !include "schedule.yaml"
 
 Then place it in a page:
 
@@ -28,8 +27,8 @@ Then place it in a page:
 Schedule configuration
 ----------------------
 
-The schedule configuration is typically in a separate YAML file included via
-``__include__``. Here is a complete example:
+The schedule configuration is typically in a separate YAML file included with
+``!include``. Here is a complete example:
 
 .. code-block:: yaml
 

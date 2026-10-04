@@ -36,8 +36,7 @@ website:
           url: syllabus.html
 
   elements:
-    schedule:
-      __include__: "website/schedule.yaml"
+    schedule: !include "website/schedule.yaml"
 
   # the website's pages: Markdown and HTML files, and anything else to copy
   content_directory: "website/content"

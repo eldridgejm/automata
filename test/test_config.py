@@ -882,3 +882,29 @@ def test_nested_includes_work_with_a_relative_project_path(tmp_path: Path) -> No
         config = read_config(Path("course") / "automata.yaml")
 
     assert config.website.theme == "default"
+
+
+def test_include_can_be_written_as_a_tag(tmp_path: Path) -> None:
+    (tmp_path / "schedule.yaml").write_text("week_topics: [Intro]\n")
+    config_file = _write_config(tmp_path, _DEFAULT_THEME)
+    config_file.write_text(
+        'vars:\n  schedule: !include "schedule.yaml"\n' + config_file.read_text()
+    )
+
+    config = read_config(config_file)
+
+    assert config.vars["schedule"] == {"week_topics": ["Intro"]}
+
+
+def test_materials_can_be_included_with_the_tag(tmp_path: Path) -> None:
+    (tmp_path / "materials.yaml").write_text(
+        "exams:\n  schema: {required_artifacts: []}\n  publications: {}\n"
+    )
+    config_file = _write_config(tmp_path, _DEFAULT_THEME)
+    config_file.write_text(
+        'materials: !include "materials.yaml"\n' + config_file.read_text()
+    )
+
+    config = read_config(config_file)
+
+    assert list(config.materials) == ["exams"]

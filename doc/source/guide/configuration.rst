@@ -159,7 +159,7 @@ file is read. Each publication is resolved when the materials are discovered,
 so that it can refer to itself (``this``) and to the publication before it
 (``previous``). Materials can refer to ``vars`` and ``course``, but nothing
 else in ``automata.yaml`` can refer to the materials: define a value both need
-in ``vars``. ``__include__`` works in ``materials`` as elsewhere, but its path
+in ``vars``. ``!include`` works in ``materials`` as elsewhere, but its path
 must be written out, without ``${ ... }``.
 
 
@@ -271,13 +271,21 @@ collection has, or a value that isn't a date, is an error.
 Including external files
 ------------------------
 
-Use ``__include__`` to split configuration across files:
+Use ``!include`` to split configuration across files:
 
 .. code-block:: yaml
 
     website:
       elements:
-        schedule:
-          __include__: "schedule.yaml"
+        schedule: !include "schedule.yaml"
 
-The path is resolved relative to the file containing the ``__include__``.
+The value is the included file's contents. The path is resolved relative to
+the file containing the ``!include``, and included files can include others.
+
+``!include "schedule.yaml"`` is shorthand for a mapping with the single key
+``__include__``, which can also be written out:
+
+.. code-block:: yaml
+
+    schedule:
+      __include__: "schedule.yaml"
