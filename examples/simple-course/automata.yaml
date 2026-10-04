@@ -1,0 +1,94 @@
+# The configuration of an automata project. Replace the placeholder values
+# below with your course's, then run `automata serve` to see the website.
+
+course:
+  # e.g. "DSC 40B"
+  name: "DSC 101"
+  # e.g. "Theoretical Foundations of Data Science II"
+  title: "Introduction to Data Science"
+  # e.g. "Fall 2026"
+  term: "Fall 2026"
+  # the first day of the course's first week; weeks are numbered from here
+  first_week_start: 2026-09-21
+
+# values defined once and used anywhere, as ${ vars.name }
+vars: {}
+#   midterm_date: 2027-02-08
+
+# your materials can be defined here, or with collection.yaml and
+# publication.yaml files next to the materials themselves. See "Defining
+# Materials" in the documentation.
+materials:
+  lectures:
+    schema:
+      required_artifacts:
+        - slides.pptx
+      metadata_schema:
+        required_keys:
+          number: { type: integer }
+          topic: { type: string }
+          date: { type: date }
+      is_ordered: true
+    publications:
+      01-introduction:
+        metadata:
+          number: 1
+          topic: Introduction
+          date: 2026-09-22
+        artifacts:
+          slides.pptx:
+            path: lectures/01-introduction.pptx
+            release_time: ${ this.metadata.date } at 08:00:00
+      02-linear-regression:
+        metadata:
+          number: ${ previous.metadata.number + 1 }
+          topic: Linear Regression
+          date: first tuesday, thursday after ${ previous.metadata.date }
+        artifacts:
+          slides.pptx:
+            path: lectures/02-linear-regression.pptx
+            release_time: ${ this.metadata.date } at 08:00:00
+      03-gradient-descent:
+        metadata:
+          number: ${ previous.metadata.number + 1 }
+          topic: Gradient Descent
+          date: first tuesday, thursday after ${ previous.metadata.date }
+        artifacts:
+          slides.pptx:
+            path: lectures/03-gradient-descent.pptx
+            release_time: ${ this.metadata.date } at 08:00:00
+
+website:
+  theme:
+    use: "default"
+    config:
+      navigation:
+        - text: |
+            <i data-lucide="home" class="mr-2 text-slate-400"></i>
+            Home
+          url: index.html
+
+        - text: |
+            <i data-lucide="scale" class="mr-2 text-slate-400"></i>
+            Syllabus
+          url: syllabus.html
+
+  elements:
+    schedule: !include "website/schedule.yaml"
+
+  # the website's pages: Markdown and HTML files, and anything else to copy
+  content_directory: "website/content"
+  # where the website is built
+  build_directory: "_build"
+  base_path: "."
+
+# where `automata publish` deploys the website, e.g. to GitHub Pages. See
+# "Deployment" in the documentation.
+publish:
+  github:
+    strategy: gh-pages
+    config:
+      # the branch that GitHub Pages serves, and the remote of this project's
+      # git repository that it's pushed to
+      branch: gh-pages
+      remote: origin

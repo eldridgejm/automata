@@ -1,0 +1,101 @@
+course:
+  name: "DSC 40B"
+  title: "Theoretical Foundations of Data Science II"
+  term: "Fall 2026"
+  # weeks are numbered from here (in the schedule and the calendar)
+  first_week_start: 2026-09-21
+
+vars:
+  date_of_first_lecture: 2026-09-22
+
+  midterm_date: 2026-10-26
+  final_date: 2026-12-09
+
+extensions:
+  - extensions/practice-problems
+
+materials:
+  exams:
+    schema:
+      required_artifacts:
+        - exam.pdf
+      optional_artifacts:
+        - solution.pdf
+      metadata_schema:
+        required_keys:
+          name: { type: string }
+          date: { type: date }
+      is_ordered: true
+    publications:
+      midterm:
+        metadata:
+          name: "Midterm Exam"
+          date: ${ vars.midterm_date }
+        artifacts:
+          exam.pdf:
+            path: exams/midterm/exam.pdf
+            release_time: 3 days after ${ vars.midterm_date } at 00:00:00
+          solution.pdf:
+            path: exams/midterm/solution.pdf
+            release_time: 3 days after ${ vars.midterm_date } at 00:00:00
+      final:
+        metadata:
+          name: "Final Exam"
+          date: ${ vars.final_date }
+        artifacts:
+          exam.pdf:
+            path: exams/final/exam.pdf
+            release_time: 3 days after ${ vars.final_date } at 00:00:00
+          solution.pdf:
+            path: exams/final/solution.pdf
+            release_time: 3 days after ${ vars.final_date } at 00:00:00
+
+calendar:
+  lectures:
+    dates:
+      date: !template "Lecture ${ publication.metadata.number }: ${ publication.metadata.topic }"
+  homeworks:
+    dates:
+      released: !template "HW ${ publication.metadata.number } released"
+      due: !template "HW ${ publication.metadata.number } due"
+  labs:
+    dates:
+      released: !template "Lab ${ publication.metadata.number } released"
+      due: !template "Lab ${ publication.metadata.number } due"
+  exams:
+    color: "#e15759"
+    dates:
+      date: !template "${ publication.metadata.name }"
+
+website:
+  theme:
+    use: "default"
+    config:
+      # the site's titles are the course's name and title, unless set here
+      navigation:
+          - text: |
+              <i data-lucide="home" class="mr-2 text-slate-400"></i>
+              Home
+            url: index.html
+
+          - text: |
+              <i data-lucide="scale" class="mr-2 text-slate-400"></i>
+              Syllabus
+            url: syllabus.html
+
+          - text: |
+              <i data-lucide="pencil" class="mr-2 text-slate-400"></i>
+              Practice
+            url: practice/week-01.html
+  elements:
+    schedule: !include "website/schedule.yaml"
+  content_directory: "website/content"
+  build_directory: "_build"
+  base_path: "."
+
+publish:
+  github:
+    strategy: gh-pages
+    config:
+      branch: gh-pages
+      remote: origin

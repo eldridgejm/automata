@@ -71,7 +71,7 @@ The publications of an inline collection are in the order they're written.
     ``previous``. Inline materials can refer to ``vars`` and ``course``, but
     nothing else in ``automata.yaml`` can refer to the materials: a value both
     need, such as an exam's date, belongs in ``vars``. Inline materials can be
-    split into other files with ``__include__``, but its path must be written
+    split into other files with ``!include``, but its path must be written
     out, without ``${ ... }``.
 
 Each artifact requires at least a ``path`` (relative to the project root).
@@ -131,6 +131,8 @@ Directory structure
 Each collection directory contains a ``collection.yaml`` and one or more
 subdirectories, each containing a ``publication.yaml``.
 
+
+.. _publication-schemas:
 
 ``collection.yaml``
 ^^^^^^^^^^^^^^^^^^^

@@ -13,7 +13,7 @@ from automata import Automata
 @pytest.fixture
 def example_project(tmp_path):
     """Copy the example project to a temporary directory."""
-    example_dir = Path(__file__).parent.parent / "example"
+    example_dir = Path(__file__).parent.parent / "examples" / "full-course"
     project_dir = tmp_path / "project"
 
     # Copy the entire example directory to temp

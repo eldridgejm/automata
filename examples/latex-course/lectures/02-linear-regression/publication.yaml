@@ -1,0 +1,9 @@
+metadata:
+  number: ${ previous.metadata.number + 1 }
+  topic: Linear Regression
+  date: first tuesday, thursday after ${ previous.metadata.date }
+
+artifacts:
+  slides.pdf:
+    recipe: latexmk -pdf slides.tex
+    release_time: ${ this.metadata.date } at 08:00:00

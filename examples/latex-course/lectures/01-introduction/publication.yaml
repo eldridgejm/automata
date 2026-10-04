@@ -1,0 +1,9 @@
+metadata:
+  number: 1
+  topic: Introduction
+  date: ${ vars.first_lecture }
+
+artifacts:
+  slides.pdf:
+    recipe: latexmk -pdf slides.tex
+    release_time: ${ this.metadata.date } at 08:00:00

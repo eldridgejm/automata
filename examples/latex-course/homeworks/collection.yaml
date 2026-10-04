@@ -1,0 +1,9 @@
+publication_schema:
+  required_artifacts:
+    - homework.pdf
+    - solution.pdf
+  metadata_schema:
+    required_keys:
+      number: { type: integer }
+      released: { type: datetime }
+      due: { type: datetime }

@@ -1,0 +1,11 @@
+# built by the recipes, and LaTeX's other output
+*.pdf
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.toc

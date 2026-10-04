@@ -1,0 +1,9 @@
+publication_schema:
+  required_artifacts:
+    - slides.pdf
+  metadata_schema:
+    required_keys:
+      number: { type: integer }
+      topic: { type: string }
+      date: { type: date }
+  is_ordered: true

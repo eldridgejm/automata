@@ -1,0 +1,47 @@
+# The course schedule, shown on the home page by ${ elements.schedule() }. See
+# "The Schedule Element" in the documentation.
+
+# the topic of each week, in order
+week_topics:
+  - Introduction
+  - Linear Models
+
+# the lectures, shown in the week of their date
+primary_activity_collections:
+  - collection: lectures
+    for_each_publication:
+      start_displaying_on: !template "${ publication.metadata.date }"
+      title: !template "Lecture ${ publication.metadata.number }: ${ publication.metadata.topic }"
+      resources:
+        - type: artifact_links
+          title: Slides
+          icon: projector
+          links:
+            - text: PDF
+              artifact: slides.pdf
+
+# the homeworks, shown from their release, with their due dates
+secondary_activity_collections:
+  - collection: homeworks
+    for_each_publication:
+      start_displaying_on: !template "${ publication.metadata.released }"
+      due_datetime: !template "${ publication.metadata.due }"
+      title: !template "Homework ${ publication.metadata.number }"
+      resources:
+        - type: artifact_links
+          links:
+            - text: Homework
+              artifact: homework.pdf
+            - text: Solution
+              artifact: solution.pdf
+
+# one-off events, like exams
+events: []
+#   - name: Midterm
+#     date: 2027-02-08
+
+# announcements, shown in a given week (or, with week: null, in the latest)
+announcements:
+  - week: null
+    content: |
+      Welcome to ${ course.name }!

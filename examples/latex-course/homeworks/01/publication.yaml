@@ -1,0 +1,12 @@
+metadata:
+  number: 1
+  released: ${ vars.first_lecture } at 12:00:00
+  due: 7 days after ${ this.metadata.released } at 23:59:00
+
+artifacts:
+  homework.pdf:
+    recipe: latexmk -pdf homework.tex
+    release_time: ${ this.metadata.released }
+  solution.pdf:
+    recipe: latexmk -pdf solution.tex
+    release_time: 1 day after ${ this.metadata.due } at 00:00:00
