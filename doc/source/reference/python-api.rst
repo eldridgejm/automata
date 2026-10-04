@@ -43,6 +43,27 @@ The primary interface is the ``Automata`` class.
         The :class:`Hooks` instance with the theme and all extensions
         registered.
 
+    .. classmethod:: init(path=None)
+
+        Create a new project in the directory *path*, and return it (an
+        ``Automata`` for the new project). This is what ``automata init``
+        does: it creates an ``automata.yaml`` and a ``website`` directory with
+        a home page, a syllabus, and a schedule. Nothing already in *path* is
+        changed.
+
+        .. code-block:: python
+
+            project = Automata.init(Path("my-course"))
+            project.build()
+
+        :param path: The directory to create the project in. If ``None``, uses
+            the current working directory.
+        :type path: Path or None
+        :raises automata.exceptions.Error: If *path* already has an
+            ``automata.yaml`` or a ``website``, or is inside another project
+            (an ``automata.yaml`` is found in a parent directory). Nothing is
+            written.
+
     .. method:: build(current_time=None)
 
         Run the full pipeline: clean the build directory (if

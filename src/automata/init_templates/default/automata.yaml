@@ -1,0 +1,50 @@
+# The configuration of an automata project. Replace the placeholder values
+# below with your course's, then run `automata serve` to see the website.
+
+course:
+  # e.g. "DSC 40B"
+  name: "COURSE 101"
+  # e.g. "Theoretical Foundations of Data Science II"
+  title: "Course Title"
+  # e.g. "Fall 2026"
+  term: "Term"
+  # the first day of the course's first week; weeks are numbered from here
+  first_week_start: 2027-01-04
+
+# values defined once and used anywhere, as ${ vars.name }
+vars: {}
+#   midterm_date: 2027-02-08
+
+# your materials can be defined here, or with collection.yaml and
+# publication.yaml files next to the materials themselves. See "Defining
+# Materials" in the documentation.
+materials: {}
+
+website:
+  theme:
+    use: "default"
+    config:
+      navigation:
+        - text: |
+            <i data-lucide="home" class="mr-2 text-slate-400"></i>
+            Home
+          url: index.html
+
+        - text: |
+            <i data-lucide="scale" class="mr-2 text-slate-400"></i>
+            Syllabus
+          url: syllabus.html
+
+  elements:
+    schedule:
+      __include__: "website/schedule.yaml"
+
+  # the website's pages: Markdown and HTML files, and anything else to copy
+  content_directory: "website/content"
+  # where the website is built
+  build_directory: "_build"
+  base_path: "."
+
+# where `automata publish` deploys the website, e.g. to GitHub Pages. See
+# "Deployment" in the documentation.
+publish: {}

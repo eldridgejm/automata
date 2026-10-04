@@ -16,6 +16,7 @@ from rich.markup import escape
 from ._automata import Automata
 from ._calendar import Calendar
 from ._check import Problem
+from ._init import create_project
 from ._status import Status
 from .config import CONFIGURATION_FILENAME, find_config
 from .exceptions import Error
@@ -400,6 +401,19 @@ def _build_progress(
     finally:
         if status is not None:
             status(None)
+
+
+@_command()
+def init():
+    """Create a new project in the current directory: an automata.yaml and a
+    website directory. Existing files are left as they are."""
+    created = create_project(pathlib.Path.cwd())
+    for path in created:
+        _say(f"[green]Created[/] {escape(_relative_path(path))}")
+    _say(
+        f"\nNext, fill in the course's details in {CONFIGURATION_FILENAME}, and "
+        "run [bold]automata serve[/] to see the website."
+    )
 
 
 @_command()

@@ -17,6 +17,36 @@ Extensions can add commands of their own, which ``automata --help`` lists under
 "Extensions" (see :ref:`extension-commands`).
 
 
+.. _cli-init:
+
+``automata init``
+-----------------
+
+Create a new project in the current directory. Unlike the other commands, it
+doesn't need an existing project.
+
+::
+
+    automata init
+
+It creates an ``automata.yaml`` and a ``website`` directory::
+
+    automata.yaml           the course, the website, and (commented) examples
+    website/
+        content/
+            index.md        the home page, showing the schedule
+            syllabus.md     a page linked from the navigation
+        schedule.yaml       the schedule's weeks, events, and announcements
+
+The course's name, title, term, and first week start are placeholders: fill
+them in, then run ``automata serve`` to see the site. Nothing else in the
+directory is changed, so ``init`` can be run in a directory that already holds
+your course materials. If ``automata.yaml`` or ``website`` already exists, or
+the directory is inside another project (an ``automata.yaml`` is found in a
+parent directory), it prints an error and creates nothing. From Python, this is
+:meth:`Automata.init`.
+
+
 ``automata build``
 ------------------
 

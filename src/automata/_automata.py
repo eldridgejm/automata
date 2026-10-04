@@ -12,6 +12,7 @@ from typing import Any, cast
 from . import constants, materials
 from ._calendar import Calendar, make_calendar
 from ._check import Problem, run_checks
+from ._init import create_project
 from ._status import Status, make_status
 from .config import (
     CONFIGURATION_FILENAME,
@@ -96,6 +97,23 @@ class Automata:
         )
         self.hooks: Hooks = Hooks()
         apply_extensions([self.theme, *self.extensions], self.hooks)
+
+    @classmethod
+    def init(cls, path: Path | None = None) -> "Automata":
+        """Create a new project in the directory *path* (default: the current
+        directory), and return it.
+
+        Creates an ``automata.yaml`` and a ``website`` directory with the
+        website's pages and schedule. Nothing already in *path* is changed.
+
+        Raises :class:`~automata.exceptions.Error`, writing nothing, if *path*
+        already has an ``automata.yaml`` or a ``website``, or is inside another
+        project.
+        """
+        if path is None:
+            path = Path.cwd()
+        create_project(path)
+        return cls(path)
 
     # --- full pipeline ---
 
