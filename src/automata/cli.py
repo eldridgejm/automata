@@ -382,20 +382,32 @@ class _TerminalStatus:
 
 @contextlib.contextmanager
 def _build_progress(
-    project: Automata, verbose: bool, current_time: datetime.datetime | None
+    project: Automata,
+    verbose: bool,
+    current_time: datetime.datetime | None,
+    err: bool = False,
 ) -> Iterator["_BuildProgress"]:
     """Report the progress of the build within: with a spinner showing what is
     happening now, on a terminal (unless *verbose*, as recipes' output then
-    goes to it)."""
-    if sys.stdout.isatty() and not verbose:
-        status = _TerminalStatus()
+    goes to it). If *err*, on stderr, so that stdout has only the command's
+    output (e.g. JSON)."""
+    stream = sys.stderr if err else sys.stdout
+    if stream.isatty() and not verbose:
+        from rich.console import Console
+
+        status = _TerminalStatus(Console(stderr=err, highlight=False))
         # (through the spinner's console, so that the lines go above it)
         progress = _BuildProgress(
             project, echo=status.print, status=status, current_time=current_time
         )
     else:
         status = None
-        progress = _BuildProgress(project, verbose=verbose, current_time=current_time)
+        progress = _BuildProgress(
+            project,
+            echo=lambda markup: _say(markup, err=err),
+            verbose=verbose,
+            current_time=current_time,
+        )
     try:
         yield progress
     finally:
@@ -447,17 +459,83 @@ def publish(
         help="Publish target name. Defaults to all configured targets.",
         autocompletion=_complete_publish_targets,
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help=(
+            "Build, then say which files publishing would add, modify, or delete, "
+            "without publishing."
+        ),
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help=(
+            "With --dry-run, print the changes as JSON (the build's progress goes "
+            'to stderr). Errors are printed as JSON: {"error": ...}.'
+        ),
+    ),
     current_time: Optional[str] = _current_time_option,
     verbose: bool = _verbose_option,
 ):
     """Run the full pipeline and deploy the built site."""
+    if json_output and not dry_run:
+        _error("--json is only for --dry-run.")
+        raise typer.Exit(code=1)
     project = _project()
     now = _get_current_time(current_time)
+    if dry_run:
+        _dry_run(project, target, now, verbose, json_output)
+        return
     with _build_progress(project, verbose, now):
         published = project.publish(target=target, current_time=now, verbose=verbose)
 
     for name in published:
         _say(f"[bold green]✓[/] Published to [bold]{escape(name)}[/].")
+
+
+# the letters for changes, as in git status --short
+_CHANGE_LETTERS = {"added": "A", "modified": "M", "deleted": "D"}
+
+
+def _dry_run(
+    project: Automata,
+    target: str | None,
+    now: datetime.datetime | None,
+    verbose: bool,
+    json_output: bool,
+) -> None:
+    """Print what publishing to *target* (or every target) would change."""
+    try:
+        with _build_progress(project, verbose, now, err=json_output):
+            changes = project.publish_dry_run(
+                target=target, current_time=now, verbose=verbose
+            )
+    except Error as e:
+        if not json_output:
+            raise
+        typer.echo(json.dumps({"error": str(e)}, indent=2))
+        raise typer.Exit(code=1)
+
+    strategies = {name: project.config.publish[name]["strategy"] for name in changes}
+    if json_output:
+        result = {
+            name: {
+                "strategy": strategies[name],
+                "changes": [change.to_dict() for change in target_changes],
+            }
+            for name, target_changes in changes.items()
+        }
+        typer.echo(json.dumps({"targets": result}, indent=2))
+        return
+    for name, target_changes in changes.items():
+        where = f"Publishing to {name} ({strategies[name]}) would change"
+        if not target_changes:
+            typer.echo(f"{where} nothing.")
+            continue
+        typer.echo(f"{where} {_plural(len(target_changes), 'file')}:")
+        for change in target_changes:
+            typer.echo(f"  {_CHANGE_LETTERS[change.status]} {change.path}")
 
 
 @_command()

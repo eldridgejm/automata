@@ -103,6 +103,22 @@ The primary interface is the ``Automata`` class.
         :raises automata.exceptions.Error: If there are no publish targets,
             or the target or a strategy is unknown.
 
+    .. method:: publish_dry_run(target=None, current_time=None, verbose=False)
+
+        Run :meth:`build`, then say what publishing to the targets would
+        change, without publishing (see ``automata publish --dry-run``). The
+        publish hooks aren't fired.
+
+        :returns: For each target, in order, the files that would change: a
+            list of ``automata.publish.Change``, each with a ``status``
+            (``"added"``, ``"modified"``, or ``"deleted"``) and a ``path``
+            relative to the site's root, in order of path (empty if nothing
+            would change).
+        :rtype: dict[str, list[Change]]
+        :raises automata.exceptions.Error: If there are no publish targets,
+            the target or a strategy is unknown, or a target's strategy can't
+            do a dry run (all checked before building).
+
     .. method:: discover()
 
         Discover materials from the filesystem and from inline definitions

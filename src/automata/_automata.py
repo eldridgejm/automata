@@ -38,6 +38,7 @@ from .materials import (
     Universe,
 )
 from .materials._filter import ArtifactType, Predicate
+from .publish import Change, supports_dry_run
 from .util.yaml import SourceMap
 from .website import load_content_directory
 from .website import render as _website_render
@@ -289,6 +290,85 @@ class Automata:
             unknown, or a strategy is unknown.
 
         """
+        targets, publishers = self._publish_targets(target, dry_run=False)
+
+        self.build(current_time=current_time, verbose=verbose)
+
+        build_dir = self.path / self.config.website.build_directory
+
+        for name, entry in targets.items():
+            strategy_name = entry["strategy"]
+            strategy_config = entry.get("config", {})
+
+            self.hooks.on_publish_pre(
+                PublishPreHookArgs(build_directory=build_dir, strategy=strategy_name)
+            )
+
+            publishers[name](build_dir, strategy_config, self.path)
+
+            self.hooks.on_publish_post(
+                PublishPostHookArgs(build_directory=build_dir, strategy=strategy_name)
+            )
+
+        return list(targets)
+
+    def publish_dry_run(
+        self,
+        target: str | None = None,
+        current_time: datetime.datetime | None = None,
+        verbose: bool = False,
+    ) -> dict[str, list[Change]]:
+        """Build the site, and say what publishing it would change, without
+        publishing.
+
+        Each target's strategy does everything a publish does short of
+        publishing (the gh-pages and git strategies prepare the commit, but
+        don't make or push it; rsync runs with ``--dry-run``), and reports the
+        files it would add, modify, or delete. The publish hooks aren't fired.
+
+        Parameters
+        ----------
+        target : str | None
+            Name of a specific publish target. If *None*, all configured
+            targets, in order.
+        current_time : datetime.datetime | None
+            The current time for release-time checks and scheduling.
+            If *None*, uses the system time.
+        verbose : bool
+            Show each recipe's output as the site is built.
+
+        Returns
+        -------
+        dict[str, list[Change]]
+            For each target, in order, the changes, in order of path (empty if
+            nothing would change).
+
+        Raises
+        ------
+        automata.exceptions.Error
+            If no publish configurations are present, a target or strategy is
+            unknown, or a target's strategy can't do a dry run (all checked
+            before building).
+
+        """
+        targets, publishers = self._publish_targets(target, dry_run=True)
+        self.build(current_time=current_time, verbose=verbose)
+        build_dir = self.path / self.config.website.build_directory
+        return {
+            name: list(
+                publishers[name](
+                    build_dir, entry.get("config", {}), self.path, dry_run=True
+                )
+            )
+            for name, entry in targets.items()
+        }
+
+    def _publish_targets(
+        self, target: str | None, dry_run: bool
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """The targets to publish to (*target*, or all of them), and the
+        strategy of each, checked before building, so that a typo fails fast;
+        for a dry run, each strategy must support one."""
         if not self.config.publish:
             raise Error("No 'publish' entries found in automata.yaml.")
 
@@ -317,27 +397,13 @@ class Automata:
                     f"Unknown publish strategy: {strategy_name!r}. "
                     f"Available: {available}"
                 )
+            if dry_run and not supports_dry_run(publisher):
+                raise Error(
+                    f'Publish target "{name}" can\'t do a dry run: its strategy, '
+                    f'"{strategy_name}", doesn\'t support one.'
+                )
             publishers[name] = publisher
-
-        self.build(current_time=current_time, verbose=verbose)
-
-        build_dir = self.path / self.config.website.build_directory
-
-        for name, entry in targets.items():
-            strategy_name = entry["strategy"]
-            strategy_config = entry.get("config", {})
-
-            self.hooks.on_publish_pre(
-                PublishPreHookArgs(build_directory=build_dir, strategy=strategy_name)
-            )
-
-            publishers[name](build_dir, strategy_config, self.path)
-
-            self.hooks.on_publish_post(
-                PublishPostHookArgs(build_directory=build_dir, strategy=strategy_name)
-            )
-
-        return list(targets)
+        return targets, publishers
 
     # --- individual steps ---
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ..exceptions import Error
+from ._changes import Change
 from ._git import push, remote_url
 from ._options import check_options
 
@@ -28,7 +29,9 @@ def publish(
     config: dict[str, Any],
     project_directory: Path,
     github: str = GITHUB,
-) -> None:
+    *,
+    dry_run: bool = False,
+) -> list[Change] | None:
     """Deploy the built site to GitHub Pages.
 
     The site replaces the contents of the target branch, in a single commit (no
@@ -54,6 +57,14 @@ def publish(
     github : str
         What a repository's ``org/name`` is appended to (with ``.git``) to make
         the URL pushed to.
+    dry_run : bool
+        Instead of publishing, return what publishing would change (see
+        :func:`automata.publish._git.push`).
+
+    Returns
+    -------
+    list[Change] | None
+        For a dry run, the changes; otherwise None.
 
     Raises
     ------
@@ -83,7 +94,7 @@ def publish(
     else:
         url = remote_url("origin", project_directory, "gh-pages")
         source = f'remote "origin" ({url})'
-    push(
+    return push(
         build_directory,
         project_directory,
         url=url,
@@ -92,4 +103,5 @@ def publish(
         message=config.get("message", "Deploy to GitHub Pages"),
         config=config,
         strategy="gh-pages",
+        dry_run=dry_run,
     )

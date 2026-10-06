@@ -14,12 +14,20 @@ from pathlib import Path
 from typing import Any
 
 from ..exceptions import Error
+from ._changes import Change, Status
 from ._options import check_options
+
+# git's letters for the changes it lists, and what they mean
+_STATUSES: dict[str, Status] = {"A": "added", "M": "modified", "D": "deleted"}
 
 
 def publish(
-    build_directory: Path, config: dict[str, Any], project_directory: Path
-) -> None:
+    build_directory: Path,
+    config: dict[str, Any],
+    project_directory: Path,
+    *,
+    dry_run: bool = False,
+) -> list[Change] | None:
     """Replace the contents of a branch of a git repository with the built site.
 
     The site replaces the contents of the branch, in a single commit (no commit
@@ -43,6 +51,14 @@ def publish(
     project_directory : Path
         The project root, whose git repository defines the remotes and the
         default identity.
+    dry_run : bool
+        Instead of publishing, return what publishing would change (see
+        :func:`push`).
+
+    Returns
+    -------
+    list[Change] | None
+        For a dry run, the changes; otherwise None.
 
     Raises
     ------
@@ -73,7 +89,7 @@ def publish(
         remote = config.get("remote", "origin")
         url = remote_url(remote, project_directory, "git")
         source = f'remote "{remote}" ({url})'
-    push(
+    return push(
         build_directory,
         project_directory,
         url=url,
@@ -82,6 +98,7 @@ def publish(
         message=config.get("message", "Publish the site"),
         config=config,
         strategy="git",
+        dry_run=dry_run,
     )
 
 
@@ -94,9 +111,15 @@ def push(
     message: str,
     config: dict[str, Any],
     strategy: str,
-) -> None:
+    dry_run: bool = False,
+) -> list[Change] | None:
     """Replace the contents of *branch* of the repository at *url* with the
     build directory, in a single commit (none if nothing changed).
+
+    If *dry_run*, everything is done short of committing and pushing (the
+    branch is fetched, but the repository is left as it is), and the changes
+    the commit would make are returned, in order of path; no identity is
+    needed.
 
     *source* describes the repository in errors (e.g. ``remote "origin"
     (<url>)``), and *strategy* names the strategy publishing. The commit's
@@ -112,7 +135,8 @@ def push(
         command fails.
 
     """
-    user_name, user_email = _identity(config, project_directory, strategy)
+    if not dry_run:
+        user_name, user_email = _identity(config, project_directory, strategy)
 
     def _run(*args, **kw):
         result = subprocess.run(args, capture_output=True, text=True, **kw)
@@ -168,6 +192,19 @@ def push(
         # Commit and push
         _run("git", "add", "-A", cwd=tmp)
 
+        if dry_run:
+            return _staged_changes(
+                _run(
+                    "git",
+                    "diff",
+                    "--cached",
+                    "--name-status",
+                    "--no-renames",
+                    "-z",
+                    cwd=tmp,
+                ).stdout
+            )
+
         # Check if there's anything to commit
         result = subprocess.run(
             ["git", "diff", "--cached", "--quiet"],
@@ -175,7 +212,7 @@ def push(
             capture_output=True,
         )
         if result.returncode == 0:
-            return  # nothing changed
+            return None  # nothing changed
 
         _run(
             "git",
@@ -189,6 +226,19 @@ def push(
             cwd=tmp,
         )
         _run("git", "push", "origin", branch, "--force", cwd=tmp)
+    return None
+
+
+def _staged_changes(listed: str) -> list[Change]:
+    """The changes in *listed*, the output of ``git diff --name-status -z``:
+    a status letter and a path, each ended by a NUL."""
+    fields = listed.split("\0")
+    changes = [
+        Change(_STATUSES[status], path)
+        for status, path in zip(fields[0::2], fields[1::2], strict=False)
+        if status in _STATUSES
+    ]
+    return sorted(changes, key=lambda change: change.path)
 
 
 def _identity(

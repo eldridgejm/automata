@@ -663,6 +663,70 @@ def test_publish_checks_the_target_before_building(project_dir):
     assert not (project_dir / "_build").exists()
 
 
+# publish_dry_run() ====================================================================
+
+
+def test_a_dry_run_builds_and_reports_each_targets_changes(project_dir):
+    from automata.publish import Change
+
+    # given: a strategy that can do dry runs
+    _add_publish_targets(project_dir, _TWO_TARGETS)
+    project = Automata(project_dir)
+    log = _record_publishes(project)
+    calls = []
+
+    def previewing(build_dir, config, project_dir, *, dry_run=False):
+        calls.append((config["label"], dry_run))
+        return [Change("added", f"{config['label']}.html")]
+
+    @project.hooks.on_register_publishers.register()
+    def add_previewing(args):
+        args.publishers["recording"] = previewing
+        return args
+
+    # when
+    changes = project.publish_dry_run()
+
+    # then: nothing is published, and the publish hooks aren't fired
+    assert changes == {
+        "first": [Change("added", "one.html")],
+        "second": [Change("added", "two.html")],
+    }
+    assert calls == [("one", True), ("two", True)]
+    assert (project_dir / "_build" / "index.html").exists()
+    assert log == []
+
+
+def test_a_dry_run_of_a_named_target(project_dir):
+    _add_publish_targets(project_dir, _TWO_TARGETS)
+    project = Automata(project_dir)
+
+    @project.hooks.on_register_publishers.register()
+    def add_previewing(args):
+        args.publishers["recording"] = lambda b, c, p, *, dry_run=False: []
+        return args
+
+    assert project.publish_dry_run("second") == {"second": []}
+
+
+def test_a_dry_run_with_a_strategy_that_cannot_do_one_is_an_error(project_dir):
+    # given: the recording strategy takes no dry_run
+    _add_publish_targets(project_dir, _TWO_TARGETS)
+    project = Automata(project_dir)
+    _record_publishes(project)
+
+    # when
+    with pytest.raises(Error) as excinfo:
+        project.publish_dry_run()
+
+    # then: before building anything
+    assert str(excinfo.value) == (
+        'Publish target "first" can\'t do a dry run: its strategy, "recording", '
+        "doesn't support one."
+    )
+    assert not (project_dir / "_build").exists()
+
+
 # discover() ===========================================================================
 
 

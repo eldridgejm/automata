@@ -119,9 +119,10 @@ Fired by ``automata publish`` (see :doc:`/guide/deployment`):
 - ``on_register_publishers`` (pipeline) --- receives ``PublisherRegistryArgs``,
   whose ``publishers`` dict maps strategy names to functions called as
   ``publisher(build_directory, config, project_directory)``. Add to it to
-  provide a strategy.
+  provide a strategy. A strategy that takes a ``dry_run`` keyword argument
+  supports ``automata publish --dry-run`` (see :doc:`/guide/deployment`).
 - ``on_publish_pre`` / ``on_publish_post`` (observers) --- called around each
-  target, with ``build_directory`` and ``strategy``.
+  target, with ``build_directory`` and ``strategy`` (but not for a dry run).
 
 
 Materials hooks

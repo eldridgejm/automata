@@ -377,9 +377,12 @@ import json
 from pathlib import Path
 
 from automata.extensions import Extension
+from automata.publish import Change
 
 
-def _recording(build_dir, config, project_dir):
+def _recording(build_dir, config, project_dir, *, dry_run=False):
+    if dry_run:
+        return [Change(**change) for change in config.get("changes", [])]
     with open(Path(project_dir) / "published.log", "a") as log:
         log.write(json.dumps(config) + "\\n")
 
@@ -407,7 +410,12 @@ def publishing_project(project):
             publish:
               first:
                 strategy: recording
-                config: {label: one}
+                config:
+                  label: one
+                  changes:
+                    - {status: added, path: CNAME}
+                    - {status: modified, path: index.html}
+                    - {status: deleted, path: materials/old.pdf}
               second:
                 strategy: recording
                 config: {label: two}
@@ -447,6 +455,48 @@ def test_publish_unknown_target_prints_an_error_without_a_traceback(
     assert result.exit_code == 1
     assert isinstance(result.exception, SystemExit)
     assert "third" in result.output
+    assert _published_labels(publishing_project) == []
+
+
+def test_publish_dry_run_lists_what_would_change_and_publishes_nothing(
+    publishing_project,
+):
+    result = _invoke("publish", "--dry-run")
+
+    assert _published_labels(publishing_project) == []
+    assert (
+        "Publishing to first (recording) would change 3 files:\n"
+        "  A CNAME\n"
+        "  M index.html\n"
+        "  D materials/old.pdf\n"
+    ) in result.stdout
+    assert "Publishing to second (recording) would change nothing.\n" in (result.stdout)
+
+
+def test_publish_dry_run_as_json(publishing_project):
+    import json
+
+    result = _invoke("publish", "first", "--dry-run", "--json")
+
+    assert json.loads(result.stdout) == {
+        "targets": {
+            "first": {
+                "strategy": "recording",
+                "changes": [
+                    {"status": "added", "path": "CNAME"},
+                    {"status": "modified", "path": "index.html"},
+                    {"status": "deleted", "path": "materials/old.pdf"},
+                ],
+            }
+        }
+    }
+
+
+def test_publish_json_needs_dry_run(publishing_project):
+    result = runner.invoke(app, ["publish", "--json"])
+
+    assert result.exit_code != 0
+    assert "--json is only for --dry-run" in result.output
     assert _published_labels(publishing_project) == []
 
 

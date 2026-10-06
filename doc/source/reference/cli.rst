@@ -139,11 +139,45 @@ Build the site, then deploy it to the targets configured under ``publish:`` in
 
 ::
 
-    automata publish [TARGET] [--current-time TIME] [--verbose]
+    automata publish [TARGET] [--dry-run [--json]] [--current-time TIME]
+                     [--verbose]
 
 With no ``TARGET``, publishes to every configured target, in order; prints
 ``Published to <target>.`` for each. An unknown target or strategy is an error,
 reported before the site is built.
+
+``--dry-run`` builds the site, then says what publishing would change, without
+publishing: for each target, the files that would be added (``A``), modified
+(``M``), or deleted (``D``), relative to the site's root, in order of path::
+
+    Publishing to github (gh-pages) would change 3 files:
+      A CNAME
+      M index.html
+      D materials/homeworks/hw01/old.pdf
+    Publishing to server (rsync) would change nothing.
+
+It changes nothing where the site is published (gh-pages and git fetch the
+branch, but push nothing; rsync runs with ``--dry-run``), needs no git identity,
+and exits with status 0 whether or not anything would change. With ``--json``,
+it prints the changes as JSON instead (the build's progress goes to stderr),
+e.g. for a CI job that comments on a pull request::
+
+    {
+      "targets": {
+        "github": {
+          "strategy": "gh-pages",
+          "changes": [
+            {"status": "added", "path": "CNAME"},
+            {"status": "modified", "path": "index.html"}
+          ]
+        }
+      }
+    }
+
+A ``status`` is ``added``, ``modified``, or ``deleted``. An error is printed as
+``{"error": "..."}``, with status 1. A target whose strategy can't do a dry run
+(an extension's strategy may not) is an error, reported before the site is
+built. ``--json`` without ``--dry-run`` is an error.
 
 
 ``automata resolve``

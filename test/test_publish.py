@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from automata.exceptions import Error
-from automata.publish import registry
+from automata.publish import Change, registry
 from automata.publish._gh_pages import publish as gh_pages_publish
 from automata.publish._gh_pages import repository_url
 from automata.publish._git import publish as git_publish
@@ -426,6 +426,98 @@ def test_gh_pages_outside_a_git_repository_is_a_clear_error(tmp_path):
     assert str(tmp_path) in message
 
 
+# dry runs of gh-pages and git ========================================================
+
+
+@pytest.mark.integration
+def test_a_dry_run_to_a_new_branch_adds_everything_and_pushes_nothing(git_project):
+    project, build_dir, remote = git_project
+
+    changes = gh_pages_publish(build_dir, {}, project, dry_run=True)
+
+    assert changes == [
+        Change("added", "index.html"),
+        Change("added", "materials/hw01.pdf"),
+    ]
+    assert _git("branch", "--list", cwd=remote) == ""
+
+
+@pytest.mark.integration
+def test_a_dry_run_reports_what_would_be_added_changed_and_deleted(git_project):
+    # given: a first publish, then a changed site
+    project, build_dir, remote = git_project
+    gh_pages_publish(build_dir, {}, project)
+    (build_dir / "materials" / "hw01.pdf").unlink()
+    (build_dir / "index.html").write_text("<h1>Updated</h1>")
+    (build_dir / "CNAME").write_text("dsc40b.com")
+
+    # when
+    changes = gh_pages_publish(build_dir, {}, project, dry_run=True)
+
+    # then: the changes, in order of path, and the branch is as it was
+    assert changes == [
+        Change("added", "CNAME"),
+        Change("modified", "index.html"),
+        Change("deleted", "materials/hw01.pdf"),
+    ]
+    assert _branch_commits(remote, "gh-pages") == 1
+    assert _git("show", "gh-pages:index.html", cwd=remote) == "<h1>Home</h1>"
+
+
+@pytest.mark.integration
+def test_a_dry_run_with_nothing_to_change_reports_no_changes(git_project):
+    project, build_dir, remote = git_project
+    gh_pages_publish(build_dir, {}, project)
+
+    assert gh_pages_publish(build_dir, {}, project, dry_run=True) == []
+
+
+@pytest.mark.integration
+def test_a_dry_run_reports_paths_with_spaces_and_unicode_as_they_are(git_project):
+    project, build_dir, remote = git_project
+    (build_dir / "notes on café.html").write_text("x")
+
+    changes = gh_pages_publish(build_dir, {}, project, dry_run=True)
+
+    assert Change("added", "notes on café.html") in changes
+
+
+@pytest.mark.integration
+def test_a_git_dry_run_reports_changes_too(git_project, tmp_path):
+    project, build_dir, remote = git_project
+
+    changes = git_publish(build_dir, {"branch": "site"}, project, dry_run=True)
+
+    assert [c.path for c in changes] == ["index.html", "materials/hw01.pdf"]
+    assert _git("branch", "--list", cwd=remote) == ""
+
+
+@pytest.mark.integration
+def test_a_dry_run_needs_no_git_identity(git_project, tmp_path, monkeypatch):
+    # e.g. on CI, checking a pull request: nothing is committed
+    project, build_dir, remote = git_project
+    _git("config", "--unset", "user.name", cwd=project)
+    _git("config", "--unset", "user.email", cwd=project)
+    empty = tmp_path / "empty-gitconfig"
+    empty.write_text("")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    for var in ["NAME", "EMAIL"]:
+        monkeypatch.delenv(f"GIT_AUTHOR_{var}", raising=False)
+        monkeypatch.delenv(f"GIT_COMMITTER_{var}", raising=False)
+
+    changes = gh_pages_publish(build_dir, {}, project, dry_run=True)
+
+    assert len(changes) == 2
+
+
+def test_a_change_as_a_dict():
+    assert Change("deleted", "old.html").to_dict() == {
+        "status": "deleted",
+        "path": "old.html",
+    }
+
+
 # rsync strategy =======================================================================
 
 
@@ -525,6 +617,71 @@ def test_rsync_uses_options_that_macos_rsync_accepts(tmp_path):
     (cmd,) = run.commands
     assert "--progress" in cmd
     assert not any(arg.startswith("--info") for arg in cmd)
+
+
+class _Itemizer:
+    """A fake command runner for an rsync dry run, which prints *output*."""
+
+    def __init__(self, output):
+        self.output = output
+        self.commands = []
+        self.kwargs = []
+
+    def __call__(self, cmd, **kwargs):
+        self.commands.append(cmd)
+        self.kwargs.append(kwargs)
+        return subprocess.CompletedProcess(cmd, 0, stdout=self.output, stderr="")
+
+
+# as printed by rsync 3 (11 flags) and macOS's openrsync (9 flags)
+_ITEMIZED = """\
+*deleting   old.html
+*deleting   retired/
+<f+++++++++ materials/hw02.pdf
+<f.st...... index.html
+.f..t...... unchanged.html
+cd+++++++++ materials/
+<f+++++++ notes on café.html
+>f.s..... styles.css
+"""
+
+
+def test_an_rsync_dry_run_reports_its_itemized_changes(tmp_path):
+    run = _Itemizer(_ITEMIZED)
+
+    changes = rsync_publish(
+        tmp_path,
+        {"host": "example.com", "remote_path": "/var/www"},
+        tmp_path,
+        run=run,
+        dry_run=True,
+    )
+
+    # (directories, and files whose contents don't change, are left out)
+    assert changes == [
+        Change("modified", "index.html"),
+        Change("added", "materials/hw02.pdf"),
+        Change("added", "notes on café.html"),
+        Change("deleted", "old.html"),
+        Change("modified", "styles.css"),
+    ]
+    (cmd,) = run.commands
+    assert cmd[:4] == ["rsync", "-az", "--dry-run", "--itemize-changes"]
+    assert "--delete" in cmd
+    assert "--progress" not in cmd
+    assert run.kwargs[0]["capture_output"] is True
+
+
+def test_an_rsync_dry_run_with_nothing_to_change_reports_no_changes(tmp_path):
+    changes = rsync_publish(
+        tmp_path,
+        {"host": "example.com", "remote_path": "/var/www"},
+        tmp_path,
+        run=_Itemizer(""),
+        dry_run=True,
+    )
+
+    assert changes == []
 
 
 def test_a_failing_rsync_is_a_clear_error(tmp_path):

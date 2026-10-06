@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ..exceptions import Error
+from ._changes import Change
 from ._options import check_options
 
 
@@ -20,7 +21,8 @@ def publish(
     project_directory: Path,
     *,
     run: Callable[..., Any] = subprocess.run,
-) -> None:
+    dry_run: bool = False,
+) -> list[Change] | None:
     """Deploy the built site to a remote host with rsync.
 
     Parameters
@@ -39,6 +41,16 @@ def publish(
         The project root (unused; part of the publisher signature).
     run : Callable
         Runs the command (default :func:`subprocess.run`). Tests pass a fake.
+    dry_run : bool
+        Instead of publishing, return what publishing would change, from
+        ``rsync --dry-run --itemize-changes`` (which changes nothing on the
+        host).
+
+    Returns
+    -------
+    list[Change] | None
+        For a dry run, the files that would be added, modified, or deleted, in
+        order of path; otherwise None.
 
     Raises
     ------
@@ -60,12 +72,16 @@ def publish(
     source = str(build_directory).rstrip("/") + "/"
 
     # --progress, not --info=progress2, which macOS's rsync (openrsync) rejects
-    cmd = ["rsync", "-az", "--progress"]
+    cmd = ["rsync", "-az"]
+    cmd += ["--dry-run", "--itemize-changes"] if dry_run else ["--progress"]
     if config.get("delete", True):
         cmd.append("--delete")
     cmd += [source, destination]
 
     try:
+        if dry_run:
+            result = run(cmd, check=True, capture_output=True, text=True)
+            return _itemized_changes(result.stdout)
         run(cmd, check=True)
     except FileNotFoundError:
         raise Error(
@@ -76,3 +92,24 @@ def publish(
             f"rsync to {destination} failed with exit status {e.returncode} (its "
             f"output is above)."
         ) from None
+    return None
+
+
+def _itemized_changes(itemized: str) -> list[Change]:
+    """The files changed in *itemized*, the output of ``rsync
+    --itemize-changes``: each line a code (e.g. ``<f.st......``, sent with
+    a new size and time) and a path, or ``*deleting`` and a path. Directories,
+    and files whose contents aren't sent, are left out."""
+    changes = []
+    for line in itemized.splitlines():
+        code, _, path = line.partition(" ")
+        path = path.lstrip(" ")
+        if not path or path.endswith("/"):
+            continue
+        if code == "*deleting":
+            changes.append(Change("deleted", path))
+        # sent (<), received (>), or changed locally (c): a file's contents
+        elif len(code) > 2 and code[0] in "<>c" and code[1] == "f":
+            new = set(code[2:]) == {"+"}
+            changes.append(Change("added" if new else "modified", path))
+    return sorted(changes, key=lambda change: change.path)

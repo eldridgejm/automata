@@ -86,13 +86,27 @@ Built-in strategies:
   deleting files on the server that are no longer in the build, so withdrawn
   materials and deleted pages don't linger. Requires ``rsync`` to be installed.
 
+To see what publishing would change without publishing, use ``automata
+publish --dry-run``: it builds the site and lists, for each target, the files
+that would be added, modified, or deleted (``--json`` gives the list as JSON;
+see :doc:`/reference/cli`). It changes nothing where the site is published,
+and needs no git identity, so it can run on CI for each pull request.
+
 An extension can add a strategy from an ``on_register_publishers`` hook. A
 strategy is a function called as ``publisher(build_directory, config,
-project_directory)``:
+project_directory)``. To support ``--dry-run``, it also takes a ``dry_run``
+keyword argument, and when that is ``True``, it publishes nothing and returns
+a list of ``automata.publish.Change(status, path)``, where ``status`` is
+``"added"``, ``"modified"``, or ``"deleted"`` and ``path`` is relative to the
+site's root. (A strategy without ``dry_run`` can't do a dry run.)
 
 .. code-block:: python
 
-    def publish_to_s3(build_directory, config, project_directory):
+    from automata.publish import Change
+
+    def publish_to_s3(build_directory, config, project_directory, *, dry_run=False):
+        if dry_run:
+            return [Change("added", "index.html"), ...]
         ...
 
     def register(args):
