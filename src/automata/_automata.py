@@ -440,7 +440,7 @@ class Automata:
 
     def calendar(
         self,
-        collections: Sequence[str] | None = None,
+        categories: Sequence[str] | None = None,
         keys: Sequence[str] | None = None,
         start: datetime.date | None = None,
         end: datetime.date | None = None,
@@ -460,8 +460,8 @@ class Automata:
 
         Parameters
         ----------
-        collections : Sequence[str] | None
-            Show only these collections and event groups (from the
+        categories : Sequence[str] | None
+            Show only these categories: collections and event groups (from the
             configuration). If None, all are shown.
         keys : Sequence[str] | None
             Show only dates under metadata keys matching one of these glob
@@ -498,7 +498,7 @@ class Automata:
             self.config.calendar,
             current_time or datetime.datetime.now(),
             vars=self.config.vars,
-            collections=collections,
+            categories=categories,
             keys=keys,
             start=start,
             end=end,

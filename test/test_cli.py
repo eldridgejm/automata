@@ -928,23 +928,19 @@ def test_calendar_prints_a_table(project):
     assert "Midterm" in result.output
 
 
-def test_calendar_filters_by_event_group(project):
+def test_calendar_filters_by_the_categories_named(project):
     _add_calendar(project)
 
-    result = runner.invoke(
-        app, ["calendar", "--all", "--collection", "exams"], env={"COLUMNS": "200"}
-    )
+    result = runner.invoke(app, ["calendar", "exams", "--all"], env={"COLUMNS": "200"})
 
     assert "Midterm" in result.output
     assert "hw01 due" not in result.output
 
 
-def test_calendar_filters_by_collection_and_key(project):
+def test_calendar_filters_by_category_and_key(project):
     _add_calendar(project)
 
-    result = _invoke(
-        "calendar", "--all", "--collection", "homeworks", "--key", "released"
-    )
+    result = _invoke("calendar", "homeworks", "--all", "--key", "released")
 
     assert "hw01 due" not in result.output
     assert "Nothing to show: there are no released dates in homeworks." in result.output

@@ -208,13 +208,14 @@ The primary interface is the ``Automata`` class.
             JSON-ready data.
         :rtype: Status
 
-    .. method:: calendar(collections=None, keys=None, start=None, end=None, week_start="sunday", all_weeks=False, highlight_today=True, current_time=None)
+    .. method:: calendar(categories=None, keys=None, start=None, end=None, week_start="sunday", all_weeks=False, highlight_today=True, current_time=None)
 
         A week-by-week calendar of the dates in the materials' metadata, and
         of events, as configured in the ``calendar`` section of
         ``automata.yaml`` (see ``automata calendar``). Builds nothing.
 
-        :param collections: Show only these collections and event groups.
+        :param categories: Show only these categories: collections and event
+            groups.
         :param keys: Show only dates under metadata keys matching one of these
             glob patterns (e.g. ``"due"``), and no events.
         :param start: Show only dates on or after this one. By default, the
@@ -246,9 +247,10 @@ The primary interface is the ``Automata`` class.
         :rtype: list[Problem]
 
     ``Status``, ``ArtifactStatus`` (an artifact's status, in
-    ``status.artifacts``), ``Calendar`` and ``Problem`` can be imported from
-    ``automata``,
-    e.g. for type annotations.
+    ``status.artifacts``), ``Calendar``, ``CalendarEntry`` (an entry on a
+    calendar day: a ``PublicationEntry``, for a date in a publication's
+    metadata, or an ``EventEntry``, for an event) and ``Problem`` can be
+    imported from ``automata``, e.g. for type annotations.
 
 
 Example: step-by-step pipeline

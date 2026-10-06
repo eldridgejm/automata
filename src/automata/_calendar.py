@@ -37,6 +37,7 @@ PDF.
 
 from __future__ import annotations
 
+import abc
 import dataclasses
 import datetime
 import fnmatch
@@ -95,18 +96,15 @@ _EXAMPLE = """calendar:
 
 
 @dataclasses.dataclass
-class CalendarEntry:
-    """A date on the calendar: from a publication's metadata, or an event.
+class CalendarEntry(abc.ABC):
+    """A date on the calendar: a :class:`PublicationEntry` or an
+    :class:`EventEntry`. The renderings use only what is here.
 
     Attributes
     ----------
-    collection : str
-        The collection of the publication, or the event's group.
-    publication : str | None
-        The key of the publication, or None for an event.
-    key : str | None
-        The metadata key the date is under, e.g. ``"due"``, or None for an
-        event.
+    category : str
+        The collection or event group the entry is in, which gives it its color
+        and legend item, and by which it is filtered.
     label : str
         The configured label (e.g. "Homework 1 due"), or "<publication> <key>".
     when : datetime.datetime
@@ -116,43 +114,41 @@ class CalendarEntry:
         Whether the date is a date (rather than a date and time).
     past : bool
         Whether it is before the calendar's current time (or, for an all-day
-        entry, before its day, or its last day).
-    uid : str
-        Identifies the entry, the same from one run to the next (if the
-        configuration doesn't change): ``"<collection>/<publication>/<key>"``,
-        or, for an event, ``"<group>/<position in the group>"``.
-    end : datetime.date | None
-        For an event over several days, its last day.
+        entry, before its last day).
 
     """
 
-    collection: str
-    publication: str | None
-    key: str | None
+    category: str
     label: str
     when: datetime.datetime
     all_day: bool
     past: bool
-    uid: str
-    end: datetime.date | None = None
+
+    @property
+    def last_day(self) -> datetime.date:
+        """The last day the entry is on."""
+        return self.when.date()
 
     @property
     def days(self) -> list[datetime.date]:
         """The days the entry is on: one, or, for an event over several days,
         each of them."""
         first = self.when.date()
-        last = self.end or first
         return [
-            first + datetime.timedelta(days=i) for i in range((last - first).days + 1)
+            first + datetime.timedelta(days=i)
+            for i in range((self.last_day - first).days + 1)
         ]
 
     @property
+    @abc.abstractmethod
+    def uid(self) -> str:
+        """Identifies the entry, the same from one run to the next (if the
+        configuration doesn't change)."""
+
+    @property
+    @abc.abstractmethod
     def source(self) -> str:
-        """Where the date is from, e.g. ``"homeworks/hw01: due"``, or the
-        group, for an event."""
-        if self.publication is None:
-            return self.collection
-        return f"{self.collection}/{self.publication}: {self.key}"
+        """Where the date is from, e.g. ``"homeworks/hw01: due"``."""
 
     @property
     def time(self) -> str | None:
@@ -168,13 +164,87 @@ class CalendarEntry:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "collection": self.collection,
-            "publication": self.publication,
-            "key": self.key,
+            "category": self.category,
             "label": self.label,
             "when": self.when.isoformat(),
             "all_day": self.all_day,
             "past": self.past,
+        }
+
+
+@dataclasses.dataclass
+class PublicationEntry(CalendarEntry):
+    """A date from a publication's metadata; its category is the collection.
+
+    Attributes
+    ----------
+    publication : str
+        The key of the publication.
+    key : str
+        The metadata key the date is under, e.g. ``"due"``.
+
+    """
+
+    publication: str
+    key: str
+
+    @property
+    def collection(self) -> str:
+        """The publication's collection: the entry's category."""
+        return self.category
+
+    @property
+    def uid(self) -> str:
+        """``"<collection>/<publication>/<key>"``."""
+        return f"{self.collection}/{self.publication}/{self.key}"
+
+    @property
+    def source(self) -> str:
+        return f"{self.collection}/{self.publication}: {self.key}"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "publication",
+            **super().to_dict(),
+            "publication": self.publication,
+            "key": self.key,
+        }
+
+
+@dataclasses.dataclass
+class EventEntry(CalendarEntry):
+    """An event from the calendar's configuration; its category is its group.
+
+    Attributes
+    ----------
+    position : int
+        Its place in its group's list of events, from 0.
+    end : datetime.date | None
+        For an all-day event over several days, its last day.
+
+    """
+
+    position: int
+    end: datetime.date | None = None
+
+    @property
+    def last_day(self) -> datetime.date:
+        return self.end or self.when.date()
+
+    @property
+    def uid(self) -> str:
+        """``"<group>/<position>"``."""
+        return f"{self.category}/{self.position}"
+
+    @property
+    def source(self) -> str:
+        return self.category
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "event",
+            **super().to_dict(),
+            "position": self.position,
             "end": None if self.end is None else self.end.isoformat(),
         }
 
@@ -227,12 +297,11 @@ class Calendar:
     weeks : list[CalendarWeek]
         Every week from the first entry to the last (or the requested dates),
         including weeks without entries.
-    collections : list[str]
-        The collections and event groups shown, sorted.
+    categories : list[str]
+        The categories (collections and event groups) shown, sorted.
     colors : dict[str, str]
-        A color (``"#rrggbb"``) for each collection and event group shown: the
-        configured one, or one from a palette, which doesn't change with
-        filtering.
+        A color (``"#rrggbb"``) for each category shown: the configured one, or
+        one from a palette, which doesn't change with filtering.
     week_start : str
         The day weeks start on: ``"sunday"`` or ``"monday"``.
 
@@ -240,7 +309,7 @@ class Calendar:
 
     current_time: datetime.datetime
     weeks: list[CalendarWeek]
-    collections: list[str]
+    categories: list[str]
     colors: dict[str, str]
     week_start: str = "sunday"
     # e.g. "DSC 40B, Fall 2026"
@@ -276,7 +345,7 @@ class Calendar:
         return {
             "title": self.title,
             "current_time": self.current_time.isoformat(),
-            "collections": self.collections,
+            "categories": self.categories,
             "colors": self.colors,
             "week_start": self.week_start,
             "weeks": [week.to_dict() for week in self.weeks],
@@ -455,7 +524,7 @@ def make_calendar(
     config: Mapping[str, Any],
     current_time: datetime.datetime,
     vars: Mapping[str, Any] | None = None,
-    collections: Sequence[str] | None = None,
+    categories: Sequence[str] | None = None,
     keys: Sequence[str] | None = None,
     start: datetime.date | None = None,
     end: datetime.date | None = None,
@@ -478,9 +547,9 @@ def make_calendar(
         The time that decides which entries are past.
     vars : Mapping[str, Any] | None
         The variables available to labels as ``vars``.
-    collections : Sequence[str] | None
-        Show only these collections and event groups (from the configuration).
-        If None, all are.
+    categories : Sequence[str] | None
+        Show only these categories: collections and event groups (from the
+        configuration). If None, all are.
     keys : Sequence[str] | None
         Show only dates under metadata keys matching one of these glob patterns
         (e.g. ``"due"``), and no events. If None, all configured keys are shown.
@@ -535,22 +604,24 @@ def make_calendar(
                 "collections",
                 name,
             )
-    for name in collections or ():
+    for name in categories or ():
         if name not in collections_config and name not in events_config:
-            message = (
-                f'Collection "{name}" isn\'t in the calendar configuration. The '
-                f"calendar's collections are: {', '.join(sorted(collections_config))}."
-            )
-            if events_config:
-                message += f" Its event groups are: {', '.join(sorted(events_config))}."
-            raise Error(message)
+            kinds = [
+                f"{kind} are: {', '.join(sorted(names))}"
+                for kind, names in [
+                    ("collections", collections_config),
+                    ("event groups", events_config),
+                ]
+                if names
+            ]
+            raise Error(f'The calendar has no "{name}". Its {"; its ".join(kinds)}.')
 
-    groups = sorted({*collections_config, *events_config})
-    palette = iter(PALETTE * (1 + len(groups) // len(PALETTE)))
+    all_categories = sorted({*collections_config, *events_config})
+    palette = iter(PALETTE * (1 + len(all_categories) // len(PALETTE)))
     all_colors = {
         name: (collections_config.get(name) or events_config[name]).get("color")
         or next(palette)
-        for name in groups
+        for name in all_categories
     }
 
     current_time = local_time(current_time)
@@ -563,9 +634,9 @@ def make_calendar(
         days = entry.days
         return (start is None or days[-1] >= start) and (end is None or days[0] <= end)
 
-    entries = []
+    entries: list[CalendarEntry] = []
     for name in sorted(collections_config):
-        if collections is not None and name not in collections:
+        if categories is not None and name not in categories:
             continue
         publications = materials.collections[name].publications
         for key, label in collections_config[name]["dates"].items():
@@ -580,7 +651,7 @@ def make_calendar(
             if keys is not None and not any(fnmatch.fnmatchcase(key, k) for k in keys):
                 continue
             for publication_key, publication in publications.items():
-                entry = _entry(
+                publication_entry = _entry(
                     name,
                     publication_key,
                     publication,
@@ -590,18 +661,18 @@ def make_calendar(
                     current_time,
                     error,
                 )
-                if entry is not None and in_range(entry):
-                    entries.append(entry)
+                if publication_entry is not None and in_range(publication_entry):
+                    entries.append(publication_entry)
     for name in sorted(events_config):
-        if (collections is not None and name not in collections) or keys is not None:
+        if (categories is not None and name not in categories) or keys is not None:
             continue
         for i, event in enumerate(events_config[name]["dates"]):
-            entry = _event_entry(name, i, event, variables, current_time, error)
-            if in_range(entry):
-                entries.append(entry)
+            event_entry = _event_entry(name, i, event, variables, current_time, error)
+            if in_range(event_entry):
+                entries.append(event_entry)
     entries.sort(key=lambda e: (e.when.date(), not e.all_day, e.when, e.label))
 
-    shown = sorted(collections) if collections is not None else groups
+    shown = sorted(categories) if categories is not None else all_categories
     weeks = _weeks(entries, start, end, WEEK_STARTS[week_start])
     title = "Calendar"
     if course:
@@ -617,7 +688,7 @@ def make_calendar(
     return Calendar(
         current_time=current_time,
         weeks=weeks,
-        collections=shown,
+        categories=shown,
         colors={name: all_colors[name] for name in shown},
         week_start=week_start,
         title=title,
@@ -652,7 +723,7 @@ def _entry(
     variables: Mapping[str, Any],
     current_time: datetime.datetime,
     error: _ConfigErrors,
-) -> CalendarEntry | None:
+) -> PublicationEntry | None:
     """The entry for a publication's date under *key*, or None if it has none."""
     keypath = ("collections", collection, "dates", key)
     value = publication.metadata.get(key)
@@ -682,15 +753,14 @@ def _entry(
             ),
         )
 
-    return CalendarEntry(
-        collection=collection,
-        publication=publication_key,
-        key=key,
+    return PublicationEntry(
+        category=collection,
         label=text,
         when=when,
         all_day=all_day,
         past=past,
-        uid=f"{collection}/{publication_key}/{key}",
+        publication=publication_key,
+        key=key,
     )
 
 
@@ -701,7 +771,7 @@ def _event_entry(
     variables: Mapping[str, Any],
     current_time: datetime.datetime,
     error: _ConfigErrors,
-) -> CalendarEntry:
+) -> EventEntry:
     """The entry for the event at *position* in *group*."""
     keypath = ("events", group, "dates", position)
 
@@ -737,17 +807,15 @@ def _event_entry(
         when, all_day = datetime.datetime.combine(value, datetime.time()), True
         past = (last or value) < current_time.date()
 
-    return CalendarEntry(
-        collection=group,
-        publication=None,
-        key=None,
+    return EventEntry(
+        category=group,
         label=_label(
             event["label"], variables, lambda reason: error(reason, *keypath, "label")
         ),
         when=when,
         all_day=all_day,
         past=past,
-        uid=f"{group}/{position}",
+        position=position,
         end=last,
     )
 
@@ -840,7 +908,7 @@ def _terminal_pill(text: str, color: str, bold: bool = False) -> Any:
 
 
 class _TerminalEntry:
-    """An entry in the terminal: a pill in its collection's color (or, if it's
+    """An entry in the terminal: a pill in its category's color (or, if it's
     past, dim text after a dot of it), shortened to fit its column."""
 
     # the width of what surrounds the label: the caps, or the dot and a space
@@ -925,7 +993,7 @@ def _rich_table(calendar: Calendar) -> Any:
             else:
                 heading = Text(date)
             entries = [
-                _TerminalEntry(entry, calendar.colors[entry.collection])
+                _TerminalEntry(entry, calendar.colors[entry.category])
                 for entry in day.entries
             ]
             # pad the cell, so that every row has the same height
@@ -936,7 +1004,7 @@ def _rich_table(calendar: Calendar) -> Any:
         table.add_row(label, *cells)
 
     legend = Text("  ").join(
-        _terminal_pill(name, calendar.colors[name]) for name in calendar.collections
+        _terminal_pill(name, calendar.colors[name]) for name in calendar.categories
     )
     return Group(table, legend)
 
@@ -1054,7 +1122,7 @@ h1 { font-size: 1.6rem; font-weight: 650; letter-spacing: -0.01em;
 """
 
 
-# clicking a legend item hides (or shows again) its collection's entries. The
+# clicking a legend item hides (or shows again) its category's entries. The
 # script finds its own calendar, so that several can be on a page.
 _SCRIPT = """<script>
 (function (calendar) {
@@ -1062,8 +1130,8 @@ _SCRIPT = """<script>
     button.addEventListener("click", function () {
       var shown = button.getAttribute("aria-pressed") !== "true";
       button.setAttribute("aria-pressed", String(shown));
-      var name = CSS.escape(button.dataset.collection);
-      var selector = '.entry[data-collection="' + name + '"]';
+      var name = CSS.escape(button.dataset.category);
+      var selector = '.entry[data-category="' + name + '"]';
       calendar.querySelectorAll(selector).forEach(function (entry) {
         entry.hidden = !shown;
       });
@@ -1144,8 +1212,8 @@ def _html(calendar: Calendar, standalone: bool) -> str:
         for day in week.days:
             entries = "".join(
                 f'<div class="entry{" past" if entry.past else ""}" '
-                f'data-collection="{e(entry.collection)}" '
-                f'style="--color: {calendar.colors[entry.collection]}" '
+                f'data-category="{e(entry.category)}" '
+                f'style="--color: {calendar.colors[entry.category]}" '
                 f'title="{e(entry.source)}"><span class="label">{e(entry.label)}'
                 "</span>"
                 + (f'<span class="time">{entry.time}</span>' if entry.time else "")
@@ -1169,11 +1237,11 @@ def _html(calendar: Calendar, standalone: bool) -> str:
         )
 
     header = "".join(f"<th>{name}</th>" for name in calendar.day_names)
-    # each legend item is a button that hides or shows its collection's entries
+    # each legend item is a button that hides or shows its category's entries
     legend = "".join(
-        f'<button type="button" data-collection="{e(name)}" aria-pressed="true" '
+        f'<button type="button" data-category="{e(name)}" aria-pressed="true" '
         f'style="--color: {calendar.colors[name]}"><i></i>{e(name)}</button>'
-        for name in calendar.collections
+        for name in calendar.categories
     )
     fragment = (
         '<div class="automata-calendar">\n'
@@ -1258,7 +1326,7 @@ def _ics(calendar: Calendar) -> str:
             f"DTSTAMP:{stamp}",
             *when,
             f"SUMMARY:{_ics_text(entry.label)}",
-            f"CATEGORIES:{_ics_text(entry.collection)}",
+            f"CATEGORIES:{_ics_text(entry.category)}",
             "END:VEVENT",
         ]
     lines.append("END:VCALENDAR")
@@ -1304,7 +1372,7 @@ _PILL_HEIGHT = 11
 
 
 def _pill(pdf: Any, x: float, y: float, width: float, color: str, entry: Any) -> None:
-    """An entry: a rounded rectangle tinted with its collection's *color*, with a
+    """An entry: a rounded rectangle tinted with its category's *color*, with a
     stripe of it at the left, its label, and its time at the right (all fainter,
     if it is past), as the HTML shows it."""
     stripe, past = 2.5, entry.past
@@ -1352,18 +1420,18 @@ def _write_pdf(calendar: Calendar, path: Path) -> int:
     today = calendar.today
 
     def legend(y: float) -> None:
-        """The collections, right-aligned on the title's line."""
+        """The categories, right-aligned on the title's line."""
         pdf.set_font("Helvetica", "", 8)
-        names = [_latin1(name) for name in calendar.collections]
+        names = [_latin1(name) for name in calendar.categories]
         widths = [pdf.get_string_width(name) + 22 for name in names]
         x = margin + page_width - sum(widths) - 6 * (len(names) - 1)
-        for name, width, collection in zip(
-            names, widths, calendar.collections, strict=True
+        for name, width, category in zip(
+            names, widths, calendar.categories, strict=True
         ):
             pdf.set_draw_color(*_LINE)
             pdf.set_fill_color(255, 255, 255)
             pdf.rect(x, y, width, 14, style="DF", round_corners=True, corner_radius=7)
-            pdf.set_fill_color(*_rgb(calendar.colors[collection]))
+            pdf.set_fill_color(*_rgb(calendar.colors[category]))
             pdf.circle(x + 9, y + 7, 2.5, style="F")
             pdf.set_text_color(*_TEXT)
             pdf.text(x + 15, y + 9.8, name)
@@ -1473,7 +1541,7 @@ def _write_pdf(calendar: Calendar, path: Path) -> int:
                     left + padding,
                     row + padding + date_line + j * entry_line - 1,
                     day_width - 2 * padding,
-                    calendar.colors[entry.collection],
+                    calendar.colors[entry.category],
                     entry,
                 )
         pdf.set_y(row + height)

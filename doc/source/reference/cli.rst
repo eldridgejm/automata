@@ -197,20 +197,21 @@ status as JSON, for programs; an error is printed as JSON too
 Show week by week the dates in the materials' metadata (for example, each
 homework's release and due dates, and each lecture's date), and events of their
 own (exams, holidays), as a table in the terminal, or written as an HTML page or
-a PDF. Which dates, how they are labeled, and each collection's or event
-group's color are set in the ``calendar`` section of ``automata.yaml`` (see
-:doc:`/guide/configuration`); without it, this is an error. Builds nothing.
+a PDF. Which dates, how they are labeled, and each category's color are set in
+the ``calendar`` section of ``automata.yaml`` (see :doc:`/guide/configuration`);
+without it, this is an error. Its categories are its collections and event
+groups. Builds nothing.
 
 ::
 
-    automata calendar [--collection NAME]... [--key KEY]... [--all]
+    automata calendar [CATEGORY]... [--key KEY]... [--all]
                       [--from DATE] [--to DATE] [--week-start sunday|monday]
                       [--no-highlight-today] [--html FILE] [--pdf FILE]
                       [--ics FILE] [--json] [--current-time TIME]
 
-``--collection`` shows only the named collections (or event groups), and
-``--key`` only dates under the named metadata keys (glob patterns), e.g.
-``--key due`` for just the due dates, and no events; both may be given more
+Naming categories shows only those (e.g. ``automata calendar exams holidays``),
+and ``--key`` shows only dates under the named metadata keys (glob patterns),
+e.g. ``--key due`` for just the due dates, and no events; it may be given more
 than once. The calendar starts with the
 current week; ``--all`` shows every week, and ``--from`` and ``--to``
 (``YYYY-MM-DD``) set the dates shown. Weeks start on Sunday, unless
@@ -221,7 +222,7 @@ printing it (``--ics`` as an iCalendar file, which calendar apps can import or
 subscribe to; its events keep their identities when dates change, so that a
 subscribed calendar updates them, and use ``--all`` to include past weeks); ``--json`` prints it as JSON, for programs. Dates
 before the current time are shown dimmed, and today is highlighted (unless
-``--no-highlight-today``). In the HTML, clicking a collection in the legend
+``--no-highlight-today``). In the HTML, clicking a category in the legend
 hides its dates, or shows them again, and a button switches between light and
 dark themes (by default, the system's). In the terminal, upcoming dates are
 drawn as rounded pills, whose ends need a `Nerd Font <https://www.nerdfonts.com>`_.

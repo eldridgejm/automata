@@ -295,8 +295,9 @@ several days gives its last day as ``end``:
               date: 2026-11-26
               end: 2026-11-27
 
-Event groups are shown, colored and filtered (with ``--collection``) like
-collections, so a group can't have the same name as a collection in the
+Collections and event groups are the calendar's *categories*: each has its own
+color and legend item, and ``automata calendar exams holidays`` shows only the
+categories named. So a group can't have the same name as a collection in the
 calendar. Labels can be written with ``!template``, and use ``vars`` and
 ``course``.
 

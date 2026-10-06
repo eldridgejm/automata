@@ -9,7 +9,7 @@ import pytest
 from rich.console import Console
 from rich.style import Style
 
-from automata import Automata, Calendar
+from automata import Automata, Calendar, EventEntry, PublicationEntry
 from automata.exceptions import Error
 
 _CALENDAR_CONFIG = """\
@@ -208,15 +208,15 @@ def test_labels_can_use_vars(tmp_path):
 # filters ==============================================================================
 
 
-def test_filtering_by_collection(tmp_path):
+def test_filtering_by_category(tmp_path):
     project = write_calendar_project(tmp_path / "project")
 
     calendar = Automata(project).calendar(
-        all_weeks=True, collections=["labs"], current_time=JAN_15
+        all_weeks=True, categories=["labs"], current_time=JAN_15
     )
 
     assert _days_with_entries(calendar) == {date(2025, 1, 8): ["lab01 date"]}
-    assert calendar.collections == ["labs"]
+    assert calendar.categories == ["labs"]
 
 
 def test_filtering_by_key(tmp_path):
@@ -251,17 +251,16 @@ def test_filtering_by_dates(tmp_path):
     assert calendar.weeks[0].start == date(2025, 1, 5)
 
 
-def test_a_collection_not_in_the_calendar_config_is_an_error(tmp_path):
+def test_a_category_not_in_the_calendar_config_is_an_error(tmp_path):
     project = write_calendar_project(tmp_path / "project")
 
     with pytest.raises(Error) as excinfo:
         Automata(project).calendar(
-            all_weeks=True, collections=["lectures"], current_time=JAN_15
+            all_weeks=True, categories=["lectures"], current_time=JAN_15
         )
 
     assert str(excinfo.value) == (
-        'Collection "lectures" isn\'t in the calendar configuration. The '
-        "calendar's collections are: homeworks, labs."
+        'The calendar has no "lectures". Its collections are: homeworks, labs.'
     )
 
 
@@ -366,7 +365,7 @@ def test_colors_do_not_depend_on_filtering(tmp_path):
 
     all_colors = automata.calendar(all_weeks=True, current_time=JAN_15).colors
     homeworks_only = automata.calendar(
-        all_weeks=True, collections=["homeworks"], current_time=JAN_15
+        all_weeks=True, categories=["homeworks"], current_time=JAN_15
     )
 
     assert homeworks_only.colors["homeworks"] == all_colors["homeworks"]
@@ -382,16 +381,17 @@ def test_the_calendar_as_a_dict_is_json(calendar):
     assert data["weeks"][0]["start"] == "2025-01-05"
     assert data["weeks"][0]["days"][5]["entries"] == [
         {
-            "collection": "homeworks",
-            "publication": "hw01",
-            "key": "due",
+            "type": "publication",
+            "category": "homeworks",
             "label": "hw01 due",
             "when": "2025-01-10T23:59:00",
             "all_day": False,
             "past": True,
-            "end": None,
+            "publication": "hw01",
+            "key": "due",
         }
     ]
+    assert data["categories"] == ["homeworks", "labs"]
     assert data["colors"]["labs"] == "#123456"
 
 
@@ -524,20 +524,18 @@ def test_a_calendar_with_no_dates_from_this_week_on_has_no_weeks(tmp_path):
 # the HTML legend ======================================================================
 
 
-def test_html_entries_name_their_collection(calendar):
+def test_html_entries_name_their_category(calendar):
     import re
 
     html = calendar.to_html()
 
-    assert re.search(r'<div class="entry[^"]*" data-collection="labs"', html)
+    assert re.search(r'<div class="entry[^"]*" data-category="labs"', html)
 
 
-def test_the_html_legend_toggles_collections(calendar):
+def test_the_html_legend_toggles_categories(calendar):
     html = calendar.to_html(standalone=False)
 
-    assert (
-        '<button type="button" data-collection="homeworks" aria-pressed="true"' in html
-    )
+    assert '<button type="button" data-category="homeworks" aria-pressed="true"' in html
     # the script that hides and shows a collection's entries is in the fragment,
     # so that it works when the calendar is embedded in another page
     assert "<script>" in html
@@ -786,19 +784,44 @@ def test_events_are_all_day_unless_given_a_time(tmp_path):
     assert entries["Final"].text == "Final 08:00"
 
 
-def test_event_entries_belong_to_their_group_and_no_publication(tmp_path):
+def test_publication_entries_know_their_publication(calendar):
+    due = next(e for e in _entries(calendar) if e.label == "hw01 due")
+
+    assert isinstance(due, PublicationEntry)
+    assert (due.category, due.collection, due.publication, due.key) == (
+        "homeworks",
+        "homeworks",
+        "hw01",
+        "due",
+    )
+
+
+def test_event_entries_know_their_group_and_position(tmp_path):
     project = write_events_project(tmp_path / "project")
 
     calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
 
-    midterm = next(e for e in _entries(calendar) if e.label == "Midterm")
-    assert (midterm.collection, midterm.publication, midterm.key) == (
-        "exams",
-        None,
-        None,
-    )
-    assert midterm.past is True
-    assert midterm.to_dict()["publication"] is None
+    final = next(e for e in _entries(calendar) if e.label == "Final")
+    assert isinstance(final, EventEntry)
+    assert (final.category, final.position, final.end) == ("exams", 1, None)
+
+
+def test_event_entries_as_dicts(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    entry = next(e for e in _entries(calendar) if e.label == "Break")
+    assert entry.to_dict() == {
+        "type": "event",
+        "category": "holidays",
+        "label": "Break",
+        "when": "2025-01-16T00:00:00",
+        "all_day": True,
+        "past": False,
+        "position": 0,
+        "end": "2025-01-17",
+    }
 
 
 def test_a_multi_day_event_is_past_only_after_its_last_day(tmp_path):
@@ -850,15 +873,15 @@ def test_a_calendar_can_have_only_events(tmp_path):
     calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
 
     assert _days_with_entries(calendar) == {date(2025, 1, 14): ["Midterm"]}
-    assert calendar.collections == ["exams"]
+    assert calendar.categories == ["exams"]
 
 
-def test_event_groups_are_shown_and_colored_like_collections(tmp_path):
+def test_event_groups_are_categories_like_collections(tmp_path):
     project = write_events_project(tmp_path / "project")
 
     calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
 
-    assert calendar.collections == ["exams", "holidays", "homeworks", "labs"]
+    assert calendar.categories == ["exams", "holidays", "homeworks", "labs"]
     assert calendar.colors["exams"] == "#e15759"
     assert calendar.colors["holidays"].startswith("#")
     assert len(set(calendar.colors.values())) == 4
@@ -868,7 +891,7 @@ def test_filtering_by_an_event_group(tmp_path):
     project = write_events_project(tmp_path / "project")
 
     calendar = Automata(project).calendar(
-        all_weeks=True, collections=["holidays"], current_time=JAN_15
+        all_weeks=True, categories=["holidays"], current_time=JAN_15
     )
 
     assert _days_with_entries(calendar) == {
@@ -913,12 +936,12 @@ def test_an_event_is_one_icalendar_event_even_over_several_days(tmp_path):
     assert "CATEGORIES:holidays\r\n" in breaks[0]
 
 
-def test_html_event_entries_name_their_group(tmp_path):
+def test_html_event_entries_name_their_category(tmp_path):
     project = write_events_project(tmp_path / "project")
 
     html = Automata(project).calendar(all_weeks=True, current_time=JAN_15).to_html()
 
-    assert 'data-collection="exams"' in html
+    assert 'data-category="exams"' in html
     assert 'title="exams"' in html
 
 
@@ -933,6 +956,20 @@ def test_the_old_calendar_shape_is_an_error(tmp_path):
         f"{project / 'automata.yaml'}:2: calendar.homeworks: Unknown key "
         f'"homeworks". The calendar has "collections" (whose metadata dates to '
         f'show) and "events" (dates of their own).'
+    )
+
+
+def test_a_category_not_in_the_calendar_config_lists_the_event_groups_too(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).calendar(
+            all_weeks=True, categories=["lectures"], current_time=JAN_15
+        )
+
+    assert str(excinfo.value) == (
+        'The calendar has no "lectures". Its collections are: homeworks, labs; '
+        "its event groups are: exams, holidays."
     )
 
 

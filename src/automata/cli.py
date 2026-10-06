@@ -810,11 +810,13 @@ def _parse_date(value: str | None, option: str) -> datetime.date | None:
 
 @_command()
 def calendar(
-    collection: Optional[list[str]] = typer.Option(
+    categories: Optional[list[str]] = typer.Argument(
         None,
-        "--collection",
-        "-c",
-        help="Show only this collection or event group (may be given more than once).",
+        help=(
+            "Show only these categories: collections and event groups from the "
+            "calendar configuration. By default, all are shown."
+        ),
+        show_default=False,
     ),
     key: Optional[list[str]] = typer.Option(
         None,
@@ -866,13 +868,13 @@ def calendar(
 
     Which dates (e.g. each homework's released and due dates, and events like
     exams and holidays) is configured in the calendar section of automata.yaml.
-    Collections and event groups have their own colors.
+    Each category (a collection or event group) has its own color.
     Prints a table, or writes the calendar as HTML or PDF. Builds nothing.
     """
 
     def make() -> Calendar:
         return _load_project().calendar(
-            collections=collection or None,
+            categories=categories or None,
             keys=key or None,
             start=_parse_date(start, "--from"),
             end=_parse_date(end, "--to"),
@@ -906,7 +908,7 @@ def calendar(
         if not result.weeks:
             typer.echo(
                 _nothing_to_show(
-                    result, collection, key, from_this_week=not all_weeks and not start
+                    result, categories, key, from_this_week=not all_weeks and not start
                 )
             )
         else:
@@ -917,7 +919,7 @@ def calendar(
 
 def _nothing_to_show(
     calendar: Calendar,
-    collections: list[str] | None,
+    categories: list[str] | None,
     keys: list[str] | None,
     from_this_week: bool,
 ) -> str:
@@ -927,7 +929,7 @@ def _nothing_to_show(
         return f"{d:%a %b} {d.day}, {d.year}"
 
     what = f"{' or '.join(keys)} dates" if keys else "dates"
-    where = f" in {' or '.join(collections)}" if collections else ""
+    where = f" in {' or '.join(categories)}" if categories else ""
     start, end = calendar.start, calendar.end
     if from_this_week and start is not None:
         when = f" from this week (starting {day(start)}) on"
