@@ -9,14 +9,16 @@ import pytest
 from automata.exceptions import Error
 from automata.publish import registry
 from automata.publish._gh_pages import publish as gh_pages_publish
+from automata.publish._gh_pages import repository_url
+from automata.publish._git import publish as git_publish
 from automata.publish._rsync import publish as rsync_publish
 
 # publisher registry ===================================================================
 
 
 def test_registry_has_builtin_strategies():
-    """gh-pages and rsync should be registered at import time."""
-    assert set(registry.all()) == {"gh-pages", "rsync"}
+    """git, gh-pages and rsync should be registered at import time."""
+    assert set(registry.all()) == {"git", "gh-pages", "rsync"}
 
 
 def test_registry_register_and_get():
@@ -127,19 +129,55 @@ def test_gh_pages_makes_no_commit_when_nothing_changed(git_project):
 
 
 @pytest.mark.integration
-def test_gh_pages_honors_branch_remote_and_message(git_project):
+def test_gh_pages_honors_branch_and_message(git_project):
     project, build_dir, remote = git_project
-    _git("remote", "add", "deploy", str(remote), cwd=project)
 
     gh_pages_publish(
-        build_dir,
-        {"branch": "site", "remote": "deploy", "message": "Publish week 3"},
-        project,
+        build_dir, {"branch": "site", "message": "Publish week 3"}, project
     )
 
     assert _branch_files(remote, "site") == ["index.html", "materials/hw01.pdf"]
     assert _git("log", "-1", "--format=%s", "site", cwd=remote).strip() == (
         "Publish week 3"
+    )
+
+
+@pytest.mark.integration
+def test_gh_pages_pushes_to_a_github_repository_by_name(git_project, tmp_path):
+    # given: a stand-in for GitHub, holding org/site.git
+    project, build_dir, remote = git_project
+    github = tmp_path / "github"
+    (github / "org").mkdir(parents=True)
+    _git("init", "--bare", "--quiet", str(github / "org" / "site.git"), cwd=tmp_path)
+
+    # when
+    gh_pages_publish(
+        build_dir, {"repository": "org/site"}, project, github=f"{github}/"
+    )
+
+    # then: the site goes there, not to origin
+    assert _branch_files(github / "org" / "site.git", "gh-pages") == [
+        "index.html",
+        "materials/hw01.pdf",
+    ]
+    assert _git("branch", "--list", cwd=remote) == ""
+
+
+def test_a_github_repository_is_pushed_to_over_ssh():
+    assert repository_url("dsc-courses/dsc40b-2026-fa") == (
+        "git@github.com:dsc-courses/dsc40b-2026-fa.git"
+    )
+
+
+@pytest.mark.parametrize("repository", ["site", "org/site/extra", "/site", "org/"])
+def test_a_github_repository_must_be_org_slash_name(tmp_path, repository):
+    with pytest.raises(Error) as excinfo:
+        gh_pages_publish(tmp_path, {"repository": repository}, tmp_path)
+
+    assert str(excinfo.value) == (
+        f'The gh-pages publish strategy\'s "repository" is a GitHub repository, '
+        f'written like "org/name", not "{repository}". To publish to another '
+        f'repository, use the "git" strategy, with its "url".'
     )
 
 
@@ -200,6 +238,125 @@ def test_gh_pages_does_not_force_push_when_the_remote_cannot_be_read(git_project
     message = str(excinfo.value)
     assert 'could not read branch "gh-pages"' in message
     assert "push" not in message
+
+
+# git strategy =========================================================================
+
+
+@pytest.mark.integration
+def test_git_honors_branch_remote_and_message(git_project):
+    project, build_dir, remote = git_project
+    _git("remote", "add", "deploy", str(remote), cwd=project)
+
+    git_publish(
+        build_dir,
+        {"branch": "site", "remote": "deploy", "message": "Publish week 3"},
+        project,
+    )
+
+    assert _branch_files(remote, "site") == ["index.html", "materials/hw01.pdf"]
+    assert _git("log", "-1", "--format=%s", "site", cwd=remote).strip() == (
+        "Publish week 3"
+    )
+
+
+@pytest.mark.integration
+def test_git_pushes_to_a_url_that_is_not_a_remote_of_the_project(git_project, tmp_path):
+    # given: a repository that isn't one of the project's remotes
+    project, build_dir, remote = git_project
+    other = tmp_path / "other.git"
+    _git("init", "--bare", "--quiet", str(other), cwd=tmp_path)
+
+    # when
+    git_publish(build_dir, {"branch": "gh-pages", "url": str(other)}, project)
+
+    # then: the site goes there, not to origin
+    assert _branch_files(other, "gh-pages") == ["index.html", "materials/hw01.pdf"]
+    assert _git("branch", "--list", cwd=remote) == ""
+
+
+@pytest.mark.integration
+def test_git_url_can_be_relative_to_the_project(git_project, tmp_path):
+    project, build_dir, remote = git_project
+    other = tmp_path / "other.git"
+    _git("init", "--bare", "--quiet", str(other), cwd=tmp_path)
+
+    git_publish(build_dir, {"branch": "gh-pages", "url": "../other.git"}, project)
+
+    assert _branch_files(other, "gh-pages") == ["index.html", "materials/hw01.pdf"]
+
+
+@pytest.mark.integration
+def test_git_url_works_outside_a_git_repository(tmp_path):
+    # e.g. publishing from an export of the project, not a clone
+    other = tmp_path / "other.git"
+    _git("init", "--bare", "--quiet", str(other), cwd=tmp_path)
+    build_dir = tmp_path / "_build"
+    build_dir.mkdir()
+    (build_dir / "index.html").write_text("<h1>Home</h1>")
+
+    git_publish(
+        build_dir,
+        {
+            "branch": "gh-pages",
+            "url": str(other),
+            "user_name": "a",
+            "user_email": "a@example.com",
+        },
+        tmp_path,
+    )
+
+    assert _branch_files(other, "gh-pages") == ["index.html"]
+
+
+@pytest.mark.integration
+def test_git_says_which_url_cannot_be_read(git_project, tmp_path):
+    project, build_dir, remote = git_project
+    missing = tmp_path / "missing.git"
+
+    with pytest.raises(Error) as excinfo:
+        git_publish(build_dir, {"branch": "gh-pages", "url": str(missing)}, project)
+
+    message = str(excinfo.value)
+    assert f'could not read branch "gh-pages" from {missing}:' in message
+    assert "remote" not in message.split(":")[0]
+
+
+def test_git_url_and_remote_together_is_an_error(tmp_path):
+    with pytest.raises(Error) as excinfo:
+        git_publish(
+            tmp_path,
+            {"branch": "site", "url": "git@github.com:a/b.git", "remote": "origin"},
+            tmp_path,
+        )
+
+    assert str(excinfo.value) == (
+        'The git publish strategy takes "remote" (a remote of the project\'s git '
+        'repository) or "url" (any repository), not both.'
+    )
+
+
+def test_git_requires_a_branch(tmp_path):
+    with pytest.raises(Error) as excinfo:
+        git_publish(tmp_path, {"url": "git@github.com:a/b.git"}, tmp_path)
+
+    assert str(excinfo.value) == (
+        'The git publish strategy needs a "branch" to publish to (whose contents '
+        "it replaces)."
+    )
+
+
+@pytest.mark.integration
+def test_git_with_an_unknown_remote_is_a_clear_error(git_project):
+    project, build_dir, remote = git_project
+
+    with pytest.raises(Error) as excinfo:
+        git_publish(build_dir, {"branch": "site", "remote": "upstream"}, project)
+
+    assert 'git remote "upstream"' in str(excinfo.value)
+
+
+# the commit's identity (the same for gh-pages and git) ================================
 
 
 def _commit_author(remote: Path, branch: str) -> str:
@@ -267,16 +424,6 @@ def test_gh_pages_outside_a_git_repository_is_a_clear_error(tmp_path):
     message = str(excinfo.value)
     assert 'git remote "origin"' in message
     assert str(tmp_path) in message
-
-
-@pytest.mark.integration
-def test_gh_pages_with_an_unknown_remote_is_a_clear_error(git_project):
-    project, build_dir, remote = git_project
-
-    with pytest.raises(Error) as excinfo:
-        gh_pages_publish(build_dir, {"remote": "upstream"}, project)
-
-    assert 'git remote "upstream"' in str(excinfo.value)
 
 
 # rsync strategy =======================================================================
@@ -407,7 +554,17 @@ def test_gh_pages_rejects_an_unknown_option(tmp_path):
 
     assert str(excinfo.value) == (
         'The gh-pages publish strategy has no option "brach". Its options are '
-        "branch, message, remote, user_email, user_name."
+        "branch, message, repository, user_email, user_name."
+    )
+
+
+def test_git_rejects_an_unknown_option(tmp_path):
+    with pytest.raises(Error) as excinfo:
+        git_publish(tmp_path, {"branch": "site", "remot": "origin"}, tmp_path)
+
+    assert str(excinfo.value) == (
+        'The git publish strategy has no option "remot". Its options are '
+        "branch, message, remote, url, user_email, user_name."
     )
 
 

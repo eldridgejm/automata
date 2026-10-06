@@ -33,11 +33,17 @@ config:
       github:
         strategy: gh-pages
         config:
+          # optional; by default, the project's own repository (its origin)
+          repository: dsc-courses/dsc40b-2026-fa
           branch: gh-pages     # default
-          remote: origin       # a remote of the project's git repository
           # optional; by default, the project's git identity
           user_name: github-actions[bot]
           user_email: github-actions[bot]@users.noreply.github.com
+      mirror:
+        strategy: git
+        config:
+          url: https://git.example.edu/dsc40b/site.git
+          branch: main         # required
       server:
         strategy: rsync
         config:
@@ -52,14 +58,29 @@ is reported before anything is built.
 
 Built-in strategies:
 
-- ``gh-pages`` --- replaces the contents of a branch on a git remote with the
-  build directory, in a single commit (no commit if nothing changed). The
-  remote is looked up in the project's git repository. The commit's author is
-  ``user_name``/``user_email`` from the config if given, otherwise the
-  project's git identity (``git config user.name`` and ``user.email``), or
-  the ``GIT_COMMITTER_NAME``/``GIT_COMMITTER_EMAIL`` environment variables.
-  If none is set --- typical on a fresh CI machine --- publishing stops with an
-  error saying how to set one; on GitHub Actions, setting ``user_name`` and
+- ``gh-pages`` --- replaces the contents of a branch (by default,
+  ``gh-pages``) of a GitHub repository with the build directory, in a single
+  commit (no commit if nothing changed). The repository is ``repository``,
+  written ``org/name`` and pushed to over SSH
+  (``git@github.com:org/name.git``), or, by default, the project's own
+  ``origin``. A separate repository is useful when the course's own is
+  private but its site must be public; it needn't be a remote of the
+  project's repository, so nothing has to be set up in each clone (or on CI).
+  ``repository`` can use ``vars``, e.g. ``${ vars.public_repo }``.
+- ``git`` --- the same, for any git repository and branch: ``url`` is the
+  repository's URL (e.g. over HTTPS, with a token, or on another host; a
+  relative local path is relative to the project), or ``remote`` names one of
+  the project's remotes (by default, ``origin``). ``branch`` is required, and
+  giving both ``url`` and ``remote`` is an error.
+
+  For both, the whole branch is replaced, so files that must stay on it (such
+  as a ``CNAME`` for a custom domain) belong in the site's content. The
+  commit's ``message`` can be set, and its author is ``user_name``/
+  ``user_email`` from the config if given, otherwise the project's git identity
+  (``git config user.name`` and ``user.email``), or the
+  ``GIT_COMMITTER_NAME``/``GIT_COMMITTER_EMAIL`` environment variables. If none
+  is set --- typical on a fresh CI machine --- publishing stops with an error
+  saying how to set one; on GitHub Actions, setting ``user_name`` and
   ``user_email`` as above is the simplest fix.
 - ``rsync`` --- mirrors the build directory to ``host:remote_path`` over SSH,
   deleting files on the server that are no longer in the build, so withdrawn

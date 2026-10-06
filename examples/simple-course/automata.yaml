@@ -88,7 +88,7 @@ publish:
   github:
     strategy: gh-pages
     config:
-      # the branch that GitHub Pages serves, and the remote of this project's
-      # git repository that it's pushed to
+      # the branch that GitHub Pages serves, pushed to this project's own
+      # repository (its origin); to publish to another GitHub repository,
+      # add e.g. `repository: my-org/my-course-site`
       branch: gh-pages
-      remote: origin

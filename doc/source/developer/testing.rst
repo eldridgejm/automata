@@ -105,8 +105,8 @@ Integration tests
 
 Integration tests (marked with ``@pytest.mark.integration``) run real
 programs or the full pipeline: the example project built end-to-end, and the
-gh-pages publish strategy run with real ``git`` against a local bare
-repository. A test that needs a tool that may not be installed (such as the
+gh-pages and git publish strategies run with real ``git`` against local bare
+repositories. A test that needs a tool that may not be installed (such as the
 Tailwind rebuild, which needs ``npm``, and installs Tailwind from the npm
 registry) is also skipped when the tool is missing.
 

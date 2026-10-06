@@ -162,7 +162,7 @@ def test_an_unknown_publish_strategy_is_a_problem(tmp_path):
     problems = Automata(project).check(current_time=_JAN_15)
 
     assert _messages(problems, "publish") == [
-        "publish.site: Unknown publish strategy: 'ftp'. Available: gh-pages, rsync"
+        "publish.site: Unknown publish strategy: 'ftp'. Available: gh-pages, git, rsync"
     ]
 
 

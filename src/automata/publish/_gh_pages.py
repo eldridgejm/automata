@@ -1,28 +1,38 @@
 """GitHub Pages publish strategy.
 
 Pushes the contents of the build directory to a branch (default
-``gh-pages``) on a Git remote (default ``origin``).
+``gh-pages``) of a GitHub repository, given as ``org/name`` and pushed to
+over SSH, or else of the project's ``origin``. To publish to any other git
+repository (over HTTPS, say), use the git strategy.
 """
 
-import os
-import shutil
-import subprocess
-import tempfile
+import re
 from pathlib import Path
 from typing import Any
 
 from ..exceptions import Error
+from ._git import push, remote_url
 from ._options import check_options
+
+# where GitHub repositories are pushed to, over SSH
+GITHUB = "git@github.com:"
+
+
+def repository_url(repository: str, github: str = GITHUB) -> str:
+    """The URL pushed to for the GitHub *repository* (``org/name``)."""
+    return f"{github}{repository}.git"
 
 
 def publish(
-    build_directory: Path, config: dict[str, Any], project_directory: Path
+    build_directory: Path,
+    config: dict[str, Any],
+    project_directory: Path,
+    github: str = GITHUB,
 ) -> None:
     """Deploy the built site to GitHub Pages.
 
     The site replaces the contents of the target branch, in a single commit (no
-    commit is made if nothing changed). The remote is looked up in the
-    project's git repository.
+    commit is made if nothing changed).
 
     Parameters
     ----------
@@ -31,161 +41,55 @@ def publish(
     config : dict
         Strategy-specific configuration:
 
+        - ``repository`` (str): The GitHub repository, as ``org/name`` (e.g.
+          ``"dsc-courses/dsc40b-2026-fa"``), pushed to over SSH. By default,
+          the project's ``origin`` remote.
         - ``branch`` (str): Target branch name. Default ``"gh-pages"``.
-        - ``remote`` (str): Git remote name, as configured in the project's
-          repository. Default ``"origin"``.
         - ``message`` (str): Commit message. Default ``"Deploy to GitHub Pages"``.
-        - ``user_name``, ``user_email`` (str): The commit's author. By default,
-          the project's git identity (``git config user.name`` and
-          ``user.email``, local or global), or else the
-          ``GIT_COMMITTER_NAME`` and ``GIT_COMMITTER_EMAIL`` environment
-          variables.
+        - ``user_name``, ``user_email`` (str): The commit's author (see
+          :func:`automata.publish._git.push`).
     project_directory : Path
-        The project root, whose git repository defines the remote and the
-        default identity.
+        The project root, whose git repository has the ``origin`` remote and
+        the default identity.
+    github : str
+        What a repository's ``org/name`` is appended to (with ``.git``) to make
+        the URL pushed to.
 
     Raises
     ------
     automata.exceptions.Error
-        If no commit identity can be found.
+        If ``repository`` isn't like ``org/name``, no commit identity can be
+        found, or publishing fails.
 
     """
     check_options(
-        "gh-pages", config, ("branch", "message", "remote", "user_email", "user_name")
+        "gh-pages",
+        config,
+        ("branch", "message", "repository", "user_email", "user_name"),
     )
-    branch = config.get("branch", "gh-pages")
-    remote = config.get("remote", "origin")
-    message = config.get("message", "Deploy to GitHub Pages")
-    user_name, user_email = _identity(config, project_directory)
-
-    def _run(*args, **kw):
-        result = subprocess.run(args, capture_output=True, text=True, **kw)
-        if result.returncode != 0:
+    if "repository" in config:
+        repository = config["repository"]
+        if not (
+            isinstance(repository, str) and re.fullmatch(r"[\w.-]+/[\w.-]+", repository)
+        ):
             raise Error(
-                f"gh-pages publishing failed: `{' '.join(args)}` exited with status "
-                f"{result.returncode}: {result.stderr.strip()}"
+                'The gh-pages publish strategy\'s "repository" is a GitHub '
+                f'repository, written like "org/name", not "{repository}". To '
+                'publish to another repository, use the "git" strategy, with '
+                'its "url".'
             )
-        return result
-
-    # Work in a temporary directory so we don't disturb the working tree
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp = Path(tmpdir)
-
-        # Initialize a fresh repo and fetch just the target branch (if it exists)
-        _run("git", "init", cwd=tmp)
-        remote_url = _get_remote_url(remote, project_directory)
-        _run("git", "remote", "add", "origin", remote_url, cwd=tmp)
-
-        # Check whether the branch exists. Only a branch that doesn't exist may
-        # start over as an orphan: if the remote can't be read, the force-push
-        # below would replace the branch's history.
-        listed = subprocess.run(
-            ["git", "ls-remote", "--heads", "origin", f"refs/heads/{branch}"],
-            cwd=tmp,
-            capture_output=True,
-            text=True,
-        )
-        if listed.returncode != 0:
-            raise Error(
-                f'gh-pages publishing could not read branch "{branch}" from remote '
-                f'"{remote}" ({remote_url}): {listed.stderr.strip()}'
-            )
-        if listed.stdout.strip():
-            _run("git", "fetch", "origin", branch, cwd=tmp)
-            _run("git", "checkout", branch, cwd=tmp)
-            # Clean out old content
-            _run("git", "rm", "-rf", ".", cwd=tmp)
-        else:
-            # Branch doesn't exist yet — start with an orphan
-            _run("git", "checkout", "--orphan", branch, cwd=tmp)
-
-        # Copy build contents into the temp repo. A .git in the build directory
-        # (e.g. if it is a checkout) would replace the temp repo's.
-        shutil.copytree(
-            build_directory,
-            tmp,
-            dirs_exist_ok=True,
-            ignore=lambda directory, names: (
-                [".git"] if Path(directory) == Path(build_directory) else []
-            ),
-        )
-
-        # Commit and push
-        _run("git", "add", "-A", cwd=tmp)
-
-        # Check if there's anything to commit
-        result = subprocess.run(
-            ["git", "diff", "--cached", "--quiet"],
-            cwd=tmp,
-            capture_output=True,
-        )
-        if result.returncode == 0:
-            return  # nothing changed
-
-        _run(
-            "git",
-            "-c",
-            f"user.name={user_name}",
-            "-c",
-            f"user.email={user_email}",
-            "commit",
-            "-m",
-            message,
-            cwd=tmp,
-        )
-        _run("git", "push", "origin", branch, "--force", cwd=tmp)
-
-
-def _identity(config: dict[str, Any], project_directory: Path) -> tuple[str, str]:
-    """The name and email to commit with (see :func:`publish`)."""
-    identity = []
-    for key, git_key, env_var in [
-        ("user_name", "user.name", "GIT_COMMITTER_NAME"),
-        ("user_email", "user.email", "GIT_COMMITTER_EMAIL"),
-    ]:
-        value = (
-            config.get(key)
-            or _git_config(git_key, project_directory)
-            or os.environ.get(env_var)
-        )
-        if not value:
-            raise Error(
-                "The gh-pages publish strategy needs a git identity to commit with, "
-                "but none is set. Set user_name and user_email in the strategy's "
-                "config in automata.yaml, or set git's user.name and user.email "
-                "(git config user.name ...)."
-            )
-        identity.append(value)
-    return identity[0], identity[1]
-
-
-def _git_config(key: str, project_directory: Path) -> str | None:
-    """A git config value as seen from the project's repository, or None."""
-    result = subprocess.run(
-        ["git", "config", "--get", key],
-        cwd=project_directory,
-        capture_output=True,
-        text=True,
+        url = repository_url(repository.removesuffix(".git"), github)
+        source = f'GitHub repository "{repository}" ({url})'
+    else:
+        url = remote_url("origin", project_directory, "gh-pages")
+        source = f'remote "origin" ({url})'
+    push(
+        build_directory,
+        project_directory,
+        url=url,
+        source=source,
+        branch=config.get("branch", "gh-pages"),
+        message=config.get("message", "Deploy to GitHub Pages"),
+        config=config,
+        strategy="gh-pages",
     )
-    return result.stdout.strip() or None
-
-
-def _get_remote_url(remote: str, project_directory: Path) -> str:
-    """Get the URL of a git remote configured in the project's repository."""
-    result = subprocess.run(
-        ["git", "remote", "get-url", remote],
-        cwd=project_directory,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise Error(
-            f'The gh-pages publish strategy could not find git remote "{remote}" '
-            f"in {project_directory}: {result.stderr.strip()}"
-        )
-    url = result.stdout.strip()
-    # a relative local path is relative to the project's repository, but the
-    # push runs in a temporary directory
-    if "://" not in url and ":" not in url and not Path(url).is_absolute():
-        url = str((project_directory / url).resolve())
-    return url

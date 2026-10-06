@@ -110,4 +110,3 @@ publish:
     strategy: gh-pages
     config:
       branch: gh-pages
-      remote: origin
