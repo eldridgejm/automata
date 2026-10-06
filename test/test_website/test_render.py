@@ -104,6 +104,30 @@ def tests_renders_html_pages(tmpsite, theme):
     assert "<h1>About this site</h1>" in tmpsite.get_output("about.html")
 
 
+def test_html_pages_are_not_rendered_as_markdown(tmpsite, theme):
+    # in Markdown, an HTML block ends at a blank line, and a line indented by
+    # four spaces after it would be code
+    tmpsite.make_page(
+        "practice.html",
+        '<div class="problem">\n\n    <p>Find ${ 1 + 1 } things.</p>\n</div>\n',
+    )
+
+    _render(tmpsite, theme=theme)
+
+    output = tmpsite.get_output("practice.html")
+    assert "    <p>Find 2 things.</p>" in output
+    assert "<pre>" not in output
+    assert "<code>" not in output
+
+
+def test_markdown_pages_are_still_rendered_as_markdown(tmpsite, theme):
+    tmpsite.make_page("notes.md", "intro\n\n    indented code\n")
+
+    _render(tmpsite, theme=theme)
+
+    assert "<pre><code>indented code" in tmpsite.get_output("notes.html")
+
+
 def test_copies_files_from_content_to_output(tmpsite, theme):
     # given
     tmpsite.make_page("data/tabular/one.txt", "This is a text file in a subdir.")

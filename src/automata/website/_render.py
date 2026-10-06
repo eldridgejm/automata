@@ -427,9 +427,13 @@ def _process_pages(
 ) -> None:
     """Process page content and write rendered HTML to the build directory.
 
-    All pages are rendered as Markdown, interpolated, and wrapped in a
-    template.  Keys are output paths (should end in ``.html``).
-    *context_for* gives the render context for a page's output path.
+    Each page is interpolated, rendered as Markdown, and wrapped in a template,
+    except that a page read from an ``.html`` file isn't rendered as Markdown
+    (which would mangle it: an HTML block ends at a blank line, and an indented
+    line after it would become code). Pages without a source file (such as
+    extensions' pages) are rendered as Markdown. Keys are output paths (should
+    end in ``.html``). *context_for* gives the render context for a page's
+    output path.
 
     """
     for relative_path, page in pages.items():
@@ -441,13 +445,14 @@ def _process_pages(
         # errors name the source file, or the output path of pages without one
         path = page.source or pathlib.Path(relative_path)
 
+        is_html = page.source is not None and page.source.suffix.lower() == ".html"
         try:
             rendered = _render_page(
                 page,
                 path,
                 jinja_environment,
                 context_for(relative_path),
-                markdown_renderer=render_markdown,
+                markdown_renderer=None if is_html else render_markdown,
             )
         except PageError:
             raise

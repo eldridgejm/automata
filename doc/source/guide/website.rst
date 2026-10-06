@@ -5,7 +5,9 @@ The website is generated from files in the content directory. automata processes
 three types of files:
 
 - **Markdown** (``.md``) --- converted to HTML, wrapped in a template.
-- **HTML** (``.html``) --- variable-interpolated, wrapped in a template.
+- **HTML** (``.html``) --- variable-interpolated, wrapped in a template, but
+  not converted as Markdown, so that its blank lines and indentation are kept
+  as they are.
 - **Other files** --- copied as-is to the build directory.
 
 
