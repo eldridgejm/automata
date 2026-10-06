@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from automata.exceptions import Error
-from automata.publish import Change, registry
+from automata.publish import Change, PublishResult, registry
 from automata.publish._gh_pages import publish as gh_pages_publish
 from automata.publish._gh_pages import repository_url
 from automata.publish._git import publish as git_publish
@@ -511,6 +511,43 @@ def test_a_dry_run_needs_no_git_identity(git_project, tmp_path, monkeypatch):
     assert len(changes) == 2
 
 
+@pytest.mark.integration
+def test_a_publish_reports_what_it_changed(git_project):
+    project, build_dir, remote = git_project
+    gh_pages_publish(build_dir, {}, project)
+    (build_dir / "index.html").write_text("<h1>Updated</h1>")
+
+    changes = gh_pages_publish(build_dir, {}, project)
+
+    assert changes == [Change("modified", "index.html")]
+    assert _branch_commits(remote, "gh-pages") == 2
+
+
+@pytest.mark.integration
+def test_a_publish_that_changes_nothing_reports_no_changes(git_project):
+    project, build_dir, remote = git_project
+    gh_pages_publish(build_dir, {}, project)
+
+    assert gh_pages_publish(build_dir, {}, project) == []
+    assert _branch_commits(remote, "gh-pages") == 1
+
+
+def test_a_publish_result_as_a_dict():
+    result = PublishResult(
+        target="github",
+        strategy="gh-pages",
+        dry_run=True,
+        changes=[Change("added", "CNAME")],
+    )
+
+    assert result.to_dict() == {
+        "strategy": "gh-pages",
+        "dry_run": True,
+        "changes": [{"status": "added", "path": "CNAME"}],
+    }
+    assert PublishResult("s", "rsync", False, None).to_dict()["changes"] is None
+
+
 def test_a_change_as_a_dict():
     assert Change("deleted", "old.html").to_dict() == {
         "status": "deleted",
@@ -670,6 +707,17 @@ def test_an_rsync_dry_run_reports_its_itemized_changes(tmp_path):
     assert "--delete" in cmd
     assert "--progress" not in cmd
     assert run.kwargs[0]["capture_output"] is True
+
+
+def test_an_rsync_publish_does_not_report_its_changes(tmp_path):
+    result = rsync_publish(
+        tmp_path,
+        {"host": "example.com", "remote_path": "/var/www"},
+        tmp_path,
+        run=_Recorder(),
+    )
+
+    assert result is None
 
 
 def test_an_rsync_dry_run_with_nothing_to_change_reports_no_changes(tmp_path):

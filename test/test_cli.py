@@ -392,10 +392,13 @@ from automata.publish import Change
 
 
 def _recording(build_dir, config, project_dir, *, dry_run=False):
-    if dry_run:
-        return [Change(**change) for change in config.get("changes", [])]
-    with open(Path(project_dir) / "published.log", "a") as log:
-        log.write(json.dumps(config) + "\\n")
+    changes = config.get("changes")
+    if not dry_run:
+        with open(Path(project_dir) / "published.log", "a") as log:
+            log.write(json.dumps(config) + "\\n")
+    if dry_run or changes is not None:
+        return [Change(**change) for change in changes or []]
+    return None
 
 
 def _register(args):
@@ -447,15 +450,15 @@ def test_publish_without_a_target_publishes_every_target(publishing_project):
     result = _invoke("publish")
 
     assert sorted(_published_labels(publishing_project)) == ["one", "two"]
-    assert "Published to first." in result.output
-    assert "Published to second." in result.output
+    assert "Published to first (recording): 3 files changed." in result.output
+    assert "Published to second (recording)." in result.output
 
 
 def test_publish_a_named_target(publishing_project):
     result = _invoke("publish", "second")
 
     assert _published_labels(publishing_project) == ["two"]
-    assert "Published to second." in result.output
+    assert "Published to second (recording)." in result.output
 
 
 def test_publish_unknown_target_prints_an_error_without_a_traceback(
@@ -493,6 +496,7 @@ def test_publish_dry_run_as_json(publishing_project):
         "targets": {
             "first": {
                 "strategy": "recording",
+                "dry_run": True,
                 "changes": [
                     {"status": "added", "path": "CNAME"},
                     {"status": "modified", "path": "index.html"},
@@ -503,12 +507,33 @@ def test_publish_dry_run_as_json(publishing_project):
     }
 
 
-def test_publish_json_needs_dry_run(publishing_project):
-    result = runner.invoke(app, ["publish", "--json"])
+def test_publish_says_what_each_target_changed(publishing_project):
+    config = publishing_project / "automata.yaml"
+    config.write_text(
+        config.read_text().replace(
+            "config: {label: two}", "config: {label: two, changes: []}"
+        )
+    )
 
-    assert result.exit_code != 0
-    assert "--json is only for --dry-run" in result.output
-    assert _published_labels(publishing_project) == []
+    result = _invoke("publish")
+
+    # (first reports three changes; second, none; a strategy returning None
+    # reports nothing)
+    assert "Published to first (recording): 3 files changed." in result.output
+    assert "Published to second (recording): nothing changed." in result.output
+
+
+def test_publish_as_json(publishing_project):
+    import json
+
+    result = _invoke("publish", "second", "--json")
+
+    assert _published_labels(publishing_project) == ["two"]
+    assert json.loads(result.stdout) == {
+        "targets": {
+            "second": {"strategy": "recording", "dry_run": False, "changes": None}
+        }
+    }
 
 
 def test_publish_without_publish_targets_prints_an_error(project):

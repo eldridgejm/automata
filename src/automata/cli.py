@@ -23,6 +23,7 @@ from .exceptions import Error
 from .extensions import ScriptCommand
 from .extensions._apply import all_extensions
 from .materials import serialize
+from .publish import PublishResult
 from .util.resolution import local_time
 
 # without a command, each prints its help
@@ -471,45 +472,21 @@ def publish(
         False,
         "--json",
         help=(
-            "With --dry-run, print the changes as JSON (the build's progress goes "
-            'to stderr). Errors are printed as JSON: {"error": ...}.'
+            "Print what each target changed (or, with --dry-run, would change) as "
+            "JSON (the build's progress goes to stderr). Errors are printed as "
+            'JSON: {"error": ...}.'
         ),
     ),
     current_time: Optional[str] = _current_time_option,
     verbose: bool = _verbose_option,
 ):
     """Run the full pipeline and deploy the built site."""
-    if json_output and not dry_run:
-        _error("--json is only for --dry-run.")
-        raise typer.Exit(code=1)
     project = _project()
     now = _get_current_time(current_time)
-    if dry_run:
-        _dry_run(project, target, now, verbose, json_output)
-        return
-    with _build_progress(project, verbose, now):
-        published = project.publish(target=target, current_time=now, verbose=verbose)
-
-    for name in published:
-        _say(f"[bold green]✓[/] Published to [bold]{escape(name)}[/].")
-
-
-# the letters for changes, as in git status --short
-_CHANGE_LETTERS = {"added": "A", "modified": "M", "deleted": "D"}
-
-
-def _dry_run(
-    project: Automata,
-    target: str | None,
-    now: datetime.datetime | None,
-    verbose: bool,
-    json_output: bool,
-) -> None:
-    """Print what publishing to *target* (or every target) would change."""
     try:
         with _build_progress(project, verbose, now, err=json_output):
-            changes = project.publish_dry_run(
-                target=target, current_time=now, verbose=verbose
+            results = project.publish(
+                target=target, dry_run=dry_run, current_time=now, verbose=verbose
             )
     except Error as e:
         if not json_output:
@@ -517,25 +494,42 @@ def _dry_run(
         typer.echo(json.dumps({"error": str(e)}, indent=2))
         raise typer.Exit(code=1)
 
-    strategies = {name: project.config.publish[name]["strategy"] for name in changes}
     if json_output:
-        result = {
-            name: {
-                "strategy": strategies[name],
-                "changes": [change.to_dict() for change in target_changes],
-            }
-            for name, target_changes in changes.items()
-        }
-        typer.echo(json.dumps({"targets": result}, indent=2))
+        targets = {name: result.to_dict() for name, result in results.items()}
+        typer.echo(json.dumps({"targets": targets}, indent=2))
+    elif dry_run:
+        for result in results.values():
+            _print_dry_run(result)
+    else:
+        for result in results.values():
+            where = (
+                f"Published to [bold]{escape(result.target)}[/] "
+                f"({escape(result.strategy)})"
+            )
+            if result.changes is None:
+                _say(f"[bold green]✓[/] {where}.")
+            elif not result.changes:
+                _say(f"[bold green]✓[/] {where}: nothing changed.")
+            else:
+                changed = _plural(len(result.changes), "file")
+                _say(f"[bold green]✓[/] {where}: {changed} changed.")
+
+
+# the letters for changes, as in git status --short
+_CHANGE_LETTERS = {"added": "A", "modified": "M", "deleted": "D"}
+
+
+def _print_dry_run(result: PublishResult) -> None:
+    """Print what publishing to *result*'s target would change: plainly, one
+    file to a line, so that programs can read it."""
+    changes = result.changes or []
+    where = f"Publishing to {result.target} ({result.strategy}) would change"
+    if not changes:
+        typer.echo(f"{where} nothing.")
         return
-    for name, target_changes in changes.items():
-        where = f"Publishing to {name} ({strategies[name]}) would change"
-        if not target_changes:
-            typer.echo(f"{where} nothing.")
-            continue
-        typer.echo(f"{where} {_plural(len(target_changes), 'file')}:")
-        for change in target_changes:
-            typer.echo(f"  {_CHANGE_LETTERS[change.status]} {change.path}")
+    typer.echo(f"{where} {_plural(len(changes), 'file')}:")
+    for change in changes:
+        typer.echo(f"  {_CHANGE_LETTERS[change.status]} {change.path}")
 
 
 @_command()

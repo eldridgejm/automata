@@ -156,12 +156,18 @@ Build the site, then deploy it to the targets configured under ``publish:`` in
 
 ::
 
-    automata publish [TARGET] [--dry-run [--json]] [--current-time TIME]
+    automata publish [TARGET] [--dry-run] [--json] [--current-time TIME]
                      [--verbose]
 
-With no ``TARGET``, publishes to every configured target, in order; prints
-``Published to <target>.`` for each. An unknown target or strategy is an error,
-reported before the site is built.
+With no ``TARGET``, publishes to every configured target, in order, and says
+what each one changed::
+
+    ✓ Published to github (gh-pages): 3 files changed.
+    ✓ Published to server (rsync).
+
+(``nothing changed`` if nothing did; rsync, and an extension's strategy, may
+not say.) An unknown target or strategy is an error, reported before the site
+is built.
 
 ``--dry-run`` builds the site, then says what publishing would change, without
 publishing: for each target, the files that would be added (``A``), modified
@@ -175,14 +181,19 @@ publishing: for each target, the files that would be added (``A``), modified
 
 It changes nothing where the site is published (gh-pages and git fetch the
 branch, but push nothing; rsync runs with ``--dry-run``), needs no git identity,
-and exits with status 0 whether or not anything would change. With ``--json``,
-it prints the changes as JSON instead (the build's progress goes to stderr),
-e.g. for a CI job that comments on a pull request::
+and exits with status 0 whether or not anything would change. A target whose
+strategy can't do a dry run (an extension's strategy may not) is an error,
+reported before the site is built.
+
+``--json``, with or without ``--dry-run``, prints what each target changed (or
+would change) as JSON instead (the build's progress goes to stderr), e.g. for a
+CI job that comments on a pull request::
 
     {
       "targets": {
         "github": {
           "strategy": "gh-pages",
+          "dry_run": true,
           "changes": [
             {"status": "added", "path": "CNAME"},
             {"status": "modified", "path": "index.html"}
@@ -191,10 +202,9 @@ e.g. for a CI job that comments on a pull request::
       }
     }
 
-A ``status`` is ``added``, ``modified``, or ``deleted``. An error is printed as
-``{"error": "..."}``, with status 1. A target whose strategy can't do a dry run
-(an extension's strategy may not) is an error, reported before the site is
-built. ``--json`` without ``--dry-run`` is an error.
+A ``status`` is ``added``, ``modified``, or ``deleted``; ``changes`` is ``null``
+for a target whose strategy doesn't report them. An error is printed as
+``{"error": "..."}``, with status 1.
 
 
 ``automata resolve``

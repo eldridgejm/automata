@@ -38,7 +38,7 @@ from .materials import (
     Universe,
 )
 from .materials._filter import ArtifactType, Predicate
-from .publish import Change, supports_dry_run
+from .publish import PublishResult, supports_dry_run
 from .util.yaml import SourceMap
 from .website import load_content_directory
 from .website import render as _website_render
@@ -261,76 +261,29 @@ class Automata:
     def publish(
         self,
         target: str | None = None,
+        *,
+        dry_run: bool = False,
         current_time: datetime.datetime | None = None,
         verbose: bool = False,
-    ) -> list[str]:
+    ) -> dict[str, PublishResult]:
         """Run the full pipeline and deploy the built site.
 
         Checks the target and strategy names, calls :meth:`build`, then invokes
         the configured publish strategy (or strategies).
+
+        For a dry run, nothing is published: each target's strategy does
+        everything a publish does short of publishing (the gh-pages and git
+        strategies prepare the commit, but don't make or push it; rsync runs
+        with ``--dry-run``), and reports the files it would add, modify, or
+        delete. The publish hooks aren't fired.
 
         Parameters
         ----------
         target : str | None
             Name of a specific publish target to run. If *None*, all
             configured targets are run in order.
-        current_time : datetime.datetime | None
-            The current time for release-time checks and scheduling.
-            If *None*, uses the system time.
-
-        Returns
-        -------
-        list[str]
-            The names of the targets published to, in order.
-
-        Raises
-        ------
-        automata.exceptions.Error
-            If no publish configurations are present, a target name is
-            unknown, or a strategy is unknown.
-
-        """
-        targets, publishers = self._publish_targets(target, dry_run=False)
-
-        self.build(current_time=current_time, verbose=verbose)
-
-        build_dir = self.path / self.config.website.build_directory
-
-        for name, entry in targets.items():
-            strategy_name = entry["strategy"]
-            strategy_config = entry.get("config", {})
-
-            self.hooks.on_publish_pre(
-                PublishPreHookArgs(build_directory=build_dir, strategy=strategy_name)
-            )
-
-            publishers[name](build_dir, strategy_config, self.path)
-
-            self.hooks.on_publish_post(
-                PublishPostHookArgs(build_directory=build_dir, strategy=strategy_name)
-            )
-
-        return list(targets)
-
-    def publish_dry_run(
-        self,
-        target: str | None = None,
-        current_time: datetime.datetime | None = None,
-        verbose: bool = False,
-    ) -> dict[str, list[Change]]:
-        """Build the site, and say what publishing it would change, without
-        publishing.
-
-        Each target's strategy does everything a publish does short of
-        publishing (the gh-pages and git strategies prepare the commit, but
-        don't make or push it; rsync runs with ``--dry-run``), and reports the
-        files it would add, modify, or delete. The publish hooks aren't fired.
-
-        Parameters
-        ----------
-        target : str | None
-            Name of a specific publish target. If *None*, all configured
-            targets, in order.
+        dry_run : bool
+            Say what publishing would change, without publishing.
         current_time : datetime.datetime | None
             The current time for release-time checks and scheduling.
             If *None*, uses the system time.
@@ -339,29 +292,54 @@ class Automata:
 
         Returns
         -------
-        dict[str, list[Change]]
-            For each target, in order, the changes, in order of path (empty if
-            nothing would change).
+        dict[str, PublishResult]
+            For each target published to (or, for a dry run, not), in order,
+            what changed: its ``changes``, or None if its strategy doesn't
+            report them (it must, for a dry run).
 
         Raises
         ------
         automata.exceptions.Error
             If no publish configurations are present, a target or strategy is
-            unknown, or a target's strategy can't do a dry run (all checked
-            before building).
+            unknown, or, for a dry run, a target's strategy can't do one (all
+            checked before building).
 
         """
-        targets, publishers = self._publish_targets(target, dry_run=True)
+        targets, publishers = self._publish_targets(target, dry_run=dry_run)
+
         self.build(current_time=current_time, verbose=verbose)
+
         build_dir = self.path / self.config.website.build_directory
-        return {
-            name: list(
-                publishers[name](
-                    build_dir, entry.get("config", {}), self.path, dry_run=True
+
+        results = {}
+        for name, entry in targets.items():
+            strategy_name = entry["strategy"]
+            strategy_config = entry.get("config", {})
+
+            if dry_run:
+                changes = publishers[name](
+                    build_dir, strategy_config, self.path, dry_run=True
                 )
+            else:
+                self.hooks.on_publish_pre(
+                    PublishPreHookArgs(
+                        build_directory=build_dir, strategy=strategy_name
+                    )
+                )
+                changes = publishers[name](build_dir, strategy_config, self.path)
+                self.hooks.on_publish_post(
+                    PublishPostHookArgs(
+                        build_directory=build_dir, strategy=strategy_name
+                    )
+                )
+
+            results[name] = PublishResult(
+                target=name,
+                strategy=strategy_name,
+                dry_run=dry_run,
+                changes=None if changes is None else list(changes),
             )
-            for name, entry in targets.items()
-        }
+        return results
 
     def _publish_targets(
         self, target: str | None, dry_run: bool

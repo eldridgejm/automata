@@ -92,32 +92,27 @@ The primary interface is the ``Automata`` class.
 
         :raises automata.exceptions.Error: If the port is in use.
 
-    .. method:: publish(target=None, current_time=None)
+    .. method:: publish(target=None, *, dry_run=False, current_time=None, verbose=False)
 
         Check the target and strategy names, run :meth:`build`, then deploy to
         the configured targets (all of them, in order, if *target* is
-        ``None``). See :doc:`/guide/deployment`.
+        ``None``). See :doc:`/guide/deployment`. With ``dry_run=True``,
+        nothing is published: it says what publishing would change (see
+        ``automata publish --dry-run``), and the publish hooks aren't fired.
 
-        :returns: The names of the targets published to.
-        :rtype: list[str]
+        :returns: For each target, in order, an
+            ``automata.publish.PublishResult``, with the ``target``, its
+            ``strategy``, ``dry_run``, and ``changes``: the files added,
+            modified, or deleted (or, for a dry run, that would be), each an
+            ``automata.publish.Change`` with a ``status`` (``"added"``,
+            ``"modified"``, or ``"deleted"``) and a ``path`` relative to the
+            site's root, in order of path; empty if nothing changed, or None
+            if the strategy doesn't report its changes (rsync doesn't, except
+            in a dry run).
+        :rtype: dict[str, PublishResult]
         :raises automata.exceptions.Error: If there are no publish targets,
-            or the target or a strategy is unknown.
-
-    .. method:: publish_dry_run(target=None, current_time=None, verbose=False)
-
-        Run :meth:`build`, then say what publishing to the targets would
-        change, without publishing (see ``automata publish --dry-run``). The
-        publish hooks aren't fired.
-
-        :returns: For each target, in order, the files that would change: a
-            list of ``automata.publish.Change``, each with a ``status``
-            (``"added"``, ``"modified"``, or ``"deleted"``) and a ``path``
-            relative to the site's root, in order of path (empty if nothing
-            would change).
-        :rtype: dict[str, list[Change]]
-        :raises automata.exceptions.Error: If there are no publish targets,
-            the target or a strategy is unknown, or a target's strategy can't
-            do a dry run (all checked before building).
+            the target or a strategy is unknown, or, for a dry run, a target's
+            strategy can't do one (all checked before building).
 
     .. method:: discover()
 

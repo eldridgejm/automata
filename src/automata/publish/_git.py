@@ -27,7 +27,7 @@ def publish(
     project_directory: Path,
     *,
     dry_run: bool = False,
-) -> list[Change] | None:
+) -> list[Change]:
     """Replace the contents of a branch of a git repository with the built site.
 
     The site replaces the contents of the branch, in a single commit (no commit
@@ -57,8 +57,8 @@ def publish(
 
     Returns
     -------
-    list[Change] | None
-        For a dry run, the changes; otherwise None.
+    list[Change]
+        The changes made (or, for a dry run, that would be), in order of path.
 
     Raises
     ------
@@ -112,14 +112,14 @@ def push(
     config: dict[str, Any],
     strategy: str,
     dry_run: bool = False,
-) -> list[Change] | None:
+) -> list[Change]:
     """Replace the contents of *branch* of the repository at *url* with the
-    build directory, in a single commit (none if nothing changed).
+    build directory, in a single commit (none if nothing changed), and return
+    the changes the commit made, in order of path.
 
     If *dry_run*, everything is done short of committing and pushing (the
     branch is fetched, but the repository is left as it is), and the changes
-    the commit would make are returned, in order of path; no identity is
-    needed.
+    the commit would make are returned; no identity is needed.
 
     *source* describes the repository in errors (e.g. ``remote "origin"
     (<url>)``), and *strategy* names the strategy publishing. The commit's
@@ -192,27 +192,12 @@ def push(
         # Commit and push
         _run("git", "add", "-A", cwd=tmp)
 
-        if dry_run:
-            return _staged_changes(
-                _run(
-                    "git",
-                    "diff",
-                    "--cached",
-                    "--name-status",
-                    "--no-renames",
-                    "-z",
-                    cwd=tmp,
-                ).stdout
-            )
-
-        # Check if there's anything to commit
-        result = subprocess.run(
-            ["git", "diff", "--cached", "--quiet"],
-            cwd=tmp,
-            capture_output=True,
+        staged = _run(
+            "git", "diff", "--cached", "--name-status", "--no-renames", "-z", cwd=tmp
         )
-        if result.returncode == 0:
-            return None  # nothing changed
+        changes = _staged_changes(staged.stdout)
+        if dry_run or not changes:
+            return changes
 
         _run(
             "git",
@@ -226,7 +211,7 @@ def push(
             cwd=tmp,
         )
         _run("git", "push", "origin", branch, "--force", cwd=tmp)
-    return None
+    return changes
 
 
 def _staged_changes(listed: str) -> list[Change]:

@@ -3,6 +3,7 @@
 from typing import Any, Callable
 
 # A publisher is called as publisher(build_directory, config, project_directory).
+# It returns the list of Changes it made, or None if it doesn't report them.
 # One that can do a dry run also takes a dry_run keyword argument, and given
 # dry_run=True, returns the list of Changes it would make instead of publishing.
 Publisher = Callable[..., Any]

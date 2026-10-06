@@ -138,7 +138,8 @@ def test_simple_course_publishes_to_github_pages(tmp_path):
 
     published = Automata(project).publish(current_time=_at(2026, 9, 25, 12))
 
-    assert published == ["github"]
+    assert list(published) == ["github"]
+    assert "index.html" in [c.path for c in published["github"].changes]
     files = _git("ls-tree", "-r", "--name-only", "gh-pages", cwd=remote).split()
     assert "index.html" in files
     assert "materials/lectures/01-introduction/slides.pptx" in files
@@ -196,7 +197,7 @@ def test_latex_course_publishes_to_github_pages(tmp_path, fake_latexmk):
 
     published = Automata(project).publish(current_time=_at(2026, 10, 1, 12))
 
-    assert published == ["github"]
+    assert list(published) == ["github"]
     files = _git("ls-tree", "-r", "--name-only", "gh-pages", cwd=remote).split()
     assert "materials/homeworks/01/solution.pdf" in files
     assert "materials/homeworks/02/solution.pdf" not in files

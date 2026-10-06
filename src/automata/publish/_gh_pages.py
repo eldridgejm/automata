@@ -31,7 +31,7 @@ def publish(
     github: str = GITHUB,
     *,
     dry_run: bool = False,
-) -> list[Change] | None:
+) -> list[Change]:
     """Deploy the built site to GitHub Pages.
 
     The site replaces the contents of the target branch, in a single commit (no
@@ -63,8 +63,8 @@ def publish(
 
     Returns
     -------
-    list[Change] | None
-        For a dry run, the changes; otherwise None.
+    list[Change]
+        The changes made (or, for a dry run, that would be), in order of path.
 
     Raises
     ------

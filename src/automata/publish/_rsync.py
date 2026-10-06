@@ -50,7 +50,7 @@ def publish(
     -------
     list[Change] | None
         For a dry run, the files that would be added, modified, or deleted, in
-        order of path; otherwise None.
+        order of path; otherwise None (a publish doesn't report its changes).
 
     Raises
     ------

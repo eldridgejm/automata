@@ -11,6 +11,7 @@ import pytest
 from automata import Automata
 from automata.exceptions import Error
 from automata.materials import Universe, serialize
+from automata.publish import PublishResult
 
 
 @pytest.fixture
@@ -688,8 +689,12 @@ def test_publish_builds_then_publishes_the_named_target(project_dir):
     # when
     published = project.publish("second")
 
-    # then
-    assert published == ["second"]
+    # then: the strategy reported no changes (it returned None)
+    assert published == {
+        "second": PublishResult(
+            target="second", strategy="recording", dry_run=False, changes=None
+        )
+    }
     assert (project_dir / "_build" / "index.html").exists()
     assert log == [
         ("pre", "recording"),
@@ -706,6 +711,7 @@ def test_publish_without_a_target_publishes_every_target(project_dir):
     published = project.publish()
 
     assert sorted(published) == ["first", "second"]
+    assert all(not result.dry_run for result in published.values())
     labels = [entry[2]["label"] for entry in log if entry[0] == "publish"]
     assert sorted(labels) == ["one", "two"]
 
@@ -715,7 +721,7 @@ def test_publish_without_a_target_publishes_in_configured_order(project_dir):
     project = Automata(project_dir)
     _record_publishes(project)
 
-    assert project.publish() == ["first", "second"]
+    assert list(project.publish()) == ["first", "second"]
 
 
 def test_publish_unknown_target_is_an_error(project_dir):
@@ -761,7 +767,7 @@ def test_publish_checks_the_target_before_building(project_dir):
     assert not (project_dir / "_build").exists()
 
 
-# publish_dry_run() ====================================================================
+# publish(dry_run=True) ================================================================
 
 
 def test_a_dry_run_builds_and_reports_each_targets_changes(project_dir):
@@ -783,12 +789,22 @@ def test_a_dry_run_builds_and_reports_each_targets_changes(project_dir):
         return args
 
     # when
-    changes = project.publish_dry_run()
+    results = project.publish(dry_run=True)
 
     # then: nothing is published, and the publish hooks aren't fired
-    assert changes == {
-        "first": [Change("added", "one.html")],
-        "second": [Change("added", "two.html")],
+    assert results == {
+        "first": PublishResult(
+            target="first",
+            strategy="recording",
+            dry_run=True,
+            changes=[Change("added", "one.html")],
+        ),
+        "second": PublishResult(
+            target="second",
+            strategy="recording",
+            dry_run=True,
+            changes=[Change("added", "two.html")],
+        ),
     }
     assert calls == [("one", True), ("two", True)]
     assert (project_dir / "_build" / "index.html").exists()
@@ -804,7 +820,7 @@ def test_a_dry_run_of_a_named_target(project_dir):
         args.publishers["recording"] = lambda b, c, p, *, dry_run=False: []
         return args
 
-    assert project.publish_dry_run("second") == {"second": []}
+    assert project.publish("second", dry_run=True)["second"].changes == []
 
 
 def test_a_dry_run_with_a_strategy_that_cannot_do_one_is_an_error(project_dir):
@@ -815,7 +831,7 @@ def test_a_dry_run_with_a_strategy_that_cannot_do_one_is_an_error(project_dir):
 
     # when
     with pytest.raises(Error) as excinfo:
-        project.publish_dry_run()
+        project.publish(dry_run=True)
 
     # then: before building anything
     assert str(excinfo.value) == (

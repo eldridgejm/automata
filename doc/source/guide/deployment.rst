@@ -90,15 +90,18 @@ To see what publishing would change without publishing, use ``automata
 publish --dry-run``: it builds the site and lists, for each target, the files
 that would be added, modified, or deleted (``--json`` gives the list as JSON;
 see :doc:`/reference/cli`). It changes nothing where the site is published,
-and needs no git identity, so it can run on CI for each pull request.
+and needs no git identity, so it can run on CI for each pull request. A
+publish says what it changed, too.
 
 An extension can add a strategy from an ``on_register_publishers`` hook. A
 strategy is a function called as ``publisher(build_directory, config,
-project_directory)``. To support ``--dry-run``, it also takes a ``dry_run``
-keyword argument, and when that is ``True``, it publishes nothing and returns
-a list of ``automata.publish.Change(status, path)``, where ``status`` is
-``"added"``, ``"modified"``, or ``"deleted"`` and ``path`` is relative to the
-site's root. (A strategy without ``dry_run`` can't do a dry run.)
+project_directory)``. It returns the files it changed, as a list of
+``automata.publish.Change(status, path)``, where ``status`` is ``"added"``,
+``"modified"``, or ``"deleted"`` and ``path`` is relative to the site's root,
+or ``None`` if it doesn't say. To support ``--dry-run``, it also takes a
+``dry_run`` keyword argument, and when that is ``True``, it publishes nothing
+and returns the list of changes it would make. (A strategy without
+``dry_run`` can't do a dry run.)
 
 .. code-block:: python
 
