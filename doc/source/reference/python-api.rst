@@ -210,13 +210,13 @@ The primary interface is the ``Automata`` class.
 
     .. method:: calendar(collections=None, keys=None, start=None, end=None, week_start="sunday", all_weeks=False, highlight_today=True, current_time=None)
 
-        A week-by-week calendar of the dates in the materials' metadata, as
-        configured in the ``calendar`` section of ``automata.yaml`` (see
-        ``automata calendar``). Builds nothing.
+        A week-by-week calendar of the dates in the materials' metadata, and
+        of events, as configured in the ``calendar`` section of
+        ``automata.yaml`` (see ``automata calendar``). Builds nothing.
 
-        :param collections: Show only these collections.
+        :param collections: Show only these collections and event groups.
         :param keys: Show only dates under metadata keys matching one of these
-            glob patterns (e.g. ``"due"``).
+            glob patterns (e.g. ``"due"``), and no events.
         :param start: Show only dates on or after this one. By default, the
             first day of the current week.
         :param end: Show only dates on or before this one.

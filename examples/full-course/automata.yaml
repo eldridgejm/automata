@@ -51,21 +51,33 @@ materials:
             release_time: 3 days after ${ vars.final_date } at 00:00:00
 
 calendar:
-  lectures:
-    dates:
-      date: !template "Lecture ${ publication.metadata.number }: ${ publication.metadata.topic }"
-  homeworks:
-    dates:
-      released: !template "HW ${ publication.metadata.number } released"
-      due: !template "HW ${ publication.metadata.number } due"
-  labs:
-    dates:
-      released: !template "Lab ${ publication.metadata.number } released"
-      due: !template "Lab ${ publication.metadata.number } due"
-  exams:
-    color: "#e15759"
-    dates:
-      date: !template "${ publication.metadata.name }"
+  # dates from the publications' metadata
+  collections:
+    lectures:
+      dates:
+        date: !template "Lecture ${ publication.metadata.number }: ${ publication.metadata.topic }"
+    homeworks:
+      dates:
+        released: !template "HW ${ publication.metadata.number } released"
+        due: !template "HW ${ publication.metadata.number } due"
+    labs:
+      dates:
+        released: !template "Lab ${ publication.metadata.number } released"
+        due: !template "Lab ${ publication.metadata.number } due"
+    exams:
+      color: "#e15759"
+      dates:
+        date: !template "${ publication.metadata.name }"
+  # dates of their own, not from any publication
+  events:
+    holidays:
+      color: "#bab0ac"
+      dates:
+        - label: "Veterans Day (no class)"
+          date: 2026-11-11
+        - label: "Thanksgiving break"
+          date: 2026-11-26
+          end: 2026-11-27
 
 website:
   theme:

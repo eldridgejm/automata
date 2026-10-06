@@ -35,7 +35,9 @@ Top-level structure
 
     # The dates `automata calendar` shows (optional)
     calendar:
-      homeworks:
+      collections:
+        ...
+      events:
         ...
 
     # Website generation settings
@@ -243,29 +245,60 @@ Website generation settings:
 ------------
 
 The dates that ``automata calendar`` shows (it is an error to run it without
-this section). For each collection, ``dates`` maps metadata keys to labels: each
-publication with a date (or date and time) under the key gets an entry on that
-day. A label is written with ``!template``, and can use ``publication`` and
-``vars``; without one, the entry is labeled like ``hw01 due``. ``color``
-(optional) is the collection's color; otherwise one is chosen from a palette:
+this section). It has two parts, each optional: ``collections``, whose dates
+come from the publications' metadata, and ``events``, dates of their own that
+aren't publications (exams without files, holidays, and so on).
+
+Under ``collections``, for each collection, ``dates`` maps metadata keys to
+labels: each publication with a date (or date and time) under the key gets an
+entry on that day. A label is written with ``!template``, and can use
+``publication``, ``vars`` and ``course``; without one, the entry is labeled like
+``hw01 due``. ``color`` (optional) is the collection's color; otherwise one is
+chosen from a palette:
 
 .. code-block:: yaml
 
     calendar:
-      lectures:
-        dates:
-          date: !template "Lecture ${ publication.metadata.number }: ${ publication.metadata.topic }"
-      homeworks:
-        dates:
-          released: !template "HW ${ publication.metadata.number } released"
-          due:
-      exams:
-        color: "#e15759"
-        dates:
-          date: !template "${ publication.metadata.name }"
+      collections:
+        lectures:
+          dates:
+            date: !template "Lecture ${ publication.metadata.number }: ${ publication.metadata.topic }"
+        homeworks:
+          dates:
+            released: !template "HW ${ publication.metadata.number } released"
+            due:
 
 Publications without the key are left out. A key that no publication in the
 collection has, or a value that isn't a date, is an error.
+
+Under ``events``, events are in named groups. Each group has a list of
+``dates``, each with a ``label`` and a ``date``, and optionally a ``color``. A
+date (like ``2026-10-26``, or a phrase like ``first monday after
+${ vars.start }``) makes an all-day entry; a date and time (like
+``${ vars.final_date } at 08:00:00``) a timed one. An all-day event over
+several days gives its last day as ``end``:
+
+.. code-block:: yaml
+
+    calendar:
+      events:
+        exams:
+          color: "#e15759"
+          dates:
+            - label: "Midterm"
+              date: ${ vars.midterm_date }
+            - label: "Final"
+              date: ${ vars.final_date } at 08:00:00
+        holidays:
+          dates:
+            - label: "Thanksgiving break"
+              date: 2026-11-26
+              end: 2026-11-27
+
+Event groups are shown, colored and filtered (with ``--collection``) like
+collections, so a group can't have the same name as a collection in the
+calendar. Labels can be written with ``!template``, and use ``vars`` and
+``course``.
 
 
 Including external files

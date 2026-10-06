@@ -14,14 +14,15 @@ from automata.exceptions import Error
 
 _CALENDAR_CONFIG = """\
 calendar:
-  homeworks:
-    dates:
-      released: !template "Homework ${ publication.metadata.number } released"
-      due:
-  labs:
-    color: "#123456"
-    dates:
-      date:
+  collections:
+    homeworks:
+      dates:
+        released: !template "Homework ${ publication.metadata.number } released"
+        due:
+    labs:
+      color: "#123456"
+      dates:
+        date:
 """
 
 _WEBSITE_CONFIG = """\
@@ -192,7 +193,9 @@ def test_entries_know_whether_they_are_past(calendar):
 
 def test_labels_can_use_vars(tmp_path):
     label = '"${ vars.course } HW${ publication.metadata.number }"'
-    config = _CALENDAR_CONFIG.replace("      due:\n", f"      due: !template {label}\n")
+    config = _CALENDAR_CONFIG.replace(
+        "        due:\n", f"        due: !template {label}\n"
+    )
     project = write_calendar_project(
         tmp_path / "project", "vars: {course: DSC}\n" + config
     )
@@ -283,35 +286,36 @@ def test_a_missing_calendar_config_is_an_error(tmp_path):
 
     message = str(excinfo.value)
     assert message.startswith(
-        f'{project / "automata.yaml"} has no "calendar" section, which names, for '
-        f"each collection, the metadata dates to show."
+        f'{project / "automata.yaml"} has no "calendar" section, which names the '
+        f"dates to show: each collection's metadata dates, and events."
     )
-    assert "calendar:\n  homeworks:\n    dates:\n      due:" in message
+    assert "calendar:\n  collections:\n    homeworks:\n      dates:\n" in message
+    assert "  events:\n    exams:\n      dates:\n" in message
 
 
 def test_a_calendar_collection_that_does_not_exist_is_an_error(tmp_path):
-    config = _CALENDAR_CONFIG + "  homework:\n    dates:\n      due:\n"
+    config = _CALENDAR_CONFIG + "    homework:\n      dates:\n        due:\n"
     project = write_calendar_project(tmp_path / "project", config)
 
     with pytest.raises(Error) as excinfo:
         Automata(project).calendar(all_weeks=True, current_time=JAN_15)
 
     assert str(excinfo.value) == (
-        f"{project / 'automata.yaml'}:10: calendar.homework: There is no collection "
-        f'"homework". The collections are: homeworks, labs, lectures.'
+        f"{project / 'automata.yaml'}:11: calendar.collections.homework: There is no "
+        f'collection "homework". The collections are: homeworks, labs, lectures.'
     )
 
 
 def test_a_key_that_no_publication_has_is_an_error(tmp_path):
-    config = _CALENDAR_CONFIG.replace("      due:\n", "      dew:\n")
+    config = _CALENDAR_CONFIG.replace("        due:\n", "        dew:\n")
     project = write_calendar_project(tmp_path / "project", config)
 
     with pytest.raises(Error) as excinfo:
         Automata(project).calendar(all_weeks=True, current_time=JAN_15)
 
     assert str(excinfo.value) == (
-        f"{project / 'automata.yaml'}:5: calendar.homeworks.dates.dew: No publication "
-        f'in "homeworks" has the metadata key "dew".'
+        f"{project / 'automata.yaml'}:6: calendar.collections.homeworks.dates.dew: No "
+        f'publication in "homeworks" has the metadata key "dew".'
     )
 
 
@@ -329,20 +333,20 @@ def test_a_value_that_is_not_a_date_is_an_error(tmp_path):
         Automata(project).calendar(all_weeks=True, current_time=JAN_15)
 
     assert str(excinfo.value) == (
-        f"{project / 'automata.yaml'}:9: calendar.labs.dates.date: In publication "
-        f'"lab01", "date" is the string "someday", not a date.'
+        f"{project / 'automata.yaml'}:10: calendar.collections.labs.dates.date: In "
+        f'publication "lab01", "date" is the string "someday", not a date.'
     )
 
 
 def test_an_invalid_calendar_config_is_an_error(tmp_path):
-    config = "calendar:\n  homeworks:\n    datez:\n      due:\n"
+    config = "calendar:\n  collections:\n    homeworks:\n      datez:\n        due:\n"
     project = write_calendar_project(tmp_path / "project", config)
 
     with pytest.raises(Error) as excinfo:
         Automata(project).calendar(all_weeks=True, current_time=JAN_15)
 
     assert str(excinfo.value).startswith(f"{project / 'automata.yaml'}:")
-    assert "calendar.homeworks" in str(excinfo.value)
+    assert "calendar.collections.homeworks" in str(excinfo.value)
 
 
 # colors ===============================================================================
@@ -385,6 +389,7 @@ def test_the_calendar_as_a_dict_is_json(calendar):
             "when": "2025-01-10T23:59:00",
             "all_day": False,
             "past": True,
+            "end": None,
         }
     ]
     assert data["colors"]["labs"] == "#123456"
@@ -707,7 +712,7 @@ def test_icalendar_events_have_stable_ids(calendar, tmp_path):
 
 def test_icalendar_text_is_escaped_and_long_lines_are_folded(tmp_path):
     label = "Lab: setup, tools; and a label long enough that its line must be folded"
-    config = _CALENDAR_CONFIG.replace("      date:\n", f'      date: "{label}"\n')
+    config = _CALENDAR_CONFIG.replace("        date:\n", f'        date: "{label}"\n')
     project = write_calendar_project(tmp_path / "project", config)
 
     ics = Automata(project).calendar(all_weeks=True, current_time=JAN_15).to_ics()
@@ -716,3 +721,271 @@ def test_icalendar_text_is_escaped_and_long_lines_are_folded(tmp_path):
     assert all(len(line.encode()) <= 75 for line in lines)
     unfolded = ics.replace("\r\n ", "")
     assert f"SUMMARY:{label.replace(',', '\\,').replace(';', '\\;')}\r\n" in unfolded
+
+
+# standalone events ====================================================================
+
+_EVENTS_CONFIG = """\
+  events:
+    exams:
+      color: "#e15759"
+      dates:
+        - label: Midterm
+          date: 2025-01-14
+        - label: Final
+          date: ${ vars.final } at 08:00:00
+    holidays:
+      dates:
+        - label: Break
+          date: 2025-01-16
+          end: 2025-01-17
+"""
+
+
+def write_events_project(project: Path, events: str = _EVENTS_CONFIG) -> Path:
+    """The calendar project, with exams on Jan 14 and Jan 23 (08:00), and a
+    break from Jan 16 through Jan 17."""
+    return write_calendar_project(
+        project, "vars: {final: 2025-01-23}\n" + _CALENDAR_CONFIG + events
+    )
+
+
+def _entries(calendar):
+    return [e for w in calendar.weeks for d in w.days for e in d.entries]
+
+
+def _event_error(tmp_path, events: str) -> str:
+    project = write_events_project(tmp_path / "project", events)
+    with pytest.raises(Error) as excinfo:
+        Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+    return str(excinfo.value).replace(str(project / "automata.yaml"), "automata.yaml")
+
+
+def test_events_are_placed_on_their_days(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    days = _days_with_entries(calendar)
+    assert days[date(2025, 1, 14)] == ["Midterm"]
+    assert days[date(2025, 1, 23)] == ["Final"]
+    # a multi-day event is on each of its days
+    assert days[date(2025, 1, 16)] == ["Break"]
+    assert days[date(2025, 1, 17)] == ["Break"]
+
+
+def test_events_are_all_day_unless_given_a_time(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    entries = {e.label: e for e in _entries(calendar)}
+    assert entries["Midterm"].all_day is True
+    assert entries["Final"].all_day is False
+    assert entries["Final"].when == datetime(2025, 1, 23, 8, 0)
+    assert entries["Final"].text == "Final 08:00"
+
+
+def test_event_entries_belong_to_their_group_and_no_publication(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    midterm = next(e for e in _entries(calendar) if e.label == "Midterm")
+    assert (midterm.collection, midterm.publication, midterm.key) == (
+        "exams",
+        None,
+        None,
+    )
+    assert midterm.past is True
+    assert midterm.to_dict()["publication"] is None
+
+
+def test_a_multi_day_event_is_past_only_after_its_last_day(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(
+        all_weeks=True, current_time=datetime(2025, 1, 17, 12, 0)
+    )
+
+    assert all(not e.past for e in _entries(calendar) if e.label == "Break")
+
+
+def test_event_dates_can_be_phrases(tmp_path):
+    events = (
+        "  events:\n    exams:\n      dates:\n"
+        "        - {label: Quiz, date: first monday after 2025-01-01}\n"
+    )
+    project = write_events_project(tmp_path / "project", events)
+
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    # (all-day, so before the homework's release at 09:00)
+    assert _days_with_entries(calendar)[date(2025, 1, 6)] == [
+        "Quiz",
+        "Homework 1 released",
+    ]
+
+
+def test_event_labels_can_be_templates(tmp_path):
+    events = (
+        "  events:\n    exams:\n      dates:\n"
+        '        - label: !template "${ course.name } Midterm"\n'
+        "          date: 2025-01-14\n"
+    )
+    project = write_events_project(tmp_path / "project", events)
+
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    assert _days_with_entries(calendar)[date(2025, 1, 14)] == ["Test Midterm"]
+
+
+def test_a_calendar_can_have_only_events(tmp_path):
+    project = write_calendar_project(
+        tmp_path / "project",
+        "calendar:\n  events:\n    exams:\n      dates:\n"
+        "        - {label: Midterm, date: 2025-01-14}\n",
+    )
+
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    assert _days_with_entries(calendar) == {date(2025, 1, 14): ["Midterm"]}
+    assert calendar.collections == ["exams"]
+
+
+def test_event_groups_are_shown_and_colored_like_collections(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    assert calendar.collections == ["exams", "holidays", "homeworks", "labs"]
+    assert calendar.colors["exams"] == "#e15759"
+    assert calendar.colors["holidays"].startswith("#")
+    assert len(set(calendar.colors.values())) == 4
+
+
+def test_filtering_by_an_event_group(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(
+        all_weeks=True, collections=["holidays"], current_time=JAN_15
+    )
+
+    assert _days_with_entries(calendar) == {
+        date(2025, 1, 16): ["Break"],
+        date(2025, 1, 17): ["Break"],
+    }
+
+
+def test_filtering_by_key_leaves_out_events(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(
+        all_weeks=True, keys=["due"], current_time=JAN_15
+    )
+
+    assert {e.label for e in _entries(calendar)} == {"hw01 due", "hw02 due"}
+
+
+def test_filtering_by_dates_keeps_the_days_of_a_multi_day_event_in_range(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    calendar = Automata(project).calendar(
+        all_weeks=True,
+        start=date(2025, 1, 17),
+        end=date(2025, 1, 17),
+        current_time=JAN_15,
+    )
+
+    assert _days_with_entries(calendar) == {date(2025, 1, 17): ["Break"]}
+
+
+def test_an_event_is_one_icalendar_event_even_over_several_days(tmp_path):
+    project = write_events_project(tmp_path / "project")
+    calendar = Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    breaks = [e for e in _events(calendar.to_ics()) if "SUMMARY:Break" in e]
+
+    assert len(breaks) == 1
+    assert "DTSTART;VALUE=DATE:20250116\r\n" in breaks[0]
+    assert "DTEND;VALUE=DATE:20250118\r\n" in breaks[0]
+    assert "UID:holidays/0@automata\r\n" in breaks[0]
+    assert "CATEGORIES:holidays\r\n" in breaks[0]
+
+
+def test_html_event_entries_name_their_group(tmp_path):
+    project = write_events_project(tmp_path / "project")
+
+    html = Automata(project).calendar(all_weeks=True, current_time=JAN_15).to_html()
+
+    assert 'data-collection="exams"' in html
+    assert 'title="exams"' in html
+
+
+def test_the_old_calendar_shape_is_an_error(tmp_path):
+    config = "calendar:\n  homeworks:\n    dates:\n      due:\n"
+    project = write_calendar_project(tmp_path / "project", config)
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project).calendar(all_weeks=True, current_time=JAN_15)
+
+    assert str(excinfo.value) == (
+        f"{project / 'automata.yaml'}:2: calendar.homeworks: Unknown key "
+        f'"homeworks". The calendar has "collections" (whose metadata dates to '
+        f'show) and "events" (dates of their own).'
+    )
+
+
+def test_an_event_group_named_like_a_collection_is_an_error(tmp_path):
+    events = (
+        "  events:\n    labs:\n      dates:\n        - {label: X, date: 2025-01-14}\n"
+    )
+
+    assert _event_error(tmp_path, events) == (
+        "automata.yaml:13: calendar.events.labs: The calendar has both a collection "
+        'and an event group named "labs".'
+    )
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        (
+            "{date: 2025-01-14}",
+            'calendar.events.exams.dates.0: Expected "label" and "date" (and '
+            'optionally "end"), but there is no "label".',
+        ),
+        (
+            "{label: X, date: 2025-01-14, time: noon}",
+            'calendar.events.exams.dates.0.time: Unknown key "time". An event has '
+            '"label", "date" and, optionally, "end".',
+        ),
+        (
+            "{label: X, date: someday}",
+            'calendar.events.exams.dates.0.date: Cannot read "someday" as a date',
+        ),
+        (
+            "{label: X, date: 2025-01-14, end: 2025-01-13}",
+            "calendar.events.exams.dates.0.end: The event ends (2025-01-13) before "
+            "it starts (2025-01-14).",
+        ),
+        (
+            '{label: X, date: "2025-01-14 09:00:00", end: 2025-01-15}',
+            "calendar.events.exams.dates.0.end: An event with an end is all-day, "
+            'but "date" has a time.',
+        ),
+    ],
+)
+def test_an_invalid_event_is_an_error(tmp_path, event, expected):
+    events = f"  events:\n    exams:\n      dates:\n        - {event}\n"
+
+    assert expected in _event_error(tmp_path, events)
+
+
+def test_event_dates_must_be_a_list(tmp_path):
+    events = "  events:\n    exams:\n      dates:\n        midterm: 2025-01-14\n"
+
+    assert _event_error(tmp_path, events).endswith(
+        "calendar.events.exams.dates: Expected a list of events, each with a "
+        '"label" and a "date", but got a dict.'
+    )

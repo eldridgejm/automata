@@ -912,7 +912,9 @@ def _add_calendar(project):
             indent = line[: len(line) - len(line.lstrip())]
             lines.append(f"{indent}  metadata: {{due: 2025-01-06 09:00:00}}")
     config.write_text(
-        "calendar:\n  homeworks:\n    dates:\n      due:\n" + "\n".join(lines) + "\n"
+        "calendar:\n  collections:\n    homeworks:\n      dates:\n        due:\n"
+        "  events:\n    exams:\n      dates:\n"
+        "        - {label: Midterm, date: 2025-01-08}\n" + "\n".join(lines) + "\n"
     )
 
 
@@ -923,6 +925,18 @@ def test_calendar_prints_a_table(project):
     result = runner.invoke(app, ["calendar", "--all"], env={"COLUMNS": "200"})
 
     assert "hw01 due 09:00" in result.output
+    assert "Midterm" in result.output
+
+
+def test_calendar_filters_by_event_group(project):
+    _add_calendar(project)
+
+    result = runner.invoke(
+        app, ["calendar", "--all", "--collection", "exams"], env={"COLUMNS": "200"}
+    )
+
+    assert "Midterm" in result.output
+    assert "hw01 due" not in result.output
 
 
 def test_calendar_filters_by_collection_and_key(project):
@@ -964,7 +978,7 @@ def test_calendar_writes_icalendar(project, tmp_path):
 
     result = _invoke("calendar", "--all", "--ics", str(ics))
 
-    assert f"Wrote {ics} (1 event)" in result.output
+    assert f"Wrote {ics} (2 events)" in result.output
     assert "SUMMARY:hw01 due" in ics.read_text()
 
 

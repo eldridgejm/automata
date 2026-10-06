@@ -814,15 +814,15 @@ def calendar(
         None,
         "--collection",
         "-c",
-        help="Show only this collection (may be given more than once).",
+        help="Show only this collection or event group (may be given more than once).",
     ),
     key: Optional[list[str]] = typer.Option(
         None,
         "--key",
         "-k",
         help=(
-            "Show only dates under this metadata key, e.g. 'due'; a glob pattern "
-            "(may be given more than once)."
+            "Show only dates under this metadata key, e.g. 'due', and no events; a "
+            "glob pattern (may be given more than once)."
         ),
     ),
     start: Optional[str] = typer.Option(
@@ -862,10 +862,11 @@ def calendar(
     ),
     current_time: Optional[str] = _current_time_option,
 ):
-    """Show week by week the dates in the materials' metadata.
+    """Show week by week the dates in the materials' metadata, and events.
 
-    Which dates (e.g. each homework's released and due dates) is configured in
-    the calendar section of automata.yaml. Collections have their own colors.
+    Which dates (e.g. each homework's released and due dates, and events like
+    exams and holidays) is configured in the calendar section of automata.yaml.
+    Collections and event groups have their own colors.
     Prints a table, or writes the calendar as HTML or PDF. Builds nothing.
     """
 

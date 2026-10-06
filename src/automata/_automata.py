@@ -449,20 +449,24 @@ class Automata:
         highlight_today: bool = True,
         current_time: datetime.datetime | None = None,
     ) -> Calendar:
-        """A week-by-week calendar of the dates in the materials' metadata.
+        """A week-by-week calendar of the dates in the materials' metadata, and
+        of events.
 
-        The ``calendar`` section of ``automata.yaml`` says, for each collection,
-        which metadata keys' dates to show (e.g. ``released`` and ``due``), with
-        optional labels and colors. Builds nothing and runs no recipes or hooks.
+        The ``calendar`` section of ``automata.yaml`` says, under
+        ``collections``, which metadata keys' dates to show for each collection
+        (e.g. ``released`` and ``due``), and, under ``events``, groups of dates
+        of their own (e.g. exams and holidays), with optional labels and colors.
+        Builds nothing and runs no recipes or hooks.
 
         Parameters
         ----------
         collections : Sequence[str] | None
-            Show only these collections (from the configuration). If None, all
-            are shown.
+            Show only these collections and event groups (from the
+            configuration). If None, all are shown.
         keys : Sequence[str] | None
             Show only dates under metadata keys matching one of these glob
-            patterns (e.g. ``"due"``). If None, all configured keys are shown.
+            patterns (e.g. ``"due"``), and no events. If None, all configured
+            keys and events are shown.
         start, end : datetime.date | None
             Show only dates on or after *start* and on or before *end*. By
             default, *start* is the first day of the current week.

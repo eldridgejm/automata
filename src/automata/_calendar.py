@@ -1,18 +1,36 @@
-"""A week-by-week calendar of the dates in the materials' metadata.
+"""A week-by-week calendar of the dates in the materials' metadata, and of
+events of their own.
 
 Which dates are shown is configured in the ``calendar`` section of
-``automata.yaml``: for each collection, the metadata keys whose dates to show,
-each with an optional label, and optionally the collection's color::
+``automata.yaml``. Under ``collections``: for each collection, the metadata
+keys whose dates to show, each with an optional label, and optionally the
+collection's color. Under ``events``: groups of events (exams, holidays, ...)
+that aren't publications, each with a label and a date (and, for an all-day
+event over several days, an end), and optionally the group's color::
 
     calendar:
-      homeworks:
-        dates:
-          released: !template "Homework ${ publication.metadata.number } released"
-          due:
-        color: "#e15759"
+      collections:
+        homeworks:
+          dates:
+            released: !template "Homework ${ publication.metadata.number } released"
+            due:
+          color: "#e15759"
+      events:
+        exams:
+          dates:
+            - label: Midterm
+              date: ${ vars.midterm_date }
+            - label: Final
+              date: ${ vars.final_date } at 08:00:00
+        holidays:
+          dates:
+            - label: Thanksgiving break
+              date: 2026-11-26
+              end: 2026-11-27
 
-The calendar is made from the materials' metadata only, so it builds nothing,
-and it works with discovered or exported materials alike. It renders as a table
+Event groups are shown, colored, and filtered like collections. The calendar
+is made from the configuration and the materials' metadata only, so it builds
+nothing, and it works with discovered or exported materials alike. It renders as a table
 in the terminal (with rich), as HTML (a page, or a fragment to embed), and as a
 PDF.
 """
@@ -33,6 +51,7 @@ from .config import course_week_number
 from .exceptions import Error
 from .materials import Universe
 from .util.resolution import (
+    date_or_datetime,
     describe_config_error,
     local_time,
     resolve,
@@ -62,42 +81,78 @@ DAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 WEEK_STARTS = {"sunday": 6, "monday": 0}
 
 _EXAMPLE = """calendar:
-  homeworks:
-    dates:
-      due:
-      released: !template "Homework ${ publication.metadata.number } released"
+  collections:
+    homeworks:
+      dates:
+        due:
+        released: !template "Homework ${ publication.metadata.number } released"
+  events:
+    exams:
+      dates:
+        - label: Midterm
+          date: 2026-10-26
 """
 
 
 @dataclasses.dataclass
 class CalendarEntry:
-    """A date from a publication's metadata, on the calendar.
+    """A date on the calendar: from a publication's metadata, or an event.
 
     Attributes
     ----------
-    collection, publication : str
-        The keys of the publication and its collection.
-    key : str
-        The metadata key the date is under, e.g. ``"due"``.
+    collection : str
+        The collection of the publication, or the event's group.
+    publication : str | None
+        The key of the publication, or None for an event.
+    key : str | None
+        The metadata key the date is under, e.g. ``"due"``, or None for an
+        event.
     label : str
         The configured label (e.g. "Homework 1 due"), or "<publication> <key>".
     when : datetime.datetime
-        The date and time (midnight, for an all-day entry).
+        The date and time (midnight, for an all-day entry). For an event over
+        several days, its first day.
     all_day : bool
-        Whether the metadata value is a date (rather than a date and time).
+        Whether the date is a date (rather than a date and time).
     past : bool
         Whether it is before the calendar's current time (or, for an all-day
-        entry, before its day).
+        entry, before its day, or its last day).
+    uid : str
+        Identifies the entry, the same from one run to the next (if the
+        configuration doesn't change): ``"<collection>/<publication>/<key>"``,
+        or, for an event, ``"<group>/<position in the group>"``.
+    end : datetime.date | None
+        For an event over several days, its last day.
 
     """
 
     collection: str
-    publication: str
-    key: str
+    publication: str | None
+    key: str | None
     label: str
     when: datetime.datetime
     all_day: bool
     past: bool
+    uid: str
+    end: datetime.date | None = None
+
+    @property
+    def days(self) -> list[datetime.date]:
+        """The days the entry is on: one, or, for an event over several days,
+        each of them."""
+        first = self.when.date()
+        last = self.end or first
+        return [
+            first + datetime.timedelta(days=i) for i in range((last - first).days + 1)
+        ]
+
+    @property
+    def source(self) -> str:
+        """Where the date is from, e.g. ``"homeworks/hw01: due"``, or the
+        group, for an event."""
+        if self.publication is None:
+            return self.collection
+        return f"{self.collection}/{self.publication}: {self.key}"
 
     @property
     def time(self) -> str | None:
@@ -120,6 +175,7 @@ class CalendarEntry:
             "when": self.when.isoformat(),
             "all_day": self.all_day,
             "past": self.past,
+            "end": None if self.end is None else self.end.isoformat(),
         }
 
 
@@ -172,10 +228,11 @@ class Calendar:
         Every week from the first entry to the last (or the requested dates),
         including weeks without entries.
     collections : list[str]
-        The collections shown, sorted.
+        The collections and event groups shown, sorted.
     colors : dict[str, str]
-        A color (``"#rrggbb"``) for each collection shown: the configured one,
-        or one from a palette, which doesn't change with filtering.
+        A color (``"#rrggbb"``) for each collection and event group shown: the
+        configured one, or one from a palette, which doesn't change with
+        filtering.
     week_start : str
         The day weeks start on: ``"sunday"`` or ``"monday"``.
 
@@ -260,7 +317,7 @@ class _ConfigErrors:
         self.config_path = config_path
         self.source_map = source_map
 
-    def __call__(self, reason: str, *keypath: str) -> Error:
+    def __call__(self, reason: str, *keypath: Any) -> Error:
         return Error(
             describe_config_error(
                 reason,
@@ -271,43 +328,126 @@ class _ConfigErrors:
         )
 
 
+def _check_color(color: Any, error: _ConfigErrors, *keypath: Any) -> None:
+    if color is not None and not (
+        isinstance(color, str)
+        and len(color) == 7
+        and color.startswith("#")
+        and all(c in "0123456789abcdefABCDEF" for c in color[1:])
+    ):
+        raise error(
+            f'Expected a color like "#4e79a7", but got {_describe(color)}.',
+            *keypath,
+            "color",
+        )
+
+
 def _check_config(config: Mapping[str, Any], error: _ConfigErrors) -> None:
     """Check the shape of the calendar configuration."""
-    for name, entry in config.items():
-        if not isinstance(entry, Mapping):
+    for section, value in config.items():
+        if section not in ("collections", "events"):
             raise error(
-                f'Expected a mapping with "dates" (and optionally "color"), but got '
-                f"{_describe(entry)}.",
+                f'Unknown key "{section}". The calendar has "collections" (whose '
+                f'metadata dates to show) and "events" (dates of their own).',
+                section,
+            )
+        if not isinstance(value, Mapping):
+            raise error(
+                f"Expected a mapping of names to {section}, but got "
+                f"{_describe(value)}.",
+                section,
+            )
+    for name, entry in config.get("collections", {}).items():
+        _check_collection(entry, error, "collections", name)
+    for name, entry in config.get("events", {}).items():
+        if name in config.get("collections", {}):
+            raise error(
+                "The calendar has both a collection and an event group named "
+                f'"{name}".',
+                "events",
                 name,
             )
-        for key in entry:
-            if key not in ("dates", "color"):
+        _check_events(entry, error, "events", name)
+
+
+def _check_collection(entry: Any, error: _ConfigErrors, *keypath: Any) -> None:
+    if not isinstance(entry, Mapping):
+        raise error(
+            f'Expected a mapping with "dates" (and optionally "color"), but got '
+            f"{_describe(entry)}.",
+            *keypath,
+        )
+    for key in entry:
+        if key not in ("dates", "color"):
+            raise error(
+                f'Unknown key "{key}". A collection has "dates" (the metadata '
+                f'keys whose dates to show) and, optionally, "color".',
+                *keypath,
+                key,
+            )
+    dates = entry.get("dates")
+    if not isinstance(dates, Mapping) or not dates:
+        raise error(
+            "Expected a mapping of metadata keys (whose dates to show) to "
+            f"labels, but got {_describe(dates) if dates is not None else 'none'}.",
+            *keypath,
+            "dates",
+        )
+    _check_color(entry.get("color"), error, *keypath)
+
+
+def _check_events(group: Any, error: _ConfigErrors, *keypath: Any) -> None:
+    if not isinstance(group, Mapping):
+        raise error(
+            f'Expected a mapping with "dates" (and optionally "color"), but got '
+            f"{_describe(group)}.",
+            *keypath,
+        )
+    for key in group:
+        if key not in ("dates", "color"):
+            raise error(
+                f'Unknown key "{key}". An event group has "dates" (its events) '
+                f'and, optionally, "color".',
+                *keypath,
+                key,
+            )
+    events = group.get("dates")
+    if not isinstance(events, list) or not events:
+        raise error(
+            'Expected a list of events, each with a "label" and a "date", but got '
+            f"{_describe(events) if events is not None else 'none'}.",
+            *keypath,
+            "dates",
+        )
+    for i, event in enumerate(events):
+        if not isinstance(event, Mapping):
+            raise error(
+                f'Expected a mapping with "label" and "date", but got '
+                f"{_describe(event)}.",
+                *keypath,
+                "dates",
+                i,
+            )
+        for key in event:
+            if key not in ("label", "date", "end"):
                 raise error(
-                    f'Unknown key "{key}". A collection has "dates" (the metadata '
-                    f'keys whose dates to show) and, optionally, "color".',
-                    name,
+                    f'Unknown key "{key}". An event has "label", "date" and, '
+                    f'optionally, "end".',
+                    *keypath,
+                    "dates",
+                    i,
                     key,
                 )
-        dates = entry.get("dates")
-        if not isinstance(dates, Mapping) or not dates:
-            raise error(
-                "Expected a mapping of metadata keys (whose dates to show) to "
-                f"labels, but got {_describe(dates) if dates is not None else 'none'}.",
-                name,
-                "dates",
-            )
-        color = entry.get("color")
-        if color is not None and not (
-            isinstance(color, str)
-            and len(color) == 7
-            and color.startswith("#")
-            and all(c in "0123456789abcdefABCDEF" for c in color[1:])
-        ):
-            raise error(
-                f'Expected a color like "#4e79a7", but got {_describe(color)}.',
-                name,
-                "color",
-            )
+        for key in ("label", "date"):
+            if event.get(key) is None:
+                raise error(
+                    'Expected "label" and "date" (and optionally "end"), but '
+                    f'there is no "{key}".',
+                    *keypath,
+                    "dates",
+                    i,
+                )
+    _check_color(group.get("color"), error, *keypath)
 
 
 def make_calendar(
@@ -326,7 +466,7 @@ def make_calendar(
     config_path: Path = Path("automata.yaml"),
     source_map: SourceMap | None = None,
 ) -> Calendar:
-    """The calendar of the dates in the *materials*' metadata.
+    """The calendar of the dates in the *materials*' metadata, and of events.
 
     Parameters
     ----------
@@ -339,10 +479,11 @@ def make_calendar(
     vars : Mapping[str, Any] | None
         The variables available to labels as ``vars``.
     collections : Sequence[str] | None
-        Show only these collections (from the configuration). If None, all are.
+        Show only these collections and event groups (from the configuration).
+        If None, all are.
     keys : Sequence[str] | None
         Show only dates under metadata keys matching one of these glob patterns
-        (e.g. ``"due"``). If None, all configured keys are shown.
+        (e.g. ``"due"``), and no events. If None, all configured keys are shown.
     start, end : datetime.date | None
         Show only entries on or after *start* and on or before *end*. Unless
         *all_weeks*, *start* is by default the first day of the current week.
@@ -371,50 +512,67 @@ def make_calendar(
     error = _ConfigErrors(config_path, source_map)
     if not config:
         raise Error(
-            f'{config_path} has no "calendar" section, which names, for each '
-            f"collection, the metadata dates to show. For example:\n\n{_EXAMPLE}\n"
-            f'shows each homework\'s due date (labeled like "hw01 due") and its '
-            f"release date (labeled by the template)."
+            f'{config_path} has no "calendar" section, which names the dates to '
+            f"show: each collection's metadata dates, and events. For "
+            f"example:\n\n{_EXAMPLE}\nshows each homework's due date (labeled "
+            f'like "hw01 due") and its release date (labeled by the template), '
+            f"and the midterm."
         )
     _check_config(config, error)
+    collections_config = config.get("collections", {})
+    events_config = config.get("events", {})
 
     existing = sorted(
         name
         for name, collection in materials.collections.items()
         if collection.publications
     )
-    for name in config:
+    for name in collections_config:
         if name not in materials.collections:
             raise error(
                 f'There is no collection "{name}". The collections are: '
                 f"{', '.join(existing)}.",
+                "collections",
                 name,
             )
     for name in collections or ():
-        if name not in config:
-            raise Error(
+        if name not in collections_config and name not in events_config:
+            message = (
                 f'Collection "{name}" isn\'t in the calendar configuration. The '
-                f"calendar's collections are: {', '.join(sorted(config))}."
+                f"calendar's collections are: {', '.join(sorted(collections_config))}."
             )
+            if events_config:
+                message += f" Its event groups are: {', '.join(sorted(events_config))}."
+            raise Error(message)
 
-    palette = iter(PALETTE * (1 + len(config) // len(PALETTE)))
+    groups = sorted({*collections_config, *events_config})
+    palette = iter(PALETTE * (1 + len(groups) // len(PALETTE)))
     all_colors = {
-        name: config[name].get("color") or next(palette) for name in sorted(config)
+        name: (collections_config.get(name) or events_config[name]).get("color")
+        or next(palette)
+        for name in groups
     }
 
     current_time = local_time(current_time)
     if start is None and not all_weeks:
         # by default, from the current week on
         start = _week_of(current_time.date(), WEEK_STARTS[week_start])
+    variables = {"vars": vars or {}, "course": course or {}}
+
+    def in_range(entry: CalendarEntry) -> bool:
+        days = entry.days
+        return (start is None or days[-1] >= start) and (end is None or days[0] <= end)
+
     entries = []
-    for name in sorted(config):
+    for name in sorted(collections_config):
         if collections is not None and name not in collections:
             continue
         publications = materials.collections[name].publications
-        for key, label in config[name]["dates"].items():
+        for key, label in collections_config[name]["dates"].items():
             if not any(key in p.metadata for p in publications.values()):
                 raise error(
                     f'No publication in "{name}" has the metadata key "{key}".',
+                    "collections",
                     name,
                     "dates",
                     key,
@@ -428,18 +586,22 @@ def make_calendar(
                     publication,
                     key,
                     label,
-                    {"vars": vars or {}, "course": course or {}},
+                    variables,
                     current_time,
                     error,
                 )
-                if entry is None:
-                    continue
-                day = entry.when.date()
-                if (start is None or day >= start) and (end is None or day <= end):
+                if entry is not None and in_range(entry):
                     entries.append(entry)
+    for name in sorted(events_config):
+        if (collections is not None and name not in collections) or keys is not None:
+            continue
+        for i, event in enumerate(events_config[name]["dates"]):
+            entry = _event_entry(name, i, event, variables, current_time, error)
+            if in_range(entry):
+                entries.append(entry)
     entries.sort(key=lambda e: (e.when.date(), not e.all_day, e.when, e.label))
 
-    shown = sorted(collections) if collections is not None else sorted(config)
+    shown = sorted(collections) if collections is not None else groups
     weeks = _weeks(entries, start, end, WEEK_STARTS[week_start])
     title = "Calendar"
     if course:
@@ -465,6 +627,22 @@ def make_calendar(
     )
 
 
+def _label(
+    label: Any, variables: Mapping[str, Any], error: Callable[[str], Error]
+) -> str:
+    """The text of a configured label: a string, or a template."""
+    try:
+        return str(
+            resolve(
+                unwrap_templates(label),
+                {"type": "string"},
+                global_variables=variables,
+            )
+        )
+    except smartconfig.exceptions.ResolutionError as e:
+        raise error(e.reason) from None
+
+
 def _entry(
     collection: str,
     publication_key: str,
@@ -476,6 +654,7 @@ def _entry(
     error: _ConfigErrors,
 ) -> CalendarEntry | None:
     """The entry for a publication's date under *key*, or None if it has none."""
+    keypath = ("collections", collection, "dates", key)
     value = publication.metadata.get(key)
     if value is None:
         return None
@@ -489,29 +668,19 @@ def _entry(
         raise error(
             f'In publication "{publication_key}", "{key}" is {_describe(value)}, '
             f"not a date.",
-            collection,
-            "dates",
-            key,
+            *keypath,
         )
 
     if label is None:
         text = f"{publication_key} {key}"
     else:
-        try:
-            text = str(
-                resolve(
-                    unwrap_templates(label),
-                    {"type": "string"},
-                    global_variables={**variables, "publication": publication},
-                )
-            )
-        except smartconfig.exceptions.ResolutionError as e:
-            raise error(
-                f'In publication "{publication_key}": {e.reason}',
-                collection,
-                "dates",
-                key,
-            ) from None
+        text = _label(
+            label,
+            {**variables, "publication": publication},
+            lambda reason: error(
+                f'In publication "{publication_key}": {reason}', *keypath
+            ),
+        )
 
     return CalendarEntry(
         collection=collection,
@@ -521,6 +690,65 @@ def _entry(
         when=when,
         all_day=all_day,
         past=past,
+        uid=f"{collection}/{publication_key}/{key}",
+    )
+
+
+def _event_entry(
+    group: str,
+    position: int,
+    event: Mapping[str, Any],
+    variables: Mapping[str, Any],
+    current_time: datetime.datetime,
+    error: _ConfigErrors,
+) -> CalendarEntry:
+    """The entry for the event at *position* in *group*."""
+    keypath = ("events", group, "dates", position)
+
+    def read(key: str) -> datetime.date | datetime.datetime:
+        try:
+            return date_or_datetime(event[key])
+        except smartconfig.exceptions.ConversionError as e:
+            raise error(str(e), *keypath, key) from None
+
+    value = read("date")
+    last = None
+    if event.get("end") is not None:
+        last = read("end")
+        if isinstance(value, datetime.datetime):
+            raise error(
+                'An event with an end is all-day, but "date" has a time.',
+                *keypath,
+                "end",
+            )
+        if isinstance(last, datetime.datetime):
+            raise error('Expected a date with no time for "end".', *keypath, "end")
+        if last < value:
+            raise error(
+                f"The event ends ({last}) before it starts ({value}).",
+                *keypath,
+                "end",
+            )
+
+    if isinstance(value, datetime.datetime):
+        when, all_day = value, False
+        past = when < current_time
+    else:
+        when, all_day = datetime.datetime.combine(value, datetime.time()), True
+        past = (last or value) < current_time.date()
+
+    return CalendarEntry(
+        collection=group,
+        publication=None,
+        key=None,
+        label=_label(
+            event["label"], variables, lambda reason: error(reason, *keypath, "label")
+        ),
+        when=when,
+        all_day=all_day,
+        past=past,
+        uid=f"{group}/{position}",
+        end=last,
     )
 
 
@@ -539,11 +767,14 @@ def _weeks(
     if not entries and (start is None or end is None):
         return []
     first = start or entries[0].when.date()
-    last = end or entries[-1].when.date()
+    last = end or max(entry.days[-1] for entry in entries)
 
     by_date: dict[datetime.date, list[CalendarEntry]] = {}
     for entry in entries:
-        by_date.setdefault(entry.when.date(), []).append(entry)
+        for day in entry.days:
+            # (an event over several days may start or end outside them)
+            if first <= day <= last:
+                by_date.setdefault(day, []).append(entry)
 
     weeks = []
     week = _week_of(first, first_weekday)
@@ -915,8 +1146,8 @@ def _html(calendar: Calendar, standalone: bool) -> str:
                 f'<div class="entry{" past" if entry.past else ""}" '
                 f'data-collection="{e(entry.collection)}" '
                 f'style="--color: {calendar.colors[entry.collection]}" '
-                f'title="{e(entry.collection)}/{e(entry.publication)}: '
-                f'{e(entry.key)}"><span class="label">{e(entry.label)}</span>'
+                f'title="{e(entry.source)}"><span class="label">{e(entry.label)}'
+                "</span>"
                 + (f'<span class="time">{entry.time}</span>' if entry.time else "")
                 + "</div>"
                 for entry in day.entries
@@ -1002,29 +1233,34 @@ def _ics(calendar: Calendar) -> str:
         "CALSCALE:GREGORIAN",
         f"X-WR-CALNAME:{_ics_text(calendar.title)}",
     ]
-    for week in calendar.weeks:
-        for day in week.days:
-            for entry in day.entries:
-                if entry.all_day:
-                    end = entry.when.date() + datetime.timedelta(days=1)
-                    when = [
-                        f"DTSTART;VALUE=DATE:{entry.when:%Y%m%d}",
-                        f"DTEND;VALUE=DATE:{end:%Y%m%d}",
-                    ]
-                else:
-                    # an instant (a due date, say): no duration
-                    when = [f"DTSTART:{_ics_utc(entry.when)}"]
-                lines += [
-                    "BEGIN:VEVENT",
-                    # the same for the same date, so that calendar apps
-                    # update events rather than duplicating them
-                    f"UID:{entry.collection}/{entry.publication}/{entry.key}@automata",
-                    f"DTSTAMP:{stamp}",
-                    *when,
-                    f"SUMMARY:{_ics_text(entry.label)}",
-                    f"CATEGORIES:{_ics_text(entry.collection)}",
-                    "END:VEVENT",
-                ]
+    # an event over several days is on each of them, but is one event
+    entries = {
+        entry.uid: entry
+        for week in calendar.weeks
+        for day in week.days
+        for entry in day.entries
+    }
+    for entry in entries.values():
+        if entry.all_day:
+            end = entry.days[-1] + datetime.timedelta(days=1)
+            when = [
+                f"DTSTART;VALUE=DATE:{entry.when:%Y%m%d}",
+                f"DTEND;VALUE=DATE:{end:%Y%m%d}",
+            ]
+        else:
+            # an instant (a due date, say): no duration
+            when = [f"DTSTART:{_ics_utc(entry.when)}"]
+        lines += [
+            "BEGIN:VEVENT",
+            # the same for the same date, so that calendar apps
+            # update events rather than duplicating them
+            f"UID:{entry.uid}@automata",
+            f"DTSTAMP:{stamp}",
+            *when,
+            f"SUMMARY:{_ics_text(entry.label)}",
+            f"CATEGORIES:{_ics_text(entry.collection)}",
+            "END:VEVENT",
+        ]
     lines.append("END:VCALENDAR")
     return "".join(_ics_fold(line) + "\r\n" for line in lines)
 

@@ -195,11 +195,11 @@ status as JSON, for programs; an error is printed as JSON too
 ---------------------
 
 Show week by week the dates in the materials' metadata (for example, each
-homework's release and due dates, and each lecture's date), as a table in the
-terminal, or written as an HTML page or a PDF. Which dates, how they are
-labeled, and each collection's color are set in the ``calendar`` section of
-``automata.yaml`` (see :doc:`/guide/configuration`); without it, this is an
-error. Builds nothing.
+homework's release and due dates, and each lecture's date), and events of their
+own (exams, holidays), as a table in the terminal, or written as an HTML page or
+a PDF. Which dates, how they are labeled, and each collection's or event
+group's color are set in the ``calendar`` section of ``automata.yaml`` (see
+:doc:`/guide/configuration`); without it, this is an error. Builds nothing.
 
 ::
 
@@ -208,9 +208,10 @@ error. Builds nothing.
                       [--no-highlight-today] [--html FILE] [--pdf FILE]
                       [--ics FILE] [--json] [--current-time TIME]
 
-``--collection`` shows only the named collections, and ``--key`` only dates
-under the named metadata keys (glob patterns), e.g. ``--key due`` for just the
-due dates; both may be given more than once. The calendar starts with the
+``--collection`` shows only the named collections (or event groups), and
+``--key`` only dates under the named metadata keys (glob patterns), e.g.
+``--key due`` for just the due dates, and no events; both may be given more
+than once. The calendar starts with the
 current week; ``--all`` shows every week, and ``--from`` and ``--to``
 (``YYYY-MM-DD``) set the dates shown. Weeks start on Sunday, unless
 ``--week-start monday``, and are numbered from the course's

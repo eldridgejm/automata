@@ -125,8 +125,9 @@ class Config(smartconfig.Prototype):
     course: CourseConfig
     # publish/deployment configurations, keyed by name
     publish: dict[str, Any] = {}
-    # the calendar (automata calendar): for each collection, the metadata dates
-    # to show and, optionally, a color
+    # the calendar (automata calendar): under "collections", for each
+    # collection, the metadata dates to show and, optionally, a color; under
+    # "events", groups of dates of their own
     calendar: dict[str, Any] = {}
     # directories not searched for materials (nor watched by automata serve):
     # paths relative to the project, which may be globs (e.g. "past-*")

@@ -311,6 +311,28 @@ def _datetime_or_phrase(value: typing.Any) -> datetime.datetime:
     )
 
 
+def date_or_datetime(value: typing.Any) -> datetime.date | datetime.datetime:
+    """A date, or a date and time if *value* gives a time.
+
+    *value* is a date or datetime, an ISO string of one, or a date phrase (like
+    "first monday after 2026-01-01" or "2026-01-01 at 08:00:00").
+
+    Raises
+    ------
+    smartconfig.exceptions.ConversionError
+        If *value* can't be read as a date.
+
+    """
+    if isinstance(value, datetime.datetime):
+        return local_time(value)
+    if isinstance(value, datetime.date):
+        return value
+    try:
+        return _datetime_or_phrase(value)
+    except smartconfig.exceptions.ConversionError:
+        return _date_or_phrase(value)
+
+
 # The converters automata uses for every resolution: smartconfig's defaults,
 # except that date and datetime fields also accept date phrases, so
 # __datetime.parse__ is not needed for them.

@@ -143,7 +143,11 @@ def test_the_theme_titles_can_still_be_set(tmp_path):
 
 
 def _calendar_project(tmp_path, course=_COURSE):
-    config = course + "calendar:\n  hw:\n    dates:\n      due:\n" + _WEBSITE
+    config = (
+        course
+        + "calendar:\n  collections:\n    hw:\n      dates:\n        due:\n"
+        + _WEBSITE
+    )
     project = _project(tmp_path, config)
     (project / "hw").mkdir()
     (project / "hw" / "collection.yaml").write_text(
@@ -194,8 +198,8 @@ def test_calendar_labels_can_use_course(tmp_path):
     config = project / "automata.yaml"
     config.write_text(
         config.read_text().replace(
-            "      due:\n",
-            "      due: !template "
+            "        due:\n",
+            "        due: !template "
             '"${ course.name } HW ${ publication.metadata.due }"\n',
         )
     )
