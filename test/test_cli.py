@@ -683,6 +683,152 @@ def test_resolve_prints_a_publication_by_its_key(project):
     assert "metadata" in publication
 
 
+def _with_homework_metadata(project):
+    """The project, with the homework's number and due date (a datetime), and
+    vars."""
+    config = project / "automata.yaml"
+    text = "vars: {course_code: DSC 40B}\n" + config.read_text()
+    for old, new in [
+        (
+            "      required_artifacts:\n",
+            "      metadata_schema:\n"
+            "        required_keys:\n"
+            "          number: {type: integer}\n"
+            "          due: {type: datetime}\n"
+            "      required_artifacts:\n",
+        ),
+        (
+            "      hw01:\n",
+            "      hw01:\n"
+            "        metadata:\n"
+            "          number: 2\n"
+            "          due: 2025-10-13 23:59:00\n",
+        ),
+        (
+            "            path: homeworks/hw01/homework.pdf\n",
+            "            path: homeworks/hw01/homework.pdf\n"
+            "            release_time: 2025-10-06 09:00:00\n",
+        ),
+    ]:
+        assert old in text
+        text = text.replace(old, new)
+    config.write_text(text)
+    return project
+
+
+# LaTeX, with braces, backslashes, {% and {#1}, which mean nothing to the template
+_VARS_TEMPLATE = r"""% ${ vars.course_code }, ${ course.term } {%
+\newcommand{\duedate}{${ publication.metadata.due.strftime("%A, %B %-d") }}
+\newcommand{\duehour}{${ publication.metadata.due.strftime("%I:%M %p") }}
+\newcommand{\pubnumber}{${ "%02d" | format(publication.metadata.number) }}
+\newcommand{\released}{${ publication.artifacts["homework.pdf"].release_time.day }}
+\newcommand{\twice}[1]{#1#1}
+"""
+
+
+def test_resolve_renders_a_publication_through_a_template(project, tmp_path):
+    _with_homework_metadata(project)
+    template = tmp_path / "vars.tex.template"
+    template.write_text(_VARS_TEMPLATE)
+
+    result = _invoke("resolve", "homeworks/hw01", "--template", str(template))
+
+    # only ${ ... } is replaced; the trailing newline is kept
+    assert result.stdout == (
+        "% DSC 40B, Fall 2025 {%\n"
+        "\\newcommand{\\duedate}{Monday, October 13}\n"
+        "\\newcommand{\\duehour}{11:59 PM}\n"
+        "\\newcommand{\\pubnumber}{02}\n"
+        "\\newcommand{\\released}{6}\n"
+        "\\newcommand{\\twice}[1]{#1#1}\n"
+    )
+
+
+def test_resolve_template_takes_the_publication_by_its_path(project, tmp_path):
+    _with_homework_metadata(project)
+    template = tmp_path / "t.txt"
+    template.write_text("${ publication.metadata.number }")
+
+    result = _invoke(
+        "resolve", "homeworks/hw01/homework.pdf", "--template", str(template)
+    )
+
+    assert result.stdout == "2"
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [
+        ("publication.metadata.dew", "dew"),
+        ("vars.nothing", "nothing"),
+        ("nonsense", "nonsense"),
+    ],
+)
+def test_a_template_naming_something_undefined_is_an_error(
+    project, tmp_path, expression, expected
+):
+    _with_homework_metadata(project)
+    template = tmp_path / "t.tex"
+    template.write_text(f"line one\n\\due{{${{ {expression} }}}}\n")
+
+    result = runner.invoke(
+        app, ["resolve", "homeworks/hw01", "--template", str(template)]
+    )
+
+    # an error, never a blank
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert f"{template}:2:" in result.output
+    assert expected in result.output
+
+
+def test_a_template_misusing_a_value_is_an_error(project, tmp_path):
+    _with_homework_metadata(project)
+    template = tmp_path / "t.tex"
+    template.write_text('${ "%02d" | format("two") }\n')
+
+    result = runner.invoke(
+        app, ["resolve", "homeworks/hw01", "--template", str(template)]
+    )
+
+    assert result.exit_code == 1
+    assert f"{template}:1:" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_a_template_with_a_syntax_error_is_an_error(project, tmp_path):
+    _with_homework_metadata(project)
+    template = tmp_path / "t.tex"
+    template.write_text("ok\n${ publication.metadata.number + }\n")
+
+    result = runner.invoke(
+        app, ["resolve", "homeworks/hw01", "--template", str(template)]
+    )
+
+    assert result.exit_code == 1
+    assert f"{template}:2:" in result.output
+
+
+@pytest.mark.parametrize("target", [["homeworks"], []])
+def test_a_template_needs_one_publication(project, tmp_path, target):
+    template = tmp_path / "t.txt"
+    template.write_text("x")
+
+    result = runner.invoke(app, ["resolve", *target, "--template", str(template)])
+
+    assert result.exit_code == 1
+    assert "--template renders one publication" in result.output
+
+
+def test_a_missing_template_is_an_error(project, tmp_path):
+    result = runner.invoke(
+        app, ["resolve", "homeworks/hw01", "--template", str(tmp_path / "nope")]
+    )
+
+    assert result.exit_code != 0
+    assert "nope" in result.output
+
+
 @pytest.mark.parametrize("which", ["file", "directory"])
 def test_resolve_prints_a_publication_by_its_path(project, which):
     import json

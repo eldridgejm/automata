@@ -221,7 +221,7 @@ whether it is ready. Builds nothing.
 
 ::
 
-    automata resolve [TARGET]
+    automata resolve [TARGET] [--template FILE]
 
 ``TARGET`` limits it to one collection or publication: its key (such as
 ``homeworks`` or ``homeworks/hw01``), or the path of its directory or YAML file
@@ -229,6 +229,24 @@ whether it is ready. Builds nothing.
 it shows each publication fully resolved, with its variables interpolated and
 its defaults applied. A key that names nothing is an error. (In Python,
 :meth:`Automata.discover` gives all the materials, resolved.)
+
+``--template FILE`` prints, instead of JSON, *FILE* with each ``${ ... }`` in it
+replaced by its value, for the publication ``TARGET`` (which must be a
+publication, not a collection), e.g. to write a homework's due date into a
+file its LaTeX ``\input``\ s (see :ref:`metadata-in-materials`). The expressions
+are Jinja's, with ``publication`` (its ``metadata``, and its ``artifacts``,
+each with a ``release_time``), ``vars`` and ``course``::
+
+    \newcommand{\duedate}{${ publication.metadata.due.strftime("%A, %B %-d") }}
+    \newcommand{\pubnumber}{${ "%02d" | format(publication.metadata.number) }}
+
+Dates and datetimes are Python's, so ``strftime`` formats them. Only ``${ ... }``
+is special (Jinja's ``{% ... %}`` and ``{# ... #}`` are not, as LaTeX is full
+of ``{%`` and ``{#1}``); the rest of the file, including its last newline, is
+printed as it is. A name or key that isn't defined, a syntax error, or a value
+misused (such as ``format`` given a string where it needs a number) is an
+error, located as ``FILE:LINE``, with exit status 1 and nothing printed on
+stdout.
 
 
 ``automata status``

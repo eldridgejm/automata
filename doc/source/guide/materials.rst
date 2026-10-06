@@ -257,6 +257,53 @@ Artifact fields:
      - If ``true``, no error when the file doesn't exist after building.
 
 
+.. _metadata-in-materials:
+
+Using a publication's metadata in its files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A homework can print its own due date and number, as ``publication.yaml`` (or
+``automata.yaml``) gives them, so that they are written once. ``automata
+resolve TARGET --template FILE`` prints *FILE* with each ``${ ... }`` in it
+replaced, computed from the publication (as ``publication``), ``vars`` and
+``course``; nothing else in the file is special, so a LaTeX template can use
+braces, ``{%`` and ``#1`` freely. For example, ``vars.tex.template``, shared by
+the homeworks:
+
+.. code-block:: latex
+
+    \newcommand{\duedate}{${ publication.metadata.due.strftime("%A, %B %-d") }}
+    \newcommand{\duehour}{${ publication.metadata.due.strftime("%I:%M %p") }}
+    \newcommand{\pubnumber}{${ "%02d" | format(publication.metadata.number) }}
+
+Dates and datetimes (keys typed ``date`` or ``datetime`` in the schema) are
+dates, formatted with ``strftime``; ``format`` formats a number (``"%02d"``
+gives ``02``). ``publication.artifacts["homework.pdf"].release_time`` is an
+artifact's release time. A name or key that isn't defined is an error, never a
+blank, so a homework can't be built without its due date.
+
+The recipe writes the file before building; the publication is named by its
+directory, ``.``, since a recipe runs there:
+
+.. code-block:: yaml
+
+    artifacts:
+      homework.pdf:
+        recipe: >-
+          automata resolve . --template ../vars.tex.template > _vars.tex
+          && latexmk -pdf homework.tex
+
+and ``homework.tex`` reads it with ``\input{_vars.tex}`` and uses
+``\duedate``. From a Makefile, write it to a new file and move it into place,
+so that a failure leaves no half-written file:
+
+.. code-block:: make
+
+    _vars.tex: publication.yaml ../vars.tex.template
+    	automata resolve . --template ../vars.tex.template > $@.new
+    	mv $@.new $@
+
+
 .. _relative-dates:
 
 Relative dates with ``previous``

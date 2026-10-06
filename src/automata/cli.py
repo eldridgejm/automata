@@ -19,11 +19,12 @@ from ._calendar import Calendar
 from ._check import Problem
 from ._init import create_project
 from ._status import Status
-from .config import CONFIGURATION_FILENAME, find_config
+from ._template import render_publication_template
+from .config import CONFIGURATION_FILENAME, course_variables, find_config
 from .exceptions import Error
 from .extensions import ScriptCommand
 from .extensions._apply import all_extensions
-from .materials import serialize
+from .materials import Publication, serialize
 from .publish import PublishResult
 from .util.resolution import local_time
 
@@ -737,8 +738,19 @@ def resolve(
             "homeworks/hw01), or the path of its directory or YAML file."
         ),
     ),
+    template: Optional[pathlib.Path] = typer.Option(
+        None,
+        "--template",
+        help=(
+            "Print this file, with each ${ ... } in it replaced by its value, "
+            "computed from the publication (as publication), vars and course; "
+            "e.g. ${ publication.metadata.due.strftime('%B %-d') }. Needs a "
+            "publication."
+        ),
+    ),
 ):
-    """Print the materials, resolved, with their metadata, as JSON.
+    """Print the materials, resolved, with their metadata, as JSON (or, with
+    --template, a publication through a template).
 
     Builds nothing.
     """
@@ -747,7 +759,20 @@ def resolve(
         resolved = project.discover()
     if target is not None:
         resolved = _find_target(resolved, _target_key(target, project.path))
-    typer.echo(serialize(resolved))
+    if template is None:
+        typer.echo(serialize(resolved))
+        return
+    if not isinstance(resolved, Publication):
+        what = f'"{target}" is a collection' if target else "no publication is named"
+        raise Error(
+            f"--template renders one publication, but {what}. Name a "
+            "publication, e.g. homeworks/hw01, or its publication.yaml."
+        )
+    variables = {
+        "vars": project.config.vars,
+        "course": course_variables(project.config.course),
+    }
+    typer.echo(render_publication_template(template, resolved, variables), nl=False)
 
 
 # status ===============================================================================
