@@ -2343,3 +2343,44 @@ def test_interpolating_a_template_is_an_error(temporary_course):
         "template, which can't be inserted into a string. Use it with __use__ "
         "instead."
     )
+
+
+# the order of what is discovered ======================================================
+
+
+def _three_collections(temporary_course):
+    """Collections zeta, alpha and mid (each with publications b and a), and a
+    publication outside any collection."""
+    for name in ["zeta", "alpha", "mid"]:
+        temporary_course.create_collection(
+            name, "publication_schema:\n  required_artifacts: []\n"
+        )
+        for publication in ["b", "a"]:
+            temporary_course.create_publication(
+                name, publication, "metadata: {}\nartifacts: {}\n"
+            )
+    temporary_course.create_publication("", "textbook", "artifacts: {}\n")
+
+
+@pytest.mark.parametrize(
+    "list_directory",
+    [
+        lambda path: sorted(path.iterdir()),
+        lambda path: sorted(path.iterdir(), reverse=True),
+    ],
+    ids=["in order", "reversed"],
+)
+def test_discovery_does_not_depend_on_the_order_directories_are_listed_in(
+    temporary_course, list_directory
+):
+    # e.g. APFS (macOS) and ext4 (Linux) list a directory in different orders
+    from automata.materials import serialize
+
+    _three_collections(temporary_course)
+
+    universe = discover(temporary_course.path, list_directory=list_directory)
+
+    # the default collection, then the others by name; publications by name
+    assert list(universe.collections) == ["default", "alpha", "mid", "zeta"]
+    assert list(universe.collections["zeta"].publications) == ["a", "b"]
+    assert serialize(universe) == serialize(discover(temporary_course.path))

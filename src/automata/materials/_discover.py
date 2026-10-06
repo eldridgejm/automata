@@ -3,7 +3,7 @@
 import dataclasses
 import pathlib
 from collections import deque
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Iterable, Mapping, Optional
 
 from automata import constants
 from automata.hooks import DiscoverHookArgs, DiscoverHooks
@@ -84,12 +84,18 @@ def _scan_filesystem(
     skip: Optional[Callable[[pathlib.Path], bool]] = None,
     *,
     hooks: DiscoverHooks,
+    list_directory: Callable[[pathlib.Path], Iterable[pathlib.Path]] = (
+        pathlib.Path.iterdir
+    ),
 ) -> dict[Optional[pathlib.Path], list[pathlib.Path]]:
     """Perform a BFS to find all collections and publications in the filesystem.
 
     Returns the results grouped by collection: each key is an absolute path to a
     collection directory (or ``None`` for isolated publications), and each value is
-    a sorted list of absolute paths to publication directories.
+    a sorted list of absolute paths to publication directories. ``None`` comes
+    first, then the collections in order of path, so that the result doesn't
+    depend on the order in which *list_directory* lists a directory's entries
+    (which differs between filesystems).
 
     Parameters
     ----------
@@ -139,7 +145,7 @@ def _scan_filesystem(
         if _is_publication(current_path):
             result[parent_collection_path].append(current_path)
 
-        for subpath in current_path.iterdir():
+        for subpath in sorted(list_directory(current_path)):
             if subpath.is_dir():
                 if skip is not None and skip(subpath):
                     hooks.on_discover_skip(DiscoverHookArgs(path=subpath))
@@ -150,7 +156,10 @@ def _scan_filesystem(
     for pub_paths in result.values():
         pub_paths.sort()
 
-    return result
+    return {
+        None: result[None],
+        **{path: result[path] for path in sorted(p for p in result if p is not None)},
+    }
 
 
 # building collections =================================================================
@@ -396,6 +405,9 @@ def discover(
     vars: Optional[dict[str, Any]] = None,
     course: Optional[Mapping[str, Any]] = None,
     errors: Optional[list[Error]] = None,
+    list_directory: Callable[[pathlib.Path], Iterable[pathlib.Path]] = (
+        pathlib.Path.iterdir
+    ),
 ) -> Universe[UnbuiltArtifact]:
     """Discover the course materials in the filesystem.
 
@@ -423,6 +435,11 @@ def discover(
         If given, an error in a collection is appended to this list, and the
         collection left out, rather than raised; the other collections are
         still discovered. (Used to report every problem at once.)
+    list_directory : Callable[[Path], Iterable[Path]]
+        Lists a directory's entries (by default, :meth:`pathlib.Path.iterdir`).
+        The order it lists them in, which differs between filesystems, doesn't
+        matter: collections are discovered in order of path, and publications
+        in order of name. Tests pass a fake.
 
     Returns
     -------
@@ -456,7 +473,9 @@ def discover(
         hooks = DiscoverHooks()
 
     try:
-        scan_result = _scan_filesystem(root_directory, skip=skip, hooks=hooks)
+        scan_result = _scan_filesystem(
+            root_directory, skip=skip, hooks=hooks, list_directory=list_directory
+        )
     except DiscoveryError as exc:
         if errors is None:
             raise
