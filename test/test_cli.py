@@ -1057,7 +1057,7 @@ def test_calendar_prints_a_table(project):
     _add_calendar(project)
 
     # wide enough that labels don't wrap
-    result = runner.invoke(app, ["calendar", "--all"], env={"COLUMNS": "200"})
+    result = runner.invoke(app, ["calendar", "--all-weeks"], env={"COLUMNS": "200"})
 
     assert "hw01 due 09:00" in result.output
     assert "Midterm" in result.output
@@ -1066,7 +1066,9 @@ def test_calendar_prints_a_table(project):
 def test_calendar_filters_by_the_categories_named(project):
     _add_calendar(project)
 
-    result = runner.invoke(app, ["calendar", "exams", "--all"], env={"COLUMNS": "200"})
+    result = runner.invoke(
+        app, ["calendar", "exams", "--all-weeks"], env={"COLUMNS": "200"}
+    )
 
     assert "Midterm" in result.output
     assert "hw01 due" not in result.output
@@ -1075,7 +1077,7 @@ def test_calendar_filters_by_the_categories_named(project):
 def test_calendar_filters_by_category_and_key(project):
     _add_calendar(project)
 
-    result = _invoke("calendar", "homeworks", "--all", "--key", "released")
+    result = _invoke("calendar", "homeworks", "--all-weeks", "--key", "released")
 
     assert "hw01 due" not in result.output
     assert "Nothing to show: there are no released dates in homeworks." in result.output
@@ -1089,7 +1091,7 @@ def test_calendar_says_when_there_is_nothing_from_this_week_on(project):
 
     assert (
         "Nothing to show: there are no dates from this week (starting Sun Jan 26, "
-        "2025) on. Use --all to include earlier weeks." in result.output
+        "2025) on. Use --all-weeks to include earlier weeks." in result.output
     )
 
 
@@ -1103,11 +1105,21 @@ def test_calendar_says_when_there_is_nothing_in_the_requested_dates(project):
     )
 
 
+def test_calendar_all_is_not_an_option(project):
+    # --all elsewhere means unreleased artifacts too; here it would be unclear
+    _add_calendar(project)
+
+    result = runner.invoke(app, ["calendar", "--all"])
+
+    assert result.exit_code == 2
+    assert "No such option: --all" in result.output
+
+
 def test_calendar_writes_icalendar(project, tmp_path):
     _add_calendar(project)
     ics = tmp_path / "calendar.ics"
 
-    result = _invoke("calendar", "--all", "--ics", str(ics))
+    result = _invoke("calendar", "--all-weeks", "--ics", str(ics))
 
     assert f"Wrote {ics} (2 events)" in result.output
     assert "SUMMARY:hw01 due" in ics.read_text()
@@ -1117,7 +1129,7 @@ def test_calendar_writes_html_and_pdf(project, tmp_path):
     _add_calendar(project)
     html, pdf = tmp_path / "calendar.html", tmp_path / "calendar.pdf"
 
-    result = _invoke("calendar", "--all", "--html", str(html), "--pdf", str(pdf))
+    result = _invoke("calendar", "--all-weeks", "--html", str(html), "--pdf", str(pdf))
 
     assert "hw01 due" in html.read_text()
     assert pdf.read_bytes().startswith(b"%PDF")
@@ -1130,7 +1142,7 @@ def test_calendar_json(project):
 
     _add_calendar(project)
 
-    result = _invoke("calendar", "--all", "--json")
+    result = _invoke("calendar", "--all-weeks", "--json")
 
     data = json.loads(result.stdout)
     assert data["weeks"][0]["start"] == "2025-01-05"  # a Sunday
@@ -1141,7 +1153,7 @@ def test_calendar_weeks_can_start_on_monday(project):
 
     _add_calendar(project)
 
-    result = _invoke("calendar", "--all", "--json", "--week-start", "monday")
+    result = _invoke("calendar", "--all-weeks", "--json", "--week-start", "monday")
 
     assert json.loads(result.stdout)["weeks"][0]["start"] == "2025-01-06"
 

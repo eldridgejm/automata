@@ -951,7 +951,7 @@ def calendar(
     ),
     all_weeks: bool = typer.Option(
         False,
-        "--all",
+        "--all-weeks",
         help="Show every week. By default, the calendar starts with the current week.",
     ),
     highlight_today: bool = typer.Option(
@@ -1056,7 +1056,7 @@ def _nothing_to_show(
         when = ""
     message = f"Nothing to show: there are no {what}{where}{when}."
     if from_this_week:
-        message += " Use --all to include earlier weeks."
+        message += " Use --all-weeks to include earlier weeks."
     return message
 
 

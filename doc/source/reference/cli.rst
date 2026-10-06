@@ -270,7 +270,7 @@ groups. Builds nothing.
 
 ::
 
-    automata calendar [CATEGORY]... [--key KEY]... [--all]
+    automata calendar [CATEGORY]... [--key KEY]... [--all-weeks]
                       [--from DATE] [--to DATE] [--week-start sunday|monday]
                       [--no-highlight-today] [--html FILE] [--pdf FILE]
                       [--ics FILE] [--json] [--current-time TIME]
@@ -279,14 +279,15 @@ Naming categories shows only those (e.g. ``automata calendar exams holidays``),
 and ``--key`` shows only dates under the named metadata keys (glob patterns),
 e.g. ``--key due`` for just the due dates, and no events; it may be given more
 than once. The calendar starts with the
-current week; ``--all`` shows every week, and ``--from`` and ``--to``
+current week; ``--all-weeks`` shows every week, and ``--from`` and ``--to``
 (``YYYY-MM-DD``) set the dates shown. Weeks start on Sunday, unless
 ``--week-start monday``, and are numbered from the course's
 ``first_week_start``; the calendar is titled with the course's name and term.
 ``--html``, ``--pdf`` and ``--ics`` write the calendar to files instead of
 printing it (``--ics`` as an iCalendar file, which calendar apps can import or
 subscribe to; its events keep their identities when dates change, so that a
-subscribed calendar updates them, and use ``--all`` to include past weeks); ``--json`` prints it as JSON, for programs. Dates
+subscribed calendar updates them, and use ``--all-weeks`` to include past
+weeks); ``--json`` prints it as JSON, for programs. Dates
 before the current time are shown dimmed, and today is highlighted (unless
 ``--no-highlight-today``). In the HTML, clicking a category in the legend
 hides its dates, or shows them again, and a button switches between light and
