@@ -3,6 +3,7 @@ import datetime
 import functools
 import inspect
 import json
+import os
 import pathlib
 import re
 import sys
@@ -382,6 +383,35 @@ class _TerminalStatus:
 
 
 @contextlib.contextmanager
+def _stdout_to_stderr(redirect: bool = True) -> Iterator[None]:
+    """Within, send everything written to stdout to stderr instead (if
+    *redirect*): automata's own output, Python extensions' prints, and the
+    output of the programs run (script hooks, recipes), so that a command
+    printing JSON afterwards prints only JSON on stdout."""
+    if not redirect:
+        yield
+        return
+    sys.stdout.flush()
+    try:
+        fd = sys.stdout.fileno()
+    except (AttributeError, OSError, ValueError):
+        # (e.g. a test runner's captured stdout, which programs don't write to)
+        fd = None
+    saved = os.dup(fd) if fd is not None else None
+    if fd is not None:
+        os.dup2(sys.stderr.fileno(), fd)
+    stdout, sys.stdout = sys.stdout, sys.stderr
+    try:
+        yield
+    finally:
+        sys.stderr.flush()
+        sys.stdout = stdout
+        if fd is not None and saved is not None:
+            os.dup2(saved, fd)
+            os.close(saved)
+
+
+@contextlib.contextmanager
 def _build_progress(
     project: Automata,
     verbose: bool,
@@ -484,7 +514,10 @@ def publish(
     project = _project()
     now = _get_current_time(current_time)
     try:
-        with _build_progress(project, verbose, now, err=json_output):
+        with (
+            _stdout_to_stderr(json_output),
+            _build_progress(project, verbose, now, err=json_output),
+        ):
             results = project.publish(
                 target=target, dry_run=dry_run, current_time=now, verbose=verbose
             )
@@ -710,7 +743,8 @@ def resolve(
     Builds nothing.
     """
     project = _project()
-    resolved = project.discover()
+    with _stdout_to_stderr():
+        resolved = project.discover()
     if target is not None:
         resolved = _find_target(resolved, _target_key(target, project.path))
     typer.echo(serialize(resolved))
@@ -860,9 +894,10 @@ def status(
     """
     if json_output:
         try:
-            result = _load_project().status(
-                current_time=_current_time_or_error(current_time)
-            )
+            with _stdout_to_stderr():
+                result = _load_project().status(
+                    current_time=_current_time_or_error(current_time)
+                )
         except Error as e:
             typer.echo(json.dumps({"error": str(e)}, indent=2))
             raise typer.Exit(code=1)
@@ -964,7 +999,8 @@ def calendar(
 
     if json_output:
         try:
-            result = make()
+            with _stdout_to_stderr():
+                result = make()
         except Error as e:
             typer.echo(json.dumps({"error": str(e)}, indent=2))
             raise typer.Exit(code=1)
@@ -1049,8 +1085,9 @@ def check(
     status 1 if there are any.
     """
     try:
-        project = _load_project()
-        problems = project.check(current_time=_current_time_or_error(current_time))
+        with _stdout_to_stderr(json_output):
+            project = _load_project()
+            problems = project.check(current_time=_current_time_or_error(current_time))
     except Error as e:
         problems = [Problem("configuration", str(e))]
 

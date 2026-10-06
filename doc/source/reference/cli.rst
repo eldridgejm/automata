@@ -16,6 +16,11 @@ command prints an error and exits with status 1.
 Extensions can add commands of their own, which ``automata --help`` lists under
 "Extensions" (see :ref:`extension-commands`).
 
+A command printing JSON (with ``--json``, and ``automata resolve``) prints only
+the JSON on stdout. Everything else it would print goes to stderr: its
+progress, and whatever extensions' hooks, script hooks, and recipes print, so
+that the output can be piped to a program such as ``jq``.
+
 
 .. _cli-init:
 
@@ -186,8 +191,8 @@ strategy can't do a dry run (an extension's strategy may not) is an error,
 reported before the site is built.
 
 ``--json``, with or without ``--dry-run``, prints what each target changed (or
-would change) as JSON instead (the build's progress goes to stderr), e.g. for a
-CI job that comments on a pull request::
+would change) as JSON instead (and the rest of the output goes to stderr),
+e.g. for a CI job that comments on a pull request::
 
     {
       "targets": {

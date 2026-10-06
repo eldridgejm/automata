@@ -536,6 +536,55 @@ def test_publish_as_json(publishing_project):
     }
 
 
+@pytest.mark.integration
+def test_json_output_is_only_json_whatever_hooks_print(publishing_project):
+    # given: a script hook, and a Python strategy, that print to stdout (which
+    # a test runner's captured output wouldn't show, so the CLI runs for real)
+    import json
+    import subprocess
+    import sys
+
+    hooks = publishing_project / "extensions" / "noisy" / "hooks"
+    hooks.mkdir(parents=True)
+    (hooks / "on_render_pre").write_text("cat > /dev/null && echo hook noise\n")
+    config = publishing_project / "automata.yaml"
+    config.write_text(
+        config.read_text().replace(
+            "  - extensions/recorder\n",
+            "  - extensions/recorder\n  - extensions/noisy\n",
+        )
+    )
+    extension = publishing_project / "extensions" / "recorder" / "extension.py"
+    extension.write_text(
+        extension.read_text().replace(
+            "    changes = config.get(",
+            '    print("strategy noise")\n    changes = config.get(',
+        )
+    )
+
+    # when
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from automata.cli import main; main()",
+            "publish",
+            "first",
+            "--dry-run",
+            "--json",
+        ],
+        cwd=publishing_project,
+        capture_output=True,
+        text=True,
+    )
+
+    # then: what they print goes to stderr
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["targets"]["first"]["dry_run"] is True
+    assert "hook noise" in result.stderr
+    assert "strategy noise" in result.stderr
+
+
 def test_publish_without_publish_targets_prints_an_error(project):
     result = runner.invoke(app, ["publish"])
 
