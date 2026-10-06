@@ -8,6 +8,23 @@
     {# a pinned version (unpkg's @latest is a short-cached redirect), deferred
        so that it doesn't block rendering the page #}
     <script defer src="https://unpkg.com/lucide@1.48.0/dist/umd/lucide.min.js"></script>
+    {% if theme.config.get('math') %}
+    {# math between \( and \), or displayed between \[ and \] or $$ and $$
+       (MathJax's defaults, given so that they're plain to see) #}
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]'], ['$$', '$$']],
+            },
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    {% endif %}
+    {% if theme.config.get('highlight_code') %}
+    {# its colors, light and dark, are in the theme's CSS #}
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+    {% endif %}
     {% include 'parts/head-custom.html' with context %}
 </head>
 <body class="bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
@@ -76,6 +93,15 @@
         // Initialize Lucide icons. The script is deferred, so wait for it to
         // load; DOMContentLoaded fires after deferred scripts have run.
         document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+        {% if theme.config.get('highlight_code') %}
+        // highlight each <pre><code> block with a language-* class (e.g. from
+        // ```python), once the deferred highlight.js has run; a block without
+        // one is left plain, as guessing its language is often wrong
+        document.addEventListener('DOMContentLoaded', () => {
+            hljs.configure({ cssSelector: 'pre code[class*="language-"]' });
+            hljs.highlightAll();
+        });
+        {% endif %}
     </script>
 
 </body>

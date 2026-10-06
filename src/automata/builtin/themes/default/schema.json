@@ -29,6 +29,14 @@
       "type": "string",
       "nullable": true,
       "default": null
+    },
+    "math": {
+      "type": "boolean",
+      "default": false
+    },
+    "highlight_code": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

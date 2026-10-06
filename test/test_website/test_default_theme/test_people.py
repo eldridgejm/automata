@@ -147,3 +147,43 @@ def test_people_element_displays_photo_when_provided(tmpsite, theme):
     # then
     output = tmpsite.get_output("index.html")
     assert '<img src="/photos/sarah.png"' in output
+
+
+def _people(tmpsite, theme, group="TAs", role="TA"):
+    tmpsite.make_page(
+        "index.html",
+        "${ elements.people([{'group': '%s', 'members': [{'name': 'Bo Li', "
+        "'role': '%s', 'photo': '/images/bo.jpg', 'about': 'Hi.'}]}]) }"
+        % (group, role),
+    )
+    render(tmpsite, theme=theme)
+    return tmpsite.get_output("index.html")
+
+
+def test_people_keeps_the_capitals_of_roles_and_groups(tmpsite, theme):
+    # .capitalize() would make "TA" "Ta", and "TAs" "Tas"
+    output = _people(tmpsite, theme)
+
+    assert "<b>TA</b>" in output
+    assert "<h2>TAs</h2>" in output
+
+
+def test_people_capitalizes_the_first_letter_of_lowercase_roles(tmpsite, theme):
+    output = _people(tmpsite, theme, group="tutors", role="tutor")
+
+    assert "<b>Tutor</b>" in output
+    assert "<h2>Tutors</h2>" in output
+
+
+def test_people_lays_out_with_tailwind_not_bootstrap(tmpsite, theme):
+    # the theme doesn't load Bootstrap, so its grid classes did nothing, and
+    # photos stretched to the page's width
+    import re
+
+    output = _people(tmpsite, theme)
+
+    assert not re.search(r'class="[^"]*\b(row|col-\d+)\b', output)
+    photo = re.search(r'<img[^>]*src="/images/bo.jpg"[^>]*>', output)[0]
+    for name in ["size-32", "object-cover", "rounded-full"]:
+        assert name in photo
+    assert 'alt="Bo Li"' in photo

@@ -271,3 +271,21 @@ Configuration:
             - text: Syllabus
               url: syllabus.html
           rebuild_tailwind: true  # default; set false to skip
+          math: false             # default; true loads MathJax
+          highlight_code: false   # default; true highlights code blocks
+
+``math: true`` loads `MathJax <https://www.mathjax.org>`_ 4, which typesets
+math between ``\(`` and ``\)`` inline, and between ``\[`` and ``\]`` or ``$$``
+and ``$$`` displayed. (In a Markdown page, Markdown reads ``\(`` as an escaped
+``(``, so write ``\\(``, or use ``$$``; an HTML page is not converted as
+Markdown.)
+
+``highlight_code: true`` loads `highlight.js <https://highlightjs.org>`_ and
+highlights each code block that names its language: in Markdown, a fenced
+block with a language after its opening backticks (e.g. ``python``), and in
+HTML, ``<pre><code class="language-python">``; a block that doesn't name one is
+left plain. The colors are GitHub's, light or dark with the
+page.
+
+Code blocks have a thin frame, light or dark with the page, and inline code has
+no backticks around it (the Tailwind typography plugin would add them).
