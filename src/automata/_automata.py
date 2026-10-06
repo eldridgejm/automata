@@ -724,14 +724,25 @@ class Automata:
         current_time: datetime.datetime | None = None,
         verbose: bool = False,
     ) -> Path:
-        """Build the materials, and zip them (with ``materials.json``) into
-        *path*, in a folder named like it. The build directory is untouched.
+        """Build the materials, and write them (with ``materials.json``) to
+        *path*: a zip, or a directory. The build directory is untouched.
+
+        If *path* ends in ``.zip`` (in any case), it is a zip file, with the
+        materials in a folder named like it (``out.zip`` holds
+        ``out/materials.json``, ...). Otherwise, it is a directory holding the
+        materials themselves, laid out as :meth:`export_materials` writes them
+        (``<collection>/<publication>/<artifact>`` and ``materials.json``). An
+        existing directory's contents are replaced, so that it holds only the
+        current materials; it must be empty, or have been written by
+        :meth:`archive` or :meth:`export_materials` (it has a
+        ``materials.json``).
 
         Parameters
         ----------
         path : Path | None
-            The zip file to write. By default, one named after the course in
-            the project directory (e.g. ``dsc-40b-fall-2026-materials.zip``).
+            The zip file or directory to write. By default, a zip named after
+            the course in the project directory (e.g.
+            ``dsc-40b-fall-2026-materials.zip``).
         all_artifacts : bool
             If true, include the artifacts not released yet, or not ready.
         current_time : datetime.datetime | None
@@ -743,13 +754,24 @@ class Automata:
         Returns
         -------
         Path
-            The zip file written.
+            The zip file or directory written.
+
+        Raises
+        ------
+        automata.exceptions.Error
+            If *path* is a directory that isn't empty and has no
+            ``materials.json``, is or contains the project directory, or is a
+            file but not a ``.zip``. This is checked before anything is built,
+            and nothing is changed.
 
         """
         if path is None:
             course = self.config.course
             name = f"{course.name} {course.term} materials".lower()
             path = self.path / (re.sub(r"[^a-z0-9]+", "-", name).strip("-") + ".zip")
+        as_zip = path.suffix.lower() == ".zip"
+        if not as_zip:
+            _check_archive_directory(path, self.path)
 
         built = self.build_materials(
             self.discover(),
@@ -758,6 +780,16 @@ class Automata:
             ignore_release_time=all_artifacts,
             ignore_ready=all_artifacts,
         )
+        if not as_zip:
+            if path.is_dir():
+                for entry in path.iterdir():
+                    if entry.is_dir() and not entry.is_symlink():
+                        shutil.rmtree(entry)
+                    else:
+                        entry.unlink()
+            self.export_materials(built, to=path)
+            return path
+
         with tempfile.TemporaryDirectory() as temporary:
             exported = Path(temporary) / path.stem
             self.export_materials(built, to=exported)
@@ -898,6 +930,28 @@ def _holds_materials(directory: Path) -> bool:
         for name in (constants.COLLECTION_FILE, constants.PUBLICATION_FILE)
         for path in directory.rglob(name)
     )
+
+
+def _check_archive_directory(path: Path, project_directory: Path) -> None:
+    """Raise unless *path* can be archived to as a directory: it doesn't exist,
+    or is a directory that is empty or was written by automata (it has a
+    materials.json), and it isn't, and doesn't contain, the project."""
+    problem = None
+    if project_directory.resolve().is_relative_to(path.resolve()):
+        problem = "it is or contains the project directory"
+    elif path.exists() and not path.is_dir():
+        problem = "it is a file (only a .zip can be archived to as a file)"
+    elif path.is_dir() and any(path.iterdir()):
+        if not (path / "materials.json").is_file():
+            problem = (
+                "it isn't empty, and has no materials.json, so it wasn't written "
+                "by automata archive (or export-materials)"
+            )
+    if problem is not None:
+        raise Error(
+            f'Refusing to archive to "{path}": {problem}. Archive to an empty or '
+            "new directory, or to a .zip."
+        )
 
 
 def _check_publish_target(name: str, entry: Any) -> None:

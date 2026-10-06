@@ -173,18 +173,24 @@ The primary interface is the ``Automata`` class.
 
     .. method:: archive(path=None, all_artifacts=False, current_time=None, verbose=False)
 
-        Build the materials, and zip them (with ``materials.json``) into
-        *path*, in a folder named like it (see ``automata archive``). The build
-        directory is untouched.
+        Build the materials, and write them (with ``materials.json``) to
+        *path*: if it ends in ``.zip``, a zip, with them in a folder named like
+        it; otherwise, a directory holding them, laid out as
+        :meth:`export_materials` writes them, whose contents are replaced (see
+        ``automata archive``). The build directory is untouched.
 
-        :param path: The zip file to write. By default, one named after the
-            course in the project directory.
+        :param path: The zip file or directory to write. By default, a zip
+            named after the course in the project directory.
         :type path: Path or None
         :param all_artifacts: Include the artifacts not released yet, or not
             ready.
         :type all_artifacts: bool
-        :returns: The zip file written.
+        :returns: The zip file or directory written.
         :rtype: Path
+        :raises automata.exceptions.Error: If *path* is a directory that isn't
+            empty and wasn't written by automata (it has no
+            ``materials.json``), is a file but not a ``.zip``, or is or
+            contains the project directory.
 
     .. method:: load_exported_materials()
 

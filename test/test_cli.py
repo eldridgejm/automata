@@ -279,6 +279,17 @@ def test_archive_zips_the_materials(project, tmp_path):
     assert not (project / "_build").exists()
 
 
+def test_archive_to_a_directory(project, tmp_path):
+    out = tmp_path / "_preview" / "materials"
+
+    result = _invoke("archive", "--all", str(out))
+
+    assert (out / "materials.json").exists()
+    assert (out / "homeworks" / "hw01" / "homework.pdf").exists()
+    assert "Archived 1 artifact to" in result.output
+    assert not (project / "_build").exists()
+
+
 def test_archive_is_named_after_the_course_by_default(project):
     _invoke("archive")
 

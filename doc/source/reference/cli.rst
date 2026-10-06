@@ -116,16 +116,33 @@ time it runs.
 ``automata archive``
 --------------------
 
-Build the materials, and zip them up, with ``materials.json`` describing
-them. The website, and the build directory, are untouched.
+Build the materials, and zip them up (or write them to a directory), with
+``materials.json`` describing them. The website, and the build directory, are
+untouched.
 
 ::
 
-    automata archive [FILE] [--all] [--current-time TIME] [--verbose]
+    automata archive [PATH] [--all] [--current-time TIME] [--verbose]
 
-The zip is ``FILE``, or by default one named after the course in the project
-directory (e.g. ``dsc-40b-fall-2026-materials.zip``). Its contents are in a
-folder named like it: each artifact as ``<collection>/<publication>/<artifact>``.
+If ``PATH`` ends in ``.zip``, it is the zip written; by default, one named after
+the course in the project directory (e.g. ``dsc-40b-fall-2026-materials.zip``).
+The zip's contents are in a folder named like it: each artifact as
+``<collection>/<publication>/<artifact>``.
+
+Otherwise, ``PATH`` is a directory, which holds the materials themselves (each
+artifact as ``<collection>/<publication>/<artifact>``, and ``materials.json``),
+laid out as ``automata pipeline export-materials --to`` writes them, e.g. for a
+browsable preview of a branch's materials::
+
+    automata archive --all _preview/materials
+
+An existing directory's contents are replaced, so that withdrawn artifacts
+don't linger. To keep from deleting anything else, the directory must be empty
+or have been written by ``archive`` or ``export-materials`` (it has a
+``materials.json``); otherwise, it is an error, and nothing is built or
+changed. So is a ``PATH`` that is a file but not a ``.zip``, or that is or
+contains the project directory.
+
 ``--all`` includes the artifacts that are not released yet, or not ready, for
 an archive of everything (at the end of a term, say). It reports the build's
 progress, as ``automata build`` does.

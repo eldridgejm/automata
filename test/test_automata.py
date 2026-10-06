@@ -3,6 +3,7 @@
 import contextlib
 import json
 from datetime import datetime
+from pathlib import Path
 from textwrap import dedent, indent
 
 import pytest
@@ -141,6 +142,103 @@ def test_archive_zips_the_materials_and_returns_its_path(project_dir, tmp_path):
     assert path == tmp_path / "out.zip"
     with zipfile.ZipFile(path) as archive:
         assert "out/materials.json" in archive.namelist()
+
+
+def test_archive_to_a_path_without_zip_writes_a_directory(project_dir, tmp_path):
+    out = tmp_path / "preview" / "materials"
+
+    path = Automata(project_dir).archive(out, all_artifacts=True)
+
+    # laid out as export_materials writes it, with no folder around it
+    assert path == out
+    exported = tmp_path / "exported"
+    a = Automata(project_dir)
+    a.export_materials(
+        a.build_materials(a.discover(), ignore_release_time=True, ignore_ready=True),
+        to=exported,
+    )
+    files = sorted(p.relative_to(out) for p in out.rglob("*") if p.is_file())
+    assert files == sorted(
+        p.relative_to(exported) for p in exported.rglob("*") if p.is_file()
+    )
+    assert Path("materials.json") in files
+    assert (out / "materials.json").read_text() == (
+        exported / "materials.json"
+    ).read_text()
+
+
+def test_archiving_to_a_directory_again_replaces_its_contents(project_dir, tmp_path):
+    # given: an earlier archive, with a file a later one doesn't have
+    out = tmp_path / "materials"
+    Automata(project_dir).archive(out, all_artifacts=True)
+    (out / "withdrawn").mkdir()
+    (out / "withdrawn" / "old.pdf").write_text("old")
+
+    # when
+    Automata(project_dir).archive(out, all_artifacts=True)
+
+    # then
+    assert not (out / "withdrawn").exists()
+    assert (out / "materials.json").exists()
+
+
+def test_archiving_to_an_empty_directory_is_fine(project_dir, tmp_path):
+    out = tmp_path / "materials"
+    out.mkdir()
+
+    Automata(project_dir).archive(out, all_artifacts=True)
+
+    assert (out / "materials.json").exists()
+
+
+def test_archiving_to_a_directory_automata_did_not_write_is_an_error(
+    project_dir, tmp_path
+):
+    # given: a directory with files, but no materials.json
+    out = tmp_path / "notes"
+    out.mkdir()
+    (out / "todo.txt").write_text("keep me")
+
+    # when
+    with pytest.raises(Error) as excinfo:
+        Automata(project_dir).archive(out, all_artifacts=True)
+
+    # then: nothing is touched
+    assert str(excinfo.value) == (
+        f'Refusing to archive to "{out}": it isn\'t empty, and has no '
+        "materials.json, so it wasn't written by automata archive (or "
+        "export-materials). Archive to an empty or new directory, or to a .zip."
+    )
+    assert [p.name for p in out.iterdir()] == ["todo.txt"]
+
+
+def test_archiving_to_the_project_directory_is_an_error(project_dir):
+    (project_dir / "materials.json").write_text("{}")
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project_dir).archive(project_dir, all_artifacts=True)
+
+    assert "is or contains the project directory" in str(excinfo.value)
+    assert (project_dir / "automata.yaml").exists()
+
+
+def test_archiving_to_a_file_that_is_not_a_zip_is_an_error(project_dir, tmp_path):
+    out = tmp_path / "materials.tar"
+    out.write_text("x")
+
+    with pytest.raises(Error) as excinfo:
+        Automata(project_dir).archive(out, all_artifacts=True)
+
+    assert "is a file" in str(excinfo.value)
+    assert out.read_text() == "x"
+
+
+def test_a_zip_suffix_is_recognized_in_any_case(project_dir, tmp_path):
+    import zipfile
+
+    path = Automata(project_dir).archive(tmp_path / "OUT.ZIP", all_artifacts=True)
+
+    assert zipfile.is_zipfile(path)
 
 
 def test_export_returns_exported_universe(project_dir):

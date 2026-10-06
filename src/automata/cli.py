@@ -562,8 +562,10 @@ def archive(
     path: Optional[pathlib.Path] = typer.Argument(
         None,
         help=(
-            "The zip file to write. By default, one named after the course "
-            "(e.g. dsc-40b-fall-2026-materials.zip) in the project directory."
+            "The zip file to write, or, if it doesn't end in .zip, the directory "
+            "(whose contents are replaced). By default, a zip named after the "
+            "course (e.g. dsc-40b-fall-2026-materials.zip) in the project "
+            "directory."
         ),
     ),
     all_artifacts: bool = typer.Option(
@@ -574,7 +576,8 @@ def archive(
     current_time: Optional[str] = _current_time_option,
     verbose: bool = _verbose_option,
 ):
-    """Build the materials, and zip them up. The website is untouched."""
+    """Build the materials, and zip them up (or write them to a directory). The
+    website is untouched."""
     project = _project()
     now = _get_current_time(current_time)
     with _build_progress(project, verbose, now) as progress:
@@ -584,7 +587,10 @@ def archive(
             current_time=now,
             verbose=verbose,
         )
-    size = written.stat().st_size
+    if written.is_dir():
+        size = sum(f.stat().st_size for f in written.rglob("*") if f.is_file())
+    else:
+        size = written.stat().st_size
     _say(
         f"[bold green]✓[/] Archived {_counted(progress.built, 'artifact')} to "
         f"[bold cyan]{escape(_relative_path(written))}[/] [dim]({_size(size)})[/]."
