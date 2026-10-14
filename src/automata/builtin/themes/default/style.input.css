@@ -16,6 +16,18 @@
   @apply text-blue-700 dark:text-sky-600 underline;
 }
 
+/* Markdown in a schedule resource takes its row's size, color, and line height,
+   not the typography plugin's */
+.resource-text.prose {
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  max-width: none;
+}
+
+.resource-text.prose > :first-child { margin-top: 0; }
+.resource-text.prose > :last-child { margin-bottom: 0; }
+
 @layer components {
   .prose .toc ul { @apply my-1; }          /* reduce ul top/bottom margin */
   .prose .toc li { @apply my-0 leading-snug; } /* remove li vertical margins */

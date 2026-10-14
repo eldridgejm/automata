@@ -9,7 +9,7 @@ class DatePillConfig(Prototype):
     date: date
     text_before: str
     text_after: str
-    text_class: str = "text-base"
+    text_class: str = "text-sm"
 
 
 class DatePill(TemplateElement):

@@ -2,90 +2,95 @@
 {# Resource rendering macros                                                      #}
 {# ============================================================================== #}
 
-{% macro resource_wrapper(resource, content, alignment='items-center') %}
-    {# Common wrapper for all resource types - handles title and container #}
+{# An activity's resources sit in a two-column grid: each titled resource is a
+   label and a value, so the values line up. An untitled resource spans both
+   columns. #}
+
+{% macro resource_wrapper(resource, content, style='primary', is_text=False) %}
     {% if content %}
-    <div class="flex flex-row ${ alignment }">
         {% if resource.title is not none %}
-            <div class="font-semibold mr-2 flex flex-row items-center gap-1">
+            <div class="flex items-center gap-1.5 text-sm leading-6 font-medium text-gray-500 dark:text-gray-400">
                 {% if resource['icon'] is not none %}
-                    <i data-lucide="${ resource.icon }" class="w-5 h-5 text-slate-400"></i>
+                    <i data-lucide="${ resource.icon }" class="size-4 shrink-0"></i>
                 {% endif %}
                 <span>${ resource.title | md_to_html }</span>
             </div>
+            <div class="min-w-0 leading-6 text-gray-700 dark:text-gray-200 {% if style != 'primary' %}text-sm{% endif %}">
+                ${ content }
+            </div>
+        {% elif is_text %}
+            {# untitled text is a note, like a quiz's date and place #}
+            <div class="col-span-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                ${ content }
+            </div>
+        {% else %}
+            <div class="col-span-2">
+                ${ content }
+            </div>
         {% endif %}
-        <div>
-            ${ content }
-        </div>
-    </div>
     {% endif %}
 {% endmacro %}
 
-{% macro display_html_resource(resource) %}
+{% macro display_html_resource(resource, style) %}
     {% set resource_text = resource.html %}
-    ${ resource_wrapper(resource, resource_text.strip()) }
+    ${ resource_wrapper(resource, resource_text.strip(), style, is_text=True) }
 {% endmacro %}
 
-{% macro display_markdown_resource(resource) %}
+{% macro display_markdown_resource(resource, style) %}
     {% set resource_text = resource.markdown | md_to_html %}
     {% if resource_text.strip() %}
         {% set content %}
-        <div class="prose dark:prose-invert">
+        <div class="resource-text prose dark:prose-invert">
             ${ resource_text }
         </div>
         {% endset %}
-        ${ resource_wrapper(resource, content) }
+        ${ resource_wrapper(resource, content, style, is_text=True) }
     {% endif %}
 {% endmacro %}
 
-{% macro display_links_resource(resource) %}
+{% macro display_links_resource(resource, style) %}
     {% if resource.links %}
-        {% if resource.style == "numbered" %}
-            ${ display_numbered_links_resource(resource) }
+        {% if resource.links | length == 1 and resource.style in ["numbered", "bulleted"] %}
+            ${ display_single_link_resource(resource, style) }
+        {% elif resource.style == "numbered" %}
+            ${ display_listed_links_resource(resource, style, "ol", "list-decimal") }
         {% elif resource.style == "bulleted" %}
-            ${ display_bulleted_links_resource(resource) }
+            ${ display_listed_links_resource(resource, style, "ul", "list-disc") }
         {% else %}
-            ${ display_button_links_resource(resource) }
+            ${ display_button_links_resource(resource, style) }
         {% endif %}
     {% endif %}
 {% endmacro %}
 
 
-{% set link_classes = "space-y-1 text-blue-500 dark:text-sky-400 no-underline hover:underline hover:text-blue-700 dark:hover:text-sky-600" %}
+{% set link_classes = "text-blue-500 dark:text-sky-400 no-underline hover:underline hover:text-blue-700 dark:hover:text-sky-600" %}
 
-{% macro display_numbered_links_resource(resource) %}
+{# one link needs no number or bullet #}
+{% macro display_single_link_resource(resource, style) %}
+    {% set link = resource.links[0] %}
     {% set content %}
-    <ol class="list-decimal list-inside">
-        {% for link in resource.links %}
-            <li>
-                <a href="${ link.url }" class="${ link_classes }">
-                    ${ link.text | md_to_html }
-                </a>
-            </li>
-        {% endfor %}
-    </ol>
+    <a href="${ link.url }" class="${ link_classes }">${ link.text | md_to_html }</a>
     {% endset %}
-    ${ resource_wrapper(resource, content, alignment="items-start") }
+    ${ resource_wrapper(resource, content, style) }
 {% endmacro %}
 
-{% macro display_bulleted_links_resource(resource) %}
+{# markers sit outside the text, so wrapped lines line up with the text #}
+{% macro display_listed_links_resource(resource, style, tag, list_class) %}
     {% set content %}
-    <ul class="list-disc list-inside">
+    <${ tag } class="${ list_class } list-outside pl-5 space-y-1 marker:text-gray-400 dark:marker:text-gray-500">
         {% for link in resource.links %}
             <li>
-                <a href="${ link.url }" class="${ link_classes }">
-                    ${ link.text | md_to_html }
-                </a>
+                <a href="${ link.url }" class="${ link_classes }">${ link.text | md_to_html }</a>
             </li>
         {% endfor %}
-    </ul>
+    </${ tag }>
     {% endset %}
-    ${ resource_wrapper(resource, content, alignment="items-start") }
+    ${ resource_wrapper(resource, content, style) }
 {% endmacro %}
 
-{% macro display_button_links_resource(resource) %}
+{% macro display_button_links_resource(resource, style) %}
     {% set content %}
-    <div class="flex flex-row gap-2">
+    <div class="flex flex-wrap gap-2">
         {% for link in resource.links %}
             ${ context.elements.button({
                 'label': link.text,
@@ -94,7 +99,7 @@
         {% endfor %}
     </div>
     {% endset %}
-    ${ resource_wrapper(resource, content) }
+    ${ resource_wrapper(resource, content, style) }
 {% endmacro %}
 
 
@@ -102,13 +107,13 @@
 {# Resource type dispatcher                                                       #}
 {# ============================================================================== #}
 
-{% macro display_resource(resource) %}
+{% macro display_resource(resource, style) %}
     {% if resource.type == "html" %}
-        ${ display_html_resource(resource) }
+        ${ display_html_resource(resource, style) }
     {% elif resource.type == "markdown" %}
-        ${ display_markdown_resource(resource) }
+        ${ display_markdown_resource(resource, style) }
     {% elif resource.type == "links" %}
-        ${ display_links_resource(resource) }
+        ${ display_links_resource(resource, style) }
     {% endif %}
 {% endmacro %}
 
@@ -116,54 +121,53 @@
 {# Content display macros                                                         #}
 {# ============================================================================== #}
 
+{# A deadline is text, not a pill, so that only links look clickable: amber while
+   it is days away, bold red within a day, and muted once it has passed. #}
 {% macro display_due_date(due_date) %}
     {% if due_date is not none %}
-        <div class="flex flex-row">
         {% if current_time.date() <= due_date.date() %}
-            <div class="
-                    shrink-0
-                    mt-1 mb-1
-                    text-xs
-                    font-semibold
-                    text-red-500 dark:text-white
-                    bg-red-100 dark:bg-red-500
-                    px-2 py-[2px]
-                    rounded-lg
-                    ">
+            {% if (due_date - current_time).total_seconds() <= 24 * 60 * 60 %}
+                {% set due_class = "due-soon font-semibold text-red-600 dark:text-red-400" %}
+            {% else %}
+                {% set due_class = "due-upcoming font-medium text-amber-700 dark:text-amber-300" %}
+            {% endif %}
+            <p class="${ due_class } flex items-center gap-1.5 text-sm">
+                <i data-lucide="clock" class="size-3.5 shrink-0"></i>
                 Due ${ due_date.strftime("%A, %b. %-d at %-I:%M %p") }
-            </div>
+            </p>
         {% else %}
-            <div class="text-xs text-gray-500 dark:text-gray-400">
+            <p class="due-past text-sm text-gray-500 dark:text-gray-400">
                 Was due ${ due_date.strftime("%A, %b. %-d") }
-            </div>
+            </p>
         {% endif %}
-        </div>
     {% endif %}
 {% endmacro %}
 
 {% macro display_activity(activity, style='primary') %}
     {% if style == 'primary' %}
         {% set container_class = "" %}
-        {% set resource_margin = "mt-4" %}
+        {% set title_class = "text-xl font-semibold" %}
+        {% set grid_class = "mt-3 gap-x-4 gap-y-2.5" %}
     {% else %}
-        {% set container_class = "md:p-5 py-3" %}
-        {% set resource_margin = "mt-2" %}
+        {% set container_class = "p-5" %}
+        {% set title_class = "text-lg font-semibold" %}
+        {% set grid_class = "mt-2 gap-x-3 gap-y-2" %}
     {% endif %}
 
     <div class="${ container_class }">
-        <div>
-            <h3 class="text-2xl">
-                ${ activity.title | md_to_html }
-            </h3>
-        </div>
+        <h3 class="${ title_class }">
+            ${ activity.title | md_to_html }
+        </h3>
         {% if activity.due_datetime is not none %}
             ${ display_due_date(activity.due_datetime) }
         {% endif %}
-        <div class="${ resource_margin } flex flex-col gap-y-2">
+        {% if activity.resources %}
+        <div class="${ grid_class } grid grid-cols-[max-content_1fr] items-start">
             {% for resource in activity.resources %}
-            ${ display_resource(resource) }
+            ${ display_resource(resource, style) }
             {% endfor %}
         </div>
+        {% endif %}
     </div>
 
 {% endmacro %}
@@ -216,7 +220,7 @@
         >
 
         <div>
-            <h1 class="text-2xl">
+            <h1 class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {% if this_week is not none and week.number == this_week.number %}
                 This Week
                 {% elif this_week is not none and week.number == this_week.number + 1 %}
@@ -228,31 +232,18 @@
                 {% endif %}
             </h1>
 
-            <h2 class="text-4xl">${ topics[week.number]  }</h2>
+            <h2 class="mt-1 text-3xl font-semibold tracking-tight">${ topics[week.number]  }</h2>
 
             {% include 'elements/schedule-events.html' with context %}
             {% include 'elements/schedule-announcements.html' with context %}
 
-            {# only show separator if there is at least one activity #}
-            {% if primary_activities[week.number] != [] and secondary_activities[week.number] != [] %}
-            <!-- separator div -->
-            <div class="
-                md:hidden
-                border-t border-gray-300 dark:border-gray-700
-                mt-6
-                ">
-            </div>
-            {% endif %}
-
             <!-- primary and secondary content div -->
-            <div class="flex flex-col md:flex-row">
-
+            <div class="flex flex-col md:flex-row md:gap-10">
 
                 <!-- primary content div -->
                 {% if primary_activities[week.number] %}
                 <div class="
-                    md:w-9/10 md:min-w-50
-                    pr-10
+                    md:flex-1 min-w-0
                     mt-8
                     flex flex-col gap-y-8
                     ">
@@ -262,24 +253,20 @@
                 </div>
                 {% endif %}
 
-                <!-- secondary content div -->
+                <!-- secondary content div: a panel with its own surface -->
                 {% if secondary_activities[week.number] %}
                 <div class="
                     mt-8
-                    w-full md:min-w-30 md:max-w-75
+                    w-full md:w-72 md:shrink-0
                     self-start
-                    bg-white dark:bg-gray-800
-                    border-t md:rounded-lg md:border
-                    border-gray-300 dark:border-gray-700
-                    pt-5 md:pt-0
+                    rounded-lg border
+                    border-gray-200 dark:border-gray-700
+                    bg-gray-50 dark:bg-gray-900/40
+                    divide-y divide-gray-200 dark:divide-gray-700
                     ">
-                    <div class="
-                        md:divide-y divide-gray-300 dark:divide-gray-700
-                        ">
-                        {% for activity in secondary_activities[week.number] %}
-                        ${ display_activity(activity, style='secondary') }
-                        {% endfor %}
-                    </div>
+                    {% for activity in secondary_activities[week.number] %}
+                    ${ display_activity(activity, style='secondary') }
+                    {% endfor %}
                 </div>
                 {% endif %}
 

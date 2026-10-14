@@ -1,22 +1,17 @@
-<span>
-    {% set common_classes = "px-2.5 py-1 rounded-lg text-sm font-semibold " + element_config.text_class %}
-    {%- if context.current_time.date() <= element_config.date -%}
-    <span class="
-        font-semibold
-        text-red-500 dark:text-white
-        bg-red-100 dark:bg-red-500
-        px-2 py-[2px]
-        ${ common_classes }
-        ">
-        ${ resolve(element_config.text_before) }
-    </span>
-    {%- else -%}
-    <span class="
-        text-gray-500 dark:text-gray-300
-        bg-gray-200 dark:bg-gray-400/50
-        border-gray-400
-        ${ common_classes }">
-        ${ resolve(element_config.text_after) }
-    </span>
-    {% endif %}
+{# A date is text, not a pill, so that only links look clickable: amber while it
+   is ahead, bold red on the day, and muted once it has passed. #}
+{%- set today = context.current_time.date() -%}
+{%- if today < element_config.date -%}
+    {% set date_class = "date-upcoming font-medium text-amber-700 dark:text-amber-300" %}
+    {% set text = element_config.text_before %}
+{%- elif today == element_config.date -%}
+    {% set date_class = "date-today font-semibold text-red-600 dark:text-red-400" %}
+    {% set text = element_config.text_before %}
+{%- else -%}
+    {% set date_class = "date-past text-gray-500 dark:text-gray-400" %}
+    {% set text = element_config.text_after %}
+{%- endif -%}
+<span class="${ date_class } ${ element_config.text_class } inline-flex items-center gap-1.5">
+    <i data-lucide="calendar" class="size-3.5 shrink-0"></i>
+    ${ resolve(text) }
 </span>

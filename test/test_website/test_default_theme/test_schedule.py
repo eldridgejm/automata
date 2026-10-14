@@ -4,6 +4,8 @@ These tests focus on how the default theme renders the schedule element,
 testing through the full render() pipeline and inspecting HTML output.
 """
 
+from datetime import datetime
+
 from bs4 import BeautifulSoup, Tag
 from conftest import render
 
@@ -1004,3 +1006,134 @@ def test_schedule_element_renders_extra_secondary_listings(tmpsite, theme):
     assert "Location" in output
     assert 'data-lucide="map-pin"' in output
     assert "CSE Building Room 101" in output
+
+
+def render_extra_activity(tmpsite, theme, activity, current_time=None):
+    """Render a schedule with one extra secondary activity, given as a template
+    string, and return the parsed page."""
+    tmpsite.make_page(
+        "index.html",
+        """
+        ${ elements.schedule({
+            "week_topics": ["Introduction"],
+            "primary_activity_collections": [],
+            "secondary_activity_collections": [],
+            "extra_secondary_activities": [%s]
+        }) }
+        """
+        % activity,
+    )
+    render(tmpsite, theme=theme, current_time=current_time)
+    return BeautifulSoup(tmpsite.get_output("index.html"), "html.parser")
+
+
+def test_schedule_element_renders_a_single_numbered_link_without_a_list(tmpsite, theme):
+    # given: a links resource with one link
+    activity = """{
+        "title": "Lecture 1",
+        "start_displaying_on": "2024-01-09",
+        "resources": [
+            {
+                "type": "links",
+                "title": "Videos",
+                "style": "numbered",
+                "links": [{"text": "Introduction", "url": "intro.mp4"}]
+            }
+        ]
+    }"""
+
+    # when
+    soup = render_extra_activity(tmpsite, theme, activity)
+
+    # then: the link is there, but not numbered
+    assert soup.find("a", href="intro.mp4") is not None
+    assert soup.find("ol") is None
+
+
+def test_schedule_element_renders_several_numbered_links_as_a_list(tmpsite, theme):
+    # given
+    activity = """{
+        "title": "Lecture 1",
+        "start_displaying_on": "2024-01-09",
+        "resources": [
+            {
+                "type": "links",
+                "title": "Videos",
+                "style": "numbered",
+                "links": [
+                    {"text": "Introduction", "url": "intro.mp4"},
+                    {"text": "Setup Guide", "url": "setup.mp4"}
+                ]
+            }
+        ]
+    }"""
+
+    # when
+    soup = render_extra_activity(tmpsite, theme, activity)
+
+    # then
+    ol = soup.find("ol")
+    assert ol is not None
+    assert len(ol.find_all("li")) == 2
+
+
+def test_schedule_element_marks_a_deadline_within_a_day_as_due_soon(tmpsite, theme):
+    # given: due at 11:59 PM on the 10th, and it is 9 AM on the 10th
+    activity = """{
+        "title": "Homework 1",
+        "start_displaying_on": "2024-01-08",
+        "due_datetime": "2024-01-10 23:59:00",
+        "resources": []
+    }"""
+
+    # when
+    soup = render_extra_activity(
+        tmpsite, theme, activity, current_time=datetime(2024, 1, 10, 9, 0)
+    )
+
+    # then
+    due = soup.find(class_="due-soon")
+    assert due is not None
+    assert "Due Wednesday, Jan. 10 at 11:59 PM" in due.get_text()
+    assert soup.find(class_="due-upcoming") is None
+
+
+def test_schedule_element_marks_a_deadline_days_away_as_upcoming(tmpsite, theme):
+    # given: due on the 12th, and it is the 9th
+    activity = """{
+        "title": "Homework 1",
+        "start_displaying_on": "2024-01-08",
+        "due_datetime": "2024-01-12 23:59:00",
+        "resources": []
+    }"""
+
+    # when
+    soup = render_extra_activity(
+        tmpsite, theme, activity, current_time=datetime(2024, 1, 9, 9, 0)
+    )
+
+    # then
+    due = soup.find(class_="due-upcoming")
+    assert due is not None
+    assert "Due Friday, Jan. 12 at 11:59 PM" in due.get_text()
+    assert soup.find(class_="due-soon") is None
+
+
+def test_schedule_element_marks_a_past_deadline_as_past(tmpsite, theme):
+    # given: due on the 9th, and it is the 11th
+    activity = """{
+        "title": "Homework 1",
+        "start_displaying_on": "2024-01-08",
+        "due_datetime": "2024-01-09 23:59:00",
+        "resources": []
+    }"""
+
+    # when
+    soup = render_extra_activity(
+        tmpsite, theme, activity, current_time=datetime(2024, 1, 11, 9, 0)
+    )
+
+    # then
+    due = soup.find(class_="due-past")
+    assert due is not None
+    assert "Was due Tuesday, Jan. 9" in due.get_text()
