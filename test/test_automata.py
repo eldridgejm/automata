@@ -34,6 +34,7 @@ def project_dir(tmp_path):
                 config:
                   short_title: "Test"
                   long_title: "Test Course"
+                  rebuild_tailwind: false
               content_directory: "content"
               build_directory: "_build"
         """)

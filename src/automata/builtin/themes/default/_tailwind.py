@@ -13,13 +13,16 @@ logger = logging.getLogger(__name__)
 # the default theme's directory, which holds style.input.css and package.json
 THEME_DIRECTORY = pathlib.Path(__file__).parent.resolve()
 
-# where the theme's Node packages are installed: not in the theme's directory,
-# which may not be writable (as when automata is installed)
-CACHE_DIRECTORY = (
-    pathlib.Path(os.environ.get("XDG_CACHE_HOME") or pathlib.Path.home() / ".cache")
-    / "automata"
-    / "tailwind"
-)
+
+def _cache_directory() -> pathlib.Path:
+    """Where the theme's Node packages are installed: not in the theme's
+    directory, which may not be writable (as when automata is installed)."""
+    return (
+        pathlib.Path(os.environ.get("XDG_CACHE_HOME") or pathlib.Path.home() / ".cache")
+        / "automata"
+        / "tailwind"
+    )
+
 
 # the Node package files, copied to the cache to install them there
 _PACKAGE_FILES = ("package.json", "package-lock.json")
@@ -31,7 +34,7 @@ def rebuild_css(
     *,
     run: Callable[..., Any] = subprocess.run,
     theme_directory: pathlib.Path = THEME_DIRECTORY,
-    cache_directory: pathlib.Path = CACHE_DIRECTORY,
+    cache_directory: pathlib.Path | None = None,
 ) -> None:
     """Rebuild the site's Tailwind CSS so it includes classes used in its pages.
 
@@ -60,8 +63,10 @@ def rebuild_css(
         Runs the commands (default :func:`subprocess.run`). Tests pass a fake.
     theme_directory : pathlib.Path
         The directory containing ``style.input.css`` and ``package.json``.
-    cache_directory : pathlib.Path
-        Where the packages are installed (in a ``default-theme`` directory).
+    cache_directory : pathlib.Path | None
+        Where the packages are installed (in a ``default-theme`` directory). If
+        *None*, ``automata/tailwind`` in ``$XDG_CACHE_HOME`` (or ``~/.cache``),
+        as it is when rebuilding.
 
     """
     if not config.get("rebuild_tailwind", True):
@@ -76,7 +81,7 @@ def rebuild_css(
         )
         return
 
-    workdir = cache_directory / "default-theme"
+    workdir = (cache_directory or _cache_directory()) / "default-theme"
     try:
         _install(theme_directory, workdir, run)
         shutil.copyfile(css_input, workdir / "style.input.css")

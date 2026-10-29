@@ -1,9 +1,54 @@
 """Common test fixtures for the automata package."""
 
+import os
 import pathlib
 from textwrap import dedent
 
+import pytest
 from pytest import fixture
+
+# stands in for npm: records how it was run, and fails
+_FAKE_NPM = """\
+#!/bin/sh
+echo "npm $*" >> "$AUTOMATA_TEST_NPM_LOG"
+exit 1
+"""
+
+
+@fixture(autouse=True)
+def no_real_npm(request, monkeypatch, tmp_path_factory):
+    """Fail any test, other than an integration test, that runs npm.
+
+    Building a site with the default theme rebuilds its Tailwind CSS, which
+    runs ``npm install`` into the user's cache, using the network. Tests should
+    set the theme's ``rebuild_tailwind`` to false, or be marked integration.
+    The cache is moved to a temporary directory, and npm replaced by a fake, so
+    that a test that runs it fails without touching the cache or the network.
+    """
+    if request.node.get_closest_marker("integration"):
+        yield
+        return
+
+    directory = tmp_path_factory.mktemp("no-real-npm")
+    (directory / "bin").mkdir()
+    npm = directory / "bin" / "npm"
+    npm.write_text(_FAKE_NPM)
+    npm.chmod(0o755)
+    log = directory / "npm.log"
+
+    monkeypatch.setenv("PATH", f"{directory / 'bin'}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("AUTOMATA_TEST_NPM_LOG", str(log))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(directory / "cache"))
+
+    yield
+
+    if log.exists():
+        pytest.fail(
+            f"This test ran `{log.read_text().splitlines()[0]}`, which installs "
+            "Tailwind for the default theme. Set the theme's rebuild_tailwind "
+            "to false, or mark the test integration.",
+            pytrace=False,
+        )
 
 
 @fixture

@@ -90,6 +90,21 @@ def test_rebuild_css_installs_the_themes_packages_into_the_cache(rebuild, theme_
     ).read_text()
 
 
+def test_rebuild_css_caches_in_xdg_cache_home_when_it_rebuilds(
+    build_dir, theme_dir, tmp_path, monkeypatch
+):
+    # (it is read when rebuilding, not when automata is imported)
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "xdg"))
+    run = _Recorder()
+
+    rebuild_css(build_dir, {}, run=run, theme_directory=theme_dir)
+
+    (_, kwargs), _ = run.calls
+    assert kwargs["cwd"] == str(
+        tmp_path / "xdg" / "automata" / "tailwind" / "default-theme"
+    )
+
+
 def test_rebuild_css_runs_tailwind_from_the_build_directory(rebuild, build_dir):
     run = _Recorder()
 

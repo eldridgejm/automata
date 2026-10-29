@@ -45,7 +45,7 @@ def make_extension(
     config: dict,
     *,
     run: Callable[..., Any] = subprocess.run,
-    cache_directory: pathlib.Path = _tailwind.CACHE_DIRECTORY,
+    cache_directory: pathlib.Path | None = None,
 ) -> Extension:
     """Build the default theme Extension for the given (validated) config.
 

@@ -19,7 +19,7 @@ course:
 
 _WEBSITE = """\
 website:
-  theme: default
+  theme: {use: default, config: {rebuild_tailwind: false}}
   content_directory: content
   build_directory: _build
 """
@@ -127,10 +127,10 @@ def test_the_theme_titles_default_to_the_course(tmp_path):
 
 def test_the_theme_titles_can_still_be_set(tmp_path):
     website = _WEBSITE.replace(
-        "  theme: default\n",
+        "  theme: {use: default, config: {rebuild_tailwind: false}}\n",
         "  theme:\n"
         "    use: default\n"
-        "    config: {short_title: 40B, long_title: Algs}\n",
+        "    config: {short_title: 40B, long_title: Algs, rebuild_tailwind: false}\n",
     )
     project = _project(tmp_path, _COURSE + website)
 

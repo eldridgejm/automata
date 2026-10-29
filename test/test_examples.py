@@ -22,9 +22,17 @@ DOCS = ROOT / "doc" / "source"
 
 
 def _copy(name, tmp_path):
-    """A copy of the example *name*, without anything an earlier build left."""
+    """A copy of the example *name*, without anything an earlier build left,
+    and without rebuilding the default theme's Tailwind CSS (which installs it
+    with npm)."""
     project = tmp_path / name
     shutil.copytree(EXAMPLES / name, project, ignore=shutil.ignore_patterns("_build"))
+    config = project / "automata.yaml"
+    theme = '    use: "default"\n    config:\n'
+    assert theme in config.read_text()
+    config.write_text(
+        config.read_text().replace(theme, theme + "      rebuild_tailwind: false\n")
+    )
     return project
 
 

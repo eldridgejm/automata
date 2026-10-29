@@ -1030,7 +1030,9 @@ def test_render_can_override_theme_template(tmpsite, tmp_path, hooks, theme):
     assert "Override Test" in output
 
 
-def test_render_overrides_template_can_extend_builtin_template(tmpsite, tmp_path):
+def test_render_overrides_template_can_extend_builtin_template(
+    tmpsite, tmp_path, theme
+):
     # given
     tmpsite.make_page(
         "index.md",
@@ -1044,13 +1046,6 @@ def test_render_overrides_template_can_extend_builtin_template(tmpsite, tmp_path
         '{% extends "base.html" %}{% block main %}Override:${ content }{% endblock %}'
     )
 
-    theme = _make_theme(
-        config={
-            "short_title": "DSC 40B",
-            "long_title": "Theoretical Foundations of Data Science II",
-            "navigation": [],
-        }
-    )
     override_ext = extension_from_directory(
         "overrides", overrides_dir, require_templates=False
     )
@@ -1065,7 +1060,7 @@ def test_render_overrides_template_can_extend_builtin_template(tmpsite, tmp_path
     assert "Hello from override" in output
 
 
-def test_render_can_override_only_static_files(tmpsite, tmp_path):
+def test_render_can_override_only_static_files(tmpsite, tmp_path, theme):
     """Test that only static files can be overridden without templates."""
     # given
     tmpsite.make_page("index.md", "# Static Override Test")
@@ -1076,13 +1071,6 @@ def test_render_can_override_only_static_files(tmpsite, tmp_path):
     static_dir.mkdir(parents=True)
     (static_dir / "custom.css").write_text("body { color: red; }")
 
-    theme = _make_theme(
-        config={
-            "short_title": "DSC 40B",
-            "long_title": "Theoretical Foundations of Data Science II",
-            "navigation": [],
-        }
-    )
     override_ext = extension_from_directory(
         "overrides", overrides_dir, require_templates=False
     )
