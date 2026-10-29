@@ -202,7 +202,8 @@ def test_raises_when_nested_collections_discovered(temporary_course):
     )
 
 
-def test_publications_may_be_nested_in_publications(temporary_course):
+def test_raises_when_nested_publications_discovered(temporary_course):
+    # given a publication "01/extra" nested in a publication "01"
     temporary_course.create_collection(
         "homeworks", "publication_schema:\n    required_artifacts: []"
     )
@@ -212,13 +213,28 @@ def test_publications_may_be_nested_in_publications(temporary_course):
     temporary_course.create_publication(
         "homeworks", "01/extra", "metadata: {}\nartifacts: {}"
     )
+    outer = temporary_course.path / "homeworks" / "01"
+    inner = outer / "extra"
 
-    universe = discover(temporary_course.path)
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
 
-    assert sorted(universe.collections["homeworks"].publications) == [
-        "01",
-        "01/extra",
-    ]
+    assert str(excinfo.value) == (
+        f"{inner / 'publication.yaml'}: This publication is inside the publication "
+        f"{outer}, and publications can't be nested. Move {inner} out of {outer}, "
+        "or delete one of the two publication.yaml files."
+    )
+
+
+def test_raises_when_publication_nested_in_isolated_publication(temporary_course):
+    # given a publication nested in a publication that isn't in a collection
+    temporary_course.create_publication("", "textbook", "metadata: {}\nartifacts: {}")
+    temporary_course.create_publication(
+        "", "textbook/appendix", "metadata: {}\nartifacts: {}"
+    )
+
+    with raises(DiscoveryError, match="publications can't be nested"):
+        discover(temporary_course.path)
 
 
 def test_uses_relative_paths_as_keys(temporary_course):

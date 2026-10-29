@@ -115,19 +115,20 @@ def _scan_filesystem(
     Raises
     ------
     DiscoveryError
-        If a nested collection is found.
+        If a nested collection or publication is found.
 
     """
-    queue: deque[tuple[pathlib.Path, Optional[pathlib.Path]]] = deque(
-        [(root_directory, None)]
-    )
+    # each entry is a directory, and the collection and publication it is inside
+    queue: deque[
+        tuple[pathlib.Path, Optional[pathlib.Path], Optional[pathlib.Path]]
+    ] = deque([(root_directory, None, None)])
 
     # The None key collects isolated publications (those not under any collection).
     # Pre-seeding it guarantees the default collection is always present.
     result: dict[Optional[pathlib.Path], list[pathlib.Path]] = {None: []}
 
     while queue:
-        current_path, parent_collection_path = queue.pop()
+        current_path, parent_collection_path, parent_publication_path = queue.pop()
 
         if _is_collection(current_path):
             if parent_collection_path is not None:
@@ -143,14 +144,24 @@ def _scan_filesystem(
             parent_collection_path = current_path
 
         if _is_publication(current_path):
+            if parent_publication_path is not None:
+                raise DiscoveryError(
+                    f"This publication is inside the publication "
+                    f"{parent_publication_path}, and publications can't be nested. "
+                    f"Move {current_path} out of {parent_publication_path}, or "
+                    f"delete one of the two {constants.PUBLICATION_FILE} files.",
+                    current_path / constants.PUBLICATION_FILE,
+                )
+
             result[parent_collection_path].append(current_path)
+            parent_publication_path = current_path
 
         for subpath in sorted(list_directory(current_path)):
             if subpath.is_dir():
                 if skip is not None and skip(subpath):
                     hooks.on_discover_skip(DiscoverHookArgs(path=subpath))
                     continue
-                queue.append((subpath, parent_collection_path))
+                queue.append((subpath, parent_collection_path, parent_publication_path))
 
     # sort publication paths within each group
     for pub_paths in result.values():
