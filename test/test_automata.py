@@ -561,6 +561,40 @@ def test_clean_build_directory_refuses_a_directory_holding_materials(tmp_path):
     assert (collection / "hw01" / "publication.yaml").exists()
 
 
+def test_clean_build_directory_cleans_materials_copied_by_export(tmp_path):
+    # given: an exported artifact (a directory) that holds a collection.yaml and
+    # a publication.yaml, beside the materials.json that export writes
+    project = _write_release_project(tmp_path / "project")
+    exported = project / "_build" / "materials"
+    artifact = exported / "hw" / "hw01" / "starter"
+    artifact.mkdir(parents=True)
+    (artifact / "collection.yaml").write_text("publication_schema: {}")
+    (artifact / "publication.yaml").write_text("artifacts: {}")
+    (exported / "materials.json").write_text("{}")
+
+    # when
+    Automata(project).clean()
+
+    # then
+    assert not exported.exists()
+
+
+def test_clean_build_directory_refuses_materials_where_export_writes_them(tmp_path):
+    # given: course materials at the path export writes to, but no
+    # materials.json, so export didn't write them
+    project = _write_release_project(tmp_path / "project")
+    publication = project / "_build" / "materials" / "hw01"
+    publication.mkdir(parents=True)
+    (publication / "publication.yaml").write_text("artifacts: {}")
+
+    # when / then
+    with pytest.raises(Error) as excinfo:
+        Automata(project).clean()
+
+    assert "contains course materials" in str(excinfo.value)
+    assert (publication / "publication.yaml").exists()
+
+
 @pytest.mark.parametrize("build_directory", ["extensions/site", "extensions"])
 def test_clean_build_directory_refuses_an_extension_directory(
     tmp_path, build_directory

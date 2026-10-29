@@ -162,7 +162,9 @@ class Automata:
             content directory; lies outside the project or inside the content
             directory; contains an ``automata.yaml`` file or course materials
             (a ``collection.yaml`` or ``publication.yaml``); or is, contains, or
-            lies inside a directory extension. Nothing is deleted in that case.
+            lies inside a directory extension. Materials files that export
+            copied into the build directory (beside its ``materials.json``)
+            don't count. Nothing is deleted in that case.
 
         """
         build_dir = (self.path / self.config.website.build_directory).resolve()
@@ -185,7 +187,9 @@ class Automata:
             for extension in self._extension_directories()
         ):
             problem = "is, contains, or is inside an extension directory"
-        elif _holds_materials(build_dir):
+        elif _holds_materials(
+            build_dir, exported=build_dir / self.config.website.materials_directory_name
+        ):
             problem = (
                 f"contains course materials (a {constants.COLLECTION_FILE} or "
                 f"{constants.PUBLICATION_FILE} file)"
@@ -899,12 +903,17 @@ class Automata:
         )
 
 
-def _holds_materials(directory: Path) -> bool:
-    """Whether *directory* contains a collection.yaml or publication.yaml."""
+def _holds_materials(directory: Path, exported: Path) -> bool:
+    """Whether *directory* contains a collection.yaml or publication.yaml.
+
+    Those inside *exported* are ignored if it holds a materials.json, since
+    then export wrote them there: they are copies of artifacts' files.
+    """
     if not directory.is_dir():
         return False
+    skipped = exported if (exported / "materials.json").is_file() else None
     return any(
-        path.is_file()
+        path.is_file() and not (skipped and path.is_relative_to(skipped))
         for name in (constants.COLLECTION_FILE, constants.PUBLICATION_FILE)
         for path in directory.rglob(name)
     )

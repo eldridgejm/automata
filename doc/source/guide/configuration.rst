@@ -219,8 +219,9 @@ Website generation settings:
        that is or contains the project or content directory; lies outside the
        project or inside the content directory; contains an ``automata.yaml``
        file or course materials (a ``collection.yaml`` or
-       ``publication.yaml``); or is, contains, or lies inside a directory
-       extension. To build outside the project, set this to ``false``.
+       ``publication.yaml``, other than copies exported with the materials);
+       or is, contains, or lies inside a directory extension. To build outside
+       the project, set this to ``false``.
    * - ``materials_directory_name``
      - ``"materials"``
      - Name of the subdirectory within the build directory where materials are
