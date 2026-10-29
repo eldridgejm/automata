@@ -10,6 +10,8 @@ course:
   term: "Term"
   # the first day of the course's first week; weeks are numbered from here
   first_week_start: 2027-01-04
+  # the time zone of the course's times (release times, due dates, ...)
+  timezone: America/Los_Angeles
 
 # values defined once and used anywhere, as ${ vars.name }
 vars: {}

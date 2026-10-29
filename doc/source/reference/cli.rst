@@ -67,9 +67,9 @@ and then deploys.
 Options:
 
 - ``--current-time TIME`` --- Override the current time for release-time checks
-  and date-based logic. Accepts ISO datetime (``"2026-01-15T12:00:00"``) or
-  relative days (``"+5"`` for 5 days in the future, ``"-3"`` for 3 days in the
-  past).
+  and date-based logic. Accepts ISO datetime (``"2026-01-15T12:00:00"``, in the
+  course's time zone; one with an offset is converted to it) or relative days
+  (``"+5"`` for 5 days in the future, ``"-3"`` for 3 days in the past).
 - ``--verbose`` / ``-v`` --- Show each recipe's output as it runs. By default
   it is captured: if a recipe fails, the error names the artifact (e.g.
   ``homeworks/01-intro/homework.pdf``), the recipe, its directory, and its exit

@@ -4,6 +4,7 @@ import datetime
 from typing import Any, Callable, Collection, TypeVar
 
 from .. import materials
+from .resolution import now
 
 
 class Week:
@@ -234,7 +235,7 @@ def find_display_week(
         The week to display in, or None if not yet visible.
     """
     if current_date is None:
-        current_date = datetime.date.today()
+        current_date = now().date()
 
     if week_range_start is None:
         week_range_start = start_displaying_on

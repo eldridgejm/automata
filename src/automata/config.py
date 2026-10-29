@@ -1,6 +1,7 @@
 import datetime
 import fnmatch
 import re
+import zoneinfo
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +72,9 @@ class CourseConfig(smartconfig.Prototype):
     term: str
     # the first day of the course's first week; weeks are numbered from it
     first_week_start: datetime.date
+    # the IANA time zone of the course's times (e.g. "America/Los_Angeles"):
+    # times without an offset are in it, and "now" is read in it
+    timezone: str
     # the number of the first week (e.g. 0, for a course with a week 0)
     first_week_number: int = 1
     instructors: list[str] = []
@@ -86,9 +90,25 @@ def course_variables(course: CourseConfig) -> dict[str, Any]:
         "term": course.term,
         "first_week_start": course.first_week_start,
         "first_week_number": course.first_week_number,
+        "timezone": course.timezone,
         "instructors": list(course.instructors),
         "url": course.url,
     }
+
+
+def course_timezone(course: CourseConfig) -> zoneinfo.ZoneInfo:
+    """The course's time zone.
+
+    Raises
+    ------
+    ValueError
+        If ``course.timezone`` isn't the name of a time zone.
+
+    """
+    try:
+        return zoneinfo.ZoneInfo(course.timezone)
+    except (zoneinfo.ZoneInfoNotFoundError, ValueError):
+        raise ValueError(f'"{course.timezone}" isn\'t a time zone.') from None
 
 
 def course_week_number(
@@ -254,6 +274,19 @@ def read_config_with_source_map(path: Path) -> tuple[Config, SourceMap]:
             )
         raise Error(
             describe_config_error(reason, e.keypath, file=path, source_map=source_map)
+        ) from None
+
+    try:
+        course_timezone(config.course)
+    except ValueError:
+        raise Error(
+            describe_config_error(
+                f'"{config.course.timezone}" isn\'t a time zone. Use a name from '
+                f'the IANA time zone database, like "America/Los_Angeles".',
+                ("course", "timezone"),
+                file=path,
+                source_map=source_map,
+            )
         ) from None
 
     materials = expand_includes(

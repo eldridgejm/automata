@@ -144,7 +144,7 @@ class Rebuilder:
 
     def build(self, full: bool = True) -> None:
         """Build the site: all of it, or (unless *full*) only the website."""
-        current_time = self.current_time or datetime.datetime.now()
+        current_time = self.current_time
         try:
             if full or self._project is None:
                 self._project = None

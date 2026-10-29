@@ -52,6 +52,7 @@ from .config import course_week_number
 from .exceptions import Error
 from .materials import Universe
 from .util.resolution import (
+    current_timezone,
     date_or_datetime,
     describe_config_error,
     local_time,
@@ -320,6 +321,8 @@ class Calendar:
     # the current week
     start: datetime.date | None = None
     end: datetime.date | None = None
+    # the time zone of its (naive) times, for iCalendar; None, the machine's
+    timezone: datetime.tzinfo | None = None
 
     @property
     def today(self) -> datetime.date | None:
@@ -695,6 +698,7 @@ def make_calendar(
         highlight_today=highlight_today,
         start=start,
         end=end,
+        timezone=current_timezone(),
     )
 
 
@@ -1288,12 +1292,15 @@ def _ics_fold(line: str) -> str:
     return "\r\n ".join([*lines, current])
 
 
-def _ics_utc(when: datetime.datetime) -> str:
+def _ics_utc(when: datetime.datetime, timezone: datetime.tzinfo | None) -> str:
+    """*when*, a naive time in *timezone* (None: the machine's), in UTC."""
+    if timezone is not None:
+        when = when.replace(tzinfo=timezone)
     return f"{when.astimezone(datetime.UTC):%Y%m%dT%H%M%SZ}"
 
 
 def _ics(calendar: Calendar) -> str:
-    stamp = _ics_utc(calendar.current_time)
+    stamp = _ics_utc(calendar.current_time, calendar.timezone)
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -1317,7 +1324,7 @@ def _ics(calendar: Calendar) -> str:
             ]
         else:
             # an instant (a due date, say): no duration
-            when = [f"DTSTART:{_ics_utc(entry.when)}"]
+            when = [f"DTSTART:{_ics_utc(entry.when, calendar.timezone)}"]
         lines += [
             "BEGIN:VEVENT",
             # the same for the same date, so that calendar apps

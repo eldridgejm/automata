@@ -109,6 +109,7 @@ course:
   title: "Test Course"
   term: "Fall 2025"
   first_week_start: 2025-01-13  # Week 1: Jan 13-19
+  timezone: America/Los_Angeles
 
 website:
   theme:

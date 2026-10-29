@@ -21,6 +21,7 @@ course:
   title: Theoretical Foundations of Data Science II
   term: Winter 2025
   first_week_start: 2025-01-06
+  timezone: America/Los_Angeles
 website:
   theme:
     use: default

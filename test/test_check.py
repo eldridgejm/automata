@@ -20,6 +20,7 @@ def _write_project(project: Path, website_extra: str = "", top_extra: str = "") 
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme:
                 use: default
@@ -134,7 +135,7 @@ def test_invalid_element_config_is_a_problem_even_if_no_page_uses_it(tmp_path):
     problems = Automata(project).check(current_time=_JAN_15)
 
     assert _messages(problems, "elements") == [
-        f"{project / 'automata.yaml'}:13: website.elements.button.url: "
+        f"{project / 'automata.yaml'}:14: website.elements.button.url: "
         'Dictionary is missing required key "url".'
     ]
 

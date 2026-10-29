@@ -27,6 +27,7 @@ def _project(tmp_path: Path, extensions: dict[str, dict[str, str]]) -> Path:
         "  title: Theoretical Foundations of Data Science II\n"
         "  term: Fall 2025\n"
         "  first_week_start: 2025-09-22\n"
+        "  timezone: America/Los_Angeles\n"
         + (f"extensions:\n{listed}" if listed else "")
         + "website:\n"
         "  theme: {use: default, config: {rebuild_tailwind: false}}\n"

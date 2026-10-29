@@ -24,7 +24,7 @@ from ..hooks import (
 )
 from ..materials import ExportedArtifact, Universe, deserialize
 from ..util import markdown as markdown_util
-from ..util.resolution import describe_config_error, format_keypath
+from ..util.resolution import describe_config_error, format_keypath, now
 from ..util.yaml import SourceMap
 from ._content import Page
 from ._frontmatter import Frontmatter, FrontmatterError, read_frontmatter
@@ -47,9 +47,7 @@ class RenderContext:
     elements: dict[str, Callable[..., str]] = dataclasses.field(default_factory=dict)
 
     # the current date and time
-    current_time: datetime.datetime = dataclasses.field(
-        default_factory=datetime.datetime.now
-    )
+    current_time: datetime.datetime = dataclasses.field(default_factory=now)
 
     # variables available for interpolation in the content
     vars: dict[str, Any] = dataclasses.field(default_factory=dict)
@@ -597,7 +595,7 @@ def render(
     static_content = static_content or {}
     vars = vars or {}
     element_configs = element_configs or {}
-    current_time = current_time or datetime.datetime.now()
+    current_time = current_time or now()
     loaded = [ext for ext in (theme, *extensions) if ext is not None]
     if hooks is None:
         hooks = RenderHooks()

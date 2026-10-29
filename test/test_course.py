@@ -2,6 +2,7 @@
 
 import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -15,6 +16,7 @@ course:
   title: Theoretical Foundations of Data Science II
   term: Winter 2025
   first_week_start: 2025-01-06
+  timezone: America/Los_Angeles
 """
 
 _WEBSITE = """\
@@ -47,6 +49,7 @@ def test_the_course_section_is_read(tmp_path):
     assert course.term == "Winter 2025"
     assert course.first_week_start == datetime.date(2025, 1, 6)
     assert course.first_week_number == 1
+    assert course.timezone == "America/Los_Angeles"
     assert course.instructors == []
     assert course.url is None
 
@@ -60,7 +63,9 @@ def test_the_course_section_is_required(tmp_path):
     assert 'missing required key "course"' in str(excinfo.value)
 
 
-@pytest.mark.parametrize("key", ["name", "title", "term", "first_week_start"])
+@pytest.mark.parametrize(
+    "key", ["name", "title", "term", "first_week_start", "timezone"]
+)
 def test_the_core_course_fields_are_required(tmp_path, key):
     lines = [line for line in _COURSE.splitlines() if not line.startswith(f"  {key}:")]
     project = _project(tmp_path, "\n".join(lines) + "\n" + _WEBSITE)
@@ -71,6 +76,105 @@ def test_the_core_course_fields_are_required(tmp_path, key):
     assert f'course.{key}: Dictionary is missing required key "{key}".' in str(
         excinfo.value
     )
+
+
+def test_the_course_timezone_must_be_a_time_zone(tmp_path):
+    config = _COURSE.replace("America/Los_Angeles", "Pacific")
+    project = _project(tmp_path, config + _WEBSITE)
+
+    with pytest.raises(Error) as excinfo:
+        read_config(project / "automata.yaml")
+
+    assert str(excinfo.value) == (
+        f'{project / "automata.yaml"}:6: course.timezone: "Pacific" isn\'t a time '
+        'zone. Use a name from the IANA time zone database, like "America/Los_Angeles".'
+    )
+
+
+# times are in the course's time zone ==================================================
+
+
+def _release_project(tmp_path: Path, release_time: str, timezone: str) -> Path:
+    """A project with one artifact, hw.pdf, released at *release_time*."""
+    course = _COURSE.replace("America/Los_Angeles", timezone)
+    project = _project(tmp_path, course + _WEBSITE)
+    (project / "hw").mkdir()
+    (project / "hw" / "publication.yaml").write_text(
+        "artifacts:\n"
+        "  hw.pdf:\n"
+        "    recipe: touch hw.pdf\n"
+        f"    release_time: {release_time}\n"
+    )
+    return project
+
+
+def _released(project: Path) -> bool:
+    return any((project / "_build").rglob("hw.pdf"))
+
+
+_UTC = datetime.timezone.utc
+
+
+@pytest.mark.parametrize("hour, released", [(18, False), (20, True)])
+def test_release_times_are_in_the_course_time_zone(
+    tmp_path, machine_in_utc, hour, released
+):
+    # given: a release at noon in Los Angeles, which is 19:00 UTC
+    project = _release_project(tmp_path, "2026-10-29 12:00:00", "America/Los_Angeles")
+
+    # when: built at a time given in UTC
+    Automata(project).build(
+        current_time=datetime.datetime(2026, 10, 29, hour, 0, tzinfo=_UTC)
+    )
+
+    # then
+    assert _released(project) is released
+
+
+@pytest.mark.parametrize(
+    "minute, released", [(14 * 60 + 30, False), (15 * 60 + 30, True)]
+)
+def test_release_times_with_an_offset_are_converted_to_the_course_time_zone(
+    tmp_path, minute, released
+):
+    # given: a release at noon at UTC-7, which is 15:00 in New York
+    project = _release_project(
+        tmp_path, "2026-10-29T12:00:00-07:00", "America/New_York"
+    )
+
+    # when: built at a time without an offset, so in the course's time zone
+    current_time = datetime.datetime(2026, 10, 29) + datetime.timedelta(minutes=minute)
+    Automata(project).build(current_time=current_time)
+
+    # then
+    assert _released(project) is released
+
+
+def test_the_current_time_is_the_courses_not_the_machines(tmp_path, machine_in_utc):
+    # given: a release three hours from now in Los Angeles, which is already
+    # past in UTC (always 7 or 8 hours ahead)
+    zone = ZoneInfo("America/Los_Angeles")
+    release = datetime.datetime.now(zone) + datetime.timedelta(hours=3)
+    project = _release_project(
+        tmp_path, f"{release:%Y-%m-%d %H:%M:%S}", "America/Los_Angeles"
+    )
+
+    # when
+    Automata(project).build()
+
+    # then
+    assert not _released(project)
+
+
+def test_status_is_in_the_course_time_zone(tmp_path, machine_in_utc):
+    project = _release_project(tmp_path, "2026-10-29 12:00:00", "America/Los_Angeles")
+
+    status = Automata(project).status(
+        current_time=datetime.datetime(2026, 10, 29, 18, 0, tzinfo=_UTC)
+    )
+
+    assert status.current_time == datetime.datetime(2026, 10, 29, 11, 0)
+    assert status.counts == {"scheduled": 1}
 
 
 # where course is available ============================================================

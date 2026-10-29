@@ -37,6 +37,7 @@ course:
   title: Test Course
   term: Winter 2025
   first_week_start: 2025-01-06
+  timezone: America/Los_Angeles
 """
 
 
@@ -682,13 +683,11 @@ def test_the_calendar_renders_as_icalendar(calendar):
     assert len(_events(ics)) == len(entries)
 
 
-def test_icalendar_timed_dates_are_in_utc(calendar):
-    from datetime import timezone
-
-    utc = datetime(2025, 1, 6, 9, 0).astimezone(timezone.utc)
+def test_icalendar_timed_dates_are_in_utc(calendar, machine_in_utc):
+    # (converted from the course's time zone, Los Angeles: 09:00 is 17:00 UTC)
     event = next(e for e in _events(calendar.to_ics()) if "hw01/released" in e)
 
-    assert f"DTSTART:{utc:%Y%m%dT%H%M%SZ}\r\n" in event
+    assert "DTSTART:20250106T170000Z\r\n" in event
     assert "SUMMARY:Homework 1 released\r\n" in event
 
 

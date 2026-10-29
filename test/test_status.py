@@ -25,6 +25,7 @@ def write_status_project(project: Path) -> Path:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme:
                 use: default

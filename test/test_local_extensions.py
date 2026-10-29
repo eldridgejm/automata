@@ -22,6 +22,7 @@ def _write_project(project: Path, extensions: str) -> Path:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             extensions:
             {extensions}
             website:

@@ -2,6 +2,7 @@
 
 import os
 import pathlib
+import time
 from textwrap import dedent
 
 import pytest
@@ -49,6 +50,17 @@ def no_real_npm(request, monkeypatch, tmp_path_factory):
             "to false, or mark the test integration.",
             pytrace=False,
         )
+
+
+@fixture
+def machine_in_utc(monkeypatch):
+    """Set this machine's local time zone to UTC, for tests that check times
+    are in the course's time zone, not the machine's."""
+    monkeypatch.setenv("TZ", "UTC")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
 
 
 @fixture

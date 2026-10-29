@@ -26,6 +26,7 @@ def test_read_config_reads_valid_config(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             vars:
               course_name: "DSC 101"
               semester: "Fall 2025"
@@ -64,6 +65,7 @@ def test_read_config_applies_defaults(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme: "default"
               content_directory: "./content"
@@ -134,6 +136,7 @@ def test_read_config_validates_nested_structure(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme: "default"
               content_directory: "./content"
@@ -157,6 +160,7 @@ def test_read_config_with_empty_vars(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             vars: {}
 
             website:
@@ -183,6 +187,7 @@ def test_read_config_with_extensions_list(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             extensions:
               - "default"
               - "./custom-theme"
@@ -218,6 +223,7 @@ def test_read_config_performs_variable_interpolation(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             vars:
               course_name: "DSC 101"
               semester: "Fall 2025"
@@ -266,6 +272,7 @@ def test_read_config_with_include(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             vars:
               __include__: vars.yaml
 
@@ -298,6 +305,7 @@ def test_read_config_website_elements_defaults_to_empty(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme: "default"
               content_directory: "./content"
@@ -323,6 +331,7 @@ def test_read_config_reads_website_elements(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             vars:
               course_name: "DSC 101"
 
@@ -358,6 +367,7 @@ def _write_config(tmp_path: Path, website_theme: str, extensions: str = "[]") ->
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             extensions: {extensions}
             website:
               theme: {theme}
@@ -557,7 +567,7 @@ def test_automata_yaml_errors_name_the_file_and_keypath(tmp_path: Path) -> None:
         read_config(config_file)
 
     assert str(excinfo.value) == (
-        f"{config_file}:12: website.contnt: Dictionary contains unexpected extra key "
+        f"{config_file}:13: website.contnt: Dictionary contains unexpected extra key "
         f'"contnt".'
     )
 
@@ -574,7 +584,7 @@ def test_theme_config_errors_give_the_full_keypath(tmp_path: Path) -> None:
         load_extensions(config, cwd=tmp_path, source_map=source_map)
 
     assert str(excinfo.value) == (
-        f"{config_file}:9: website.theme.config.navigation.0.url: Dictionary is "
+        f"{config_file}:10: website.theme.config.navigation.0.url: Dictionary is "
         f'missing required key "url".'
     )
 
@@ -594,7 +604,7 @@ def test_extension_config_errors_give_the_full_keypath(tmp_path: Path) -> None:
         load_extensions(config, cwd=tmp_path, source_map=source_map)
 
     assert str(excinfo.value) == (
-        f"{config_file}:7: extensions.0.config.size: Cannot convert to integer: 'big'."
+        f"{config_file}:8: extensions.0.config.size: Cannot convert to integer: 'big'."
     )
 
 
@@ -692,6 +702,7 @@ _WEBSITE = """\
       title: Test Course
       term: Fall 2025
       first_week_start: 2025-01-06
+      timezone: America/Los_Angeles
     website:
       theme: default
       content_directory: "./content"
@@ -715,7 +726,7 @@ def test_an_undefined_name_suggests_a_typo_or_a_template(tmp_path: Path) -> None
         read_config(config_file)
 
     assert str(excinfo.value) == (
-        f"{config_file}:15: website.elements.listing.columns.0.cell_content: "
+        f"{config_file}:16: website.elements.listing.columns.0.cell_content: "
         "'publication' is undefined. "
         + _template_hint('cell_content: !template "${ publication.metadata.topic }"')
     )
@@ -804,6 +815,7 @@ def test_merge_keys_are_allowed_in_automata_yaml(tmp_path: Path) -> None:
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             vars:
               dirs: &dirs
                 content_directory: "./content"
@@ -840,6 +852,7 @@ def test_errors_in_a_file_included_at_the_root_give_that_file(tmp_path: Path) ->
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme: default
               contnt_directory: "./content"
@@ -854,7 +867,7 @@ def test_errors_in_a_file_included_at_the_root_give_that_file(tmp_path: Path) ->
         read_config(config_file)
 
     assert str(excinfo.value).startswith(
-        f"{tmp_path / 'real.yaml'}:6: website.content_directory: "
+        f"{tmp_path / 'real.yaml'}:7: website.content_directory: "
     )
 
 
@@ -874,7 +887,7 @@ def test_nested_includes_work_with_a_relative_project_path(tmp_path: Path) -> No
     (project / "site" / "theme.yaml").write_text("default\n")
     (project / "automata.yaml").write_text(
         "course: {name: T, title: Test, term: Fall 2025,\n"
-        "         first_week_start: 2025-01-06}\n"
+        "         first_week_start: 2025-01-06, timezone: America/Los_Angeles}\n"
         "website:\n  __include__: site/website.yaml\n"
     )
 

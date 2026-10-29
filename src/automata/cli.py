@@ -68,12 +68,15 @@ def _parse_current_time(value: str) -> datetime.datetime:
     """
     try:
         n_days = int(value)
-        return datetime.datetime.now() + datetime.timedelta(days=n_days)
+        # an instant, which Automata converts to the course's time zone
+        return datetime.datetime.now().astimezone() + datetime.timedelta(days=n_days)
     except ValueError:
         pass
 
     try:
-        return local_time(datetime.datetime.fromisoformat(value))
+        # without an offset, in the course's time zone; Automata converts one
+        # with an offset to it
+        return datetime.datetime.fromisoformat(value)
     except ValueError:
         raise ValueError(
             f'Invalid --current-time value: "{value}". '
@@ -82,8 +85,11 @@ def _parse_current_time(value: str) -> datetime.datetime:
         )
 
 
-def _current_time_or_error(current_time: str | None) -> datetime.datetime | None:
-    """Parse the --current-time option, raising Error if it's invalid.
+def _current_time_or_error(
+    current_time: str | None, project: Automata
+) -> datetime.datetime | None:
+    """Parse the --current-time option, as a time in *project*'s course time
+    zone, raising Error if it's invalid.
 
     Says which time is used, on stderr (so that it doesn't mix with output such
     as JSON).
@@ -91,17 +97,19 @@ def _current_time_or_error(current_time: str | None) -> datetime.datetime | None
     if current_time is None:
         return None
     try:
-        parsed = _parse_current_time(current_time)
+        parsed = project.course_time(_parse_current_time(current_time))
     except ValueError as e:
         raise Error(str(e)) from None
     _say(f"[yellow]Running as if it is currently[/] [bold]{parsed}[/]", err=True)
     return parsed
 
 
-def _get_current_time(current_time: str | None) -> datetime.datetime | None:
+def _get_current_time(
+    current_time: str | None, project: Automata
+) -> datetime.datetime | None:
     """Parse the --current-time option, exiting on error."""
     try:
-        return _current_time_or_error(current_time)
+        return _current_time_or_error(current_time, project)
     except Error as e:
         _error(str(e))
         raise typer.Exit(code=1)
@@ -221,7 +229,7 @@ class _BuildProgress:
     ):
         self.echo, self.status, self.verbose = echo, status, verbose
         # the time the build is for (to say how far off releases are)
-        self.now = current_time or datetime.datetime.now()
+        self.now = project.course_time(current_time)
         self.build_directory = project.config.website.build_directory
         self.start = time.monotonic()
         self.collections = self.publications = 0
@@ -467,7 +475,7 @@ def build(
 ):
     """Run the full pipeline and produce the site in the build directory."""
     project = _project()
-    now = _get_current_time(current_time)
+    now = _get_current_time(current_time, project)
     with _build_progress(project, verbose, now):
         project.build(current_time=now, verbose=verbose)
 
@@ -513,7 +521,7 @@ def publish(
 ):
     """Run the full pipeline and deploy the built site."""
     project = _project()
-    now = _get_current_time(current_time)
+    now = _get_current_time(current_time, project)
     try:
         with (
             _stdout_to_stderr(json_output),
@@ -576,9 +584,10 @@ def serve(
     verbose: bool = _verbose_option,
 ):
     """Build and serve the site locally, rebuilding it when files change."""
-    _project().serve(
+    project = _project()
+    project.serve(
         port=port,
-        current_time=_get_current_time(current_time),
+        current_time=_get_current_time(current_time, project),
         verbose=verbose,
         echo=typer.echo,
         open_browser=open_browser,
@@ -607,7 +616,7 @@ def archive(
     """Build the materials, and zip them up (or write them to a directory). The
     website is untouched."""
     project = _project()
-    now = _get_current_time(current_time)
+    now = _get_current_time(current_time, project)
     with _build_progress(project, verbose, now) as progress:
         written = project.archive(
             path,
@@ -650,7 +659,9 @@ def build_materials(
     project = _project()
     discovered = project.discover()
     project.build_materials(
-        discovered, current_time=_get_current_time(current_time), verbose=verbose
+        discovered,
+        current_time=_get_current_time(current_time, project),
+        verbose=verbose,
     )
     _say("[bold green]✓[/] Materials built.")
 
@@ -678,7 +689,7 @@ def export_materials(
     discovered = project.discover()
     built = project.build_materials(
         discovered,
-        current_time=_get_current_time(current_time),
+        current_time=_get_current_time(current_time, project),
         verbose=verbose,
         ignore_release_time=all_artifacts,
         ignore_ready=all_artifacts,
@@ -693,7 +704,9 @@ def render_website(current_time: Optional[str] = _current_time_option):
     """Render the website from previously exported materials."""
     project = _project()
     materials = project.load_exported_materials()
-    project.render_website(materials, current_time=_get_current_time(current_time))
+    project.render_website(
+        materials, current_time=_get_current_time(current_time, project)
+    )
     _say("[bold green]✓[/] Website rendered.")
 
 
@@ -920,15 +933,17 @@ def status(
     if json_output:
         try:
             with _stdout_to_stderr():
-                result = _load_project().status(
-                    current_time=_current_time_or_error(current_time)
+                project = _load_project()
+                result = project.status(
+                    current_time=_current_time_or_error(current_time, project)
                 )
         except Error as e:
             typer.echo(json.dumps({"error": str(e)}, indent=2))
             raise typer.Exit(code=1)
         typer.echo(json.dumps(result.to_dict(), indent=2))
     else:
-        result = _project().status(current_time=_get_current_time(current_time))
+        project = _project()
+        result = project.status(current_time=_get_current_time(current_time, project))
         _print_status(result, verbose)
 
 
@@ -1011,7 +1026,8 @@ def calendar(
     """
 
     def make() -> Calendar:
-        return _load_project().calendar(
+        project = _load_project()
+        return project.calendar(
             categories=categories or None,
             keys=key or None,
             start=_parse_date(start, "--from"),
@@ -1019,7 +1035,7 @@ def calendar(
             week_start=week_start,
             all_weeks=all_weeks,
             highlight_today=highlight_today,
-            current_time=_current_time_or_error(current_time),
+            current_time=_current_time_or_error(current_time, project),
         )
 
     if json_output:
@@ -1112,7 +1128,9 @@ def check(
     try:
         with _stdout_to_stderr(json_output):
             project = _load_project()
-            problems = project.check(current_time=_current_time_or_error(current_time))
+            problems = project.check(
+                current_time=_current_time_or_error(current_time, project)
+            )
     except Error as e:
         problems = [Problem("configuration", str(e))]
 

@@ -1,5 +1,7 @@
 """Utilities for configuration resolution."""
 
+import contextlib
+import contextvars
 import datetime
 import difflib
 import json
@@ -257,15 +259,49 @@ def _date_or_phrase(value: typing.Any) -> datetime.date:
     return result.date() if isinstance(result, datetime.datetime) else result
 
 
+# the time zone that naive times are in: the course's, while an Automata
+# project is working (see times_in), and otherwise None, the machine's
+_TIMEZONE: contextvars.ContextVar[datetime.tzinfo | None] = contextvars.ContextVar(
+    "timezone", default=None
+)
+
+
+@contextlib.contextmanager
+def times_in(timezone: datetime.tzinfo | None) -> typing.Iterator[None]:
+    """Read and compare times in *timezone* (None: the machine's) within the
+    ``with`` block.
+
+    Automata does this with the course's time zone around each operation, so
+    that "now" is the course's time, and times with an offset are converted to
+    it, whatever the machine's time zone.
+    """
+    token = _TIMEZONE.set(timezone)
+    try:
+        yield
+    finally:
+        _TIMEZONE.reset(token)
+
+
 def local_time(value: datetime.datetime) -> datetime.datetime:
     """*value* as a naive local time.
 
-    automata compares times as naive local times; a time with an offset (or
-    a time zone) names an instant, which is converted to local time.
+    automata compares times as naive local times, in the time zone set by
+    :func:`times_in` (or the machine's); a time with an offset (or a time zone)
+    names an instant, which is converted to local time.
     """
     if value.tzinfo is None:
         return value
-    return value.astimezone().replace(tzinfo=None)
+    return value.astimezone(_TIMEZONE.get()).replace(tzinfo=None)
+
+
+def current_timezone() -> datetime.tzinfo | None:
+    """The time zone set by :func:`times_in`, or None (the machine's)."""
+    return _TIMEZONE.get()
+
+
+def now() -> datetime.datetime:
+    """The current time, as a naive local time (see :func:`local_time`)."""
+    return local_time(datetime.datetime.now(datetime.UTC))
 
 
 def _only_a_date(value: typing.Any) -> datetime.date | None:

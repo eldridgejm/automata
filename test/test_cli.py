@@ -45,6 +45,7 @@ def project(tmp_path, monkeypatch):
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
         """)
     )
     (project / "homeworks" / "hw01").mkdir(parents=True)
@@ -178,11 +179,13 @@ def test_build_accepts_current_time(project):
     assert (project / "_build" / "index.html").exists()
 
 
-def test_current_time_with_an_offset_is_converted_to_local_time(project):
+def test_current_time_with_an_offset_is_converted_to_the_course_time_zone(
+    project, machine_in_utc
+):
     result = _invoke("build", "--current-time", "2025-01-01T00:00:00+00:00")
 
-    local = datetime.datetime(2025, 1, 1, tzinfo=datetime.timezone.utc).astimezone()
-    assert local.strftime("%Y-%m-%d %H:%M:%S") in result.output
+    # (the course is in Los Angeles, eight hours behind UTC in January)
+    assert "Running as if it is currently 2024-12-31 16:00:00\n" in result.output
     assert (project / "_build" / "index.html").exists()
 
 

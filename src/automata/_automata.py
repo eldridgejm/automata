@@ -1,13 +1,15 @@
 """Public API for working with an automata project."""
 
 import datetime
+import functools
 import re
 import shutil
 import tempfile
 import zipfile
+import zoneinfo
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ParamSpec, TypeVar, cast
 
 from . import constants, materials
 from ._calendar import Calendar, make_calendar
@@ -17,6 +19,7 @@ from ._status import Status, make_status
 from .config import (
     CONFIGURATION_FILENAME,
     Config,
+    course_timezone,
     course_variables,
     is_ignored,
     load_extensions,
@@ -39,9 +42,28 @@ from .materials import (
 )
 from .materials._filter import ArtifactType, Predicate
 from .publish import PublishResult, supports_dry_run
+from .util.resolution import local_time, now, times_in
 from .util.yaml import SourceMap
 from .website import load_content_directory
 from .website import render as _website_render
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+
+def _in_course_time(
+    method: Callable[_P, _R],
+) -> Callable[_P, _R]:
+    """Run an Automata method with times read and compared in the course's time
+    zone (see :func:`automata.util.resolution.times_in`)."""
+
+    @functools.wraps(method)
+    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+        self = cast("Automata", args[0])
+        with times_in(self.timezone):
+            return method(*args, **kwargs)
+
+    return wrapper
 
 
 class Automata:
@@ -91,13 +113,25 @@ class Automata:
         # for errors found after the configuration is read
         self.source_map: SourceMap
         self.config, self.source_map = read_config_with_source_map(config_path)
+        # the course's time zone: times are read and compared in it
+        self.timezone: zoneinfo.ZoneInfo = course_timezone(self.config.course)
         self.theme: Extension
         self.extensions: list[Extension]
-        self.theme, self.extensions = load_extensions(
-            self.config, cwd=path, source_map=self.source_map
-        )
+        with times_in(self.timezone):
+            self.theme, self.extensions = load_extensions(
+                self.config, cwd=path, source_map=self.source_map
+            )
         self.hooks: Hooks = Hooks()
         apply_extensions([self.theme, *self.extensions], self.hooks)
+
+    def course_time(self, when: datetime.datetime | None = None) -> datetime.datetime:
+        """*when* (default: now) as a naive time in the course's time zone.
+
+        A time without an offset is taken to be in the course's time zone
+        already; one with an offset is converted to it.
+        """
+        with times_in(self.timezone):
+            return now() if when is None else local_time(when)
 
     @classmethod
     def init(cls, path: Path | None = None) -> "Automata":
@@ -118,6 +152,7 @@ class Automata:
 
     # --- full pipeline ---
 
+    @_in_course_time
     def build(
         self, current_time: datetime.datetime | None = None, verbose: bool = False
     ) -> None:
@@ -137,7 +172,7 @@ class Automata:
             than being captured (and shown only if a recipe fails).
 
         """
-        current_time = current_time or datetime.datetime.now()
+        current_time = self.course_time(current_time)
         if self.config.website.clean_build_directory:
             self.clean()
         discovered = self.discover()
@@ -262,6 +297,7 @@ class Automata:
             open_url=webbrowser.open if open_browser else None,
         )
 
+    @_in_course_time
     def publish(
         self,
         target: str | None = None,
@@ -389,6 +425,7 @@ class Automata:
 
     # --- individual steps ---
 
+    @_in_course_time
     def discover(self) -> Universe[UnbuiltArtifact]:
         """Discover materials from the project directory.
 
@@ -405,6 +442,7 @@ class Automata:
         """
         return self._discover(hooks=self.hooks)
 
+    @_in_course_time
     def _discover(
         self, hooks: Hooks | None, errors: list[Error] | None = None
     ) -> Universe[UnbuiltArtifact]:
@@ -458,6 +496,7 @@ class Automata:
 
         return universe
 
+    @_in_course_time
     def status(self, current_time: datetime.datetime | None = None) -> Status:
         """The status of the materials: what is released and what is scheduled.
 
@@ -482,10 +521,9 @@ class Automata:
             If the materials can't be discovered.
 
         """
-        return make_status(
-            self._discover(hooks=None), current_time or datetime.datetime.now()
-        )
+        return make_status(self._discover(hooks=None), self.course_time(current_time))
 
+    @_in_course_time
     def calendar(
         self,
         categories: Sequence[str] | None = None,
@@ -544,7 +582,7 @@ class Automata:
         return make_calendar(
             self._discover(hooks=None),
             self.config.calendar,
-            current_time or datetime.datetime.now(),
+            self.course_time(current_time),
             vars=self.config.vars,
             categories=categories,
             keys=keys,
@@ -558,6 +596,7 @@ class Automata:
             source_map=self.source_map,
         )
 
+    @_in_course_time
     def check(self, current_time: datetime.datetime | None = None) -> list[Problem]:
         """Check the project for problems, without building anything.
 
@@ -584,7 +623,7 @@ class Automata:
             The problems found; empty if there are none.
 
         """
-        return run_checks(self, current_time or datetime.datetime.now())
+        return run_checks(self, self.course_time(current_time))
 
     def _publishers(self) -> dict[str, Any]:
         """The publish strategies: the built-in ones, and those extensions add."""
@@ -595,6 +634,7 @@ class Automata:
         )
         return registry.publishers
 
+    @_in_course_time
     def build_materials(
         self,
         universe: Universe[UnbuiltArtifact],
@@ -623,11 +663,12 @@ class Automata:
             The built materials universe.
 
         """
-        current_time = current_time or datetime.datetime.now()
+        current_time = self.course_time(current_time)
         return materials.build(
             universe, current_time=current_time, hooks=self.hooks, **kwargs
         )
 
+    @_in_course_time
     def filter(
         self,
         universe: Universe[ArtifactType],
@@ -699,6 +740,7 @@ class Automata:
 
         return exported
 
+    @_in_course_time
     def archive(
         self,
         path: Path | None = None,
@@ -782,6 +824,7 @@ class Automata:
                         archive.write(file, file.relative_to(temporary))
         return path
 
+    @_in_course_time
     def load_exported_materials(self) -> Universe[ExportedArtifact]:
         """Load the materials written by a previous :meth:`export_materials`.
 
@@ -839,6 +882,7 @@ class Automata:
             / "materials.json"
         )
 
+    @_in_course_time
     def render_website(
         self,
         materials: Universe[ExportedArtifact],
@@ -860,7 +904,7 @@ class Automata:
             uses the system time.
 
         """
-        current_time = current_time or datetime.datetime.now()
+        current_time = self.course_time(current_time)
         build_dir = self.path / self.config.website.build_directory
         materials_output_dir = build_dir / self.config.website.materials_directory_name
         content_dir = self.path / self.config.website.content_directory

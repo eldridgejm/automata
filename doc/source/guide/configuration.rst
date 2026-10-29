@@ -15,6 +15,7 @@ Top-level structure
       title: "The Practice and Application of Data Science"
       term: "Spring 2026"
       first_week_start: 2026-03-30
+      timezone: America/Los_Angeles
 
     # Variables available throughout the project
     vars:
@@ -54,7 +55,8 @@ The course (required). It is available everywhere ``vars`` is, as ``course``
 (e.g. ``${ course.name }``), and automata uses it: the default theme's titles
 are the course's name and title (unless set in the theme's config), and weeks
 are numbered from ``first_week_start``, in the schedule and in
-``automata calendar``.
+``automata calendar``. Times are in the course's ``timezone``, whatever the
+time zone of the machine that builds the site.
 
 .. list-table::
    :widths: 25 15 60
@@ -77,6 +79,14 @@ are numbered from ``first_week_start``, in the schedule and in
      - (required)
      - The first day of the first week, e.g. ``2026-03-30``. Weeks are numbered
        from it.
+   * - ``timezone``
+     - (required)
+     - The course's time zone, as named in the IANA time zone database, e.g.
+       ``America/Los_Angeles``. Times without an offset (release times, due
+       dates, ``--current-time``) are in it, a time with an offset (e.g.
+       ``2026-01-15T12:00:00-08:00``) is converted to it, and the current time
+       is read in it, so that a build on a server in another time zone (such
+       as a CI runner on UTC) releases materials when they should be.
    * - ``first_week_number``
      - ``1``
      - The first week's number (``0`` for a course with a week 0).

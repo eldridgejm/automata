@@ -13,7 +13,7 @@ from automata.hooks import (
     BuildMaterialsNodeHookArgs,
 )
 
-from ..util.resolution import local_time
+from ..util.resolution import local_time, now
 from ._types import (
     BuiltArtifact,
     Collection,
@@ -102,7 +102,7 @@ def _build_artifact(
 
     """
     if current_time is None:
-        current_time = datetime.datetime.now()
+        current_time = now()
     # naive and aware times can't be compared; compare both as local times
     current_time = local_time(current_time)
 

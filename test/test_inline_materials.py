@@ -22,6 +22,7 @@ def project_with_inline_materials(tmp_path):
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             materials:
               homeworks:
                 schema:
@@ -191,6 +192,7 @@ def test_inline_materials_can_use_vars(tmp_path):
         "  title: Test Course\n"
         "  term: Fall 2025\n"
         "  first_week_start: 2025-01-06\n"
+        "  timezone: America/Los_Angeles\n"
         "website:\n"
         "  theme:\n"
         '    use: "default"\n'
@@ -222,6 +224,7 @@ def test_inline_materials_cannot_have_recipes(tmp_path):
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             materials:
               homeworks:
                 schema:
@@ -278,6 +281,7 @@ def test_malformed_inline_materials_are_reported(tmp_path, materials, expected):
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme:
                 use: "default"
@@ -323,6 +327,7 @@ def test_inline_materials_errors_give_the_keypath_in_automata_yaml(
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme:
                 use: "default"
@@ -352,6 +357,7 @@ def test_an_inline_collection_named_default_is_an_error(tmp_path):
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme:
                 use: "default"
@@ -388,6 +394,7 @@ def test_inline_artifacts_of_the_wrong_type_are_a_config_error(tmp_path, artifac
               title: Test Course
               term: Fall 2025
               first_week_start: 2025-01-06
+              timezone: America/Los_Angeles
             website:
               theme:
                 use: "default"
@@ -414,6 +421,7 @@ _REST_OF_CONFIG = dedent("""\
       title: Test Course
       term: Fall 2025
       first_week_start: 2025-01-06
+      timezone: America/Los_Angeles
     website:
       theme:
         use: "default"
