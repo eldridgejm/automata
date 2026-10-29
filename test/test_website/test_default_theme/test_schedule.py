@@ -1137,3 +1137,24 @@ def test_schedule_element_marks_a_past_deadline_as_past(tmpsite, theme):
     due = soup.find(class_="due-past")
     assert due is not None
     assert "Was due Tuesday, Jan. 9" in due.get_text()
+
+
+def test_schedule_element_marks_a_deadline_past_once_its_time_has_passed(
+    tmpsite, theme
+):
+    # given: due at 9 AM on the 10th, and it is 3 PM on the 10th
+    activity = """{
+        "title": "Homework 1",
+        "start_displaying_on": "2024-01-08",
+        "due_datetime": "2024-01-10 09:00:00",
+        "resources": []
+    }"""
+
+    # when
+    soup = render_extra_activity(
+        tmpsite, theme, activity, current_time=datetime(2024, 1, 10, 15, 0)
+    )
+
+    # then
+    assert soup.find(class_="due-past") is not None
+    assert soup.find(class_="due-soon") is None
