@@ -116,7 +116,7 @@ user's config is validated against it, and defaults are applied, before
 
     def make_extension(config):
         def collect(inputs: WebsiteInputs) -> WebsiteInputs:
-            inputs.pages["about.html"] = f"# About {config['title']}"
+            inputs.pages["about.md"] = f"# About {config['title']}"
             return inputs
 
         return Extension(

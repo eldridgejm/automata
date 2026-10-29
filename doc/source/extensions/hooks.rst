@@ -48,7 +48,7 @@ contribute templates, static files, and elements.
         inputs.templates["page.html"] = "<html>${ content }</html>"
         inputs.static_files["style.css"] = "body { margin: 0; }"
         inputs.elements["greeting"] = GreetingElement
-        inputs.pages["extra.html"] = "# Extra Page"
+        inputs.pages["extra.md"] = "# Extra Page"
         return inputs
 
 ``WebsiteInputs`` fields:
@@ -66,7 +66,19 @@ contribute templates, static files, and elements.
    * - ``elements``
      - ``dict[str, type[Element]]`` --- element name to class.
    * - ``pages``
-     - ``dict[str, str]`` --- extra pages to render.
+     - ``dict[str, str]`` --- extra pages to render, keyed by
+       :ref:`page path <extension-page-paths>`.
+
+.. _extension-page-paths:
+
+A page's key is its path in the site as if it were a file in the content
+directory, and its suffix decides how it is rendered, as there:
+``notes/about.md`` is rendered as Markdown to ``notes/about.html``, and
+``notes/about.html`` is interpolated and wrapped in its template, but not
+rendered as Markdown. Other suffixes, absolute paths, and paths outside the
+site (with ``..``) are errors, as are two keys that would become the same
+page. A page in the content directory overrides an extension's page that
+would become the same page.
 
 Extensions cannot add to the render context's ``vars``. Templates read an
 extension's configuration through ``theme`` and ``extensions`` instead (see
@@ -80,7 +92,10 @@ extension's configuration through ``theme`` and ``extensions`` instead (see
 **Signature:** ``(RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs``
 
 Called before pages are rendered. Can add or change ``extra_content``
-(additional pages to include in the output, held in memory).
+(additional pages and files to include in the output, held in memory). A
+``str`` is a page, keyed by :ref:`page path <extension-page-paths>` as in
+``WebsiteInputs.pages``; ``bytes`` are written to their path as they are, and
+a ``pathlib.Path`` is a file copied to its path.
 
 .. code-block:: python
 
@@ -88,7 +103,7 @@ Called before pages are rendered. Can add or change ``extra_content``
 
     def add_pages(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
         extra = dict(args.extra_content or {})
-        extra["generated.html"] = "# Auto-generated page"
+        extra["generated.md"] = "# Auto-generated page"
         return RenderExtraPagesHookArgs(
             build_directory=args.build_directory, extra_content=extra
         )

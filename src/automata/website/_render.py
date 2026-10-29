@@ -187,6 +187,49 @@ def _write_static_files(
             output_path.write_bytes(static_content.read_bytes())
 
 
+def _extra_pages(pages: dict[str, str]) -> dict[str, Page]:
+    """The pages added by extensions and hooks, keyed by output path.
+
+    Each key is the page's path in the site as if it were a file in the
+    content directory: ``notes/about.md`` is rendered as Markdown to
+    ``notes/about.html``, and ``notes/about.html`` is not rendered as Markdown.
+
+    Raises
+    ------
+    WebsiteError
+        If a key isn't a relative path inside the site, or doesn't end in .md
+        or .html, or two keys would become the same page.
+
+    """
+    result: dict[str, Page] = {}
+    keys: dict[str, str] = {}  # the key each output path came from
+    for key in sorted(pages):
+        path = posixpath.normpath(key)
+        if key.startswith("/") or path == ".." or path.startswith("../"):
+            raise WebsiteError(
+                f'The page "{key}" added by an extension or hook isn\'t a relative '
+                f"path inside the site. Give a path like notes/about.md, relative "
+                f"to the site's root."
+            )
+        stem, suffix = posixpath.splitext(path)
+        if suffix.lower() not in (".md", ".html"):
+            raise WebsiteError(
+                f'The page "{key}" added by an extension or hook doesn\'t end in '
+                f".md or .html. Add other files as static files "
+                f"(WebsiteInputs.static_files, or bytes in extra_content)."
+            )
+        output = stem + ".html"
+        if output in keys:
+            raise WebsiteError(
+                f'The pages "{keys[output]}" and "{key}" added by extensions or '
+                f'hooks would both become "{output}". Remove or rename one of '
+                f"them."
+            )
+        keys[output] = key
+        result[output] = Page(pages[key], markdown=suffix.lower() == ".md")
+    return result
+
+
 def _page_base_path(base_path: str, page_path: str) -> str:
     """The base path to use in the page at *page_path* (relative to the site).
 
@@ -445,14 +488,13 @@ def _process_pages(
         # errors name the source file, or the output path of pages without one
         path = page.source or pathlib.Path(relative_path)
 
-        is_html = page.source is not None and page.source.suffix.lower() == ".html"
         try:
             rendered = _render_page(
                 page,
                 path,
                 jinja_environment,
                 context_for(relative_path),
-                markdown_renderer=None if is_html else render_markdown,
+                markdown_renderer=render_markdown if page.is_markdown else None,
             )
         except PageError:
             raise
@@ -581,14 +623,19 @@ def render(
     )
 
     # collect extra pages from extensions and on_render_extra_pages hooks
-    all_pages = dict(pages)
-    if inputs.pages:
-        # extension pages go first; explicit pages override
-        all_pages = {**inputs.pages, **all_pages}
-    if pre_args.extra_content:
-        for key, value in pre_args.extra_content.items():
-            if isinstance(value, str):
-                all_pages[key] = value
+    extra_pages = dict(inputs.pages)
+    for key, value in (pre_args.extra_content or {}).items():
+        if isinstance(value, str):
+            extra_pages[key] = value
+        elif not isinstance(value, (bytes, pathlib.Path)):
+            raise WebsiteError(
+                f'An on_render_extra_pages hook added "{key}" as a '
+                f"{type(value).__name__}. Extra content must be a str (a page, "
+                f"for a .md or .html path), bytes, or a pathlib.Path (a file to "
+                f"copy)."
+            )
+    # the course's own pages override those
+    all_pages = {**_extra_pages(extra_pages), **pages}
 
     # set up jinja environment and write extension static files
     jinja_environment = _create_jinja_environment(inputs.templates)

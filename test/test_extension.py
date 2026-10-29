@@ -152,7 +152,7 @@ def test_extensions_accumulate_different_keys():
         return inputs
 
     def plugin_collect(inputs: WebsiteInputs) -> WebsiteInputs:
-        inputs.pages["extra.html"] = "# Extra"
+        inputs.pages["extra.md"] = "# Extra"
         return inputs
 
     hooks = RenderHooks()
@@ -168,7 +168,7 @@ def test_extensions_accumulate_different_keys():
     result = hooks.on_render_collect(WebsiteInputs())
     assert "page.html" in result.templates
     assert "style.css" in result.static_files
-    assert "extra.html" in result.pages
+    assert "extra.md" in result.pages
 
 
 # apply_extensions() ===================================================================

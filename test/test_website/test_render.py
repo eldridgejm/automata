@@ -1450,6 +1450,113 @@ def test_render_applies_theme_and_extensions_when_hooks_omitted(tmpsite):
     assert "Extra page" in tmpsite.get_output("extra.html")
 
 
+# pages from extensions and hooks ======================================================
+
+
+def _with_pages(via, pages):
+    """Keyword arguments for _render adding *pages*, either with an extension's
+    on_render_collect hook or with an on_render_extra_pages hook."""
+    if via == "extension":
+
+        def collect(inputs: WebsiteInputs) -> WebsiteInputs:
+            inputs.pages.update(pages)
+            return inputs
+
+        ext = Extension(name="pages-ext", hooks={"on_render_collect": collect})
+        return {"theme": _page_theme(), "extensions": [ext]}
+
+    # given hooks, render leaves applying the theme to the caller
+    theme = _page_theme()
+    hooks = RenderHooks()
+    apply_extension(theme, hooks)
+
+    @hooks.on_render_extra_pages.register()
+    def add(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
+        return RenderExtraPagesHookArgs(
+            build_directory=args.build_directory,
+            extra_content={**(args.extra_content or {}), **pages},
+        )
+
+    return {"theme": theme, "hooks": hooks}
+
+
+@pytest.mark.parametrize("via", ["extension", "hook"])
+def test_html_pages_from_extensions_are_not_rendered_as_markdown(tmpsite, via):
+    # in Markdown, an HTML block ends at a blank line, and a line indented by
+    # four spaces after it would be code
+    html = '<div class="problem">\n\n    <p>Find ${ 1 + 1 } things.</p>\n</div>\n'
+
+    _render(tmpsite, **_with_pages(via, {"practice.html": html}))
+
+    output = tmpsite.get_output("practice.html")
+    assert "    <p>Find 2 things.</p>" in output
+    assert "<pre>" not in output
+
+
+@pytest.mark.parametrize("via", ["extension", "hook"])
+def test_markdown_pages_from_extensions_become_html_where_they_say(tmpsite, via):
+    _render(tmpsite, **_with_pages(via, {"notes/about.md": "# About"}))
+
+    assert "<h1>About</h1>" in tmpsite.get_output("notes/about.html")
+    assert not (tmpsite.build_directory / "notes" / "about.md").exists()
+
+
+@pytest.mark.parametrize("via", ["extension", "hook"])
+@pytest.mark.parametrize(
+    "key, problem",
+    [
+        ("feed.xml", "doesn't end in .md or .html"),
+        ("../outside.md", "isn't a relative path inside the site"),
+        ("/about.md", "isn't a relative path inside the site"),
+        ("notes/../../about.md", "isn't a relative path inside the site"),
+    ],
+)
+def test_pages_from_extensions_must_be_md_or_html_inside_the_site(
+    tmpsite, via, key, problem
+):
+    with raises(automata.website.exceptions.WebsiteError) as excinfo:
+        _render(tmpsite, **_with_pages(via, {key: "# Page"}))
+
+    assert f'The page "{key}" added by an extension or hook {problem}' in str(
+        excinfo.value
+    )
+    assert not (tmpsite.build_directory.parent / "outside.html").exists()
+
+
+def test_pages_from_extensions_cant_both_become_the_same_page(tmpsite):
+    pages = {"about.md": "# About", "about.html": "<h1>About</h1>"}
+
+    with raises(automata.website.exceptions.WebsiteError) as excinfo:
+        _render(tmpsite, **_with_pages("extension", pages))
+
+    assert str(excinfo.value) == (
+        'The pages "about.html" and "about.md" added by extensions or hooks '
+        'would both become "about.html". Remove or rename one of them.'
+    )
+
+
+@pytest.mark.parametrize("via", ["extension", "hook"])
+def test_content_pages_override_extension_pages_that_become_the_same_page(tmpsite, via):
+    tmpsite.make_page("about.html", "<p>From the course</p>")
+
+    _render(tmpsite, **_with_pages(via, {"about.md": "From the extension"}))
+
+    output = tmpsite.get_output("about.html")
+    assert "From the course" in output
+    assert "From the extension" not in output
+
+
+def test_extra_content_of_an_unsupported_type_is_an_error(tmpsite):
+    with raises(automata.website.exceptions.WebsiteError) as excinfo:
+        _render(tmpsite, **_with_pages("hook", {"data.json": {"a": 1}}))
+
+    assert str(excinfo.value) == (
+        'An on_render_extra_pages hook added "data.json" as a dict. Extra content '
+        "must be a str (a page, for a .md or .html path), bytes, or a pathlib.Path "
+        "(a file to copy)."
+    )
+
+
 def test_render_does_not_add_extension_config_to_vars(tmpsite, tmp_path):
     theme_dir = tmp_path / "custom_theme"
     (theme_dir / "templates").mkdir(parents=True)
@@ -2004,7 +2111,7 @@ def test_user_render_extra_pages_hook_can_add_extra_content(tmpsite, hooks, them
     @hooks.on_render_extra_pages.register()
     def add_extra_page(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
         extra = args.extra_content or {}
-        extra["from-hook.html"] = "# Added by hook"
+        extra["from-hook.md"] = "# Added by hook"
         return RenderExtraPagesHookArgs(
             build_directory=args.build_directory, extra_content=extra
         )
@@ -2021,7 +2128,7 @@ def test_render_extra_pages_pipeline_chains_transformations(tmpsite, hooks, them
     @hooks.on_render_extra_pages.register()
     def add_page_a(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
         extra = dict(args.extra_content or {})
-        extra["a.html"] = "# Page A"
+        extra["a.md"] = "# Page A"
         return RenderExtraPagesHookArgs(
             build_directory=args.build_directory, extra_content=extra
         )
@@ -2029,7 +2136,7 @@ def test_render_extra_pages_pipeline_chains_transformations(tmpsite, hooks, them
     @hooks.on_render_extra_pages.register()
     def add_page_b(args: RenderExtraPagesHookArgs) -> RenderExtraPagesHookArgs:
         extra = dict(args.extra_content or {})
-        extra["b.html"] = "# Page B"
+        extra["b.md"] = "# Page B"
         return RenderExtraPagesHookArgs(
             build_directory=args.build_directory, extra_content=extra
         )

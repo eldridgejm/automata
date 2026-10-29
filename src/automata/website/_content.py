@@ -18,11 +18,22 @@ class Page:
         The file the page was read from, named in error messages and used to
         resolve ``__include__`` in the frontmatter. None for pages that are not
         read from a file (e.g., pages added by extensions).
+    markdown : bool | None
+        Whether the page is rendered as Markdown. If None, it is unless it was
+        read from an ``.html`` file.
 
     """
 
     content: str
     source: Path | None = None
+    markdown: bool | None = None
+
+    @property
+    def is_markdown(self) -> bool:
+        """Whether the page is rendered as Markdown."""
+        if self.markdown is not None:
+            return self.markdown
+        return self.source is None or self.source.suffix.lower() != ".html"
 
 
 def load_content_directory(

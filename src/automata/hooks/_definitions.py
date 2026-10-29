@@ -153,7 +153,9 @@ class WebsiteInputs:
 
     Extensions register hooks on ``on_render_collect`` to contribute
     templates, static files, elements, and pages to the website when it is
-    rendered.
+    rendered. A page's key is its path as if it were a file in the content
+    directory: ``notes/about.md`` is rendered as Markdown to
+    ``notes/about.html``, and ``notes/about.html`` isn't rendered as Markdown.
     """
 
     templates: dict[str, str] = field(default_factory=dict)
@@ -182,8 +184,10 @@ class RenderPreHookArgs:
 class RenderExtraPagesHookArgs:
     """Argument passed to the ``on_render_extra_pages`` hook.
 
-    This is a pipeline hook that can add or change extra pages (in
-    ``extra_content``) before pages are rendered.
+    This is a pipeline hook that can add or change extra pages and files (in
+    ``extra_content``) before pages are rendered. A ``str`` is a page, keyed as
+    in :attr:`WebsiteInputs.pages`; ``bytes`` and a ``pathlib.Path`` (a file to
+    copy) are written to their path as they are.
     """
 
     build_directory: pathlib.Path
