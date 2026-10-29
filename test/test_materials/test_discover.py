@@ -226,6 +226,26 @@ def test_raises_when_nested_publications_discovered(temporary_course):
     )
 
 
+def test_raises_when_collection_discovered_inside_publication(temporary_course):
+    # given a collection "extra" inside a publication "textbook"
+    temporary_course.create_publication("", "textbook", "metadata: {}\nartifacts: {}")
+    temporary_course.create_collection(
+        "textbook/extra", "publication_schema:\n    required_artifacts: []"
+    )
+    outer = temporary_course.path / "textbook"
+    inner = outer / "extra"
+
+    with raises(DiscoveryError) as excinfo:
+        discover(temporary_course.path)
+
+    assert str(excinfo.value) == (
+        f"{inner / 'collection.yaml'}: This collection is inside the publication "
+        f"{outer}, and a collection can't be inside a publication. Move {inner} "
+        f"out of {outer}, or delete {inner / 'collection.yaml'} or "
+        f"{outer / 'publication.yaml'}."
+    )
+
+
 def test_raises_when_publication_nested_in_isolated_publication(temporary_course):
     # given a publication nested in a publication that isn't in a collection
     temporary_course.create_publication("", "textbook", "metadata: {}\nartifacts: {}")

@@ -115,7 +115,8 @@ def _scan_filesystem(
     Raises
     ------
     DiscoveryError
-        If a nested collection or publication is found.
+        If a collection or publication is found inside another, or a
+        collection inside a publication.
 
     """
     # each entry is a directory, and the collection and publication it is inside
@@ -137,6 +138,16 @@ def _scan_filesystem(
                     f"{parent_collection_path}, and collections can't be nested. "
                     f"Move {current_path} out of {parent_collection_path}, or "
                     f"delete one of the two {constants.COLLECTION_FILE} files.",
+                    current_path / constants.COLLECTION_FILE,
+                )
+            if parent_publication_path is not None:
+                raise DiscoveryError(
+                    f"This collection is inside the publication "
+                    f"{parent_publication_path}, and a collection can't be inside "
+                    f"a publication. Move {current_path} out of "
+                    f"{parent_publication_path}, or delete "
+                    f"{current_path / constants.COLLECTION_FILE} or "
+                    f"{parent_publication_path / constants.PUBLICATION_FILE}.",
                     current_path / constants.COLLECTION_FILE,
                 )
 

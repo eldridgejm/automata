@@ -21,8 +21,8 @@ PDF, with metadata like the due date and the topic.
 "Homeworks," "Lectures," and "Exams" might be collections. You can create as many
 collections with whatever names you like.
 
-Neither nests: a collection can't be inside another collection, and a
-publication can't be inside another publication.
+Neither nests: a collection can't be inside another collection or a
+publication, and a publication can't be inside another publication.
 
 The **Universe** is the name automata gives to the top-level container holding
 all collections.
