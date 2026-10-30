@@ -177,6 +177,13 @@
   border-color: #374151; /* gray-700 */
 }
 
+/* displayed math (with the theme's math option) that is wider than the page,
+   e.g. on a phone, scrolls sideways in place of widening the page */
+mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 /* highlight.js (with the theme's highlight_code option) colors the code; the
    frame is the block's */
 .prose pre code.hljs {

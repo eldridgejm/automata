@@ -1632,6 +1632,10 @@
   color: #c9d1d9;
   border-color: #374151;
 }
+mjx-container[display="true"] {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
 .prose pre code.hljs {
   background: transparent;
   padding: 0;

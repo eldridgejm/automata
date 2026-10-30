@@ -278,7 +278,8 @@ Configuration:
 math between ``\(`` and ``\)`` inline, and between ``\[`` and ``\]`` or ``$$``
 and ``$$`` displayed. (In a Markdown page, Markdown reads ``\(`` as an escaped
 ``(``, so write ``\\(``, or use ``$$``; an HTML page is not converted as
-Markdown.)
+Markdown.) Displayed math that is wider than the page, as a long equation can
+be on a phone, scrolls sideways instead of widening the page.
 
 ``highlight_code: true`` loads `highlight.js <https://highlightjs.org>`_ and
 highlights each code block that names its language: in Markdown, a fenced
