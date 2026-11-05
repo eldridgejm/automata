@@ -66,6 +66,8 @@ def git_project(tmp_path):
     """
     remote = tmp_path / "remote.git"
     _git("init", "--bare", "--quiet", str(remote), cwd=tmp_path)
+    # like GitHub, serve partial fetches (e.g. without file contents)
+    _git("config", "uploadpack.allowFilter", "true", cwd=remote)
 
     project = tmp_path / "project"
     project.mkdir()
@@ -530,6 +532,72 @@ def test_a_publish_that_changes_nothing_reports_no_changes(git_project):
 
     assert gh_pages_publish(build_dir, {}, project) == []
     assert _branch_commits(remote, "gh-pages") == 1
+
+
+def _delete_file_contents(repository: Path) -> None:
+    """Delete every blob (file content) from *repository*'s object store,
+    leaving its commits and trees."""
+    objects = _git(
+        "cat-file", "--batch-all-objects", "--batch-check", cwd=repository
+    ).splitlines()
+    blobs = [line.split()[0] for line in objects if line.split()[1] == "blob"]
+    assert blobs
+    for blob in blobs:
+        (repository / "objects" / blob[:2] / blob[2:]).unlink()
+
+
+@pytest.mark.integration
+def test_a_dry_run_downloads_no_file_contents_or_history(git_project):
+    # Downloading the published site (its files, and their history) is slow,
+    # and comparing it needs only the paths and hashes in its latest tree.
+
+    # given: a published site, whose remote no longer has its file contents
+    project, build_dir, remote = git_project
+    gh_pages_publish(build_dir, {}, project)
+    (build_dir / "index.html").write_text("<h1>Updated</h1>")
+    gh_pages_publish(build_dir, {}, project)
+    _delete_file_contents(remote)
+
+    # when: the site changes
+    (build_dir / "materials" / "hw01.pdf").unlink()
+    (build_dir / "CNAME").write_text("dsc40b.com")
+    changes = gh_pages_publish(build_dir, {}, project, dry_run=True)
+
+    # then: the changes are still found
+    assert changes == [
+        Change("added", "CNAME"),
+        Change("deleted", "materials/hw01.pdf"),
+    ]
+
+
+@pytest.mark.integration
+def test_a_publish_keeps_the_remote_whole(git_project):
+    # the remote's history and files survive publishing from a partial fetch
+    project, build_dir, remote = git_project
+    gh_pages_publish(build_dir, {}, project)
+    (build_dir / "materials" / "hw01.pdf").unlink()
+    (build_dir / "index.html").write_text("<h1>Updated</h1>")
+
+    gh_pages_publish(build_dir, {}, project)
+
+    assert _branch_commits(remote, "gh-pages") == 2
+    assert _branch_files(remote, "gh-pages") == ["index.html"]
+    assert _git("show", "gh-pages~1:materials/hw01.pdf", cwd=remote) == "hw01"
+    _git("fsck", "--strict", cwd=remote)
+
+
+@pytest.mark.integration
+def test_a_publish_works_with_a_remote_that_serves_only_whole_fetches(git_project):
+    project, build_dir, remote = git_project
+    _git("config", "uploadpack.allowFilter", "false", cwd=remote)
+    gh_pages_publish(build_dir, {}, project)
+    (build_dir / "index.html").write_text("<h1>Updated</h1>")
+
+    assert gh_pages_publish(build_dir, {}, project, dry_run=True) == [
+        Change("modified", "index.html")
+    ]
+    gh_pages_publish(build_dir, {}, project)
+    assert _git("show", "gh-pages:index.html", cwd=remote) == "<h1>Updated</h1>"
 
 
 def test_a_publish_result_as_a_dict():

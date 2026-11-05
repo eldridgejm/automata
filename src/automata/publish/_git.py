@@ -170,10 +170,26 @@ def push(
                 f"{source}: {listed.stderr.strip()}"
             )
         if listed.stdout.strip():
-            _run("git", "fetch", "origin", branch, cwd=tmp)
-            _run("git", "checkout", branch, cwd=tmp)
-            # Clean out old content
-            _run("git", "rm", "-rf", ".", cwd=tmp)
+            # Fetch only the branch's latest commit and its trees, not the
+            # file contents (blobs) or history: comparing the site needs only
+            # the paths and hashes in the trees, and downloading the files is
+            # slow. A server that can't filter sends everything instead.
+            _run(
+                "git",
+                "fetch",
+                "--depth",
+                "1",
+                "--filter=blob:none",
+                "origin",
+                branch,
+                cwd=tmp,
+            )
+            # Put the branch's tree in the index but nothing in the working
+            # tree (which would need the blobs). The build copied in below
+            # then becomes the whole working tree, and `git add -A` stages
+            # deletions for paths it lacks.
+            _run("git", "symbolic-ref", "HEAD", f"refs/heads/{branch}", cwd=tmp)
+            _run("git", "reset", "--quiet", "FETCH_HEAD", cwd=tmp)
         else:
             # Branch doesn't exist yet — start with an orphan
             _run("git", "checkout", "--orphan", branch, cwd=tmp)
